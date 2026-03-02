@@ -4,7 +4,7 @@ import '../../auth/login_screen.dart'; // Para el logout
 import 'edit_profile_screen.dart'; // Para navegar a editar
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -44,13 +44,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
-                        colors: [AppColors.pierDorado, AppColors.pierDorado.withOpacity(0.6)],
+                        colors: [AppColors.pierDorado, AppColors.pierDorado.withAlpha(153)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withAlpha(26),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
@@ -120,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SwitchListTile(
                     title: const Text('Notificaciones Push'),
                     value: _pushNotifications,
-                    activeColor: AppColors.pierVerde,
+                    activeThumbColor: AppColors.pierVerde,
                     contentPadding: EdgeInsets.zero,
                     onChanged: (val) => setState(() => _pushNotifications = val),
                   ),
@@ -128,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SwitchListTile(
                     title: const Text('Ofertas por Email'),
                     value: _emailOffers,
-                    activeColor: AppColors.pierVerde,
+                    activeThumbColor: AppColors.pierVerde,
                     contentPadding: EdgeInsets.zero,
                     onChanged: (val) => setState(() => _emailOffers = val),
                   ),
@@ -173,7 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

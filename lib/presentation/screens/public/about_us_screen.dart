@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class AboutUsScreen extends StatelessWidget {
-  const AboutUsScreen({Key? key}) : super(key: key);
+  const AboutUsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -82,9 +82,9 @@ class AboutUsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.pierArena.withOpacity(0.3),
+        color: AppColors.pierArena.withAlpha(77),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.pierVerde.withOpacity(0.2)),
+        border: Border.all(color: AppColors.pierVerde.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,7 +118,7 @@ class AboutUsScreen extends StatelessWidget {
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: AppColors.pierVerde.withOpacity(0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: AppColors.pierVerde.withAlpha(26), shape: BoxShape.circle),
           child: const Icon(Icons.location_on, color: AppColors.pierVerde),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class ContactScreen extends StatefulWidget {
-  const ContactScreen({Key? key}) : super(key: key);
+  const ContactScreen({super.key});
 
   @override
   State<ContactScreen> createState() => _ContactScreenState();
@@ -61,7 +61,7 @@ class _ContactScreenState extends State<ContactScreen> {
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     decoration: _inputDecoration('Asunto', Icons.subject),
-                    value: _selectedSubject,
+                    initialValue: _selectedSubject,
                     items: _subjects.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (val) => setState(() => _selectedSubject = val),
                     validator: (v) => v == null ? 'Requerido' : null,

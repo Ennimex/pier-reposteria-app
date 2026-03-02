@@ -12,7 +12,7 @@ class AppAssets {
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -25,7 +25,7 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkAuthAndNavigate();
   }
 
-  _checkAuthAndNavigate() async {
+  Future<void> _checkAuthAndNavigate() async {
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
@@ -61,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
           // 2. CAPA OSCURA (Overlay)
           Container(
-            color: Colors.black.withOpacity(0.4), 
+            color: Colors.black.withAlpha(102), 
           ),
 
           // 3. CONTENIDO
@@ -79,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     // Sombra suave difuminada, sin líneas duras
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
+                        color: Colors.black.withAlpha(64),
                         blurRadius: 30, // Más difuminado
                         spreadRadius: 5, // Un poco más extendido
                         offset: const Offset(0, 10),

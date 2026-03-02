@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class RefundsScreen extends StatefulWidget {
-  const RefundsScreen({Key? key}) : super(key: key);
+  const RefundsScreen({super.key});
 
   @override
   State<RefundsScreen> createState() => _RefundsScreenState();
@@ -151,7 +151,7 @@ class _RefundsScreenState extends State<RefundsScreen> with SingleTickerProvider
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.pierArena.withOpacity(0.5),
+                color: AppColors.pierArena.withAlpha(128),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.receipt_long, color: AppColors.pierVerde),
@@ -259,7 +259,7 @@ class _RefundsScreenState extends State<RefundsScreen> with SingleTickerProvider
             // Dropdowns
             DropdownButtonFormField<String>(
               decoration: _inputDecoration('Selecciona el Pedido'),
-              value: _selectedOrder,
+              initialValue: _selectedOrder,
               items: _orders.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
               onChanged: (val) => setState(() => _selectedOrder = val),
               validator: (val) => val == null ? 'Requerido' : null,
@@ -268,7 +268,7 @@ class _RefundsScreenState extends State<RefundsScreen> with SingleTickerProvider
             
             DropdownButtonFormField<String>(
               decoration: _inputDecoration('Selecciona el Producto'),
-              value: _selectedProduct,
+              initialValue: _selectedProduct,
               items: _products.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
               onChanged: (val) => setState(() => _selectedProduct = val),
               validator: (val) => val == null ? 'Requerido' : null,
@@ -277,7 +277,7 @@ class _RefundsScreenState extends State<RefundsScreen> with SingleTickerProvider
 
             DropdownButtonFormField<String>(
               decoration: _inputDecoration('Motivo del reembolso'),
-              value: _selectedReason,
+              initialValue: _selectedReason,
               items: _reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
               onChanged: (val) => setState(() => _selectedReason = val),
               validator: (val) => val == null ? 'Requerido' : null,

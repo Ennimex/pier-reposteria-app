@@ -179,21 +179,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   children: [
                     RadioListTile<int>(
                       value: 1,
+                      // ignore: deprecated_member_use
                       groupValue: _selectedBranch,
                       activeColor: AppColors.pierVerde,
                       title: const Text('Sucursal Principal', style: TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: const Text('Av. Revolución 123, Centro'),
                       secondary: const Icon(Icons.store, color: AppColors.pierDorado),
+                      // ignore: deprecated_member_use
                       onChanged: (val) => setState(() => _selectedBranch = val!),
                     ),
                     const Divider(height: 1),
                     RadioListTile<int>(
                       value: 2,
+                      // ignore: deprecated_member_use
                       groupValue: _selectedBranch,
                       activeColor: AppColors.pierVerde,
                       title: const Text('Plaza Las Flores', style: TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: const Text('Blvd. Central km 2, Local 4'),
                       secondary: const Icon(Icons.store, color: AppColors.pierDorado),
+                      // ignore: deprecated_member_use
                       onChanged: (val) => setState(() => _selectedBranch = val!),
                     ),
                   ],
@@ -353,7 +357,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       boxShadow: [
         BoxShadow(
           // Uso de withValues para evitar deprecation warning
-          color: Colors.black.withValues(alpha: 0.05),
+          color: Colors.black.withAlpha(13),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),

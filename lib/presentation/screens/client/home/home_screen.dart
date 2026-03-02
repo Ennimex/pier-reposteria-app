@@ -3,14 +3,13 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/providers/cart_provider.dart';
-import '../../../../data/providers/auth_provider.dart'; // Importante para el nombre
 import '../../../widgets/product/product_card.dart';
 import '../products/product_detail_screen.dart';
 import '../products/products_screen.dart';
 import '../cart/cart_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -39,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     // Obtenemos el nombre del usuario (o usamos uno por defecto)
-    final authProvider = Provider.of<AuthProvider>(context);
     // Asumimos que tienes un getter 'userName' en tu AuthProvider, si no, usa un string fijo o el email
     final String userName = "Alexander"; // authProvider.userName ?? "Alexander";
 
@@ -159,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.pierVerde.withOpacity(0.3),
+            color: AppColors.pierVerde.withAlpha(77),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -209,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(26),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -235,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 15),
+        separatorBuilder: (_, _) => const SizedBox(width: 15),
         itemBuilder: (context, index) {
           final cat = categories[index];
           final isSelected = selectedCategory == cat['name'];
@@ -253,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     boxShadow: [
                       if (!isSelected)
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
+                          color: Colors.grey.withAlpha(26),
                           blurRadius: 5,
                           offset: const Offset(0, 2),
                         ),
@@ -322,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withAlpha(26),
                 blurRadius: 5,
                 offset: const Offset(0, 2),
               ),
