@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class ProductReviewsScreen extends StatelessWidget {
-  const ProductReviewsScreen({Key? key}) : super(key: key);
+  const ProductReviewsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,7 @@ class ProductReviewsScreen extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: 5,
-              separatorBuilder: (_, __) => const Divider(),
+              separatorBuilder: (context, _) => const Divider(),
               padding: const EdgeInsets.all(16),
               itemBuilder: (context, index) {
                 return Column(

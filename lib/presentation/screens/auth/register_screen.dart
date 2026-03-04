@@ -11,7 +11,7 @@ class AppAssets {
 }
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -124,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.pierVerde.withOpacity(0.1),
+                          color: AppColors.pierVerde.withAlpha(26),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),

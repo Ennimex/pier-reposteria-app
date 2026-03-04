@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class LegalScreen extends StatelessWidget {
-  const LegalScreen({Key? key}) : super(key: key);
+  const LegalScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +103,8 @@ class _LegalContent extends StatelessWidget {
   final String title;
   final String content;
 
-  const _LegalContent({Key? key, required this.title, required this.content}) : super(key: key);
+  // ignore: unused_element_parameter
+  const _LegalContent({super.key, required this.title, required this.content});
 
   @override
   Widget build(BuildContext context) {

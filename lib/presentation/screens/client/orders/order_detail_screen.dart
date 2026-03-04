@@ -9,9 +9,9 @@ class OrderDetailScreen extends StatelessWidget {
   final Order order;
 
   const OrderDetailScreen({
-    Key? key,
+    super.key,
     required this.order,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +36,7 @@ class OrderDetailScreen extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
-              color: order.statusColor.withOpacity(0.1),
+              color: order.statusColor.withAlpha(26),
               child: Column(
                 children: [
                   Icon(
@@ -184,7 +184,7 @@ class OrderDetailScreen extends StatelessWidget {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -406,7 +406,7 @@ class OrderDetailScreen extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha(26),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),

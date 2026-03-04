@@ -5,7 +5,7 @@ import '../../../widgets/product/product_card.dart';
 import '../products/product_detail_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({Key? key}) : super(key: key);
+  const FavoritesScreen({super.key});
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
@@ -62,7 +62,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1 * 255),
                                 blurRadius: 4,
                               )
                             ],

@@ -5,7 +5,7 @@ import '../../../../data/models/product_model.dart';
 class CreateReviewScreen extends StatefulWidget {
   final Product product;
 
-  const CreateReviewScreen({Key? key, required this.product}) : super(key: key);
+  const CreateReviewScreen({super.key, required this.product});
 
   @override
   State<CreateReviewScreen> createState() => _CreateReviewScreenState();

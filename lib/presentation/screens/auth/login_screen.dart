@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // <--- IMPORTANTE
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/providers/auth_provider.dart'; // <--- IMPORTANTE
-import '../client/main_screen.dart'; // <--- IMPORTANTE: Vamos al Main, no al Home directo
+import '../../../data/providers/auth_provider.dart';
+import '../client/main_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -11,7 +11,7 @@ class AppImages {
 }
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -32,14 +32,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    // 1. Validamos el formulario visualmente
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      // 2. Obtenemos el AuthProvider
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // 3. Llamamos a la lógica real de login
       final success = await authProvider.login(
         _emailController.text.trim(),
         _passwordController.text.trim(),
@@ -49,13 +46,12 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (success) {
-        // 4. Si fue exitoso, vamos a la pantalla principal con pestañas
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
+          (route) => false,
         );
       } else {
-        // 5. Si falló, mostramos error
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Error: Verifica tus credenciales'),
@@ -70,36 +66,53 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.pierVerde),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
-
-                // Logo
+                // LOGO REAL
                 Center(
                   child: Container(
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: AppColors.pierVerde,
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white,
+                      shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.pierVerde.withOpacity(0.3),
+                          color: AppColors.pierVerde.withValues(alpha: 0.2),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.cake,
-                      size: 60,
-                      color: Colors.white,
+                    child: ClipOval(
+                      child: Padding(
+                        padding: const EdgeInsets.all(15.0),
+                        child: Image.asset(
+                          AppImages.logo,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.cake,
+                              size: 50,
+                              color: AppColors.pierVerde,
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -241,8 +254,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
 
                 // Divider
-                const Row(
-                  children: [
+                Row(
+                  children: const [
                     Expanded(child: Divider()),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
@@ -253,27 +266,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Social Login
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _SocialButton(
-                      icon: Icons.g_mobiledata,
-                      label: 'Google',
-                      onTap: () {
-                        // TODO: Implementar Google login
-                      },
-                    ),
-                    const SizedBox(width: 16),
-                    _SocialButton(
-                      icon: Icons.facebook,
-                      label: 'Facebook',
-                      onTap: () {
-                        // TODO: Implementar Facebook login
-                      },
-                    ),
-                  ],
+                // Social Login (Solo Google)
+                _SocialButton(
+                  // Usamos un icono de Material estándar que se parece a la 'G' de Google
+                  icon: Icons.g_mobiledata,
+                  label: 'Continuar con Google',
+                  onTap: () {
+                    // TODO: Implementar Google login
+                  },
                 ),
+                
                 const SizedBox(height: 32),
 
                 // Registro
@@ -322,15 +324,19 @@ class _SocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 24, color: AppColors.textPrimary),
-      label: Text(label, style: const TextStyle(color: AppColors.textPrimary)),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        side: BorderSide(color: Colors.grey.shade300),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return SizedBox(
+      width: double.infinity, // Hace que el botón de Google ocupe todo el ancho
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        // Hacemos el icono un poco más grande
+        icon: Icon(icon, size: 32, color: AppColors.textPrimary),
+        label: Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          side: BorderSide(color: Colors.grey.shade300),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );

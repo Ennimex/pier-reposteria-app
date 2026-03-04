@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../data/providers/auth_provider.dart';
+// Provider y AuthProvider ya no son estrictamente necesarios para la navegación aquí,
+// pero puedes dejarlos si planeas hacer una carga inicial de datos (ej. cargar el perfil) antes de saltar.
+// import 'package:provider/provider.dart';
+// import '../../../data/providers/auth_provider.dart';
 import '../../../core/constants/app_colors.dart';
 
 import '../client/main_screen.dart'; 
-import '../public/home_public_screen.dart';
+// ¡ELIMINADO! import '../public/home_public_screen.dart'; ya no existe.
 
 class AppAssets {
   static const logo = 'assets/images/logo.png';
@@ -22,26 +24,22 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAuthAndNavigate();
+    _navigateToMain();
   }
 
-  Future<void> _checkAuthAndNavigate() async {
+  // Renombramos la función para que sea más descriptiva de su nueva acción
+  Future<void> _navigateToMain() async {
+    // Simulamos un tiempo de carga inicial (aquí iría inicialización de bases de datos locales, etc.)
     await Future.delayed(const Duration(seconds: 3));
+    
     if (!mounted) return;
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
-    if (authProvider.isAuthenticated) {
-       Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
-    } else {
-       Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePublicScreen()),
-      );
-    }
+    // TODOS LOS USUARIOS van al MainScreen ahora (Contenedor Unificado).
+    // MainScreen decidirá qué mostrar en cada pestaña basado en la sesión.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const MainScreen()),
+    );
   }
 
   @override
@@ -69,30 +67,28 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // LOGO CORREGIDO: Sin bordes extraños
+                // LOGO
                 Container(
                   width: 160,
                   height: 160,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    // Sombra suave difuminada, sin líneas duras
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withAlpha(64),
-                        blurRadius: 30, // Más difuminado
-                        spreadRadius: 5, // Un poco más extendido
+                        blurRadius: 30, 
+                        spreadRadius: 5, 
                         offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                  // ClipOval asegura que el recorte sea suave (anti-aliasing)
                   child: ClipOval(
                     child: Padding(
-                      padding: const EdgeInsets.all(30.0), // Más espacio para que no toque el borde
+                      padding: const EdgeInsets.all(30.0), 
                       child: Image.asset(
                         AppAssets.logo,
-                        fit: BoxFit.contain, // Se ajusta sin cortarse
+                        fit: BoxFit.contain, 
                       ),
                     ),
                   ),

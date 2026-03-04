@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '/../core/constants/app_colors.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+  const NotificationsScreen({super.key});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -108,10 +108,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         });
       },
       child: Container(
-        color: isRead ? Colors.white : AppColors.pierArena.withOpacity(0.3), // Fondo destacado si no leído
+        color: isRead ? Colors.white : AppColors.pierArena.withValues(alpha: 0.3 * 255), // Fondo destacado si no leído
         child: ListTile(
           leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
+            backgroundColor: color.withValues(alpha: 0.1 * 255),
             child: Icon(icon, color: color, size: 20),
           ),
           title: Text(

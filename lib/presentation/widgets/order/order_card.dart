@@ -8,10 +8,10 @@ class OrderCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const OrderCard({
-    Key? key,
+    super.key,
     required this.order,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +48,7 @@ class OrderCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: order.statusColor.withOpacity(0.1),
+                      color: order.statusColor.withValues(alpha: 0.1 * 255),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(

@@ -3,7 +3,7 @@ import '../../../../core/constants/app_colors.dart';
 import 'contact_screen.dart';
 
 class FAQScreen extends StatelessWidget {
-  const FAQScreen({Key? key}) : super(key: key);
+  const FAQScreen({super.key});
 
   final List<Map<String, String>> _faqs = const [
     // --- PEDIDOS ---
@@ -107,7 +107,7 @@ class FAQScreen extends StatelessWidget {
                 ),
               ],
             ),
-          )).toList(),
+          )),
 
           const SizedBox(height: 30),
           
