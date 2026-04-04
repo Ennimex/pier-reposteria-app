@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/providers/cart_provider.dart';
-import '../../../data/providers/auth_provider.dart'; // PARA VALIDAR SESIÓN
-import '../../screens/auth/login_screen.dart'; // PARA MANDAR AL LOGIN
+import '../../../data/providers/auth_provider.dart';
+import '../../screens/auth/login_screen.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -35,19 +35,22 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // IMAGEN
+            // Imagen
             Expanded(
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16)),
                     child: Image.network(
-                      product.imageUrl,
+                      product.imagenUrl,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => Container(
+                      errorBuilder: (_, __, ___) => Container(
                         color: Colors.grey[200],
-                        child: const Center(child: Icon(Icons.cake, color: Colors.grey, size: 40)),
+                        child: const Center(
+                            child: Icon(Icons.cake,
+                                color: Colors.grey, size: 40)),
                       ),
                     ),
                   ),
@@ -56,78 +59,97 @@ class ProductCard extends StatelessWidget {
                       top: 8,
                       left: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.pierDorado,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
                           'Popular',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
                 ],
               ),
             ),
-            // INFO
+            // Info
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    product.nombre,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '\$${product.price.toStringAsFixed(0)}',
+                        '\$${product.precio.toStringAsFixed(0)}',
                         style: const TextStyle(
                           color: AppColors.pierVerde,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
                       ),
-                      
-                      // ESTE ES EL BOTÓN PROTEGIDO (CARD)
                       Consumer<CartProvider>(
-                        builder: (context, cart, child) {
-                          final isInCart = cart.isInCart(product.id);
+                        builder: (context, cart, _) {
+                          final isInCart =
+                              cart.isInCart(product.id);
                           return GestureDetector(
                             onTap: () {
-                              // 1. Validamos sesión
-                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              final auth =
+                                  Provider.of<AuthProvider>(
+                                      context,
+                                      listen: false);
                               if (!auth.isAuthenticated) {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                                return; // Cortamos la ejecución
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            const LoginScreen()));
+                                return;
                               }
-
-                              // 2. Si está logueado, agregamos
                               cart.addItem(product);
-                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('${product.name} agregado al carrito'),
-                                  backgroundColor: AppColors.pierVerde,
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
+                              ScaffoldMessenger.of(context)
+                                ..hideCurrentSnackBar()
+                                ..showSnackBar(SnackBar(
+                                  content: Text(
+                                      '${product.nombre} agregado'),
+                                  backgroundColor:
+                                      AppColors.pierVerde,
+                                  duration:
+                                      const Duration(seconds: 1),
+                                ));
                             },
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: isInCart ? AppColors.pierVerde : AppColors.pierVerde.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                color: isInCart
+                                    ? AppColors.pierVerde
+                                    : AppColors.pierVerde
+                                        .withValues(alpha: 0.1),
+                                borderRadius:
+                                    BorderRadius.circular(8),
                               ),
                               child: Icon(
-                                isInCart ? Icons.check : Icons.add_shopping_cart,
-                                color: isInCart ? Colors.white : AppColors.pierVerde,
+                                isInCart
+                                    ? Icons.check
+                                    : Icons.add_shopping_cart,
+                                color: isInCart
+                                    ? Colors.white
+                                    : AppColors.pierVerde,
                                 size: 18,
                               ),
                             ),

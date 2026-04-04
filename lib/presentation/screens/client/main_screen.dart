@@ -1,8 +1,10 @@
+//lib/presentation/screens/client/main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/cart_provider.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/navigation_provider.dart';
 
 // Importamos pantallas
 import 'home/home_screen.dart'; 
@@ -20,16 +22,15 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    context.read<NavigationProvider>().setSelectedIndex(index);
   }
 
   @override
   Widget build(BuildContext context) {
+    final navProvider = context.watch<NavigationProvider>();
+    final selectedIndex = navProvider.selectedIndex;
+    
     // 1. Verificamos si el usuario tiene sesión iniciada
     final isAuthenticated = Provider.of<AuthProvider>(context).isAuthenticated;
 
@@ -54,11 +55,11 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       body: IndexedStack(
-        index: _selectedIndex,
+        index: selectedIndex,
         children: screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
+        currentIndex: selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: AppColors.pierVerde,
         unselectedItemColor: Colors.grey,

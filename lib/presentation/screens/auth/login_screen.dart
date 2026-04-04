@@ -1,14 +1,12 @@
+//lib/presentation/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
-import '../client/main_screen.dart';
+import '../../../routes/app_routes.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
-
-class AppImages {
-  static const logo = 'assets/images/logo.png';
-}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   @override
   void dispose() {
@@ -36,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = true);
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
       final success = await authProvider.login(
         _emailController.text.trim(),
         _passwordController.text.trim(),
@@ -46,21 +44,45 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (success) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-          (route) => false,
-        );
+        context.go(AppRoutes.main);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error: Verifica tus credenciales'),
+          SnackBar(
+            content: Text(authProvider.errorMessage ?? 'Verifica tus credenciales'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
   }
+
+  // ========================================
+  // MÓVIL — Google Sign In
+  // ========================================
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isGoogleLoading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.loginWithGoogle();
+
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
+
+    if (!success) {
+      if (authProvider.errorMessage != 'Inicio de sesión cancelado') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.errorMessage ?? 'Error con Google'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+    // Si success=true, el refreshListenable del router maneja la navegación
+  }
+
+  // ========================================
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // LOGO REAL
+                // Logo
                 Center(
                   child: Container(
                     width: 120,
@@ -102,15 +124,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(15.0),
                         child: Image.asset(
-                          AppImages.logo,
+                          'assets/images/logo.png',
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.cake,
-                              size: 50,
-                              color: AppColors.pierVerde,
-                            );
-                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.cake, size: 50, color: AppColors.pierVerde),
                         ),
                       ),
                     ),
@@ -118,7 +135,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Título
                 const Text(
                   'Bienvenido',
                   style: TextStyle(
@@ -131,10 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Inicia sesión para continuar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
@@ -146,27 +159,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Email',
                     prefixIcon: const Icon(Icons.email_outlined, color: AppColors.pierVerde),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Email inválido';
-                    }
+                    if (value == null || value.isEmpty) return 'Ingresa tu email';
+                    if (!value.contains('@')) return 'Email inválido';
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
 
-                // Password
+                // Contraseña
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
@@ -180,27 +187,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             : Icons.visibility_off_outlined,
                         color: Colors.grey,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
+                      onPressed: () =>
+                          setState(() => _isPasswordVisible = !_isPasswordVisible),
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu contraseña';
-                    }
-                    if (value.length < 6) {
-                      return 'Mínimo 6 caracteres';
-                    }
+                    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+                    if (value.length < 6) return 'Mínimo 6 caracteres';
                     return null;
                   },
                 ),
@@ -210,14 +208,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ForgotPasswordScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ForgotPasswordScreen()),
+                    ),
                     child: const Text(
                       '¿Olvidaste tu contraseña?',
                       style: TextStyle(color: AppColors.pierDorado),
@@ -233,8 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     backgroundColor: AppColors.pierVerde,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                        borderRadius: BorderRadius.circular(12)),
                     elevation: 2,
                   ),
                   child: _isLoading
@@ -242,40 +236,69 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Text(
                           'Iniciar Sesión',
-                          style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold),
                         ),
                 ),
                 const SizedBox(height: 24),
 
                 // Divider
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Expanded(child: Divider()),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('O continúa con', style: TextStyle(color: Colors.grey)),
+                      child: Text('O continúa con',
+                          style: TextStyle(color: Colors.grey)),
                     ),
                     Expanded(child: Divider()),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                // Social Login (Solo Google)
-                _SocialButton(
-                  // Usamos un icono de Material estándar que se parece a la 'G' de Google
-                  icon: Icons.g_mobiledata,
-                  label: 'Continuar con Google',
-                  onTap: () {
-                    // TODO: Implementar Google login
-                  },
+                // ========================================
+                // MÓVIL — Botón Google funcional
+                // ========================================
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isGoogleLoading ? null : _handleGoogleLogin,
+                    icon: _isGoogleLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.textPrimary),
+                          )
+                        : Image.asset(
+                            'assets/images/google_logo.png',
+                            height: 24,
+                            width: 24,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.g_mobiledata,
+                                    size: 32, color: AppColors.textPrimary),
+                          ),
+                    label: const Text(
+                      'Continuar con Google',
+                      style: TextStyle(
+                          color: AppColors.textPrimary, fontSize: 16),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
                 ),
-                
+                // ========================================
+
                 const SizedBox(height: 32),
 
                 // Registro
@@ -284,58 +307,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const Text('¿No tienes cuenta?'),
                     TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const RegisterScreen()),
+                      ),
                       child: const Text(
                         'Regístrate',
                         style: TextStyle(
-                          color: AppColors.pierVerde,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            color: AppColors.pierVerde,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SocialButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SocialButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity, // Hace que el botón de Google ocupe todo el ancho
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        // Hacemos el icono un poco más grande
-        icon: Icon(icon, size: 32, color: AppColors.textPrimary),
-        label: Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          side: BorderSide(color: Colors.grey.shade300),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),

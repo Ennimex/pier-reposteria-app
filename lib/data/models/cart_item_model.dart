@@ -9,5 +9,17 @@ class CartItem {
     this.quantity = 1,
   });
 
-  double get subtotal => product.price * quantity;
+  factory CartItem.fromJson(Map<String, dynamic> json) {
+    return CartItem(
+      product: Product.fromJson(
+        json['producto'] as Map<String, dynamic>? ?? json,
+      ),
+      quantity: int.tryParse(json['cantidad']?.toString() ??
+              json['quantity']?.toString() ??
+              '1') ??
+          1,
+    );
+  }
+
+  double get subtotal => product.precio * quantity;
 }

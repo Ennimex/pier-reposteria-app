@@ -1,10 +1,9 @@
-//cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../data/providers/cart_provider.dart';
-import '../../../../../data/models/product_model.dart'; // Ahora SÍ lo usamos abajo
-import '../checkout/checkout_screen.dart'; 
+import '../../../../../data/models/product_model.dart';
+import '../checkout/checkout_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -29,22 +28,18 @@ class CartScreen extends StatelessWidget {
                   Icon(Icons.shopping_cart_outlined,
                       size: 100, color: Colors.grey[300]),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Tu carrito está vacío',
-                    style: TextStyle(fontSize: 20, color: Colors.grey),
-                  ),
+                  const Text('Tu carrito está vacío',
+                      style: TextStyle(fontSize: 20, color: Colors.grey)),
                 ],
               ),
             )
           : Column(
               children: [
-                // LISTA DE PRODUCTOS
                 Expanded(
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: cartItems.length,
-                    // CORRECCIÓN 2: Quitamos los guiones bajos innecesarios
-                    separatorBuilder: (context, index) => const SizedBox(height: 16),
+                    separatorBuilder: (_, __) => const SizedBox(height: 16),
                     itemBuilder: (context, index) {
                       final item = cartItems[index];
                       return Dismissible(
@@ -56,9 +51,7 @@ class CartScreen extends StatelessWidget {
                           color: Colors.red,
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
-                        onDismissed: (_) {
-                          cart.removeItem(item.id);
-                        },
+                        onDismissed: (_) => cart.removeItem(item.id),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -74,7 +67,6 @@ class CartScreen extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              // Imagen pequeña
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: Image.network(
@@ -82,7 +74,7 @@ class CartScreen extends StatelessWidget {
                                   width: 80,
                                   height: 80,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (ctx, err, _) => Container(
+                                  errorBuilder: (_, __, ___) => Container(
                                     width: 80,
                                     height: 80,
                                     color: Colors.grey[200],
@@ -91,7 +83,6 @@ class CartScreen extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              // Info y controles
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,26 +90,22 @@ class CartScreen extends StatelessWidget {
                                     Text(
                                       item.name,
                                       style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16),
                                     ),
                                     Text(
                                       '\$${item.price.toStringAsFixed(0)}',
                                       style: const TextStyle(
-                                        color: AppColors.pierDorado,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                          color: AppColors.pierDorado,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 8),
-                                    // Controles de cantidad (+ -)
                                     Row(
                                       children: [
                                         _buildQtyButton(
                                           icon: Icons.remove,
-                                          onTap: () {
-                                            cart.removeSingleItem(item.id);
-                                          },
+                                          onTap: () =>
+                                              cart.removeSingleItem(item.id),
                                         ),
                                         Padding(
                                           padding: const EdgeInsets.symmetric(
@@ -128,22 +115,20 @@ class CartScreen extends StatelessWidget {
                                         _buildQtyButton(
                                           icon: Icons.add,
                                           onTap: () {
-                                            // CORRECCIÓN 1: Usamos el modelo Product aquí
-                                            // Esto justifica el import y hace funcionar el botón +
+                                            // Reconstruimos Product con los nombres correctos del nuevo modelo
                                             final tempProduct = Product(
                                               id: item.id,
-                                              name: item.name,
-                                              price: item.price,
-                                              imageUrl: item.imageUrl,
-                                              description: '', // No necesario aquí
-                                              category: '', // No necesario aquí
-                                              popular: false,
+                                              nombre: item.name,
+                                              precio: item.price,
+                                              imagenUrl: item.imageUrl,
+                                              descripcion: '',
+                                              categoria: '',
                                             );
                                             cart.addItem(tempProduct);
                                           },
                                         ),
                                       ],
-                                    )
+                                    ),
                                   ],
                                 ),
                               ),
@@ -155,7 +140,7 @@ class CartScreen extends StatelessWidget {
                   ),
                 ),
 
-                // RESUMEN DE PAGO
+                // Resumen de pago
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -175,7 +160,6 @@ class CartScreen extends StatelessWidget {
                       _buildSummaryRow('Subtotal', cart.totalAmount * 0.84),
                       const SizedBox(height: 8),
                       _buildSummaryRow('IVA (16%)', cart.totalAmount * 0.16),
-                      
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Divider(),
@@ -183,20 +167,15 @@ class CartScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Total',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          const Text('Total',
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
                           Text(
                             '\$${cart.totalAmount.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.pierVerde,
-                            ),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.pierVerde),
                           ),
                         ],
                       ),
@@ -204,25 +183,20 @@ class CartScreen extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const CheckoutScreen(),
-                              ),
-                            );
-                          },
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const CheckoutScreen()),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.pierVerde,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                                borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text(
-                            'Proceder al Pago',
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                          ),
+                          child: const Text('Proceder al Pago',
+                              style: TextStyle(
+                                  fontSize: 18, color: Colors.white)),
                         ),
                       ),
                     ],
@@ -238,15 +212,14 @@ class CartScreen extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Colors.grey)),
-        Text(
-          '\$${amount.toStringAsFixed(2)}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        Text('\$${amount.toStringAsFixed(2)}',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
       ],
     );
   }
 
-  Widget _buildQtyButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildQtyButton(
+      {required IconData icon, required VoidCallback onTap}) {
     return Container(
       width: 32,
       height: 32,
