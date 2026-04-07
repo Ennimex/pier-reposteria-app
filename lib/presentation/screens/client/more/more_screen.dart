@@ -16,6 +16,7 @@ import '../notifications/notifications_screen.dart';
 import '../refunds/refunds_screen.dart';
 import '../reviews/my_reviews_screen.dart';
 import '../more/edit_profile_screen.dart';
+import '../more/profile_screen.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -468,21 +469,17 @@ class _MoreScreenState extends State<MoreScreen> {
             onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => const EditProfileScreen())),
+                    builder: (_) => const ProfileScreen())),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
+              width: 36, height: 36,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
+                shape: BoxShape.circle,
                 border: Border.all(
                     color: Colors.white.withValues(alpha: 0.3)),
               ),
-              child: const Text('Editar',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600)),
+              child: const Icon(Icons.chevron_right_rounded,
+                  color: Colors.white, size: 22),
             ),
           ),
         ]),
