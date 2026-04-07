@@ -1,4 +1,4 @@
-//lib/routes/app_routes.dart
+// lib/routes/app_routes.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -34,37 +34,32 @@ import '../presentation/screens/client/notifications/notifications_screen.dart';
 import '../presentation/screens/client/refunds/refunds_screen.dart';
 import '../presentation/screens/client/reviews/create_review_screen.dart';
 import '../presentation/screens/client/reviews/product_reviews_screen.dart';
-import '../presentation/screens/client/contact/client_contact_screen.dart';
 import '../presentation/screens/client/more/profile_screen.dart';
 import '../presentation/screens/client/more/edit_profile_screen.dart';
 
 class AppRoutes {
-  static const String splash = '/splash';
-
-  static const String login = '/login';
-  static const String registro = '/registro';
+  static const String splash              = '/splash';
+  static const String login               = '/login';
+  static const String registro            = '/registro';
   static const String recuperarContrasena = '/recuperar-contrasena';
-  static const String verificarEmail = '/verificar-email';
-
-  static const String main = '/main';
-
-  static const String nosotros = '/nosotros';
-  static const String contacto = '/contacto';
-  static const String faq = '/faq';
-  static const String legales = '/legales';
-
-  static const String productoDetalle = '/producto/:id';
-  static const String checkout = '/cliente/checkout';
-  static const String orderSuccess = '/cliente/order-success';
-  static const String orderDetail = '/cliente/pedido/:id';
-  static const String favoritos = '/cliente/favoritos';
-  static const String notificaciones = '/cliente/notificaciones';
-  static const String reembolsos = '/cliente/reembolsos';
-  static const String crearResena = '/cliente/resena';
-  static const String opiniones = '/cliente/opiniones';
-  static const String clienteContacto = '/cliente/contacto';
-  static const String perfil = '/cliente/perfil';
-  static const String editarPerfil = '/cliente/perfil/editar';
+  static const String verificarEmail      = '/verificar-email';
+  static const String main                = '/main';
+  static const String nosotros            = '/nosotros';
+  static const String contacto            = '/contacto';
+  static const String faq                 = '/faq';
+  static const String legales             = '/legales';
+  static const String productoDetalle     = '/producto/:id';
+  static const String checkout            = '/cliente/checkout';
+  static const String orderSuccess        = '/cliente/order-success';
+  static const String orderDetail         = '/cliente/pedido/:id';
+  static const String favoritos           = '/cliente/favoritos';
+  static const String notificaciones      = '/cliente/notificaciones';
+  static const String reembolsos          = '/cliente/reembolsos';
+  static const String crearResena         = '/cliente/resena';
+  static const String opiniones           = '/cliente/opiniones';
+  static const String clienteContacto     = '/cliente/contacto';
+  static const String perfil              = '/cliente/perfil';
+  static const String editarPerfil        = '/cliente/perfil/editar';
 
   static GoRouter router(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -78,7 +73,6 @@ class AppRoutes {
 
         debugPrint('🟡 [Router] redirect loc=$loc isAuth=$isAuth');
 
-        // Splash siempre pasa
         if (loc == splash) return null;
 
         final protectedRoutes = [
@@ -90,20 +84,18 @@ class AppRoutes {
         final isProtected = protectedRoutes.contains(loc) ||
             loc.startsWith('/cliente/pedido');
 
-        // Ruta protegida sin auth → login
         if (isProtected && !isAuth) return login;
+        if ([login, registro, verificarEmail].contains(loc) && isAuth) {
+          return main;
+        }
 
-        // En login/registro/verificarEmail con auth → main
-        if ([login, registro, verificarEmail].contains(loc) && isAuth) return main;
-
-        // En cualquier ruta con auth → dejar pasar
         return null;
       },
       routes: [
         GoRoute(path: splash, builder: (c, s) => const SplashScreen()),
 
-        GoRoute(path: login, builder: (c, s) => const LoginScreen()),
-        GoRoute(path: registro, builder: (c, s) => const RegisterScreen()),
+        GoRoute(path: login,               builder: (c, s) => const LoginScreen()),
+        GoRoute(path: registro,            builder: (c, s) => const RegisterScreen()),
         GoRoute(path: recuperarContrasena, builder: (c, s) => const ForgotPasswordScreen()),
 
         GoRoute(
@@ -114,18 +106,15 @@ class AppRoutes {
           },
         ),
 
-        GoRoute(path: main, builder: (c, s) => const MainScreen()),
-
+        GoRoute(path: main,     builder: (c, s) => const MainScreen()),
         GoRoute(path: nosotros, builder: (c, s) => const AboutUsScreen()),
         GoRoute(path: contacto, builder: (c, s) => const ContactScreen()),
-        GoRoute(path: faq, builder: (c, s) => const FAQScreen()),
-        GoRoute(path: legales, builder: (c, s) => const LegalScreen()),
+        GoRoute(path: faq,      builder: (c, s) => const FAQScreen()),
+        GoRoute(path: legales,  builder: (c, s) => const LegalScreen()),
 
         GoRoute(
           path: '/producto/:id',
-          builder: (c, s) => ProductDetailScreen(
-            product: s.extra as Product,
-          ),
+          builder: (c, s) => ProductDetailScreen(product: s.extra as Product),
         ),
 
         GoRoute(path: checkout, builder: (c, s) => const CheckoutScreen()),
@@ -135,38 +124,40 @@ class AppRoutes {
           builder: (c, s) {
             final args = s.extra as Map<String, dynamic>;
             return OrderSuccessScreen(
-              orderId: args['orderId'],
-              branchName: args['branchName'],
-              pickupDate: args['pickupDate'],
-              pickupTime: args['pickupTime'],
-              total: args['total'],
+              orderId:    args['orderId']    as String,
+              pickupDate: args['pickupDate'] as String,
+              pickupTime: args['pickupTime'] as String,
+              total:      args['total']      as double,
             );
           },
         ),
 
         GoRoute(
           path: '/cliente/pedido/:id',
-          builder: (c, s) => OrderDetailScreen(
-            order: s.extra as Order,
-          ),
+          builder: (c, s) => OrderDetailScreen(order: s.extra as Order),
         ),
 
-        GoRoute(path: favoritos, builder: (c, s) => const FavoritesScreen()),
+        GoRoute(path: favoritos,      builder: (c, s) => const FavoritesScreen()),
         GoRoute(path: notificaciones, builder: (c, s) => const NotificationsScreen()),
-        GoRoute(path: reembolsos, builder: (c, s) => const RefundsScreen()),
+        GoRoute(path: reembolsos,     builder: (c, s) => const RefundsScreen()),
 
+        // CreateReviewScreen — recibe Product via extra
         GoRoute(
           path: crearResena,
-          builder: (c, s) => CreateReviewScreen(
-            product: s.extra as Product,
-          ),
+          builder: (c, s) =>
+              CreateReviewScreen(product: s.extra as Product),
         ),
 
-        GoRoute(path: opiniones, builder: (c, s) => const ProductReviewsScreen()),
+        // ProductReviewsScreen — recibe Product via extra
+        GoRoute(
+          path: opiniones,
+          builder: (c, s) =>
+              ProductReviewsScreen(product: s.extra as Product),
+        ),
 
-        GoRoute(path: clienteContacto, builder: (c, s) => const ClientContactScreen()),
-        GoRoute(path: perfil, builder: (c, s) => const ProfileScreen()),
-        GoRoute(path: editarPerfil, builder: (c, s) => const EditProfileScreen()),
+        GoRoute(path: clienteContacto, builder: (c, s) => const ContactScreen()),
+        GoRoute(path: perfil,          builder: (c, s) => const ProfileScreen()),
+        GoRoute(path: editarPerfil,    builder: (c, s) => const EditProfileScreen()),
       ],
     );
   }

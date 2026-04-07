@@ -1,5 +1,5 @@
+// lib/presentation/screens/client/orders/orders_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
@@ -38,8 +38,9 @@ class _OrdersScreenState extends State<OrdersScreen>
   Future<void> _cargarPedidos() async {
     setState(() => _isLoading = true);
     final result = await _api.getAuth(ApiConstants.misPedidos);
+    if (!mounted) return;
     if (result['success'] == true) {
-      final data = result['data'] ?? result['pedidos'] ?? [];
+      final data = result['pedidos'] ?? result['data'] ?? [];
       final all = (data as List)
           .map((json) => Order.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -62,107 +63,157 @@ class _OrdersScreenState extends State<OrdersScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F3EE),
-      appBar: AppBar(
-        title: const Text(
-          'Mis Pedidos',
-          style: TextStyle(
-              fontFamily: 'Playfair Display',
-              fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.pierVerde,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.pierDorado,
-          indicatorWeight: 4,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          labelStyle: const TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 16),
-          unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.normal, fontSize: 15),
-          tabs: const [
-            Tab(text: 'Activos'),
-            Tab(text: 'Historial'),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                  color: AppColors.pierVerde))
-          : RefreshIndicator(
-              onRefresh: _cargarPedidos,
-              color: AppColors.pierVerde,
-              child: TabBarView(
-                controller: _tabController,
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── HEADER ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
                 children: [
-                  _buildOrdersList(
-                    _activeOrders,
-                    'No tienes pedidos activos',
-                    Icons.receipt_long_rounded,
-                  ),
-                  _buildOrdersList(
-                    _completedOrders,
-                    'No tienes pedidos en el historial',
-                    Icons.history_rounded,
-                  ),
+                  const Text('Mis Pedidos',
+                      style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
+                  const Spacer(),
+                  // Badge total activos
+                  if (_activeOrders.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.pierVerde,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('${_activeOrders.length} activo${_activeOrders.length == 1 ? '' : 's'}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ),
                 ],
               ),
             ),
+
+            // ── TABS ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(50),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2))
+                  ],
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey[600],
+                  indicator: BoxDecoration(
+                    color: AppColors.pierVerde,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  padding: const EdgeInsets.all(4),
+                  labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                  unselectedLabelStyle:
+                      const TextStyle(fontWeight: FontWeight.w500),
+                  tabs: const [
+                    Tab(text: 'Activos'),
+                    Tab(text: 'Historial'),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── CONTENIDO ────────────────────────────────────────
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.pierVerde))
+                  : RefreshIndicator(
+                      onRefresh: _cargarPedidos,
+                      color: AppColors.pierVerde,
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildOrdersList(
+                            _activeOrders,
+                            'No tienes pedidos activos',
+                            'Cuando realices un pedido\naparecerá aquí.',
+                            Icons.receipt_long_rounded,
+                          ),
+                          _buildOrdersList(
+                            _completedOrders,
+                            'Sin historial aún',
+                            'Tus pedidos completados\naparecerán aquí.',
+                            Icons.history_rounded,
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildOrdersList(
-      List<Order> orders, String emptyMessage, IconData emptyIcon) {
+  Widget _buildOrdersList(List<Order> orders, String title,
+      String subtitle, IconData icon) {
     if (orders.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              width: 100, height: 100,
               decoration: BoxDecoration(
-                color: AppColors.pierVerde.withValues(alpha: 0.05),
+                color: AppColors.pierVerde.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(emptyIcon,
-                  size: 80,
+              child: Icon(icon,
+                  size: 46,
                   color: AppColors.pierVerde.withValues(alpha: 0.5)),
             ),
-            const SizedBox(height: 24),
-            Text(emptyMessage,
+            const SizedBox(height: 20),
+            Text(title,
                 style: const TextStyle(
-                    fontSize: 18,
+                    fontFamily: 'Playfair Display',
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            Text(
-              'Cuando realices una compra, aparecerá aquí.',
-              style:
-                  TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 14, color: Colors.grey[500])),
           ],
         ),
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       itemCount: orders.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, index) =>
-          _buildOrderCard(context, orders[index]),
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, i) => _buildOrderCard(orders[i]),
     );
   }
 
-  Widget _buildOrderCard(BuildContext context, Order order) {
-    final statusData =
-        _getStatusData(order.status.toString().split('.').last);
-
+  Widget _buildOrderCard(Order order) {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -175,95 +226,81 @@ class _OrdersScreenState extends State<OrdersScreen>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4))
           ],
-          border: Border.all(
-              color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Column(
           children: [
+            // ── HEADER CARD ───────────────────────────────────
             Padding(
-              padding:
-                  const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Pedido #${order.id}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: AppColors.textPrimary),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusData['bgColor'],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      statusData['text'],
-                      style: TextStyle(
-                          color: statusData['textColor'],
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding:
-                  const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: 42, height: 42,
                     decoration: BoxDecoration(
-                      color: AppColors.pierArena,
+                      color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                        Icons.shopping_bag_outlined,
-                        color: AppColors.pierVerde,
-                        size: 24),
+                    child: const Icon(Icons.shopping_bag_outlined,
+                        color: AppColors.pierVerde, size: 20),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Fecha de compra',
+                        // ← Corregido: usa order.numero
+                        Text(order.numero,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: AppColors.textPrimary)),
+                        Text(_formatDate(order.createdAt),
                             style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12)),
-                        const SizedBox(height: 2),
-                        Text(
-                          _formatDate(order.createdAt),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Total: \$${order.total.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              color: AppColors.pierDoradoOscuro),
-                        ),
+                                fontSize: 11,
+                                color: Colors.grey[500])),
                       ],
                     ),
                   ),
+                  // Chip de estado
+                  _buildStatusChip(order.status),
+                ],
+              ),
+            ),
+
+            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1)),
+
+            // ── FOOTER CARD ───────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Row(
+                children: [
+                  // Items resumen
+                  Expanded(
+                    child: Text(
+                      order.items.isEmpty
+                          ? 'Sin productos'
+                          : order.items.length == 1
+                              ? order.items.first.nombre
+                              : '${order.items.first.nombre} +${order.items.length - 1} más',
+                      style: TextStyle(
+                          fontSize: 13, color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('\$${order.total.toStringAsFixed(0)} MXN',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          color: AppColors.pierDoradoOscuro)),
+                  const SizedBox(width: 6),
                   const Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey),
+                      color: Colors.grey, size: 18),
                 ],
               ),
             ),
@@ -273,58 +310,48 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} hrs';
+  Widget _buildStatusChip(OrderStatus status) {
+    Color color;
+    String label;
+    switch (status) {
+      case OrderStatus.pending:
+        color = Colors.orange;
+        label = 'Pendiente';
+        break;
+      case OrderStatus.preparing:
+        color = Colors.blue;
+        label = 'Preparando';
+        break;
+      case OrderStatus.ready:
+        color = AppColors.pierVerde;
+        label = 'Listo ✓';
+        break;
+      case OrderStatus.completed:
+        color = Colors.grey;
+        label = 'Completado';
+        break;
+      case OrderStatus.cancelled:
+        color = Colors.red;
+        label = 'Cancelado';
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.bold)),
+    );
   }
 
-  Map<String, dynamic> _getStatusData(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'pendiente':
-        return {
-          'text': 'Pendiente',
-          'bgColor': Colors.orange.withValues(alpha: 0.15),
-          'textColor': Colors.orange[800],
-        };
-      case 'preparing':
-      case 'preparando':
-        return {
-          'text': 'Preparando',
-          'bgColor': Colors.blue.withValues(alpha: 0.15),
-          'textColor': Colors.blue[800],
-        };
-      case 'ready':
-      case 'listo':
-        return {
-          'text': 'Listo para recoger',
-          'bgColor':
-              AppColors.pierDorado.withValues(alpha: 0.15),
-          'textColor': AppColors.pierDoradoOscuro,
-        };
-      case 'completed':
-      case 'entregado':
-        return {
-          'text': 'Entregado',
-          'bgColor': Colors.green.withValues(alpha: 0.15),
-          'textColor': Colors.green[800],
-        };
-      case 'cancelled':
-      case 'cancelado':
-        return {
-          'text': 'Cancelado',
-          'bgColor': Colors.red.withValues(alpha: 0.15),
-          'textColor': Colors.red[800],
-        };
-      default:
-        return {
-          'text': 'Procesando',
-          'bgColor': Colors.grey.withValues(alpha: 0.15),
-          'textColor': Colors.grey[800],
-        };
-    }
+  String _formatDate(DateTime dt) {
+    final months = ['Ene','Feb','Mar','Abr','May','Jun',
+                    'Jul','Ago','Sep','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }

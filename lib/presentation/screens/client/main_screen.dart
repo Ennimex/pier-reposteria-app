@@ -1,4 +1,4 @@
-//lib/presentation/screens/client/main_screen.dart
+// lib/presentation/screens/client/main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -6,12 +6,11 @@ import '../../../data/providers/cart_provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/navigation_provider.dart';
 
-// Importamos pantallas
-import 'home/home_screen.dart'; 
+import 'home/home_screen.dart';
 import 'products/products_screen.dart';
 import 'cart/cart_screen.dart';
-import 'orders/orders_screen.dart'; 
-import 'more/more_screen.dart'; // IMPORTACIÓN CORREGIDA
+import 'orders/orders_screen.dart';
+import 'more/more_screen.dart';
 import '../auth/login_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -22,67 +21,117 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  // Navigators anidados para tabs 0-4
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = [
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+  ];
+
   void _onItemTapped(int index) {
-    context.read<NavigationProvider>().setSelectedIndex(index);
+    final navProvider = context.read<NavigationProvider>();
+    final current = navProvider.selectedIndex;
+    if (current == index) {
+      final nav = _navigatorKeys[index].currentState;
+      if (nav != null && nav.canPop()) {
+        nav.popUntil((r) => r.isFirst);
+      }
+    } else {
+      navProvider.setSelectedIndex(index);
+    }
+  }
+
+  Future<bool> _onWillPop() async {
+    final index = context.read<NavigationProvider>().selectedIndex;
+    try {
+      final nav = _navigatorKeys[index].currentState;
+      if (nav != null && nav.canPop()) {
+        nav.pop();
+        return false;
+      }
+    } catch (_) {}
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
     final navProvider = context.watch<NavigationProvider>();
     final selectedIndex = navProvider.selectedIndex;
-    
-    // 1. Verificamos si el usuario tiene sesión iniciada
-    final isAuthenticated = Provider.of<AuthProvider>(context).isAuthenticated;
+    final isAuthenticated =
+        context.watch<AuthProvider>().isAuthenticated;
 
-    // 2. Definimos qué mostrar en cada Tab dependiendo del Auth
-    final List<Widget> screens = [
-      const HomeScreen(),                             // Tab 0: Inicio (Para todos)
-      const ProductsScreen(initialCategory: 'Todos'), // Tab 1: Catálogo (Para todos)
-      const CartScreen(),                             // Tab 2: Carrito (Para todos)
-      
-      // Tab 3: Pedidos (Protegido - Requiere Login)
-      isAuthenticated 
-          ? const OrdersScreen() 
-          : const _LoginRequiredView(
-              title: 'Mis Pedidos',
-              message: 'Inicia sesión para hacer seguimiento a tus compras y ver tu historial.',
-              icon: Icons.receipt_long,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        body: IndexedStack(
+          index: selectedIndex,
+          children: [
+            // Tab 0 — Inicio
+            _NestedNavigator(
+              navigatorKey: _navigatorKeys[0],
+              child: const HomeScreen(),
             ),
-            
-      // Tab 4: Más (Público - Su contenido cambia por dentro si hay login)
-      const MoreScreen(),
-    ];
-
-    return Scaffold(
-      body: IndexedStack(
-        index: selectedIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: AppColors.pierVerde,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        elevation: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined), 
-            activeIcon: Icon(Icons.home), 
-            label: 'Inicio'
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.storefront_outlined), 
-            activeIcon: Icon(Icons.storefront), 
-            label: 'Catálogo'
-          ),
-          BottomNavigationBarItem(
-            icon: Consumer<CartProvider>(
-              builder: (context, cart, child) {
-                return Stack(
+            // Tab 1 — Catálogo
+            _NestedNavigator(
+              navigatorKey: _navigatorKeys[1],
+              child: const ProductsScreen(initialCategory: 'Todos'),
+            ),
+            // Tab 2 — Carrito
+            _NestedNavigator(
+              navigatorKey: _navigatorKeys[2],
+              child: const CartScreen(),
+            ),
+            // Tab 3 — Pedidos (auth-aware, recrea el navigator al cambiar auth)
+            isAuthenticated
+                ? _NestedNavigator(
+                    key: const ValueKey('pedidos_auth'),
+                    navigatorKey: _navigatorKeys[3],
+                    child: const OrdersScreen(),
+                  )
+                : _NestedNavigator(
+                    key: const ValueKey('pedidos_guest'),
+                    navigatorKey: _navigatorKeys[3],
+                    child: const _LoginRequiredView(
+                      title: 'Mis Pedidos',
+                      message:
+                          'Inicia sesión para hacer seguimiento a tus compras y ver tu historial.',
+                      icon: Icons.receipt_long,
+                    ),
+                  ),
+            // Tab 4 — Más
+            _NestedNavigator(
+              navigatorKey: _navigatorKeys[4],
+              child: const MoreScreen(),
+            ),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: selectedIndex,
+          onTap: _onItemTapped,
+          selectedItemColor: AppColors.pierVerde,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          elevation: 10,
+          selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
+          items: [
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'Inicio',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.storefront_outlined),
+              activeIcon: Icon(Icons.storefront),
+              label: 'Catálogo',
+            ),
+            BottomNavigationBarItem(
+              icon: Consumer<CartProvider>(
+                builder: (context, cart, _) => Stack(
                   clipBehavior: Clip.none,
                   children: [
                     const Icon(Icons.shopping_cart_outlined),
@@ -92,49 +141,65 @@ class _MainScreenState extends State<MainScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
-                            color: Colors.red, 
-                            shape: BoxShape.circle
-                          ),
+                              color: Colors.red,
+                              shape: BoxShape.circle),
                           constraints: const BoxConstraints(
-                            minWidth: 16, 
-                            minHeight: 16
-                          ),
+                              minWidth: 16, minHeight: 16),
                           child: Text(
-                            '${cart.totalQuantity}', 
+                            '${cart.totalQuantity}',
                             style: const TextStyle(
-                              color: Colors.white, 
-                              fontSize: 10, 
-                              fontWeight: FontWeight.bold
-                            ), 
-                            textAlign: TextAlign.center
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
                   ],
-                );
-              },
+                ),
+              ),
+              activeIcon: const Icon(Icons.shopping_cart),
+              label: 'Carrito',
             ),
-            activeIcon: const Icon(Icons.shopping_cart),
-            label: 'Carrito',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined), 
-            activeIcon: Icon(Icons.receipt_long), 
-            label: 'Pedidos'
-          ),
-          // CAMBIO APLICADO: Icono de hamburguesa y texto "Más"
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.menu), 
-            activeIcon: Icon(Icons.menu_open), 
-            label: 'Más'
-          ),
-        ],
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long_outlined),
+              activeIcon: Icon(Icons.receipt_long),
+              label: 'Pedidos',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.menu),
+              activeIcon: Icon(Icons.menu_open),
+              label: 'Más',
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// --- WIDGET PARA PESTAÑAS BLOQUEADAS (ESTILO MERCADO LIBRE) ---
+// Widget que encapsula cada Navigator anidado
+class _NestedNavigator extends StatelessWidget {
+  final GlobalKey<NavigatorState> navigatorKey;
+  final Widget child;
+
+  const _NestedNavigator({
+    super.key,
+    required this.navigatorKey,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      key: navigatorKey,
+      onGenerateRoute: (_) =>
+          MaterialPageRoute(builder: (_) => child),
+    );
+  }
+}
+
+// Vista para tabs que requieren login
 class _LoginRequiredView extends StatelessWidget {
   final String title;
   final String message;
@@ -149,73 +214,67 @@ class _LoginRequiredView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  // Usando withValues como lo dicta el estándar actualizado
-                  color: AppColors.pierVerde.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 100, height: 100,
+                  decoration: BoxDecoration(
+                    color: AppColors.pierVerde.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon,
+                      size: 46,
+                      color:
+                          AppColors.pierVerde.withValues(alpha: 0.5)),
                 ),
-                child: Icon(icon, size: 80, color: AppColors.pierVerde),
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                '¡Hola! Para ver esto debes iniciar sesión',
-                style: TextStyle(
-                  fontSize: 20, 
-                  fontWeight: FontWeight.bold, 
-                  color: AppColors.textPrimary
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Lo llevamos a la pantalla de Login
-                    Navigator.push(
+                const SizedBox(height: 24),
+                Text(title,
+                    style: const TextStyle(
+                        fontFamily: 'Playfair Display',
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 10),
+                Text(message,
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                        height: 1.5),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.pierVerde,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)
+                      MaterialPageRoute(
+                          builder: (_) => const LoginScreen()),
+                    ),
+                    icon: const Icon(Icons.login_rounded,
+                        color: Colors.white, size: 18),
+                    label: const Text('Iniciar Sesión',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.pierVerde,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
                     ),
                   ),
-                  child: const Text(
-                    'Iniciar Sesión', 
-                    style: TextStyle(
-                      fontSize: 16, 
-                      color: Colors.white, 
-                      fontWeight: FontWeight.bold
-                    )
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

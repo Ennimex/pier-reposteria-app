@@ -1,5 +1,10 @@
+// lib/presentation/screens/public/contact_screen.dart
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:provider/provider.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../data/providers/auth_provider.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
@@ -10,108 +15,483 @@ class ContactScreen extends StatefulWidget {
 
 class _ContactScreenState extends State<ContactScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? _selectedSubject;
-  final List<String> _subjects = ['Información general', 'Pedidos', 'Sugerencias', 'Quejas', 'Otro'];
+  final _nombreCtrl    = TextEditingController();
+  final _emailCtrl     = TextEditingController();
+  final _telefonoCtrl  = TextEditingController();
+  final _mensajeCtrl   = TextEditingController();
+
+  String _tipoProducto = 'Información general';
+  bool _enviando = false;
+
+  final List<String> _tiposProducto = [
+    'Información general',
+    'Pasteles',
+    'Roscas',
+    'Pays',
+    'Postres',
+    'Cafetería',
+    'Pedidos',
+    'Reembolsos',
+    'Sugerencias',
+    'Quejas',
+    'Otro',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user =
+          Provider.of<AuthProvider>(context, listen: false).currentUser;
+      if (user != null) {
+        _nombreCtrl.text =
+            '${user['nombre'] ?? ''} ${user['apellido'] ?? ''}'.trim();
+        _emailCtrl.text = user['email'] ?? '';
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _nombreCtrl.dispose();
+    _emailCtrl.dispose();
+    _telefonoCtrl.dispose();
+    _mensajeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _enviar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _enviando = true);
+
+    final result = await ApiService().post(
+      ApiConstants.enviarContacto,
+      {
+        'nombre':        _nombreCtrl.text.trim(),
+        'email':         _emailCtrl.text.trim(),
+        'telefono':      _telefonoCtrl.text.trim().isEmpty
+            ? null
+            : _telefonoCtrl.text.trim(),
+        'tipo_producto': _tipoProducto,
+        'mensaje':       _mensajeCtrl.text.trim(),
+      },
+    );
+
+    if (!mounted) return;
+    setState(() => _enviando = false);
+
+    if (result['success'] == true) {
+      _mensajeCtrl.clear();
+      _telefonoCtrl.clear();
+      _showSuccessDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result['message'] ?? 'Error al enviar'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12)),
+      ));
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24)),
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 32),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 72, height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Container(
+                      width: 56, height: 56,
+                      decoration: const BoxDecoration(
+                        color: AppColors.pierVerde,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 30),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text('¡Mensaje enviado!',
+                  style: TextStyle(
+                      fontFamily: 'Playfair Display',
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 10),
+              Text(
+                'Gracias por contactarnos. Te responderemos a la brevedad en tu correo electrónico.',
+                style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(
+                    child: Divider(
+                        color: Colors.grey.withValues(alpha: 0.2))),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12),
+                  child: Icon(Icons.storefront_outlined,
+                      size: 18,
+                      color: Colors.grey.withValues(alpha: 0.4)),
+                ),
+                Expanded(
+                    child: Divider(
+                        color: Colors.grey.withValues(alpha: 0.2))),
+              ]),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.pierVerde,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Entendido',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Contacto'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Estamos para escucharte',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.pierVerdeOscuro),
-            ),
-            const SizedBox(height: 8),
-            const Text('Envíanos un mensaje o visítanos en nuestras sucursales.', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 24),
+    final isAuth =
+        Provider.of<AuthProvider>(context).isAuthenticated;
 
-            // Formulario
-            Form(
-              key: _formKey,
-              child: Column(
+    return Scaffold(
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── HEADER ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
                 children: [
-                  TextFormField(
-                    decoration: _inputDecoration('Nombre Completo', Icons.person),
-                    validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    decoration: _inputDecoration('Correo Electrónico', Icons.email),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (v) => !v!.contains('@') ? 'Email inválido' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    decoration: _inputDecoration('Teléfono (10 dígitos)', Icons.phone),
-                    keyboardType: TextInputType.phone,
-                    maxLength: 10,
-                    validator: (v) => v!.length != 10 ? 'Debe tener 10 dígitos' : null,
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    decoration: _inputDecoration('Asunto', Icons.subject),
-                    initialValue: _selectedSubject,
-                    items: _subjects.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                    onChanged: (val) => setState(() => _selectedSubject = val),
-                    validator: (v) => v == null ? 'Requerido' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    decoration: _inputDecoration('Mensaje', Icons.message).copyWith(alignLabelWithHint: true),
-                    maxLines: 4,
-                    validator: (v) => v!.length < 20 ? 'Mínimo 20 caracteres' : null,
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Mensaje enviado. Te responderemos pronto.'), backgroundColor: AppColors.pierVerde),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.pierVerde,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black
+                                  .withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2))
+                        ],
                       ),
-                      child: const Text('Enviar Mensaje', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          size: 16, color: AppColors.textPrimary),
                     ),
                   ),
+                  const SizedBox(width: 14),
+                  const Text('Contacto',
+                      style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
                 ],
               ),
             ),
 
-            const SizedBox(height: 40),
-            
-            // Datos de Contacto
-            const Text('Otros medios', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             const SizedBox(height: 16),
-            _buildContactRow(Icons.phone, '771 123 4567', () {}),
-            _buildContactRow(Icons.email, 'hola@pier.com', () {}),
-            _buildContactRow(Icons.facebook, 'Pier Repostería', () {}),
-            
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.message, color: Colors.white),
-              label: const Text('Escríbenos por WhatsApp', style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
-                minimumSize: const Size(double.infinity, 50),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      // ── INFO ────────────────────────────────────
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.pierVerde
+                              .withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppColors.pierVerde
+                                  .withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                color: AppColors.pierVerde,
+                                size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Estamos aquí para ayudarte. Responderemos en un plazo de 24–48 horas hábiles.',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.pierVerdeOscuro,
+                                    height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── NOMBRE ───────────────────────────────────
+                      _label('Nombre completo'),
+                      const SizedBox(height: 8),
+                      _inputField(
+                        controller: _nombreCtrl,
+                        hint: 'Tu nombre',
+                        readOnly: isAuth,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty)
+                                ? 'Ingresa tu nombre'
+                                : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── EMAIL ─────────────────────────────────────
+                      _label('Correo electrónico'),
+                      const SizedBox(height: 8),
+                      _inputField(
+                        controller: _emailCtrl,
+                        hint: 'tu@correo.com',
+                        keyboardType: TextInputType.emailAddress,
+                        readOnly: isAuth,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Ingresa tu correo';
+                          }
+                          if (!v.contains('@')) {
+                            return 'Correo inválido';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── TELÉFONO ─────────────────────────────────
+                      _label('Teléfono (opcional)'),
+                      const SizedBox(height: 8),
+                      _inputField(
+                        controller: _telefonoCtrl,
+                        hint: '771 000 0000',
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── ASUNTO ────────────────────────────────────
+                      _label('Asunto'),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Colors.grey
+                                  .withValues(alpha: 0.2)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16)),
+                            value: _tipoProducto,
+                            icon: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: AppColors.pierVerde),
+                            items: _tiposProducto
+                                .map((t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t,
+                                        style: const TextStyle(
+                                            fontSize: 14))))
+                                .toList(),
+                            onChanged: (val) => setState(
+                                () => _tipoProducto = val!),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── MENSAJE ───────────────────────────────────
+                      _label('Mensaje'),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _mensajeCtrl,
+                        maxLines: 5,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText:
+                              'Describe tu consulta o queja con detalle...',
+                          hintStyle: TextStyle(
+                              color: Colors.grey[400], fontSize: 14),
+                          filled: true,
+                          fillColor: Colors.white,
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: Colors.grey
+                                      .withValues(alpha: 0.2))),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: AppColors.pierVerde,
+                                  width: 1.5)),
+                          errorBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Colors.red)),
+                          contentPadding: const EdgeInsets.all(14),
+                          suffixText:
+                              '${_mensajeCtrl.text.trim().length} / mín. 20',
+                          suffixStyle: TextStyle(
+                              fontSize: 11,
+                              color: _mensajeCtrl.text
+                                          .trim()
+                                          .length >=
+                                      20
+                                  ? AppColors.pierVerde
+                                  : Colors.grey[400]),
+                        ),
+                        validator: (v) =>
+                            (v == null || v.trim().length < 20)
+                                ? 'Mínimo 20 caracteres'
+                                : null,
+                      ),
+                      const SizedBox(height: 28),
+
+                      // ── BOTÓN ─────────────────────────────────────
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton.icon(
+                          onPressed: _enviando ? null : _enviar,
+                          icon: _enviando
+                              ? const SizedBox(
+                                  height: 18, width: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white))
+                              : const Icon(Icons.send_rounded,
+                                  color: Colors.white, size: 18),
+                          label: Text(
+                              _enviando
+                                  ? 'Enviando...'
+                                  : 'Enviar Mensaje',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.pierVerde,
+                            disabledBackgroundColor: AppColors
+                                .pierVerde
+                                .withValues(alpha: 0.4),
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(50)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+
+                      // ── CONTACTO DIRECTO ──────────────────────────
+                      const SizedBox(height: 32),
+                      Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                      const SizedBox(height: 20),
+                      const Text('Otros medios',
+                          style: TextStyle(
+                              fontFamily: 'Playfair Display',
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                      const SizedBox(height: 14),
+                      _contactTile(Icons.phone_outlined,
+                          '771 123 4567', 'Llámanos'),
+                      const SizedBox(height: 10),
+                      _contactTile(Icons.email_outlined,
+                          'hola@pier.com', 'Escríbenos'),
+                      const SizedBox(height: 10),
+                      _contactTile(Icons.access_time_rounded,
+                          'Lun–Sáb • 9:00 – 21:00 hrs',
+                          'Horario de atención'),
+                      const SizedBox(height: 16),
+                      // WhatsApp
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.message_rounded,
+                              color: Colors.white, size: 18),
+                          label: const Text(
+                              'Escríbenos por WhatsApp',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color(0xFF25D366),
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -120,23 +500,81 @@ class _ContactScreenState extends State<ContactScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.grey),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  Widget _label(String text) => Text(text,
+      style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary));
+
+  Widget _inputField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle:
+            TextStyle(color: Colors.grey[400], fontSize: 14),
+        filled: true,
+        fillColor: readOnly ? AppColors.pierArena : Colors.white,
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: Colors.grey.withValues(alpha: 0.2))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+                color: AppColors.pierVerde, width: 1.5)),
+        errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red)),
+        contentPadding: const EdgeInsets.all(14),
+      ),
+      validator: validator,
     );
   }
 
-  Widget _buildContactRow(IconData icon, String text, VoidCallback onTap) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
-        child: Icon(icon, color: AppColors.pierVerde),
+  Widget _contactTile(IconData icon, String value, String label) {
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: Colors.grey.withValues(alpha: 0.15)),
       ),
-      title: Text(text),
-      onTap: onTap,
+      child: Row(children: [
+        Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.pierVerde.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.pierVerde, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11, color: Colors.grey[500])),
+            const SizedBox(height: 2),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+          ],
+        ),
+      ]),
     );
   }
 }

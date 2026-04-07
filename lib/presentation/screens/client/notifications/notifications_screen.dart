@@ -1,5 +1,10 @@
+// lib/presentation/screens/client/notifications/notifications_screen.dart
 import 'package:flutter/material.dart';
-import '/../core/constants/app_colors.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../data/providers/navigation_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -9,146 +14,398 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // Datos simulados (Mock Data)
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'id': 1,
-      'title': '¡Tu pedido PED-4829 está listo!',
-      'body': 'Ya puedes pasar a recoger tu pedido en la Sucursal Principal.',
-      'time': 'Hace 5 min',
-      'type': 'order', // order, promo, alert
-      'isRead': false,
-    },
-    {
-      'id': 2,
-      'title': 'Reembolso Aprobado',
-      'body': 'Tu solicitud REEM-001 ha sido procesada exitosamente.',
-      'time': 'Hace 2 hrs',
-      'type': 'alert',
-      'isRead': false,
-    },
-    {
-      'id': 3,
-      'title': 'Descuento especial en Cheesecakes',
-      'body': 'Solo por hoy, aprovecha 15% de descuento en todos los cheesecakes.',
-      'time': 'Ayer',
-      'type': 'promo',
-      'isRead': true,
-    },
-  ];
+  final ApiService _api = ApiService();
+
+  List<Map<String, dynamic>> _notificaciones = [];
+  bool _isLoading = true;
+  int _noLeidas = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarNotificaciones();
+  }
+
+  Future<void> _cargarNotificaciones() async {
+    setState(() => _isLoading = true);
+    final result = await _api.getAuth(ApiConstants.notificaciones);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      setState(() {
+        _notificaciones = List<Map<String, dynamic>>.from(
+            result['notificaciones'] ?? []);
+        _noLeidas =
+            int.tryParse(result['no_leidas']?.toString() ?? '0') ?? 0;
+      });
+    }
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _marcarLeida(Map<String, dynamic> notif) async {
+    if (notif['leida'] == true) return;
+    setState(() {
+      notif['leida'] = true;
+      if (_noLeidas > 0) _noLeidas--;
+    });
+    await _api.putAuth(
+        ApiConstants.marcarNotificacionLeida(notif['id'].toString()), {});
+  }
+
+  Future<void> _marcarTodasLeidas() async {
+    setState(() {
+      for (final n in _notificaciones) {
+        n['leida'] = true;
+      }
+      _noLeidas = 0;
+    });
+    await _api.putAuth('/notificaciones/leer-todas', {});
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Todas marcadas como leídas'),
+      backgroundColor: AppColors.pierVerde,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  // Agrupa notificaciones por: Hoy, Ayer, Anteriores
+  Map<String, List<Map<String, dynamic>>> _agrupar() {
+    final Map<String, List<Map<String, dynamic>>> grupos = {
+      'Hoy': [],
+      'Ayer': [],
+      'Anteriores': [],
+    };
+    final now = DateTime.now();
+    for (final n in _notificaciones) {
+      try {
+        final dt = DateTime.parse(n['created_at'].toString()).toLocal();
+        final diff = now.difference(dt);
+        if (diff.inDays == 0) {
+          grupos['Hoy']!.add(n);
+        } else if (diff.inDays == 1) {
+          grupos['Ayer']!.add(n);
+        } else {
+          grupos['Anteriores']!.add(n);
+        }
+      } catch (_) {
+        grupos['Anteriores']!.add(n);
+      }
+    }
+    // Eliminar grupos vacíos
+    grupos.removeWhere((_, v) => v.isEmpty);
+    return grupos;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final grupos = _agrupar();
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Notificaciones'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all, color: AppColors.pierVerde),
-            tooltip: 'Marcar todas como leídas',
-            onPressed: () {
-              setState(() {
-                for (var n in _notifications) {
-                  n['isRead'] = true;
-                }
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Todas marcadas como leídas')),
-              );
-            },
-          ),
-        ],
-      ),
-      body: _notifications.isEmpty
-          ? const Center(child: Text("No tienes notificaciones"))
-          : ListView.builder(
-              itemCount: _notifications.length,
-              itemBuilder: (context, index) {
-                final notif = _notifications[index];
-                return _buildNotificationItem(notif);
-              },
-            ),
-    );
-  }
-
-  Widget _buildNotificationItem(Map<String, dynamic> notif) {
-    final bool isRead = notif['isRead'];
-    
-    // Icono y color según tipo
-    IconData icon;
-    Color color;
-    switch (notif['type']) {
-      case 'order':
-        icon = Icons.inventory_2;
-        color = AppColors.pierVerde;
-        break;
-      case 'alert':
-        icon = Icons.info;
-        color = Colors.orange;
-        break;
-      case 'promo':
-        icon = Icons.local_offer;
-        color = AppColors.pierDorado;
-        break;
-      default:
-        icon = Icons.notifications;
-        color = Colors.grey;
-    }
-
-    return Dismissible(
-      key: Key(notif['id'].toString()),
-      background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
-      onDismissed: (direction) {
-        setState(() {
-          _notifications.removeAt(_notifications.indexOf(notif));
-        });
-      },
-      child: Container(
-        color: isRead ? Colors.white : AppColors.pierArena.withValues(alpha: 0.3 * 255), // Fondo destacado si no leído
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.1 * 255),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          title: Text(
-            notif['title'],
-            style: TextStyle(
-              fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Text(
-                notif['body'],
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── HEADER ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2))
+                        ],
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          size: 16, color: AppColors.textPrimary),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_noLeidas > 0)
+                    GestureDetector(
+                      onTap: _marcarTodasLeidas,
+                      child: Text('Leer todas',
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.pierVerde,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                notif['time'],
-                style: TextStyle(color: Colors.grey[400], fontSize: 11),
+            ),
+
+            // ── TÍTULO + BADGE ────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text('Notificaciones',
+                      style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
+                  if (_noLeidas > 0) ...[
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.pierVerde,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('$_noLeidas',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
-          onTap: () {
-            // Marcar como leída al tocar
-            if (!isRead) {
-              setState(() {
-                notif['isRead'] = true;
-              });
-            }
-            // Aquí navegaríamos al detalle (Pedido, Promo, etc.)
-          },
+            ),
+
+            // ── LISTA ─────────────────────────────────────────────
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.pierVerde))
+                  : _notificaciones.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _cargarNotificaciones,
+                          color: AppColors.pierVerde,
+                          child: ListView(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                            children: grupos.entries.map((entry) {
+                              return Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  // ── SEPARADOR DE GRUPO ─────────
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                    child: Center(
+                                      child: Text(entry.key,
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey[500],
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.3)),
+                                    ),
+                                  ),
+                                  // ── ITEMS DEL GRUPO ────────────
+                                  ...entry.value.map((n) => Padding(
+                                        padding: const EdgeInsets.only(
+                                            bottom: 10),
+                                        child: _buildItem(n),
+                                      )),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildItem(Map<String, dynamic> notif) {
+    final bool leida = notif['leida'] == true;
+    final tipo = notif['tipo']?.toString() ?? 'sistema';
+
+    IconData icon;
+    switch (tipo) {
+      case 'pedido':    icon = Icons.shopping_bag_outlined; break;
+      case 'promocion': icon = Icons.local_offer_outlined; break;
+      case 'resena':    icon = Icons.star_outline_rounded; break;
+      case 'reembolso': icon = Icons.replay_outlined; break;
+      case 'producto':  icon = Icons.cake_outlined; break;
+      default:          icon = Icons.notifications_outlined;
+    }
+
+    return GestureDetector(
+      onTap: () => _marcarLeida(notif),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ícono
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.pierVerde.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon,
+                  color: AppColors.pierVerde, size: 22),
+            ),
+            const SizedBox(width: 14),
+
+            // Texto
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notif['titulo'] ?? '',
+                    style: TextStyle(
+                        fontWeight: leida
+                            ? FontWeight.w500
+                            : FontWeight.bold,
+                        fontSize: 14,
+                        color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notif['mensaje'] ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 13,
+                        height: 1.4),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _formatFecha(notif['created_at']),
+                    style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+
+            // Punto no leída
+            if (!leida) ...[
+              const SizedBox(width: 8),
+              Container(
+                width: 8, height: 8,
+                margin: const EdgeInsets.only(top: 4),
+                decoration: const BoxDecoration(
+                  color: AppColors.pierVerde,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 130, height: 130,
+              decoration: BoxDecoration(
+                color: AppColors.pierVerde.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.notifications_off_outlined,
+                  size: 56,
+                  color: AppColors.pierVerde.withValues(alpha: 0.45)),
+            ),
+            const SizedBox(height: 28),
+            const Text('Sin notificaciones',
+                style: TextStyle(
+                    fontFamily: 'Playfair Display',
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 10),
+            Text(
+              'Aquí aparecerán tus pedidos, promociones y novedades de Pier Repostería.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[500],
+                  height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  try {
+                    context.read<NavigationProvider>().goCatalogo();
+                  } catch (_) {}
+                },
+                icon: const Icon(Icons.cake_outlined,
+                    color: Colors.white, size: 18),
+                label: const Text('Explorar Menú',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.pierVerde,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatFecha(dynamic fecha) {
+    if (fecha == null) return '';
+    try {
+      final dt = DateTime.parse(fecha.toString()).toLocal();
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'Ahora';
+      if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
+      if (diff.inHours < 24) {
+        return 'Hace ${diff.inHours} ${diff.inHours == 1 ? 'hora' : 'horas'}';
+      }
+      if (diff.inDays == 1) {
+        final h = dt.hour.toString().padLeft(2, '0');
+        final m = dt.minute.toString().padLeft(2, '0');
+        return 'Ayer, $h:$m ${dt.hour < 12 ? 'AM' : 'PM'}';
+      }
+      final months = ['Ene','Feb','Mar','Abr','May','Jun',
+                      'Jul','Ago','Sep','Oct','Nov','Dic'];
+      return '${dt.day} ${months[dt.month - 1]}';
+    } catch (_) {
+      return '';
+    }
   }
 }

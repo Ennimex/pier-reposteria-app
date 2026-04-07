@@ -1,154 +1,307 @@
+// lib/presentation/screens/public/legal_screen.dart
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 
-class LegalScreen extends StatelessWidget {
+class LegalScreen extends StatefulWidget {
   const LegalScreen({super.key});
 
   @override
+  State<LegalScreen> createState() => _LegalScreenState();
+}
+
+class _LegalScreenState extends State<LegalScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text('Marco Legal'),
-          backgroundColor: AppColors.pierVerde,
-          elevation: 0,
-          bottom: const TabBar(
-            indicatorColor: AppColors.pierDorado,
-            indicatorWeight: 3,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            isScrollable: true,
-            tabs: [
-              Tab(text: 'Privacidad'),
-              Tab(text: 'Términos'),
-              Tab(text: 'Devoluciones'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
+    return Scaffold(
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
+        child: Column(
           children: [
-            _LegalContent(
-              title: 'Aviso de Privacidad Integral',
-              content: '''
-En cumplimiento con la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP), Pastelería Pier hace de su conocimiento los términos bajo los cuales se tratarán sus datos personales.
-
-1. Responsable del Tratamiento
-Pastelería Pier, con domicilio en Calle Allende, Colonia Tahuizán, Huejutla de Reyes, Hidalgo, C.P. 43000.
-Email: pierreposteria@gmail.com
-
-2. Datos que Recopilamos
-• Identificación: Nombre completo, teléfono, correo electrónico.
-• Acceso digital: Usuario y contraseñas.
-• Transaccionales: Historial de pedidos.
-IMPORTANTE: No recopilamos ni almacenamos datos financieros sensibles (tarjetas, CVV).
-
-3. Finalidades
-• Primarias: Gestión de pedidos, entregas y atención a clientes.
-• Secundarias: Envío de promociones (solo con consentimiento).
-
-4. Derechos ARCO
-Puede ejercer sus derechos de Acceso, Rectificación, Cancelación u Oposición enviando un correo a pierreposteria@gmail.com.
-• Tiempo de respuesta: Máximo 20 días hábiles.
-
-5. Conservación
-La información se conservará por un periodo máximo de 5 años tras su última interacción.
-              ''',
+            // ── HEADER ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2))
+                        ],
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          size: 16, color: AppColors.textPrimary),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Text('Marco Legal',
+                      style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
+                ],
+              ),
             ),
-            _LegalContent(
-              title: 'Términos y Condiciones',
-              content: '''
-Al utilizar nuestros servicios digitales, usted acepta los siguientes términos, regidos por la Ley Federal de Protección al Consumidor.
 
-1. Proceso de Compra
-Todos los precios incluyen impuestos. La transacción se considera confirmada una vez procesado el pago.
-
-2. Política de NO Envíos
-Actualmente, Pastelería Pier NO ofrece servicio de envíos a domicilio. Todos los pedidos deben ser recolectados en la sucursal seleccionada (Tahuizán o Centro).
-
-3. Cancelaciones
-El cliente puede cancelar su pedido únicamente ANTES de que inicie su elaboración. Nos reservamos el derecho de cancelar pedidos por falta de insumos (sin cargo para el cliente).
-
-4. Marco Legal
-Para la interpretación de estos términos, las partes se someten a las leyes vigentes en México y a los tribunales de Huejutla de Reyes, Hidalgo.
-              ''',
+            // ── TABS ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(50),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2))
+                  ],
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey[600],
+                  indicator: BoxDecoration(
+                    color: AppColors.pierVerde,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  padding: const EdgeInsets.all(4),
+                  labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 12),
+                  unselectedLabelStyle:
+                      const TextStyle(fontWeight: FontWeight.w500),
+                  tabs: const [
+                    Tab(text: 'Privacidad'),
+                    Tab(text: 'Términos'),
+                    Tab(text: 'Devoluciones'),
+                  ],
+                ),
+              ),
             ),
-            _LegalContent(
-              title: 'Política de Devoluciones',
-              content: '''
-Garantizamos la frescura y calidad de nuestros productos.
 
-1. Condiciones de Devolución
-• Aplica únicamente el MISMO DÍA de la compra.
-• Debe presentarse al menos el 50% del producto para validar la incidencia.
-• No aplica en productos manipulados incorrectamente por el cliente (falta de refrigeración, caídas).
+            const SizedBox(height: 12),
 
-2. Reembolsos
-• Se gestionan en un máximo de 3 horas hábiles posteriores a la aprobación.
-• Si el error es nuestro, absorbemos el costo total.
-
-3. Garantía
-La garantía de frescura es válida únicamente el día de la entrega/recolección.
-              ''',
+            // ── CONTENIDO ────────────────────────────────────────
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildContent(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Aviso de Privacidad',
+                    sections: [
+                      _LegalSection(
+                        title: 'Responsable del Tratamiento',
+                        content:
+                            'Pastelería Pier, con domicilio en Calle Allende, Col. Tahuizán, Huejutla de Reyes, Hgo., C.P. 43000.\nEmail: pierreposteria@gmail.com',
+                      ),
+                      _LegalSection(
+                        title: 'Datos que Recopilamos',
+                        content:
+                            '• Identificación: Nombre, teléfono, correo electrónico.\n• Acceso digital: Usuario y contraseñas.\n• Transaccionales: Historial de pedidos.\n\nImportante: No almacenamos datos financieros sensibles (tarjetas, CVV).',
+                      ),
+                      _LegalSection(
+                        title: 'Finalidades',
+                        content:
+                            '• Primarias: Gestión de pedidos y atención a clientes.\n• Secundarias: Envío de promociones (solo con consentimiento).',
+                      ),
+                      _LegalSection(
+                        title: 'Derechos ARCO',
+                        content:
+                            'Puede ejercer sus derechos de Acceso, Rectificación, Cancelación u Oposición enviando un correo a pierreposteria@gmail.com.\nTiempo de respuesta: Máximo 20 días hábiles.',
+                      ),
+                      _LegalSection(
+                        title: 'Conservación',
+                        content:
+                            'La información se conservará por un periodo máximo de 5 años tras su última interacción.',
+                      ),
+                    ],
+                  ),
+                  _buildContent(
+                    icon: Icons.description_outlined,
+                    title: 'Términos y Condiciones',
+                    sections: [
+                      _LegalSection(
+                        title: 'Proceso de Compra',
+                        content:
+                            'Todos los precios incluyen impuestos. La transacción se confirma una vez procesado el pago.',
+                      ),
+                      _LegalSection(
+                        title: 'Política de NO Envíos',
+                        content:
+                            'Pier NO ofrece servicio de envíos a domicilio. Todos los pedidos deben recogerse en la sucursal de Huejutla de Reyes.',
+                      ),
+                      _LegalSection(
+                        title: 'Cancelaciones',
+                        content:
+                            'El cliente puede cancelar únicamente ANTES de que inicie la elaboración. Nos reservamos el derecho de cancelar por falta de insumos, sin cargo al cliente.',
+                      ),
+                      _LegalSection(
+                        title: 'Marco Legal',
+                        content:
+                            'Para la interpretación de estos términos, las partes se someten a las leyes vigentes en México y a los tribunales de Huejutla de Reyes, Hidalgo.',
+                      ),
+                    ],
+                  ),
+                  _buildContent(
+                    icon: Icons.assignment_return_outlined,
+                    title: 'Política de Devoluciones',
+                    sections: [
+                      _LegalSection(
+                        title: 'Condiciones de Devolución',
+                        content:
+                            '• Aplica únicamente el MISMO DÍA de la compra.\n• Debe presentarse al menos el 50% del producto.\n• No aplica en productos manipulados incorrectamente por el cliente.',
+                      ),
+                      _LegalSection(
+                        title: 'Reembolsos',
+                        content:
+                            'Se gestionan en un máximo de 3 horas hábiles posteriores a la aprobación. Si el error es nuestro, absorbemos el costo total.',
+                      ),
+                      _LegalSection(
+                        title: 'Garantía',
+                        content:
+                            'La garantía de frescura es válida únicamente el día de la entrega o recolección.',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _LegalContent extends StatelessWidget {
-  final String title;
-  final String content;
-
-  // ignore: unused_element_parameter
-  const _LegalContent({super.key, required this.title, required this.content});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildContent({
+    required IconData icon,
+    required String title,
+    required List<_LegalSection> sections,
+  }) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.shield_outlined, color: AppColors.pierVerde),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.pierVerdeOscuro),
-                ),
-              ),
-            ],
-          ),
-          const Divider(thickness: 1, height: 30),
-          Text(
-            content,
-            style: const TextStyle(fontSize: 15, height: 1.6, color: Colors.black87),
-          ),
-          const SizedBox(height: 40),
-          
-          // Footer de contacto legal
+          // Título de sección
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.pierVerde.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: AppColors.pierVerde.withValues(alpha: 0.2)),
             ),
-            child: Column(
-              children: const [
-                Text("¿Dudas legales?", style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 4),
-                Text("pierreposteria@gmail.com", style: TextStyle(color: AppColors.pierVerde)),
-              ],
+            child: Row(children: [
+              Icon(icon, color: AppColors.pierVerde, size: 22),
+              const SizedBox(width: 12),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.pierVerdeOscuro)),
+            ]),
+          ),
+          const SizedBox(height: 16),
+
+          // Secciones
+          ...sections.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2))
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s.title,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: AppColors.textPrimary)),
+                      const SizedBox(height: 8),
+                      Text(s.content,
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                              height: 1.5)),
+                    ],
+                  ),
+                ),
+              )),
+
+          // Footer contacto
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+              border:
+                  Border.all(color: Colors.grey.withValues(alpha: 0.15)),
             ),
-          )
+            child: Row(children: [
+              Icon(Icons.email_outlined,
+                  color: AppColors.pierVerde, size: 18),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('¿Dudas legales?',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  const Text('pierreposteria@gmail.com',
+                      style: TextStyle(
+                          color: AppColors.pierVerde,
+                          fontSize: 12)),
+                ],
+              ),
+            ]),
+          ),
         ],
       ),
     );
   }
+}
+
+class _LegalSection {
+  final String title;
+  final String content;
+  const _LegalSection({required this.title, required this.content});
 }

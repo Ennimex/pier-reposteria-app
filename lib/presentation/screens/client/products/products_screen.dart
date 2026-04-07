@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
+import '../../../../../core/services/api_service.dart';
+import '../../../../../core/constants/api_constants.dart';
 import '../../../../../data/providers/auth_provider.dart';
 import '../../../../../data/providers/cart_provider.dart';
 import '../../../../../data/providers/product_provider.dart';
@@ -21,6 +23,8 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen>
     with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final ApiService _api = ApiService();
+
   SortOption _sort = SortOption.popular;
   String _category = 'Todos';
   String _searchQuery = '';
@@ -44,8 +48,9 @@ class _ProductsScreenState extends State<ProductsScreen>
   void initState() {
     super.initState();
     _category = widget.initialCategory ?? 'Todos';
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<ProductProvider>().cargarProductos();
+      await _cargarFavoritosIds();
     });
   }
 
@@ -56,6 +61,30 @@ class _ProductsScreenState extends State<ProductsScreen>
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _cargarFavoritosIds() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) return;
+    final result = await _api.getAuth('/favoritos/ids');
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final ids = List<String>.from(
+          (result['ids'] ?? []).map((e) => e.toString()));
+      setState(() {
+        _favoritos.clear();
+        _favoritos.addAll(ids);
+      });
+    }
+  }
+
+  // Navega al detalle y recarga favoritos al regresar
+  Future<void> _goToDetail(Product p) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProductDetailScreen(product: p)),
+    );
+    if (mounted) await _cargarFavoritosIds();
   }
 
   AnimationController _getCartController(String id) {
@@ -135,20 +164,43 @@ class _ProductsScreenState extends State<ProductsScreen>
       ));
   }
 
-  void _toggleFavorito(String id) {
+  Future<void> _toggleFavorito(String id) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
+
+    final yaEsFav = _favoritos.contains(id);
+
     setState(() {
-      if (_favoritos.contains(id)) {
+      if (yaEsFav) {
         _favoritos.remove(id);
       } else {
         _favoritos.add(id);
       }
     });
+
+    final result = yaEsFav
+        ? await _api.deleteAuth(ApiConstants.favoritoById(id))
+        : await _api.postAuth('/favoritos/$id', {});
+
+    if (!mounted) return;
+
+    if (result['success'] != true) {
+      setState(() {
+        if (yaEsFav) {
+          _favoritos.add(id);
+        } else {
+          _favoritos.remove(id);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result['message'] ?? 'Error al actualizar favorito'),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   void _showSortSheet() {
@@ -369,7 +421,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _categories.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, i) {
                     final cat = _categories[i];
                     final sel = _category == cat['name'];
@@ -378,8 +430,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                           setState(() => _category = cat['name'] as String),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
                         decoration: BoxDecoration(
                           color: sel ? AppColors.pierVerde : Colors.white,
                           borderRadius: BorderRadius.circular(20),
@@ -393,8 +444,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                           children: [
                             Icon(cat['icon'] as IconData,
                                 size: 13,
-                                color:
-                                    sel ? Colors.white : Colors.grey[600]),
+                                color: sel ? Colors.white : Colors.grey[600]),
                             const SizedBox(width: 6),
                             Text(cat['name'] as String,
                                 style: TextStyle(
@@ -429,8 +479,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary)),
                   GestureDetector(
-                    onTap: () =>
-                        setState(() => _isGridView = !_isGridView),
+                    onTap: () => setState(() => _isGridView = !_isGridView),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
@@ -438,8 +487,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                         color: AppColors.pierVerde.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: AppColors.pierVerde
-                                .withValues(alpha: 0.2)),
+                            color: AppColors.pierVerde.withValues(alpha: 0.2)),
                       ),
                       child: Row(children: [
                         Icon(
@@ -528,8 +576,7 @@ class _ProductsScreenState extends State<ProductsScreen>
 
   Widget _buildCard(Product p) {
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => ProductDetailScreen(product: p))),
+      onTap: () => _goToDetail(p), // ← recarga favoritos al regresar
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -549,7 +596,6 @@ class _ProductsScreenState extends State<ProductsScreen>
     );
   }
 
-  // ── GRID CARD ─────────────────────────────────────────────────────
   Widget _buildGridCard(Product p) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,7 +606,7 @@ class _ProductsScreenState extends State<ProductsScreen>
             fit: StackFit.expand,
             children: [
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
+                  errorBuilder: (_, __, ___) => Container(
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined,
                         color: AppColors.pierVerde, size: 40),
@@ -697,7 +743,6 @@ class _ProductsScreenState extends State<ProductsScreen>
     );
   }
 
-  // ── LIST CARD ─────────────────────────────────────────────────────
   Widget _buildListCard(Product p) {
     return Row(
       children: [
@@ -707,7 +752,7 @@ class _ProductsScreenState extends State<ProductsScreen>
             fit: StackFit.expand,
             children: [
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
+                  errorBuilder: (_, __, ___) => Container(
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined,
                         color: AppColors.pierVerde, size: 36),

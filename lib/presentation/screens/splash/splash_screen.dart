@@ -1,4 +1,4 @@
-//lib/presentation/screens/splash/splash_screen.dart
+// lib/presentation/screens/splash/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -34,7 +34,8 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+      CurvedAnimation(
+          parent: _animController, curve: Curves.easeOutBack),
     );
 
     _animController.forward();
@@ -42,17 +43,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkSession() async {
-    final minWait = Future.delayed(const Duration(milliseconds: 1800));
-
-    // Usar AuthProvider para sincronizar el estado global
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final minWait =
+        Future.delayed(const Duration(milliseconds: 1800));
+    final authProvider =
+        Provider.of<AuthProvider>(context, listen: false);
     await authProvider.checkSession();
-
     await minWait;
     if (!mounted) return;
-
-    // El GoRouter con refreshListenable se encarga del redirect automáticamente
-    // Solo navegamos a main — el router decidirá si mostrar main o login
     context.go(AppRoutes.main);
   }
 
@@ -71,11 +68,11 @@ class _SplashScreenState extends State<SplashScreen>
           Image.asset(
             'assets/images/fondo_splash_verde_pier.png',
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
+            errorBuilder: (_, __, ___) =>
                 Container(color: AppColors.pierVerde),
           ),
           Container(
-            color: Colors.black.withAlpha(102),
+            color: Colors.black.withValues(alpha: 0.4),
           ),
           Center(
             child: FadeTransition(
@@ -86,14 +83,14 @@ class _SplashScreenState extends State<SplashScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 160,
-                      height: 160,
+                      width: 160, height: 160,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withAlpha(64),
+                            color: Colors.black
+                                .withValues(alpha: 0.25),
                             blurRadius: 30,
                             spreadRadius: 5,
                             offset: const Offset(0, 10),
@@ -102,13 +99,14 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       child: ClipOval(
                         child: Padding(
-                          padding: const EdgeInsets.all(30.0),
+                          padding: const EdgeInsets.all(30),
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.cake,
-                                    size: 60, color: AppColors.pierVerde),
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.cake,
+                                size: 60,
+                                color: AppColors.pierVerde),
                           ),
                         ),
                       ),

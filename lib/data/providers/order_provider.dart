@@ -1,10 +1,19 @@
+// lib/data/providers/order_provider.dart
 import 'package:flutter/foundation.dart';
 import '../models/order_model.dart';
+import '../../core/services/api_service.dart';
+import '../../core/constants/api_constants.dart';
 
 class OrderProvider extends ChangeNotifier {
-  final List<Order> _orders = [];
+  final ApiService _api = ApiService();
+
+  List<Order> _orders = [];
+  bool _isLoading = false;
+  String? _errorMessage;
 
   List<Order> get orders => _orders;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   List<Order> get activeOrders => _orders
       .where((o) =>
@@ -18,35 +27,35 @@ class OrderProvider extends ChangeNotifier {
           o.status == OrderStatus.cancelled)
       .toList();
 
-  void addOrder(Order order) {
-    _orders.insert(0, order);
+  Future<void> cargarPedidos() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _api.getAuth(ApiConstants.misPedidos);
+
+    _isLoading = false;
+
+    if (result['success'] == true) {
+      final data = result['pedidos'] ?? result['data'] ?? [];
+      _orders = (data as List)
+          .map((json) => Order.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } else {
+      _errorMessage = result['message'] ?? 'Error al cargar pedidos';
+    }
+
     notifyListeners();
   }
 
-  void updateOrderStatus(String orderId, OrderStatus status) {
-    final index = _orders.indexWhere((o) => o.id == orderId);
-    if (index >= 0) {
-      final old = _orders[index];
-      _orders[index] = Order(
-        id: old.id,
-        items: old.items,
-        subtotal: old.subtotal,
-        tax: old.tax,
-        total: old.total,
-        sucursal: old.sucursal,
-        deliveryDate: old.deliveryDate,
-        deliveryTime: old.deliveryTime,
-        notes: old.notes,
-        status: status,
-        createdAt: old.createdAt,
-      );
-      notifyListeners();
-    }
+  Future<void> refrescar() async {
+    _orders = [];
+    await cargarPedidos();
   }
 
-  Order? getOrderById(String orderId) {
+  Order? getOrderById(String id) {
     try {
-      return _orders.firstWhere((o) => o.id == orderId);
+      return _orders.firstWhere((o) => o.id == id);
     } catch (_) {
       return null;
     }

@@ -1,4 +1,4 @@
-//lib/presentation/screens/auth/login_screen.dart
+// lib/presentation/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -31,301 +31,330 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-
-      if (success) {
-        context.go(AppRoutes.main);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Verifica tus credenciales'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
+      context.go(AppRoutes.main);
+    } else {
+      _showSnack(auth.errorMessage ?? 'Verifica tus credenciales');
     }
   }
-
-  // ========================================
-  // MÓVIL — Google Sign In
-  // ========================================
 
   Future<void> _handleGoogleLogin() async {
     setState(() => _isGoogleLoading = true);
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.loginWithGoogle();
-
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.loginWithGoogle();
     if (!mounted) return;
     setState(() => _isGoogleLoading = false);
-
-    if (!success) {
-      if (authProvider.errorMessage != 'Inicio de sesión cancelado') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Error con Google'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (!success &&
+        auth.errorMessage != 'Inicio de sesión cancelado') {
+      _showSnack(auth.errorMessage ?? 'Error con Google');
     }
-    // Si success=true, el refreshListenable del router maneja la navegación
   }
 
-  // ========================================
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: Colors.red,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.pierVerde),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      backgroundColor: AppColors.pierArena,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Logo
-                Center(
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.pierVerde.withValues(alpha: 0.2),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Padding(
-                        padding: const EdgeInsets.all(15.0),
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.cake, size: 50, color: AppColors.pierVerde),
+                const SizedBox(height: 20),
+
+                // ── BACK + LOGO ──────────────────────────────────
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 110, height: 110,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.pierVerde.withValues(alpha: 0.2),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.cake,
+                                size: 50,
+                                color: AppColors.pierVerde),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    Positioned(
+                      left: 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            context.go(AppRoutes.main);
+                          }
+                        },
+                        child: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 8)
+                            ],
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new,
+                              size: 16, color: AppColors.textPrimary),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+
+                const SizedBox(height: 28),
+
+                const Text('Bienvenido',
+                    style: TextStyle(
+                        fontFamily: 'Playfair Display',
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 6),
+                Text('Inicia sesión para continuar',
+                    style: TextStyle(
+                        fontSize: 15, color: Colors.grey[500]),
+                    textAlign: TextAlign.center),
                 const SizedBox(height: 32),
 
-                const Text(
-                  'Bienvenido',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Inicia sesión para continuar',
-                  style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-
-                // Email
-                TextFormField(
+                // ── EMAIL ────────────────────────────────────────
+                _field(
                   controller: _emailController,
+                  label: 'Email',
+                  icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.pierVerde),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu email';
-                    if (!value.contains('@')) return 'Email inválido';
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Ingresa tu email';
+                    if (!v.contains('@')) return 'Email inválido';
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
-                // Contraseña
-                TextFormField(
+                // ── CONTRASEÑA ───────────────────────────────────
+                _field(
                   controller: _passwordController,
+                  label: 'Contraseña',
+                  icon: Icons.lock_outline_rounded,
                   obscureText: !_isPasswordVisible,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.pierVerde),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () =>
-                          setState(() => _isPasswordVisible = !_isPasswordVisible),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: Colors.grey,
+                      size: 20,
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
-                    ),
+                    onPressed: () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
-                    if (value.length < 6) return 'Mínimo 6 caracteres';
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
+                    if (v.length < 6) return 'Mínimo 6 caracteres';
                     return null;
                   },
                 ),
-                const SizedBox(height: 8),
 
-                // Olvidaste contraseña
+                // ── OLVIDÉ CONTRASEÑA ────────────────────────────
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ForgotPasswordScreen()),
-                    ),
-                    child: const Text(
-                      '¿Olvidaste tu contraseña?',
-                      style: TextStyle(color: AppColors.pierDorado),
-                    ),
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const ForgotPasswordScreen())),
+                    child: const Text('¿Olvidaste tu contraseña?',
+                        style: TextStyle(
+                            color: AppColors.pierDorado,
+                            fontSize: 13)),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
-                // Botón Login
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.pierVerde,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 2,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text(
-                          'Iniciar Sesión',
-                          style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
-                        ),
-                ),
-                const SizedBox(height: 24),
-
-                // Divider
-                const Row(
-                  children: [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('O continúa con',
-                          style: TextStyle(color: Colors.grey)),
-                    ),
-                    Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // ========================================
-                // MÓVIL — Botón Google funcional
-                // ========================================
+                // ── BOTÓN LOGIN ──────────────────────────────────
                 SizedBox(
-                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.pierVerde,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20, width: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Text('Iniciar Sesión',
+                            style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── DIVIDER ──────────────────────────────────────
+                Row(children: [
+                  Expanded(
+                      child: Divider(
+                          color: Colors.grey.withValues(alpha: 0.3))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Text('O continúa con',
+                        style: TextStyle(
+                            color: Colors.grey[500], fontSize: 13)),
+                  ),
+                  Expanded(
+                      child: Divider(
+                          color: Colors.grey.withValues(alpha: 0.3))),
+                ]),
+                const SizedBox(height: 20),
+
+                // ── GOOGLE ───────────────────────────────────────
+                SizedBox(
+                  height: 52,
                   child: OutlinedButton.icon(
-                    onPressed: _isGoogleLoading ? null : _handleGoogleLogin,
+                    onPressed: _isGoogleLoading
+                        ? null
+                        : _handleGoogleLogin,
                     icon: _isGoogleLoading
                         ? const SizedBox(
-                            height: 20,
-                            width: 20,
+                            height: 18, width: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppColors.textPrimary),
-                          )
+                                strokeWidth: 2,
+                                color: AppColors.textPrimary))
                         : Image.asset(
                             'assets/images/google_logo.png',
-                            height: 24,
-                            width: 24,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.g_mobiledata,
-                                    size: 32, color: AppColors.textPrimary),
+                            height: 22, width: 22,
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.g_mobiledata,
+                                size: 28,
+                                color: AppColors.textPrimary),
                           ),
-                    label: const Text(
-                      'Continuar con Google',
-                      style: TextStyle(
-                          color: AppColors.textPrimary, fontSize: 16),
-                    ),
+                    label: const Text('Continuar con Google',
+                        style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 15)),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: Colors.grey.shade300),
+                      side: BorderSide(
+                          color: Colors.grey.withValues(alpha: 0.3)),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(14)),
+                      backgroundColor: Colors.white,
                     ),
                   ),
                 ),
-                // ========================================
+                const SizedBox(height: 28),
 
-                const SizedBox(height: 32),
-
-                // Registro
+                // ── REGISTRO ─────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('¿No tienes cuenta?'),
+                    Text('¿No tienes cuenta?',
+                        style: TextStyle(color: Colors.grey[600])),
                     TextButton(
                       onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const RegisterScreen()),
-                      ),
-                      child: const Text(
-                        'Regístrate',
-                        style: TextStyle(
-                            color: AppColors.pierVerde,
-                            fontWeight: FontWeight.bold),
-                      ),
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const RegisterScreen())),
+                      child: const Text('Regístrate',
+                          style: TextStyle(
+                              color: AppColors.pierVerde,
+                              fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: AppColors.pierVerde, size: 20),
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: Colors.grey.withValues(alpha: 0.2))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppColors.pierVerde, width: 1.5)),
+        errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red)),
+        contentPadding: const EdgeInsets.all(14),
+      ),
+      validator: validator,
     );
   }
 }

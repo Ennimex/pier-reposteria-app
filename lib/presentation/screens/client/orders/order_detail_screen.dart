@@ -1,370 +1,397 @@
+// lib/presentation/screens/client/orders/order_detail_screen.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/order_model.dart';
-import '../../../../data/providers/order_provider.dart';
 
 class OrderDetailScreen extends StatelessWidget {
   final Order order;
-
-  const OrderDetailScreen({
-    super.key,
-    required this.order,
-  });
+  const OrderDetailScreen({super.key, required this.order});
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd/MM/yyyy - HH:mm');
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text(order.id),
-        actions: [
-          if (order.status == OrderStatus.pending)
-            IconButton(
-              icon: const Icon(Icons.cancel_outlined),
-              onPressed: () => _showCancelDialog(context),
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Estado del pedido
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              color: order.statusColor.withAlpha(26),
-              child: Column(
-                children: [
-                  Icon(
-                    _getStatusIcon(order.status),
-                    size: 60,
-                    color: order.statusColor,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    order.statusText,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: order.statusColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _getStatusMessage(order.status),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: order.statusColor,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-
-            // Timeline de estados
-            _buildTimeline(),
-
-            const Divider(height: 1),
-
-            // Información de entrega
+            // ── HEADER ──────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
                 children: [
-                  const Text(
-                    'Información de Entrega',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2))
+                        ],
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          size: 16, color: AppColors.textPrimary),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(
-                    Icons.calendar_today,
-                    'Fecha de Entrega',
-                    DateFormat('EEEE, dd MMMM yyyy', 'es').format(order.deliveryDate),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoRow(
-                    Icons.access_time,
-                    'Hora',
-                    order.deliveryTime,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoRow(
-                    Icons.store,
-                    'Sucursal',
-                    'Sucursal ${order.sucursal}',
-                  ),
-                  if (order.notes.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _buildInfoRow(
-                      Icons.note,
-                      'Notas',
-                      order.notes,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            const Divider(height: 1),
-
-            // Productos
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Productos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...order.items.map((item) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              item.product.imageUrl,
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 60,
-                                  height: 60,
-                                  color: Colors.grey[300],
-                                  child: const Icon(Icons.cake),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.product.name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  'Cantidad: ${item.quantity}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            '\$${item.subtotal.toStringAsFixed(2)}',
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ← Corregido: usa order.numero
+                        Text(order.numero,
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                fontFamily: 'Playfair Display',
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        Text(_formatDate(order.createdAt),
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500])),
+                      ],
+                    ),
+                  ),
+                  _buildStatusChip(order.status),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── CONTENIDO ────────────────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    // ── ESTADO VISUAL ─────────────────────────────
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 24, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: order.statusColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: order.statusColor
+                                .withValues(alpha: 0.25)),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(_statusIcon(order.status),
+                              size: 52, color: order.statusColor),
+                          const SizedBox(height: 10),
+                          Text(order.statusText,
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: order.statusColor)),
+                          const SizedBox(height: 6),
+                          Text(_statusMessage(order.status),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600]),
+                              textAlign: TextAlign.center),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── TIMELINE ──────────────────────────────────
+                    _buildTimeline(),
+                    const SizedBox(height: 16),
+
+                    // ── INFO DEL PEDIDO ───────────────────────────
+                    _buildCard(
+                      title: 'Información del pedido',
+                      child: Column(children: [
+                        _infoRow(Icons.tag_rounded, 'Número',
+                            order.numero),
+                        _divider(),
+                        _infoRow(Icons.calendar_today_rounded,
+                            'Fecha', _formatDateFull(order.createdAt)),
+                        if (order.horarioRecogida != null) ...[
+                          _divider(),
+                          _infoRow(Icons.access_time_rounded,
+                              'Horario de recogida',
+                              order.horarioRecogida!),
+                        ],
+                        _divider(),
+                        _infoRow(Icons.storefront_rounded, 'Sucursal',
+                            'Principal — Huejutla de Reyes'),
+                        if (order.notas != null &&
+                            order.notas!.isNotEmpty) ...[
+                          _divider(),
+                          _infoRow(Icons.note_outlined, 'Notas',
+                              order.notas!),
+                        ],
+                      ]),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ── PRODUCTOS ─────────────────────────────────
+                    _buildCard(
+                      title: 'Productos (${order.items.length})',
+                      child: Column(
+                        children: order.items.asMap().entries.map((e) {
+                          final i = e.key;
+                          final item = e.value;
+                          return Column(children: [
+                            if (i > 0) _divider(),
+                            Row(children: [
+                              Container(
+                                width: 44, height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.pierVerde
+                                      .withValues(alpha: 0.1),
+                                  borderRadius:
+                                      BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.cake_outlined,
+                                    color: AppColors.pierVerde,
+                                    size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.nombre,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: AppColors.textPrimary)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${item.cantidad}× '
+                                      '\$${item.precioUnitario.toStringAsFixed(0)} c/u'
+                                      '${item.tamano != null ? ' • ${item.tamano}' : ''}',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500]),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '\$${item.subtotal.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.pierDoradoOscuro),
+                              ),
+                            ]),
+                          ]);
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ── RESUMEN DE PAGO ───────────────────────────
+                    _buildCard(
+                      title: 'Resumen de pago',
+                      child: Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary)),
+                          Text(
+                            '\$${order.total.toStringAsFixed(0)} MXN',
+                            style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.pierVerde),
                           ),
                         ],
                       ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-
-            const Divider(height: 1),
-
-            // Resumen de pago
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Resumen de Pago',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPaymentRow('Subtotal', order.subtotal),
-                  const SizedBox(height: 8),
-                  _buildPaymentRow('IVA (16%)', order.tax),
-                  const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '\$${order.total.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.pierVerde,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Información adicional
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pedido realizado el ${dateFormat.format(order.createdAt)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
-
-      // Botones de acción
-      bottomNavigationBar: _buildBottomActions(context),
     );
   }
 
+  // ── TIMELINE ─────────────────────────────────────────────────────
   Widget _buildTimeline() {
-    final statuses = [
-      OrderStatus.pending,
-      OrderStatus.preparing,
-      OrderStatus.ready,
-      OrderStatus.completed,
+    if (order.status == OrderStatus.cancelled) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cancel_outlined, color: Colors.red, size: 18),
+            SizedBox(width: 8),
+            Text('Pedido cancelado',
+                style: TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+
+    final steps = [
+      (OrderStatus.pending,   'Recibido',   Icons.inbox_rounded),
+      (OrderStatus.preparing, 'Preparando', Icons.blender_outlined),
+      (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
+      (OrderStatus.completed, 'Entregado',  Icons.done_all_rounded),
     ];
 
-    final currentIndex = statuses.indexOf(order.status);
+    final currentIdx = steps.indexWhere((s) => s.$1 == order.status);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3))
+        ],
+      ),
       child: Row(
-        children: List.generate(statuses.length, (index) {
-          final isCompleted = index <= currentIndex;
-          final isCurrent = index == currentIndex;
-          
+        children: steps.asMap().entries.map((e) {
+          final idx = e.key;
+          final step = e.value;
+          final done = idx <= currentIdx;
+          final current = idx == currentIdx;
+
           return Expanded(
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    if (index > 0)
-                      Expanded(
-                        child: Container(
-                          height: 2,
-                          color: index <= currentIndex
-                              ? AppColors.pierVerde
-                              : Colors.grey[300],
-                        ),
-                      ),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: isCompleted
-                            ? AppColors.pierVerde
-                            : Colors.grey[300],
-                        shape: BoxShape.circle,
-                        border: isCurrent
-                            ? Border.all(color: AppColors.pierVerde, width: 3)
-                            : null,
-                      ),
-                      child: isCompleted
-                          ? const Icon(
-                              Icons.check,
-                              size: 16,
-                              color: Colors.white,
-                            )
-                          : null,
+            child: Column(children: [
+              Row(children: [
+                if (idx > 0)
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      color: idx <= currentIdx
+                          ? AppColors.pierVerde
+                          : Colors.grey[200],
                     ),
-                    if (index < statuses.length - 1)
-                      Expanded(
-                        child: Container(
-                          height: 2,
-                          color: index < currentIndex
-                              ? AppColors.pierVerde
-                              : Colors.grey[300],
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _getShortStatusText(statuses[index]),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    color: isCompleted
-                        ? AppColors.pierVerde
-                        : AppColors.textSecondary,
                   ),
-                  textAlign: TextAlign.center,
+                Container(
+                  width: 30, height: 30,
+                  decoration: BoxDecoration(
+                    color: done
+                        ? AppColors.pierVerde
+                        : Colors.grey[200],
+                    shape: BoxShape.circle,
+                    border: current
+                        ? Border.all(
+                            color: AppColors.pierVerde, width: 2.5)
+                        : null,
+                  ),
+                  child: done
+                      ? Icon(step.$3, size: 14, color: Colors.white)
+                      : null,
                 ),
-              ],
-            ),
+                if (idx < steps.length - 1)
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      color: idx < currentIdx
+                          ? AppColors.pierVerde
+                          : Colors.grey[200],
+                    ),
+                  ),
+              ]),
+              const SizedBox(height: 6),
+              Text(step.$2,
+                  style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: current
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: done
+                          ? AppColors.pierVerde
+                          : Colors.grey[400]),
+                  textAlign: TextAlign.center),
+            ]),
           );
-        }),
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  // ── HELPERS ──────────────────────────────────────────────────────
+  Widget _buildCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: AppColors.pierVerde),
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            color: AppColors.pierVerde.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: AppColors.pierVerde),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 11, color: Colors.grey[500])),
               const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
             ],
           ),
         ),
@@ -372,180 +399,89 @@ class OrderDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPaymentRow(String label, double amount) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        Text(
-          '\$${amount.toStringAsFixed(2)}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _divider() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Divider(
+            height: 1,
+            color: Colors.grey.withValues(alpha: 0.12)),
+      );
 
-  Widget? _buildBottomActions(BuildContext context) {
-    if (order.status == OrderStatus.completed ||
-        order.status == OrderStatus.cancelled) {
-      return null;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(26),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (order.status == OrderStatus.ready)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _markAsCompleted(context),
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Marcar como Recogido'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColors.pierVerde,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            if (order.status == OrderStatus.pending) ...[
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _showCancelDialog(context),
-                  icon: const Icon(Icons.cancel_outlined),
-                  label: const Text('Cancelar Pedido'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _getStatusIcon(OrderStatus status) {
+  Widget _buildStatusChip(OrderStatus status) {
+    Color color;
+    String label;
     switch (status) {
       case OrderStatus.pending:
-        return Icons.pending_outlined;
+        color = Colors.orange;
+        label = 'Pendiente';
+        break;
       case OrderStatus.preparing:
-        return Icons.restaurant;
+        color = Colors.blue;
+        label = 'Preparando';
+        break;
       case OrderStatus.ready:
-        return Icons.check_circle_outline;
+        color = AppColors.pierVerde;
+        label = 'Listo ✓';
+        break;
       case OrderStatus.completed:
-        return Icons.done_all;
+        color = Colors.grey;
+        label = 'Completado';
+        break;
       case OrderStatus.cancelled:
-        return Icons.cancel_outlined;
+        color = Colors.red;
+        label = 'Cancelado';
+        break;
+    }
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.bold)),
+    );
+  }
+
+  String _formatDate(DateTime dt) {
+    final months = ['Ene','Feb','Mar','Abr','May','Jun',
+                    'Jul','Ago','Sep','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  }
+
+  String _formatDateFull(DateTime dt) {
+    final months = ['Ene','Feb','Mar','Abr','May','Jun',
+                    'Jul','Ago','Sep','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year} • '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')} hrs';
+  }
+
+  IconData _statusIcon(OrderStatus s) {
+    switch (s) {
+      case OrderStatus.pending:   return Icons.inbox_rounded;
+      case OrderStatus.preparing: return Icons.blender_outlined;
+      case OrderStatus.ready:     return Icons.check_circle_outline;
+      case OrderStatus.completed: return Icons.done_all_rounded;
+      case OrderStatus.cancelled: return Icons.cancel_outlined;
     }
   }
 
-  String _getStatusMessage(OrderStatus status) {
-    switch (status) {
+  String _statusMessage(OrderStatus s) {
+    switch (s) {
       case OrderStatus.pending:
-        return 'Tu pedido ha sido recibido';
+        return 'Tu pedido fue recibido y está en cola';
       case OrderStatus.preparing:
-        return 'Estamos preparando tu pedido';
+        return 'Estamos preparando tu pedido con cariño 👨‍🍳';
       case OrderStatus.ready:
-        return '¡Tu pedido está listo! Puedes recogerlo';
+        return '¡Tu pedido está listo! Pasa a recogerlo 🎉';
       case OrderStatus.completed:
-        return 'Pedido entregado. ¡Gracias!';
+        return '¡Pedido entregado! Gracias por tu compra 🎂';
       case OrderStatus.cancelled:
         return 'Este pedido fue cancelado';
     }
-  }
-
-  String _getShortStatusText(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Recibido';
-      case OrderStatus.preparing:
-        return 'Preparando';
-      case OrderStatus.ready:
-        return 'Listo';
-      case OrderStatus.completed:
-        return 'Entregado';
-      case OrderStatus.cancelled:
-        return 'Cancelado';
-    }
-  }
-
-  void _markAsCompleted(BuildContext context) {
-    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    orderProvider.updateOrderStatus(order.id, OrderStatus.completed);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('¡Gracias por tu compra!'),
-        backgroundColor: AppColors.pierVerde,
-      ),
-    );
-    
-    Navigator.pop(context);
-  }
-
-  void _showCancelDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancelar Pedido'),
-        content: const Text(
-          '¿Estás seguro de que quieres cancelar este pedido?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () {
-              final orderProvider =
-                  Provider.of<OrderProvider>(context, listen: false);
-              orderProvider.updateOrderStatus(order.id, OrderStatus.cancelled);
-              
-              Navigator.pop(context); // Cerrar diálogo
-              Navigator.pop(context); // Volver a lista
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Pedido cancelado'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            },
-            child: const Text(
-              'Sí, Cancelar',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

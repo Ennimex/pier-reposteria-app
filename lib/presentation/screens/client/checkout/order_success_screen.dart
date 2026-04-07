@@ -1,11 +1,10 @@
-// order_success_screen.dart
+// lib/presentation/screens/client/checkout/order_success_screen.dart
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../main_screen.dart'; 
+import '../main_screen.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
   final String orderId;
-  final String branchName;
   final String pickupDate;
   final String pickupTime;
   final double total;
@@ -13,7 +12,6 @@ class OrderSuccessScreen extends StatelessWidget {
   const OrderSuccessScreen({
     super.key,
     required this.orderId,
-    required this.branchName,
     required this.pickupDate,
     required this.pickupTime,
     required this.total,
@@ -29,55 +27,89 @@ class OrderSuccessScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // ── ÍCONO ────────────────────────────────────────────────
               Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: Colors.green[50], shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded, color: Colors.green, size: 60),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                    color: Colors.green[50], shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded,
+                    color: Colors.green, size: 60),
               ),
               const SizedBox(height: 24),
-              const Text('¡Pago Exitoso!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.pierVerdeOscuro)),
+              const Text('¡Pedido Confirmado!',
+                  style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.pierVerdeOscuro)),
               const SizedBox(height: 8),
-              Text('Tu pedido #$orderId está confirmado.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-              
+              Text(
+                'Tu pedido #$orderId ha sido registrado.\nTe notificaremos cuando esté listo.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: Colors.grey[600]),
+              ),
+
               const SizedBox(height: 40),
-              
+
+              // ── TICKET ───────────────────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  // Usamos withValues para evitar deprecation warning
-                  color: AppColors.pierArena.withValues(alpha: 0.3),
+                  color: AppColors.pierArena.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.pierVerde.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: AppColors.pierVerde.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   children: [
-                    _buildTicketRow('Sucursal', branchName, icon: Icons.store),
-                    const Divider(),
-                    _buildTicketRow('Fecha', pickupDate, icon: Icons.calendar_today),
-                    const Divider(),
-                    _buildTicketRow('Hora', pickupTime, icon: Icons.access_time),
-                    const Divider(),
-                    _buildTicketRow('Total', '\$${total.toStringAsFixed(0)}', isBold: true),
+                    _buildRow(Icons.store, 'Sucursal',
+                        'Principal — Huejutla de Reyes'),
+                    const Divider(height: 24),
+                    _buildRow(Icons.calendar_today, 'Fecha de recogida',
+                        pickupDate),
+                    const Divider(height: 24),
+                    _buildRow(
+                        Icons.access_time, 'Horario', pickupTime),
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total pagado',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: AppColors.textPrimary)),
+                        Text(
+                          '\$${total.toStringAsFixed(0)} MXN',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                              color: AppColors.pierVerde),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              
+
               const Spacer(),
-              
+
+              // ── BOTÓN ────────────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pushAndRemoveUntil(
-                    context, 
-                    MaterialPageRoute(builder: (_) => const MainScreen()), 
-                    (r) => false
+                    context,
+                    MaterialPageRoute(builder: (_) => const MainScreen()),
+                    (r) => false,
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.pierVerde,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Volver al Inicio', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  child: const Text('Volver al Inicio',
+                      style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
               ),
             ],
@@ -87,17 +119,20 @@ class OrderSuccessScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTicketRow(String label, String value, {bool isBold = false, IconData? icon}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          if (icon != null) ...[Icon(icon, size: 18, color: Colors.grey), const SizedBox(width: 8)],
-          Text(label, style: TextStyle(color: Colors.grey[700])),
-          const Spacer(),
-          Text(value, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, color: isBold ? AppColors.pierVerde : Colors.black87)),
-        ],
-      ),
+  Widget _buildRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.pierVerde),
+        const SizedBox(width: 10),
+        Text(label,
+            style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+        const Spacer(),
+        Text(value,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.textPrimary)),
+      ],
     );
   }
 }

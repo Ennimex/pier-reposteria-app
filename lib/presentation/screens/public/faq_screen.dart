@@ -1,129 +1,289 @@
+// lib/presentation/screens/public/faq_screen.dart
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 import 'contact_screen.dart';
 
-class FAQScreen extends StatelessWidget {
+class FAQScreen extends StatefulWidget {
   const FAQScreen({super.key});
 
+  @override
+  State<FAQScreen> createState() => _FAQScreenState();
+}
+
+class _FAQScreenState extends State<FAQScreen> {
+  String _categoriaSeleccionada = 'Todas';
+
+  final List<String> _categorias = [
+    'Todas', 'Pedidos', 'Pagos', 'Devoluciones', 'Seguridad', 'Ubicación'
+  ];
+
   final List<Map<String, String>> _faqs = const [
-    // --- PEDIDOS ---
     {
+      'categoria': 'Pedidos',
       'question': '¿Ofrecen servicio de entrega a domicilio?',
-      'answer': 'Actualmente, Pastelería Pier NO ofrece servicio de envíos a domicilio. Todos los pedidos realizados a través de la app deben recogerse directamente en la sucursal seleccionada en Huejutla de Reyes.'
+      'answer':
+          'Actualmente NO ofrecemos servicio de envíos a domicilio. Todos los pedidos deben recogerse directamente en nuestra sucursal en Huejutla de Reyes.',
     },
     {
+      'categoria': 'Pedidos',
       'question': '¿Puedo cancelar mi pedido después de pagarlo?',
-      'answer': 'Puedes solicitar la cancelación únicamente ANTES de que el producto comience a ser elaborado. Si el proceso de producción ya inició, no será posible cancelar. Tampoco generamos cargos si la cancelación es por falta de insumos de nuestra parte.'
+      'answer':
+          'Puedes solicitar cancelación únicamente ANTES de que el producto comience a elaborarse. Si el proceso ya inició, no es posible cancelar.',
     },
     {
+      'categoria': 'Pedidos',
       'question': '¿Con cuánto tiempo de anticipación debo pedir?',
-      'answer': 'Recomendamos realizar tus pedidos con anticipación (mínimo 24 horas) para garantizar disponibilidad. Nuestros productos son artesanales y elaborados el mismo día para asegurar su calidad.'
+      'answer':
+          'Recomendamos un mínimo de 24 horas de anticipación. Nuestros productos son artesanales y elaborados el mismo día para garantizar su frescura.',
     },
-
-    // --- DEVOLUCIONES ---
     {
+      'categoria': 'Devoluciones',
       'question': '¿Cuál es su política de devoluciones?',
-      'answer': 'Las devoluciones aplican únicamente el MISMO DÍA de la compra. Es requisito indispensable presentar al menos la mitad (50%) del producto en buenas condiciones para validar la incidencia.'
+      'answer':
+          'Las devoluciones aplican únicamente el MISMO DÍA de la compra. Es requisito presentar al menos el 50% del producto en buenas condiciones.',
     },
     {
+      'categoria': 'Devoluciones',
       'question': '¿Cuánto tardan en realizar un reembolso?',
-      'answer': 'Si tu devolución es aprobada, el reembolso se gestionará en un máximo de 3 horas hábiles posteriores a la validación. El costo es absorbido por nosotros si se cumplen las condiciones.'
+      'answer':
+          'Si tu devolución es aprobada, el reembolso se gestiona en un máximo de 3 horas hábiles posteriores a la validación.',
     },
     {
-      'question': '¿Qué cubren sus garantías?',
-      'answer': 'Garantizamos la frescura y calidad el día de la compra. La garantía NO cubre daños ocasionados por mal manejo, falta de refrigeración o transporte realizado por el cliente.'
-    },
-
-    // --- SEGURIDAD Y PAGOS ---
-    {
-      'question': '¿Es seguro ingresar mis datos?',
-      'answer': 'Sí. Implementamos cifrado de datos (TLS/SSL) y servidores seguros. Pastelería Pier NO almacena datos financieros sensibles (números de tarjeta o CVV); todas las transacciones se procesan mediante pasarelas seguras.'
+      'categoria': 'Devoluciones',
+      'question': '¿Qué cubre la garantía del producto?',
+      'answer':
+          'Garantizamos frescura y calidad el día de la compra. No cubre daños por mal manejo, falta de refrigeración o transporte del cliente.',
     },
     {
+      'categoria': 'Seguridad',
+      'question': '¿Es seguro ingresar mis datos en la app?',
+      'answer':
+          'Sí. Implementamos cifrado TLS/SSL. Pier NO almacena datos financieros sensibles. Todas las transacciones se procesan mediante pasarelas seguras.',
+    },
+    {
+      'categoria': 'Pagos',
       'question': '¿Qué métodos de pago aceptan?',
-      'answer': 'Aceptamos pagos en efectivo (solo en sucursal) y pagos electrónicos en la app mediante tarjeta de crédito o débito (principalmente Santander).'
+      'answer':
+          'Aceptamos pagos en efectivo (solo en sucursal) y pagos electrónicos en la app mediante tarjeta de crédito o débito.',
     },
-
-    // --- UBICACIÓN ---
     {
+      'categoria': 'Ubicación',
       'question': '¿Dónde están ubicados?',
-      'answer': 'Nuestra matriz se encuentra en Calle Allende, Colonia Tahuizán, Huejutla de Reyes, Hidalgo, C.P. 43000.'
+      'answer':
+          'Calle Allende, Colonia Tahuizán, Huejutla de Reyes, Hidalgo, C.P. 43000. Abierto Lunes a Sábado de 9:00 a 21:00 hrs.',
     },
   ];
+
+  List<Map<String, String>> get _filtradas {
+    if (_categoriaSeleccionada == 'Todas') return _faqs;
+    return _faqs
+        .where((f) => f['categoria'] == _categoriaSeleccionada)
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
-      appBar: AppBar(
-        title: const Text('Preguntas Frecuentes'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          // Header visual
-          Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.pierVerde,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.help_outline, color: Colors.white, size: 30),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Resuelve tus dudas sobre pedidos, pagos y seguridad.',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── HEADER ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2))
+                        ],
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          size: 16, color: AppColors.textPrimary),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          ..._faqs.map((faq) => Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            elevation: 2,
-            child: ExpansionTile(
-              iconColor: AppColors.pierVerde,
-              textColor: AppColors.pierVerde,
-              title: Text(
-                faq['question']!,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  const SizedBox(width: 14),
+                  const Text('Preguntas Frecuentes',
+                      style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
+                ],
               ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Text(
-                    faq['answer']!,
-                    style: TextStyle(color: Colors.grey[700], height: 1.5),
-                  ),
-                ),
-              ],
             ),
-          )),
 
-          const SizedBox(height: 30),
-          
-          Column(
-            children: [
-              const Text('¿No encontraste tu respuesta?', style: TextStyle(color: Colors.grey)),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactScreen()));
+            const SizedBox(height: 16),
+
+            // ── FILTROS DE CATEGORÍA ─────────────────────────────
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: _categorias.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final cat = _categorias[i];
+                  final sel = _categoriaSeleccionada == cat;
+                  return GestureDetector(
+                    onTap: () =>
+                        setState(() => _categoriaSeleccionada = cat),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: sel ? AppColors.pierVerde : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: sel
+                                ? AppColors.pierVerde
+                                : Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                      child: Text(cat,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: sel
+                                  ? Colors.white
+                                  : AppColors.textSecondary)),
+                    ),
+                  );
                 },
-                child: const Text('Contáctanos', style: TextStyle(color: AppColors.pierVerde, fontWeight: FontWeight.bold)),
               ),
-            ],
-          ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── LISTA ────────────────────────────────────────────
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                children: [
+                  ..._filtradas.map((faq) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildFAQCard(faq),
+                      )),
+                  const SizedBox(height: 16),
+                  _buildContactBanner(context),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFAQCard(Map<String, String> faq) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3))
         ],
       ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding:
+              const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          iconColor: AppColors.pierVerde,
+          collapsedIconColor: Colors.grey[400],
+          title: Text(
+            faq['question']!,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.textPrimary),
+          ),
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.pierArena,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                faq['answer']!,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[700],
+                    height: 1.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.pierVerde,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(children: [
+        const Icon(Icons.chat_bubble_outline_rounded,
+            color: Colors.white, size: 28),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('¿No encontraste tu respuesta?',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14)),
+              const SizedBox(height: 2),
+              Text('Nuestro equipo te ayuda',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12)),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const ContactScreen())),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text('Contactar',
+                style: TextStyle(
+                    color: AppColors.pierVerde,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ]),
     );
   }
 }

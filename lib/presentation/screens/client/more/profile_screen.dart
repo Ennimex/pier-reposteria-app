@@ -1,7 +1,15 @@
+// lib/presentation/screens/client/more/profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../auth/login_screen.dart'; // Para el logout
-import 'edit_profile_screen.dart'; // Para navegar a editar
+import '../../../../core/services/api_service.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../data/providers/auth_provider.dart';
+import '../../../../data/models/product_model.dart';
+import '../favorites/favorites_screen.dart';
+import '../orders/orders_screen.dart';
+import '../products/product_detail_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -11,264 +19,657 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Estado de los switches de preferencias
-  bool _pushNotifications = true;
-  bool _emailOffers = false;
+  final ApiService _api = ApiService();
 
-  // Datos simulados del usuario (Vendrían de tu AuthProvider)
-  final String _userName = "Alexander Martinez";
-  final String _userEmail = "alexander@email.com";
-  final String _userPhone = "7711234567";
+  List<Product> _favoritos = [];
+  List<Map<String, dynamic>> _pedidos = [];
+  bool _loadingFavoritos = true;
+  bool _loadingPedidos = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    // Favoritos
+    final favResult = await _api.getAuth(ApiConstants.favoritos);
+    if (mounted && favResult['success'] == true) {
+      final data = favResult['favoritos'] ?? favResult['data'] ?? [];
+      setState(() {
+        _favoritos = (data as List).map((json) {
+          final map = Map<String, dynamic>.from(json as Map<String, dynamic>);
+          map['activo'] = true;
+          return Product.fromJson(map);
+        }).toList();
+        _loadingFavoritos = false;
+      });
+    } else if (mounted) {
+      setState(() => _loadingFavoritos = false);
+    }
+
+    // Pedidos
+    final pedResult = await _api.getAuth(ApiConstants.misPedidos);
+    if (mounted && pedResult['success'] == true) {
+      setState(() {
+        _pedidos = List<Map<String, dynamic>>.from(
+            pedResult['pedidos'] ?? []);
+        _loadingPedidos = false;
+      });
+    } else if (mounted) {
+      setState(() => _loadingPedidos = false);
+    }
+  }
+
+  void _showLogoutDialog(AuthProvider auth) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cerrar sesión'),
+        content: const Text(
+            '¿Estás seguro que deseas cerrar tu sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar',
+                style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              auth.logout();
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, elevation: 0),
+            child: const Text('Salir',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatFechaPedido(dynamic fecha) {
+    if (fecha == null) return '';
+    try {
+      final dt = DateTime.parse(fecha.toString()).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inDays == 0) {
+        final h = dt.hour.toString().padLeft(2, '0');
+        final m = dt.minute.toString().padLeft(2, '0');
+        return 'Hoy, $h:$m ${dt.hour < 12 ? 'AM' : 'PM'}';
+      }
+      final months = ['Ene','Feb','Mar','Abr','May','Jun',
+                      'Jul','Ago','Sep','Oct','Nov','Dic'];
+      return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
+    } catch (_) {
+      return '';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    final user = auth.currentUser;
+    final nombre = user?['nombre']?.toString() ?? '';
+    final apellido = user?['apellido']?.toString() ?? '';
+    final apellidoInicial =
+        apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
+    final iniciales =
+        '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}$apellidoInicial';
+    final saludo =
+        '$nombre ${apellido.isNotEmpty ? '${apellido[0]}.' : ''}'.trim();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
-      appBar: AppBar(
-        title: const Text('Mi Perfil'),
-        backgroundColor: AppColors.pierVerde,
-        elevation: 0,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // 1. HEADER CON AVATAR
-            Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [AppColors.pierDorado, AppColors.pierDorado.withAlpha(153)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(26),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        _userName.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
+      backgroundColor: AppColors.pierArena,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // ── HEADER ────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Mi Perfil',
+                              style: TextStyle(
+                                  fontFamily: 'Playfair Display',
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary)),
+                          const SizedBox(height: 2),
+                          Text('Hola, $saludo',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500])),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _userName,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                  ),
-                  Text(
-                    _userEmail,
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
+                    // Avatar circular verde
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const EditProfileScreen()),
+                      ).then((_) => setState(() {})),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 52, height: 52,
+                            decoration: const BoxDecoration(
+                              color: AppColors.pierVerde,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(iniciales,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0, right: 0,
+                            child: Container(
+                              width: 16, height: 16,
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 32),
 
-            // 2. INFORMACIÓN PERSONAL (Card)
-            _buildSectionCard(
-              title: 'Información Personal',
-              icon: Icons.person_outline,
-              child: Column(
-                children: [
-                  _buildInfoRow('Nombre', _userName),
-                  const Divider(),
-                  _buildInfoRow('Email', _userEmail, isVerified: true),
-                  const Divider(),
-                  _buildInfoRow('Teléfono', _userPhone),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // Navegar a editar
-                        Navigator.push(
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+            // ── ACCESOS RÁPIDOS ───────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(children: [
+                  _quickAction(Icons.wallet_outlined, 'Métodos', () {}),
+                  const SizedBox(width: 12),
+                  _quickAction(Icons.location_on_outlined,
+                      'Direcciones', () {}),
+                  const SizedBox(width: 12),
+                  _quickAction(
+                      Icons.settings_outlined, 'Ajustes', () {}),
+                ]),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+            // ── MIS FAVORITOS ─────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Mis Favoritos',
+                        style: TextStyle(
+                            fontFamily: 'Playfair Display',
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.pierVerde),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text('Editar Información', style: TextStyle(color: AppColors.pierVerde)),
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  const FavoritesScreen())),
+                      child: const Text('Ver todo',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.pierVerde,
+                              fontWeight: FontWeight.w600)),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SliverToBoxAdapter(child: SizedBox(height: 14)),
+            SliverToBoxAdapter(
+              child: _loadingFavoritos
+                  ? const Center(
+                      child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(
+                          color: AppColors.pierVerde),
+                    ))
+                  : _favoritos.isEmpty
+                      ? Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                          child: Text('Sin favoritos aún',
+                              style: TextStyle(
+                                  color: Colors.grey[500], fontSize: 14)),
+                        )
+                      : SizedBox(
+                          height: 160,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _favoritos.take(5).length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, i) {
+                              final p = _favoritos[i];
+                              return GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          ProductDetailScreen(
+                                              product: p)),
+                                ),
+                                child: SizedBox(
+                                  width: 120,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        child: Image.network(
+                                          p.imagenUrl,
+                                          width: 120, height: 100,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (_, __, ___) => Container(
+                                            width: 120, height: 100,
+                                            color: AppColors.pierArena,
+                                            child: const Icon(
+                                                Icons.cake_outlined,
+                                                color:
+                                                    AppColors.pierVerde),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(p.nombre,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                              color: AppColors.textPrimary),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
+                                      Row(children: [
+                                        Text(
+                                            '\$${p.precio.toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.pierVerde,
+                                                fontWeight:
+                                                    FontWeight.w700)),
+                                        const Spacer(),
+                                        const Icon(
+                                            Icons.favorite_rounded,
+                                            color: Colors.red,
+                                            size: 14),
+                                      ]),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+            ),
 
-            // 3. PREFERENCIAS (Card)
-            _buildSectionCard(
-              title: 'Preferencias',
-              icon: Icons.settings_outlined,
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: const Text('Notificaciones Push'),
-                    value: _pushNotifications,
-                    activeThumbColor: AppColors.pierVerde,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (val) => setState(() => _pushNotifications = val),
-                  ),
-                  const Divider(),
-                  SwitchListTile(
-                    title: const Text('Ofertas por Email'),
-                    value: _emailOffers,
-                    activeThumbColor: AppColors.pierVerde,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (val) => setState(() => _emailOffers = val),
-                  ),
-                ],
+            const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+            // ── HISTORIAL DE PEDIDOS ──────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Historial de Pedidos',
+                        style: TextStyle(
+                            fontFamily: 'Playfair Display',
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const OrdersScreen())),
+                      child: Icon(Icons.history_rounded,
+                          color: Colors.grey[500], size: 22),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-            // 4. SEGURIDAD (Card)
-            _buildSectionCard(
-              title: 'Seguridad',
-              icon: Icons.lock_outline,
-              child: ListTile(
-                title: const Text('Cambiar Contraseña'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                contentPadding: EdgeInsets.zero,
-                onTap: _showChangePasswordDialog,
+            _loadingPedidos
+                ? const SliverToBoxAdapter(
+                    child: Center(
+                        child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(
+                        color: AppColors.pierVerde),
+                  )))
+                : _pedidos.isEmpty
+                    ? SliverToBoxAdapter(
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                          child: Text('Sin pedidos aún',
+                              style: TextStyle(
+                                  color: Colors.grey[500], fontSize: 14)),
+                        ),
+                      )
+                    : SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, i) {
+                              final p = _pedidos[i];
+                              final numero =
+                                  p['numero']?.toString() ?? '#${p['id']}';
+                              final estado =
+                                  p['estado']?.toString() ?? 'pendiente';
+                              final items = List<Map<String, dynamic>>.from(
+                                  p['items'] ?? []);
+                              final total = double.tryParse(
+                                      p['total']?.toString() ?? '0') ??
+                                  0.0;
+                              final resumen = items.isEmpty
+                                  ? 'Sin productos'
+                                  : items.length == 1
+                                      ? '1x ${items.first['nombre_producto'] ?? items.first['nombre'] ?? ''}'
+                                      : '${items.first['cantidad']}x ${(items.first['nombre_producto'] ?? items.first['nombre'] ?? '').toString().split(' ').take(2).join(' ')}..., ${items.length > 1 ? '${items.length - 1}x más' : ''}';
+                              final imagen = items.isNotEmpty
+                                  ? items.first['imagen_url']?.toString() ??
+                                      ''
+                                  : '';
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _buildPedidoCard(
+                                  numero: numero,
+                                  fecha: _formatFechaPedido(p['created_at']),
+                                  estado: estado,
+                                  resumen: resumen,
+                                  total: total,
+                                  imagenUrl: imagen,
+                                ),
+                              );
+                            },
+                            childCount: _pedidos.take(5).length,
+                          ),
+                        ),
+                      ),
+
+            // ── CERRAR SESIÓN ──────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3))
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(children: [
+                        Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.logout_rounded,
+                              color: Colors.red, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('¿Deseas salir?',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.textPrimary)),
+                            Text('Cerrar sesión de tu cuenta actual',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500])),
+                          ],
+                        ),
+                      ]),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              _showLogoutDialog(auth),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                                color: Colors.grey.withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Cerrar Sesión',
+                              style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 32),
-
-            // 5. CERRAR SESIÓN
-            TextButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout, color: Colors.red),
-              label: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red, fontSize: 16)),
-            ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
+  Widget _quickAction(IconData icon, String label, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3))
+            ],
+          ),
+          child: Column(children: [
+            Icon(icon, color: AppColors.pierVerde, size: 22),
+            const SizedBox(height: 6),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500)),
+          ]),
+        ),
+      ),
+    );
+  }
 
-  Widget _buildSectionCard({required String title, required IconData icon, required Widget child}) {
+  Widget _buildPedidoCard({
+    required String numero,
+    required String fecha,
+    required String estado,
+    required String resumen,
+    required double total,
+    required String imagenUrl,
+  }) {
+    Color estadoColor;
+    switch (estado) {
+      case 'completado': estadoColor = Colors.grey; break;
+      case 'en_preparacion':
+      case 'preparando': estadoColor = Colors.blue; break;
+      case 'listo': estadoColor = AppColors.pierVerde; break;
+      case 'cancelado': estadoColor = Colors.red; break;
+      default: estadoColor = Colors.orange;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3))
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.pierVerde, size: 20),
-              const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value, {bool isVerified = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Row(
-            children: [
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
-              if (isVerified) ...[
-                const SizedBox(width: 4),
-                const Icon(Icons.verified, color: AppColors.pierVerde, size: 16),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- LÓGICA DE DIÁLOGOS ---
-
-  void _showChangePasswordDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cambiar Contraseña'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            TextField(decoration: InputDecoration(labelText: 'Contraseña Actual', prefixIcon: Icon(Icons.lock_outline))),
-            SizedBox(height: 10),
-            TextField(decoration: InputDecoration(labelText: 'Nueva Contraseña', prefixIcon: Icon(Icons.lock))),
-            SizedBox(height: 10),
-            TextField(decoration: InputDecoration(labelText: 'Confirmar Nueva', prefixIcon: Icon(Icons.lock))),
-          ],
+      child: Column(children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+          child: Row(children: [
+            Text(numero,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: estadoColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(estado,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: estadoColor,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ]),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.pierVerde),
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña actualizada')));
-            },
-            child: const Text('Guardar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+        Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Text(fecha,
+              style:
+                  TextStyle(fontSize: 12, color: Colors.grey[500])),
+        ),
+        Divider(
+            height: 20,
+            color: Colors.grey.withValues(alpha: 0.12)),
+
+        // Items + Reordenar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: Row(children: [
+            // Imagen
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: imagenUrl.isNotEmpty
+                  ? Image.network(imagenUrl,
+                      width: 48, height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _imagePlaceholder())
+                  : _imagePlaceholder(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(resumen,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text('\$${total.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.pierVerde)),
+                ],
+              ),
+            ),
+            // Botón Reordenar
+            GestureDetector(
+              onTap: () {},
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.replay_rounded,
+                        size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text('Reordenar',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 
-  void _logout() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¿Cerrar Sesión?'),
-        content: const Text('¿Estás seguro de que quieres salir?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () {
-              // Aquí iría la lógica real de AuthProvider.logout()
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false,
-              );
-            },
-            child: const Text('Salir', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+  Widget _imagePlaceholder() {
+    return Container(
+      width: 48, height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.pierArena,
+        borderRadius: BorderRadius.circular(8),
       ),
+      child: const Icon(Icons.image_outlined,
+          color: Colors.grey, size: 22),
     );
   }
 }

@@ -1,5 +1,5 @@
+// lib/presentation/widgets/order/order_card.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/order_model.dart';
 
@@ -7,151 +7,122 @@ class OrderCard extends StatelessWidget {
   final Order order;
   final VoidCallback onTap;
 
-  const OrderCard({
-    super.key,
-    required this.order,
-    required this.onTap,
-  });
+  const OrderCard({super.key, required this.order, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd/MM/yyyy');
-    
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: ID y Estado
-              Row(
+    final totalItems =
+        order.items.fold(0, (sum, i) => sum + i.cantidad);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4))
+          ],
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          children: [
+            // ── HEADER ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    order.id,
+                    'Pedido #${order.numero}',
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        color: AppColors.textPrimary),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                        horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: order.statusColor.withValues(alpha: 0.1 * 255),
-                      borderRadius: BorderRadius.circular(8),
+                      color: order.statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       order.statusText,
                       style: TextStyle(
-                        color: order.statusColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
+                          color: order.statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+            ),
+            const Divider(height: 1),
 
-              // Fecha de creación
-              Row(
+            // ── DETALLE ───────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Row(
                 children: [
-                  const Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: AppColors.textSecondary,
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.pierArena,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.shopping_bag_outlined,
+                        color: AppColors.pierVerde, size: 22),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Pedido el ${dateFormat.format(order.createdAt)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatDate(order.createdAt),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 3),
+                        if (order.horarioRecogida != null)
+                          Text(
+                            'Recoger: ${order.horarioRecogida}',
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey[500]),
+                          ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '$totalItems ${totalItems == 1 ? 'producto' : 'productos'}  •  '
+                          '\$${order.total.toStringAsFixed(0)} MXN',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: AppColors.pierDoradoOscuro),
+                        ),
+                      ],
                     ),
                   ),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: Colors.grey),
                 ],
               ),
-              const SizedBox(height: 8),
-
-              // Fecha de entrega
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Entrega: ${dateFormat.format(order.deliveryDate)} - ${order.deliveryTime}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Sucursal
-              Row(
-                children: [
-                  const Icon(
-                    Icons.store,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Sucursal ${order.sucursal}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              const Divider(),
-              const SizedBox(height: 8),
-
-              // Resumen
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${order.totalQuantity} ${order.totalQuantity == 1 ? 'producto' : 'productos'}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    '\$${order.total.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.pierVerde,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime dt) {
+    final months = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }

@@ -1,4 +1,4 @@
-//lib/data/providers/auth_provider.dart
+// lib/data/providers/auth_provider.dart
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 
@@ -153,6 +153,17 @@ class AuthProvider with ChangeNotifier {
       codigo: codigo,
       nuevaPassword: nuevaPassword,
     );
+  }
+
+  // Actualizar datos del usuario en memoria después de editar perfil
+  // No afecta el backend — solo refresca la UI sin necesidad de re-login
+  void updateCurrentUser(Map<String, dynamic> updatedFields) {
+    if (_currentUser == null) return;
+    _currentUser = {
+      ..._currentUser!,
+      ...updatedFields,
+    };
+    notifyListeners();
   }
 
   void clearError() {

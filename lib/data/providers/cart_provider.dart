@@ -1,110 +1,76 @@
-//providers/cart_provider.dart
+// lib/data/providers/cart_provider.dart
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 
 class CartItem {
   final String id;
-  final String name;
+  final String nombre;
   final int quantity;
-  final double price;
-  final String imageUrl;
+  final double precio;
+  final String imagenUrl;
 
   CartItem({
     required this.id,
-    required this.name,
+    required this.nombre,
     required this.quantity,
-    required this.price,
-    required this.imageUrl,
+    required this.precio,
+    required this.imagenUrl,
   });
+
+  CartItem copyWith({int? quantity}) {
+    return CartItem(
+      id: id,
+      nombre: nombre,
+      precio: precio,
+      quantity: quantity ?? this.quantity,
+      imagenUrl: imagenUrl,
+    );
+  }
 }
 
 class CartProvider with ChangeNotifier {
   Map<String, CartItem> _items = {};
 
-  Map<String, CartItem> get items {
-    return {..._items};
-  }
+  Map<String, CartItem> get items => {..._items};
 
-  int get itemCount {
-    return _items.length;
-  }
-  
-  // Getter para el badge del icono de carrito
+  int get itemCount => _items.length;
+
   int get totalQuantity {
-    int total = 0;
-    _items.forEach((key, item) {
-      total += item.quantity;
-    });
-    return total;
+    return _items.values
+        .fold(0, (sum, item) => sum + item.quantity);
   }
 
-  // --- CÁLCULOS MONETARIOS ---
-
-  // CORRECCIÓN 1: Renombrado de 'total' a 'totalAmount' para que coincida con CheckoutScreen
   double get totalAmount {
-    double total = 0.0;
-    _items.forEach((key, item) {
-      total += item.price * item.quantity;
-    });
-    return total;
+    return _items.values
+        .fold(0.0, (sum, item) => sum + item.precio * item.quantity);
   }
 
-  // Si necesitas mostrar el desglose de impuestos en el futuro, puedes usar esto:
-  // (Asumiendo que el precio ya incluye IVA, lo desglosamos en vez de sumarlo)
-  double get estimatedTax {
-    return totalAmount * 0.16; 
-  }
-
-  // Verifica si un producto ya está en el carrito
-  bool isInCart(String productId) {
-    return _items.containsKey(productId);
-  }
-
-  // --- FUNCIONES DE GESTIÓN ---
+  bool isInCart(String productId) => _items.containsKey(productId);
 
   void addItem(Product product, [int quantity = 1]) {
     if (_items.containsKey(product.id)) {
       _items.update(
         product.id,
-        (existingCartItem) => CartItem(
-          id: existingCartItem.id,
-          name: existingCartItem.name,
-          price: existingCartItem.price,
-          quantity: existingCartItem.quantity + quantity,
-          imageUrl: existingCartItem.imageUrl,
-        ),
+        (existing) => existing.copyWith(
+            quantity: existing.quantity + quantity),
       );
     } else {
-      _items.putIfAbsent(
-        product.id,
-        () => CartItem(
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          quantity: quantity,
-          imageUrl: product.imageUrl,
-        ),
+      _items[product.id] = CartItem(
+        id: product.id,
+        nombre: product.nombre,
+        precio: product.precio,
+        quantity: quantity,
+        imagenUrl: product.imagenUrl,
       );
     }
     notifyListeners();
   }
 
-  // Método para el botón de (-)
   void removeSingleItem(String productId) {
-    if (!_items.containsKey(productId)) {
-      return;
-    }
+    if (!_items.containsKey(productId)) return;
     if (_items[productId]!.quantity > 1) {
-      _items.update(
-        productId,
-        (existingCartItem) => CartItem(
-          id: existingCartItem.id,
-          name: existingCartItem.name,
-          price: existingCartItem.price,
-          quantity: existingCartItem.quantity - 1,
-          imageUrl: existingCartItem.imageUrl,
-        ),
-      );
+      _items.update(productId,
+          (existing) => existing.copyWith(quantity: existing.quantity - 1));
     } else {
       _items.remove(productId);
     }
@@ -116,7 +82,6 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // CORRECCIÓN 2: Renombrado de 'clear' a 'clearCart' para coincidir con CheckoutScreen
   void clearCart() {
     _items = {};
     notifyListeners();

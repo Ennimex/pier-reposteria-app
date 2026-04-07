@@ -1,79 +1,80 @@
+// lib/data/models/order_model.dart
 import 'package:flutter/material.dart';
-import 'cart_item_model.dart';
 
-enum OrderStatus {
-  pending,
-  preparing,
-  ready,
-  completed,
-  cancelled,
+enum OrderStatus { pending, preparing, ready, completed, cancelled }
+
+class OrderItem {
+  final String nombre;
+  final int cantidad;
+  final String? tamano;
+  final double precioUnitario;
+  final double subtotal;
+
+  OrderItem({
+    required this.nombre,
+    required this.cantidad,
+    this.tamano,
+    required this.precioUnitario,
+    required this.subtotal,
+  });
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) {
+    return OrderItem(
+      nombre: json['nombre_producto'] ?? json['nombre'] ?? '',
+      cantidad: int.tryParse(json['cantidad']?.toString() ?? '1') ?? 1,
+      tamano: json['tamano'],
+      precioUnitario:
+          double.tryParse(json['precio_unitario']?.toString() ?? '0') ?? 0.0,
+      subtotal:
+          double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
+    );
+  }
 }
 
 class Order {
   final String id;
-  final List<CartItem> items;
-  final double subtotal;
-  final double tax;
+  final String numero;
+  final List<OrderItem> items;
   final double total;
-  final String sucursal;
-  final DateTime deliveryDate;
-  final String deliveryTime;
-  final String notes;
+  final String? notas;
+  final String? horarioRecogida;
+  final String? metodoPago;
   final OrderStatus status;
   final DateTime createdAt;
 
   Order({
     required this.id,
+    required this.numero,
     required this.items,
-    required this.subtotal,
-    required this.tax,
     required this.total,
-    required this.sucursal,
-    required this.deliveryDate,
-    required this.deliveryTime,
-    this.notes = '',
+    this.notas,
+    this.horarioRecogida,
+    this.metodoPago,
     this.status = OrderStatus.pending,
     required this.createdAt,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
-    // Parsear items del pedido
-    final itemsRaw = json['items'] ?? json['productos'] ?? [];
+    final itemsRaw = json['items'] ?? [];
     final items = (itemsRaw as List)
-        .map((i) => CartItem.fromJson(i as Map<String, dynamic>))
+        .map((i) => OrderItem.fromJson(i as Map<String, dynamic>))
         .toList();
 
     return Order(
-      id: json['id_pedido']?.toString() ??
-          json['id']?.toString() ??
-          json['numero_pedido']?.toString() ??
-          '',
+      id: json['id']?.toString() ?? '',
+      // El backend devuelve 'numero' (ej. PIER-260404-1234)
+      numero: json['numero']?.toString() ?? json['id']?.toString() ?? '',
       items: items,
-      subtotal: double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
-      tax: double.tryParse(json['impuesto']?.toString() ??
-              json['tax']?.toString() ??
-              '0') ??
-          0.0,
       total: double.tryParse(json['total']?.toString() ?? '0') ?? 0.0,
-      sucursal: json['sucursal'] ??
-          json['nombre_sucursal'] ??
-          json['sucursal_nombre'] ??
-          '',
-      deliveryDate: json['fecha_entrega'] != null
-          ? DateTime.tryParse(json['fecha_entrega'].toString()) ??
-              DateTime.now()
+      notas: json['notas'],
+      // El backend devuelve horario_recogida
+      horarioRecogida: json['horario_recogida'],
+      metodoPago: json['metodo_pago'],
+      status: _parseStatus(json['estado'] ?? 'pendiente'),
+      // El backend devuelve created_at
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      deliveryTime: json['hora_entrega'] ?? json['hora_recoleccion'] ?? '',
-      notes: json['notas'] ?? json['notes'] ?? '',
-      status: _parseStatus(
-          json['estado'] ?? json['status'] ?? 'pending'),
-      createdAt: json['fecha_creacion'] != null
-          ? DateTime.tryParse(json['fecha_creacion'].toString()) ??
-              DateTime.now()
-          : json['createdAt'] != null
-              ? DateTime.tryParse(json['createdAt'].toString()) ??
-                  DateTime.now()
-              : DateTime.now(),
     );
   }
 
@@ -88,11 +89,9 @@ class Order {
         return OrderStatus.preparing;
       case 'ready':
       case 'listo':
-      case 'listo_para_recoger':
         return OrderStatus.ready;
       case 'completed':
       case 'completado':
-      case 'entregado':
         return OrderStatus.completed;
       case 'cancelled':
       case 'cancelado':
@@ -102,36 +101,23 @@ class Order {
     }
   }
 
-  int get totalQuantity =>
-      items.fold(0, (sum, item) => sum + item.quantity);
-
   String get statusText {
     switch (status) {
-      case OrderStatus.pending:
-        return 'Pendiente';
-      case OrderStatus.preparing:
-        return 'En preparación';
-      case OrderStatus.ready:
-        return 'Listo para recoger';
-      case OrderStatus.completed:
-        return 'Completado';
-      case OrderStatus.cancelled:
-        return 'Cancelado';
+      case OrderStatus.pending:    return 'Pendiente';
+      case OrderStatus.preparing:  return 'En preparación';
+      case OrderStatus.ready:      return 'Listo para recoger';
+      case OrderStatus.completed:  return 'Completado';
+      case OrderStatus.cancelled:  return 'Cancelado';
     }
   }
 
   Color get statusColor {
     switch (status) {
-      case OrderStatus.pending:
-        return const Color(0xFFFFA500);
-      case OrderStatus.preparing:
-        return const Color(0xFF2196F3);
-      case OrderStatus.ready:
-        return const Color(0xFF4CAF50);
-      case OrderStatus.completed:
-        return const Color(0xFF9E9E9E);
-      case OrderStatus.cancelled:
-        return const Color(0xFFF44336);
+      case OrderStatus.pending:    return const Color(0xFFFFA500);
+      case OrderStatus.preparing:  return const Color(0xFF2196F3);
+      case OrderStatus.ready:      return const Color(0xFF4CAF50);
+      case OrderStatus.completed:  return const Color(0xFF9E9E9E);
+      case OrderStatus.cancelled:  return const Color(0xFFF44336);
     }
   }
 }

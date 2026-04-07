@@ -1,7 +1,7 @@
-//lib/presentation/screens/auth/register_screen.dart
+// lib/presentation/screens/auth/register_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter/gestures.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
@@ -17,329 +17,264 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  final _nameController = TextEditingController();
-  final _apellidoController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _nombreCtrl = TextEditingController();
+  final _apellidoCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
   bool _acceptTerms = false;
+  late final TapGestureRecognizer _termsRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap = () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const LegalScreen()));
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const LegalScreen()));
+  }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _apellidoController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _nombreCtrl.dispose();
+    _apellidoCtrl.dispose();
+    _emailCtrl.dispose();
+    _telefonoCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
   Future<void> _handleRegister() async {
     if (!_acceptTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes aceptar los términos y condiciones'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnack('Debes aceptar los términos y condiciones', Colors.red);
       return;
     }
+    if (!_formKey.currentState!.validate()) return;
 
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final result = await auth.register(
+      nombre: _nombreCtrl.text.trim(),
+      apellido: _apellidoCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      telefono: _telefonoCtrl.text.trim(),
+      password: _passwordCtrl.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      final result = await authProvider.register(
-        nombre: _nameController.text.trim(),
-        apellido: _apellidoController.text.trim(),
-        email: _emailController.text.trim(),
-        telefono: _phoneController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-
-      if (result['success'] == true) {
-        context.go(
-          AppRoutes.verificarEmail,
-          extra: {'email': _emailController.text.trim()},
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Error al registrar. Intenta nuevamente.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (result['success'] == true) {
+      context.go(AppRoutes.verificarEmail,
+          extra: {'email': _emailCtrl.text.trim()});
+    } else {
+      _showSnack(result['message'] ?? 'Error al registrar', Colors.red);
     }
+  }
+
+  void _showSnack(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Registro'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-        iconTheme: const IconThemeData(color: AppColors.pierVerde),
-      ),
+      backgroundColor: AppColors.pierArena,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Logo
+                const SizedBox(height: 20),
+
+                // ── HEADER ───────────────────────────────────────
+                Row(children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8)
+                        ],
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          size: 16, color: AppColors.textPrimary),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 20),
+
+                // ── LOGO ─────────────────────────────────────────
                 Center(
                   child: Container(
-                    width: 100,
-                    height: 100,
-                    margin: const EdgeInsets.only(bottom: 20),
+                    width: 90, height: 90,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.pierVerde.withAlpha(26),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
+                          color: AppColors.pierVerde.withValues(alpha: 0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(15),
+                    padding: const EdgeInsets.all(14),
                     child: Image.asset(
                       'assets/images/logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.cake, size: 50, color: AppColors.pierVerde),
+                      errorBuilder: (_, __, ___) => const Icon(Icons.cake,
+                          size: 40, color: AppColors.pierVerde),
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
 
-                const Text(
-                  'Crea tu cuenta',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Completa los siguientes datos',
-                  style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
+                const Text('Crea tu cuenta',
+                    style: TextStyle(
+                        fontFamily: 'Playfair Display',
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 6),
+                Text('Completa los siguientes datos',
+                    style: TextStyle(
+                        fontSize: 14, color: Colors.grey[500]),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 28),
 
-                // Nombre
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre',
-                    prefixIcon: const Icon(Icons.person_outline, color: AppColors.pierVerde),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu nombre';
-                    if (value.length < 2) return 'Mínimo 2 caracteres';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Apellido
-                TextFormField(
-                  controller: _apellidoController,
-                  decoration: InputDecoration(
-                    labelText: 'Apellido',
-                    prefixIcon: const Icon(Icons.person_outline, color: AppColors.pierVerde),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu apellido';
-                    if (value.length < 2) return 'Mínimo 2 caracteres';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Email
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.pierVerde),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu email';
-                    if (!value.contains('@')) return 'Email inválido';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Teléfono
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'Teléfono',
-                    prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.pierVerde),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu teléfono';
-                    if (value.length != 10) return 'Debe tener 10 dígitos';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Contraseña
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: !_isPasswordVisible,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.pierVerde),
+                // ── CAMPOS ───────────────────────────────────────
+                _field(_nombreCtrl, 'Nombre',
+                    Icons.person_outline_rounded,
+                    validator: (v) =>
+                        (v == null || v.length < 2)
+                            ? 'Mínimo 2 caracteres'
+                            : null),
+                const SizedBox(height: 12),
+                _field(_apellidoCtrl, 'Apellido',
+                    Icons.person_outline_rounded,
+                    validator: (v) =>
+                        (v == null || v.length < 2)
+                            ? 'Mínimo 2 caracteres'
+                            : null),
+                const SizedBox(height: 12),
+                _field(_emailCtrl, 'Email', Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v == null || v.isEmpty)
+                        return 'Ingresa tu email';
+                      if (!v.contains('@')) return 'Email inválido';
+                      return null;
+                    }),
+                const SizedBox(height: 12),
+                _field(_telefonoCtrl, 'Teléfono',
+                    Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                    validator: (v) =>
+                        (v == null || v.length != 10)
+                            ? 'Debe tener 10 dígitos'
+                            : null),
+                const SizedBox(height: 12),
+                _field(_passwordCtrl, 'Contraseña',
+                    Icons.lock_outline_rounded,
+                    obscureText: !_isPasswordVisible,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        color: Colors.grey,
+                        color: Colors.grey, size: 20,
                       ),
-                      onPressed: () =>
-                          setState(() => _isPasswordVisible = !_isPasswordVisible),
-                    ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
+                      onPressed: () => setState(
+                          () => _isPasswordVisible = !_isPasswordVisible),
                     ),
                     helperText: 'Mínimo 8 caracteres',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa una contraseña';
-                    if (value.length < 8) return 'Mínimo 8 caracteres';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Confirmar contraseña
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  obscureText: !_isConfirmPasswordVisible,
-                  decoration: InputDecoration(
-                    labelText: 'Confirmar contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.pierVerde),
+                    validator: (v) =>
+                        (v == null || v.length < 8)
+                            ? 'Mínimo 8 caracteres'
+                            : null),
+                const SizedBox(height: 12),
+                _field(_confirmPasswordCtrl, 'Confirmar contraseña',
+                    Icons.lock_outline_rounded,
+                    obscureText: !_isConfirmPasswordVisible,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isConfirmPasswordVisible
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        color: Colors.grey,
+                        color: Colors.grey, size: 20,
                       ),
-                      onPressed: () => setState(
-                          () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                      onPressed: () => setState(() =>
+                          _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.pierVerde, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Confirma tu contraseña';
-                    if (value != _passwordController.text)
-                      return 'Las contraseñas no coinciden';
-                    return null;
-                  },
-                ),
+                    validator: (v) =>
+                        v != _passwordCtrl.text
+                            ? 'Las contraseñas no coinciden'
+                            : null),
                 const SizedBox(height: 16),
 
-                // Términos y condiciones
+                // ── TÉRMINOS ─────────────────────────────────────
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Checkbox(
-                      value: _acceptTerms,
-                      activeColor: AppColors.pierVerde,
-                      onChanged: (value) =>
-                          setState(() => _acceptTerms = value ?? false),
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: _acceptTerms,
+                        activeColor: AppColors.pierVerde,
+                        onChanged: (v) =>
+                            setState(() => _acceptTerms = v ?? false),
+                      ),
                     ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: RichText(
                         text: TextSpan(
-                          style: const TextStyle(color: Colors.black87, fontSize: 14),
+                          style: TextStyle(
+                              color: Colors.grey[700], fontSize: 13),
                           children: [
                             const TextSpan(text: 'Acepto los '),
                             TextSpan(
                               text: 'Términos y Condiciones',
                               style: const TextStyle(
-                                color: AppColors.pierVerde,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => const LegalScreen()),
-                                  );
-                                },
+                                  color: AppColors.pierVerde,
+                                  fontWeight: FontWeight.bold),
+                              recognizer: _termsRecognizer,
                             ),
                             const TextSpan(text: ' y el '),
                             TextSpan(
                               text: 'Aviso de Privacidad',
                               style: const TextStyle(
-                                color: AppColors.pierVerde,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => const LegalScreen()),
-                                  );
-                                },
+                                  color: AppColors.pierVerde,
+                                  fontWeight: FontWeight.bold),
+                              recognizer: _privacyRecognizer,
                             ),
                           ],
                         ),
@@ -347,39 +282,75 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 24),
 
-                // Botón registrar
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.pierVerde,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                // ── BOTÓN REGISTRAR ──────────────────────────────
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleRegister,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.pierVerde,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20, width: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Text('Registrarse',
+                            style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text(
-                          'Registrarse',
-                          style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
-                        ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _field(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? helperText,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helperText,
+        prefixIcon: Icon(icon, color: AppColors.pierVerde, size: 20),
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: Colors.white,
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: Colors.grey.withValues(alpha: 0.2))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+                color: AppColors.pierVerde, width: 1.5)),
+        errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red)),
+        contentPadding: const EdgeInsets.all(14),
+      ),
+      validator: validator,
     );
   }
 }

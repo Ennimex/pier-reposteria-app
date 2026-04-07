@@ -1,7 +1,10 @@
+// lib/presentation/screens/client/more/more_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../routes/app_routes.dart';
 import '../../public/about_us_screen.dart';
@@ -11,6 +14,7 @@ import '../../public/legal_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../refunds/refunds_screen.dart';
+import '../reviews/my_reviews_screen.dart';
 import '../more/edit_profile_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -21,6 +25,49 @@ class MoreScreen extends StatefulWidget {
 }
 
 class _MoreScreenState extends State<MoreScreen> {
+  final ApiService _api = ApiService();
+
+  int _totalPedidos = 0;
+  int _totalFavoritos = 0;
+  int _totalResenas = 0;
+  bool _loadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarStats();
+    });
+  }
+
+  Future<void> _cargarStats() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      if (mounted) setState(() => _loadingStats = false);
+      return;
+    }
+
+    final results = await Future.wait([
+      _api.getAuth(ApiConstants.misPedidos),
+      _api.getAuth('/favoritos/ids'),
+      _api.getAuth(ApiConstants.misResenas),
+    ]);
+
+    if (!mounted) return;
+
+    setState(() {
+      _totalPedidos = results[0]['success'] == true
+          ? ((results[0]['pedidos'] ?? []) as List).length
+          : 0;
+      _totalFavoritos = results[1]['success'] == true
+          ? ((results[1]['ids'] ?? []) as List).length
+          : 0;
+      _totalResenas = results[2]['success'] == true
+          ? ((results[2]['resenas'] ?? []) as List).length
+          : 0;
+      _loadingStats = false;
+    });
+  }
 
   void _goProtected(Widget screen) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -34,19 +81,25 @@ class _MoreScreenState extends State<MoreScreen> {
   void _showLogoutDialog(AuthProvider auth) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Cerrar sesión'),
         content: const Text('¿Estás seguro que deseas cerrar tu sesión?'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
+            onPressed: () => Navigator.pop(dialogContext),
+            child:
+                Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () { Navigator.pop(context); auth.logout(); },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, elevation: 0),
-            child: const Text('Salir', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              auth.logout();
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, elevation: 0),
+            child: const Text('Salir',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -59,7 +112,8 @@ class _MoreScreenState extends State<MoreScreen> {
     final isAuth = auth.isAuthenticated;
     final nombre = auth.currentUser?['nombre']?.toString() ?? '';
     final email = auth.currentUser?['email']?.toString() ?? '';
-    final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U';
+    final inicial =
+        nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F2ED),
@@ -69,15 +123,10 @@ class _MoreScreenState extends State<MoreScreen> {
 
           // ── HERO HEADER ─────────────────────────────────────────
           _buildHeroHeader(isAuth, nombre, email, inicial, auth),
-
           const SizedBox(height: 20),
 
-          // ── BANNER REWARDS (solo guest) o STATS (autenticado) ───
-          if (!isAuth)
-            _buildRewardsBanner()
-          else
-            _buildStatsRow(),
-
+          // ── STATS (autenticado) o REWARDS BANNER (guest) ────────
+          if (isAuth) _buildStatsRow() else _buildRewardsBanner(),
           const SizedBox(height: 24),
 
           // ── MI CUENTA ───────────────────────────────────────────
@@ -124,7 +173,16 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.notifications_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Notificaciones',
-                onTap: () => _goProtected(const NotificationsScreen()),
+                onTap: () =>
+                    _goProtected(const NotificationsScreen()),
+              ),
+              _buildDivider(),
+              _buildTile(
+                icon: Icons.star_rounded,
+                iconColor: AppColors.pierDorado,
+                title: 'Mis Reseñas',
+                onTap: () =>
+                    _goProtected(const MyReviewsScreen()),
               ),
               _buildDivider(),
               _buildTile(
@@ -132,7 +190,6 @@ class _MoreScreenState extends State<MoreScreen> {
                 iconColor: AppColors.pierVerde,
                 title: 'Mis Reembolsos',
                 onTap: () => _goProtected(const RefundsScreen()),
-                showChevron: true,
                 last: true,
               ),
             ]),
@@ -158,32 +215,40 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.menu_book_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Nuestra Historia',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const AboutUsScreen())),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AboutUsScreen())),
               ),
               _buildDivider(),
               _buildTile(
                 icon: Icons.help_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Preguntas Frecuentes',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const FAQScreen())),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const FAQScreen())),
               ),
               _buildDivider(),
               _buildTile(
                 icon: Icons.chat_bubble_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Contacto',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const ContactScreen())),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ContactScreen())),
               ),
               _buildDivider(),
               _buildTile(
                 icon: Icons.shield_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Términos Legales y Privacidad',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const LegalScreen())),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const LegalScreen())),
                 last: true,
               ),
             ]),
@@ -191,7 +256,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
           const SizedBox(height: 24),
 
-          // ── BADGES ARTESANAL / FRESCO ────────────────────────────
+          // ── BADGES ───────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(children: [
@@ -199,7 +264,9 @@ class _MoreScreenState extends State<MoreScreen> {
                   Icons.cookie_outlined, 'Artesanal', 'Hecho a mano')),
               const SizedBox(width: 12),
               Expanded(child: _buildBadgeCard(
-                  Icons.local_fire_department_outlined, 'Fresco', 'Horneado hoy')),
+                  Icons.local_fire_department_outlined,
+                  'Fresco',
+                  'Horneado hoy')),
             ]),
           ),
 
@@ -327,16 +394,19 @@ class _MoreScreenState extends State<MoreScreen> {
                 color: Colors.white,
                 fontFamily: 'Playfair Display')),
         const SizedBox(height: 4),
-        Text('Ingresa a tu cuenta para ver tus pedidos, favoritos y más.',
+        Text(
+            'Ingresa a tu cuenta para ver tus pedidos, favoritos y más.',
             style: TextStyle(
-                fontSize: 13, color: Colors.white.withValues(alpha: 0.85))),
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.85))),
         const SizedBox(height: 14),
         SizedBox(
           width: double.infinity,
           height: 48,
           child: ElevatedButton.icon(
             onPressed: () => context.go(AppRoutes.login),
-            icon: const Icon(Icons.login_rounded, color: Colors.white, size: 18),
+            icon: const Icon(Icons.login_rounded,
+                color: Colors.white, size: 18),
             label: const Text('Iniciar Sesión',
                 style: TextStyle(
                     color: Colors.white,
@@ -395,14 +465,18 @@ class _MoreScreenState extends State<MoreScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const EditProfileScreen())),
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const EditProfileScreen())),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: const Text('Editar',
                   style: TextStyle(
@@ -416,7 +490,7 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  // ── REWARDS BANNER ───────────────────────────────────────────────
+  // ── REWARDS BANNER (solo guest) ──────────────────────────────────
   Widget _buildRewardsBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -425,7 +499,8 @@ class _MoreScreenState extends State<MoreScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFF5F0E8),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.pierDorado.withValues(alpha: 0.3)),
+          border: Border.all(
+              color: AppColors.pierDorado.withValues(alpha: 0.3)),
         ),
         child: Row(children: [
           Expanded(
@@ -441,18 +516,23 @@ class _MoreScreenState extends State<MoreScreen> {
                 const SizedBox(height: 6),
                 Text(
                     'Acumula puntos en cada compra y canjéalos por tus postres favoritos.',
-                    style: TextStyle(fontSize: 12, color: Colors.brown[400], height: 1.4)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.brown[400],
+                        height: 1.4)),
                 const SizedBox(height: 14),
                 GestureDetector(
                   onTap: () => context.go(AppRoutes.login),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: Colors.grey.withValues(alpha: 0.3)),
                     ),
-                    child: const Text('Saber más',
+                    child: const Text('Iniciar sesión',
                         style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -482,11 +562,12 @@ class _MoreScreenState extends State<MoreScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(children: [
-        _statCard('8', 'Pedidos'),
+        _statCard(_loadingStats ? '—' : '$_totalPedidos', 'Pedidos'),
         const SizedBox(width: 10),
-        _statCard('12', 'Favoritos'),
+        _statCard(
+            _loadingStats ? '—' : '$_totalFavoritos', 'Favoritos'),
         const SizedBox(width: 10),
-        _statCard('3', 'Reseñas'),
+        _statCard(_loadingStats ? '—' : '$_totalResenas', 'Reseñas'),
       ]),
     );
   }
@@ -506,19 +587,24 @@ class _MoreScreenState extends State<MoreScreen> {
           ],
         ),
         child: Column(children: [
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.pierVerde)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          _loadingStats
+              ? const SizedBox(
+                  height: 20, width: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.pierVerde))
+              : Text(value,
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.pierVerde)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: TextStyle(fontSize: 11, color: Colors.grey[500])),
         ]),
       ),
     );
   }
 
-  // ── BADGE CARD ───────────────────────────────────────────────────
   Widget _buildBadgeCard(IconData icon, String title, String sub) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18),
@@ -548,12 +634,12 @@ class _MoreScreenState extends State<MoreScreen> {
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary)),
         const SizedBox(height: 2),
-        Text(sub, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+        Text(sub,
+            style: TextStyle(fontSize: 11, color: Colors.grey[500])),
       ]),
     );
   }
 
-  // ── CARD WRAPPER ─────────────────────────────────────────────────
   Widget _buildCard({required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
@@ -570,13 +656,11 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  // ── TILE ─────────────────────────────────────────────────────────
   Widget _buildTile({
     required IconData icon,
     required Color iconColor,
     required String title,
     required VoidCallback onTap,
-    bool showChevron = true,
     bool last = false,
   }) {
     return Material(
@@ -584,10 +668,12 @@ class _MoreScreenState extends State<MoreScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: last
-            ? const BorderRadius.vertical(bottom: Radius.circular(18))
+            ? const BorderRadius.vertical(
+                bottom: Radius.circular(18))
             : BorderRadius.zero,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 14),
           child: Row(children: [
             Container(
               width: 36, height: 36,
@@ -605,7 +691,8 @@ class _MoreScreenState extends State<MoreScreen> {
                       fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary)),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.grey, size: 20),
+            const Icon(Icons.chevron_right_rounded,
+                color: Colors.grey, size: 20),
           ]),
         ),
       ),
