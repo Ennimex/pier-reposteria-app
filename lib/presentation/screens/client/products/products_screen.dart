@@ -1,3 +1,4 @@
+// lib/presentation/screens/client/products/products_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
@@ -57,9 +58,7 @@ class _ProductsScreenState extends State<ProductsScreen>
   @override
   void dispose() {
     _searchController.dispose();
-    for (final c in _cartControllers.values) {
-      c.dispose();
-    }
+    for (final c in _cartControllers.values) { c.dispose(); }
     super.dispose();
   }
 
@@ -78,7 +77,6 @@ class _ProductsScreenState extends State<ProductsScreen>
     }
   }
 
-  // Navega al detalle y recarga favoritos al regresar
   Future<void> _goToDetail(Product p) async {
     await Navigator.push(
       context,
@@ -92,8 +90,8 @@ class _ProductsScreenState extends State<ProductsScreen>
       final c = AnimationController(
           vsync: this, duration: const Duration(milliseconds: 500));
       _cartControllers[id] = c;
-      _cartAnims[id] = Tween<double>(begin: 1.0, end: 1.3)
-          .animate(CurvedAnimation(parent: c, curve: Curves.elasticOut));
+      _cartAnims[id] = Tween<double>(begin: 1.0, end: 1.3).animate(
+          CurvedAnimation(parent: c, curve: Curves.elasticOut));
     }
     return _cartControllers[id]!;
   }
@@ -152,7 +150,8 @@ class _ProductsScreenState extends State<ProductsScreen>
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         content: Row(children: [
-          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+          const Icon(Icons.check_circle_rounded,
+              color: Colors.white, size: 18),
           const SizedBox(width: 8),
           Expanded(child: Text('${p.nombre} agregado')),
         ]),
@@ -160,7 +159,8 @@ class _ProductsScreenState extends State<ProductsScreen>
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12)),
       ));
   }
 
@@ -171,30 +171,17 @@ class _ProductsScreenState extends State<ProductsScreen>
           MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
-
     final yaEsFav = _favoritos.contains(id);
-
     setState(() {
-      if (yaEsFav) {
-        _favoritos.remove(id);
-      } else {
-        _favoritos.add(id);
-      }
+      if (yaEsFav) { _favoritos.remove(id); } else { _favoritos.add(id); }
     });
-
     final result = yaEsFav
         ? await _api.deleteAuth(ApiConstants.favoritoById(id))
         : await _api.postAuth('/favoritos/$id', {});
-
     if (!mounted) return;
-
     if (result['success'] != true) {
       setState(() {
-        if (yaEsFav) {
-          _favoritos.add(id);
-        } else {
-          _favoritos.remove(id);
-        }
+        if (yaEsFav) { _favoritos.add(id); } else { _favoritos.remove(id); }
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al actualizar favorito'),
@@ -299,284 +286,296 @@ class _ProductsScreenState extends State<ProductsScreen>
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
     final products = _filtered(productProvider.productos);
+    final cartCount = context.watch<CartProvider>().totalQuantity;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F2ED),
-      body: CustomScrollView(
-        slivers: [
+      body: Column(
+        children: [
+          // ── HEADER VERDE COMPLETAMENTE FIJO ──────────────────────
+          _buildHeaderBackground(cartCount),
 
-          // ── HEADER VERDE ──────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              color: AppColors.pierVerde,
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 16,
-                left: 20, right: 20, bottom: 20,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Pier Repostería',
-                              style: TextStyle(
-                                  fontFamily: 'Playfair Display',
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                          Text('Artesanal & Gourmet',
-                              style: TextStyle(
-                                  fontSize: 13, color: Colors.white70)),
-                        ],
-                      ),
-                      Consumer<CartProvider>(
-                        builder: (context, cart, child) => Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: 44, height: 44,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.shopping_bag_outlined,
-                                  color: Colors.white, size: 22),
-                            ),
-                            if (cart.totalQuantity > 0)
-                              Positioned(
-                                right: -6, top: -6,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                      color: AppColors.pierDorado,
-                                      shape: BoxShape.circle),
-                                  child: Text('${cart.totalQuantity}',
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(50),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4))
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                      decoration: InputDecoration(
-                        hintText: 'Busca tu antojo...',
-                        hintStyle: TextStyle(
-                            color: Colors.grey[400], fontSize: 15),
-                        prefixIcon: const Icon(Icons.search_rounded,
-                            color: Colors.grey, size: 22),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.close_rounded,
-                                    color: Colors.grey, size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _searchQuery = '');
-                                })
-                            : IconButton(
-                                icon: const Icon(Icons.tune_rounded,
-                                    color: Colors.grey, size: 20),
-                                onPressed: _showSortSheet,
-                              ),
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── CHIPS DE CATEGORÍA ────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: SizedBox(
-                height: 36,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, i) {
-                    final cat = _categories[i];
-                    final sel = _category == cat['name'];
-                    return GestureDetector(
-                      onTap: () =>
-                          setState(() => _category = cat['name'] as String),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: sel ? AppColors.pierVerde : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: sel
-                                  ? AppColors.pierVerde
-                                  : Colors.grey.shade200),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(cat['icon'] as IconData,
-                                size: 13,
-                                color: sel ? Colors.white : Colors.grey[600]),
-                            const SizedBox(width: 6),
-                            Text(cat['name'] as String,
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: sel
-                                        ? FontWeight.bold
-                                        : FontWeight.w500,
-                                    color: sel
-                                        ? Colors.white
-                                        : Colors.grey[700])),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-
-          // ── HEADER RESULTADOS ─────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Nuestro Menú',
-                      style: TextStyle(
-                          fontFamily: 'Playfair Display',
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary)),
-                  GestureDetector(
-                    onTap: () => setState(() => _isGridView = !_isGridView),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+          // ── CHIPS DE CATEGORÍA FIJOS ──────────────────────────────
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categories.length,
+                // FIX: separatorBuilder parámetros con nombres distintos
+                separatorBuilder: (_, i) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final cat = _categories[i];
+                  final sel = _category == cat['name'];
+                  return GestureDetector(
+                    onTap: () =>
+                        setState(() => _category = cat['name'] as String),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: AppColors.pierVerde.withValues(alpha: 0.08),
+                        color: sel ? AppColors.pierVerde : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: AppColors.pierVerde.withValues(alpha: 0.2)),
+                            color: sel
+                                ? AppColors.pierVerde
+                                : Colors.grey.shade200),
                       ),
-                      child: Row(children: [
-                        Icon(
-                          _isGridView
-                              ? Icons.grid_view_rounded
-                              : Icons.view_list_rounded,
-                          color: AppColors.pierVerde,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          _isGridView ? 'Cuadrícula' : 'Lista',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.pierVerde,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ]),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(cat['icon'] as IconData,
+                              size: 13,
+                              color: sel ? Colors.white : Colors.grey[600]),
+                          const SizedBox(width: 6),
+                          Text(cat['name'] as String,
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: sel
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: sel
+                                      ? Colors.white
+                                      : Colors.grey[700])),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
 
-          if (_hasFilters)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: GestureDetector(
-                  onTap: _clearFilters,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+          // ── CONTENIDO SCROLLABLE ──────────────────────────────────
+          Expanded(
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.filter_alt_off_rounded,
-                            size: 14, color: Colors.red.shade400),
-                        const SizedBox(width: 6),
-                        Text('Quitar filtros',
+                        const Text('Nuestro Menú',
                             style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.red.shade400,
-                                fontWeight: FontWeight.w600)),
+                                fontFamily: 'Playfair Display',
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary)),
+                        GestureDetector(
+                          onTap: () =>
+                              setState(() => _isGridView = !_isGridView),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.pierVerde
+                                  .withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: AppColors.pierVerde
+                                      .withValues(alpha: 0.2)),
+                            ),
+                            child: Row(children: [
+                              Icon(
+                                _isGridView
+                                    ? Icons.grid_view_rounded
+                                    : Icons.view_list_rounded,
+                                color: AppColors.pierVerde,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                _isGridView ? 'Cuadrícula' : 'Lista',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.pierVerde,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ]),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ),
 
-          // ── CONTENIDO ─────────────────────────────────────────────
-          if (productProvider.isLoading)
-            const SliverFillRemaining(
-              child: Center(
-                  child: CircularProgressIndicator(
-                      color: AppColors.pierVerde)),
-            )
-          else if (products.isEmpty)
-            SliverFillRemaining(child: _buildEmptyState())
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) => _buildCard(products[i]),
-                  childCount: products.length,
-                ),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: _isGridView ? 2 : 1,
-                  childAspectRatio: _isGridView ? 0.63 : 3.2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-              ),
+                if (_hasFilters)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                      child: GestureDetector(
+                        onTap: _clearFilters,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.filter_alt_off_rounded,
+                                  size: 14, color: Colors.red.shade400),
+                              const SizedBox(width: 6),
+                              Text('Quitar filtros',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red.shade400,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                if (productProvider.isLoading)
+                  const SliverFillRemaining(
+                    child: Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.pierVerde)),
+                  )
+                else if (products.isEmpty)
+                  SliverFillRemaining(child: _buildEmptyState())
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    sliver: SliverGrid(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, i) => _buildCard(products[i]),
+                        childCount: products.length,
+                      ),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: _isGridView ? 2 : 1,
+                        childAspectRatio: _isGridView ? 0.63 : 3.2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // FIX: Container → Column con los 3 widgets como children
+  Widget _buildHeaderBackground(int cartCount) {
+    return Container(
+      color: AppColors.pierVerde,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 12,
+        left: 20, right: 20, bottom: 10,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Pier Repostería',
+                      style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  Text('Artesanal & Gourmet',
+                      style: TextStyle(
+                          fontSize: 13, color: Colors.white70)),
+                ],
+              ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.shopping_bag_outlined,
+                        color: Colors.white, size: 22),
+                  ),
+                  if (cartCount > 0)
+                    Positioned(
+                      right: -6, top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                            color: AppColors.pierDorado,
+                            shape: BoxShape.circle),
+                        child: Text('$cartCount',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildSearchBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(50),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4))
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (v) => setState(() => _searchQuery = v),
+        decoration: InputDecoration(
+          hintText: 'Busca tu antojo...',
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+          prefixIcon: const Icon(Icons.search_rounded,
+              color: Colors.grey, size: 22),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded,
+                      color: Colors.grey, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  })
+              : IconButton(
+                  icon: const Icon(Icons.tune_rounded,
+                      color: Colors.grey, size: 20),
+                  onPressed: _showSortSheet,
+                ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
       ),
     );
   }
 
   Widget _buildCard(Product p) {
     return GestureDetector(
-      onTap: () => _goToDetail(p), // ← recarga favoritos al regresar
+      onTap: () => _goToDetail(p),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -605,8 +604,9 @@ class _ProductsScreenState extends State<ProductsScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // FIX: errorBuilder con nombres distintos
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, e, __) => Container(
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined,
                         color: AppColors.pierVerde, size: 40),
@@ -623,7 +623,8 @@ class _ProductsScreenState extends State<ProductsScreen>
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.star_rounded, color: Colors.white, size: 10),
+                        Icon(Icons.star_rounded,
+                            color: Colors.white, size: 10),
                         SizedBox(width: 3),
                         Text('POPULAR',
                             style: TextStyle(
@@ -647,9 +648,11 @@ class _ProductsScreenState extends State<ProductsScreen>
                           ? Colors.red
                           : Colors.white,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 8)],
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 8)
+                      ],
                     ),
                     child: Icon(
                       _favoritos.contains(p.id)
@@ -688,7 +691,9 @@ class _ProductsScreenState extends State<ProductsScreen>
                     overflow: TextOverflow.ellipsis),
                 Text(p.descripcion,
                     style: TextStyle(
-                        fontSize: 10, color: Colors.grey[500], height: 1.3),
+                        fontSize: 10,
+                        color: Colors.grey[500],
+                        height: 1.3),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 Row(
@@ -751,8 +756,9 @@ class _ProductsScreenState extends State<ProductsScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // FIX: errorBuilder con nombres distintos
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, e, __) => Container(
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined,
                         color: AppColors.pierVerde, size: 36),
@@ -793,9 +799,11 @@ class _ProductsScreenState extends State<ProductsScreen>
                           ? Colors.red
                           : Colors.white,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 6)],
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 6)
+                      ],
                     ),
                     child: Icon(
                       _favoritos.contains(p.id)

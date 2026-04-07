@@ -31,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _productosComprados = [];
   Map<String, dynamic>? _pedidoActivo;
   int _notificacionesNoLeidas = 0;
+  List<Map<String, dynamic>> _promociones = [];
 
   final List<Map<String, dynamic>> _categories = [
     {'name': 'Pasteles',  'icon': Icons.cake_outlined},
@@ -104,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductProvider>().cargarProductos();
+      _cargarPromociones();
       _cargarDatosUsuario();
     });
   }
@@ -113,6 +115,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _timer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cargarPromociones() async {
+    final result = await _api.get('/promociones/activas');
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final lista = List<Map<String, dynamic>>.from(
+          result['promociones'] ?? []);
+      if (lista.isNotEmpty) {
+        setState(() => _promociones = lista);
+      }
+    }
   }
 
   Future<void> _cargarDatosUsuario() async {
@@ -446,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: _productosComprados.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
                 final p = _productosComprados[i];
                 final precio = double.tryParse(
@@ -503,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 Image.network(
                                   p['imagen_url'] ?? '',
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, _) => Container(
+                                  errorBuilder: (_, _, _) => Container(
                                     color: AppColors.pierArena,
                                     child: const Icon(Icons.cake_outlined,
                                         color: AppColors.pierVerde,
@@ -854,6 +868,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── OFERTAS RELÁMPAGO ─────────────────────────────────────────────
   Widget _buildPromos() {
+    // Si hay promociones del backend, usar esas; si no, usar las estáticas
+    final usarBackend = _promociones.isNotEmpty;
+    final count = usarBackend
+        ? (_promociones.length > 2 ? 2 : _promociones.length)
+        : _promos.length;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
@@ -872,14 +892,121 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 12),
           Row(
-            children: _promos.asMap().entries.map((e) {
-              final promo = e.value;
+            children: List.generate(count, (idx) {
+              // ── Datos reales del backend ──
+              if (usarBackend) {
+                final p = _promociones[idx];
+                final imagenUrl = p['producto_imagen']?.toString() ?? '';
+                final tag = p['badge_destacado']?.toString() ??
+                    (p['descuento_porcentaje'] != null
+                        ? '🔥 ${p['descuento_porcentaje']}% OFF'
+                        : '🎂 OFERTA');
+                final titulo = p['titulo_banner']?.toString() ??
+                    p['nombre_temporada']?.toString() ?? 'Oferta especial';
+                final subtitulo = p['subtitulo_banner']?.toString() ??
+                    (p['precio_oferta'] != null
+                        ? 'Desde \$${double.tryParse(p['precio_oferta'].toString())?.toStringAsFixed(0) ?? ''} MXN'
+                        : '');
+                final gradientColor = idx == 0
+                    ? AppColors.pierVerdeOscuro
+                    : AppColors.pierDoradoOscuro;
+
+                return Expanded(
+                  child: Container(
+                    margin: EdgeInsets.only(
+                        left: idx == 0 ? 0 : 8,
+                        right: idx == 0 ? 8 : 0),
+                    height: 130,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                            color: gradientColor.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4))
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          imagenUrl.isNotEmpty
+                              ? Image.network(imagenUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                        color: gradientColor))
+                              : Container(color: gradientColor),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  gradientColor.withValues(alpha: 0.5),
+                                  gradientColor.withValues(alpha: 0.88),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(tag,
+                                      style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white)),
+                                ),
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(titulo,
+                                        style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                    if (subtitulo.isNotEmpty)
+                                      Text(subtitulo,
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.85))),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              // ── Datos estáticos (fallback) ──
+              final promo = _promos[idx];
               final gradient = promo['gradient'] as List<Color>;
               return Expanded(
                 child: Container(
                   margin: EdgeInsets.only(
-                      left: e.key == 0 ? 0 : 8,
-                      right: e.key == 0 ? 8 : 0),
+                      left: idx == 0 ? 0 : 8,
+                      right: idx == 0 ? 8 : 0),
                   height: 130,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
@@ -898,8 +1025,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         Image.network(
                           promo['image'] as String,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
+                          errorBuilder: (_, __, ___) => Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                   colors: gradient,
@@ -924,14 +1050,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 7, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(promo['tag'] as String,
@@ -963,7 +1089,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               );
-            }).toList(),
+            }),
           ),
         ],
       ),
@@ -1096,7 +1222,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               children: [
                                 Image.network(p.imagenUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, _) => Container(
+                                    errorBuilder: (_, _, _) => Container(
                                           color: AppColors.pierArena,
                                           child: const Icon(
                                               Icons.cake_outlined,
