@@ -35,8 +35,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
+    for (final c in _controllers) { c.dispose(); }
+    for (final f in _focusNodes) { f.dispose(); }
     super.dispose();
   }
 
@@ -56,7 +56,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     if (success) {
       context.go(AppRoutes.main);
     } else {
-      for (final c in _controllers) c.clear();
+      for (final c in _controllers) { c.clear(); }
       _focusNodes[0].requestFocus();
       _showSnack(
           auth.errorMessage ?? 'Código inválido o expirado',

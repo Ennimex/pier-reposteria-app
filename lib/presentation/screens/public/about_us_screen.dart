@@ -21,7 +21,7 @@ class AboutUsScreen extends StatelessWidget {
                   Image.network(
                     'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&fit=crop',
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       color: AppColors.pierVerdeOscuro,
                       child: const Icon(Icons.storefront_outlined,
                           color: Colors.white54, size: 60),

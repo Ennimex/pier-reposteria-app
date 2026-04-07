@@ -147,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Image.asset(
                       'assets/images/logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.cake,
+                      errorBuilder: (_, _, _) => const Icon(Icons.cake,
                           size: 40, color: AppColors.pierVerde),
                     ),
                   ),
@@ -186,8 +186,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _field(_emailCtrl, 'Email', Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) {
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return 'Ingresa tu email';
+                      }
                       if (!v.contains('@')) return 'Email inválido';
                       return null;
                     }),

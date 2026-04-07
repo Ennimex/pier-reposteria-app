@@ -289,7 +289,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     child: Image.network(
                       p.imagenUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (_, _, _) => Container(
                         color: AppColors.pierArena,
                         child: const Icon(Icons.cake_outlined,
                             color: AppColors.pierVerde, size: 36),

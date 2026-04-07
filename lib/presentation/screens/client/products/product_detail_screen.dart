@@ -461,8 +461,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             ),
                             child: Row(children: [
                               _qtyBtn(Icons.remove_rounded, () {
-                                if (_quantity > 1)
+                                if (_quantity > 1) {
                                   setState(() => _quantity--);
+                                }
                               }),
                               Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -473,8 +474,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                         fontWeight: FontWeight.bold)),
                               ),
                               _qtyBtn(Icons.add_rounded, () {
-                                if (_quantity < 10)
+                                if (_quantity < 10) {
                                   setState(() => _quantity++);
+                                }
                               }),
                             ]),
                           ),
@@ -634,7 +636,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: relatedProducts.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(width: 12),
                           itemBuilder: (context, i) {
                             final p = relatedProducts[i];
@@ -672,7 +674,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                           children: [
                                             Image.network(p.imagenUrl,
                                                 fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) =>
+                                                errorBuilder: (_, _, _) =>
                                                     Container(
                                                       color:
                                                           AppColors.pierArena,

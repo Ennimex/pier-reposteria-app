@@ -278,7 +278,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               widget.product.imagenUrl,
                               width: 90, height: 90,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              errorBuilder: (_, _, _) => Container(
                                 width: 90, height: 90,
                                 color: AppColors.pierArena,
                                 child: const Icon(Icons.cake_outlined,

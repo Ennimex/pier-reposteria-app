@@ -118,7 +118,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                             padding:
                                 const EdgeInsets.fromLTRB(16, 0, 16, 32),
                             itemCount: _resenas.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 12),
                             itemBuilder: (context, i) =>
                                 _buildCard(_resenas[i]),
@@ -187,7 +187,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           productoImagen,
                           width: 52, height: 52,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _productoPlaceholder(),
+                          errorBuilder: (_, _, _) => _productoPlaceholder(),
                         )
                       : _productoPlaceholder(),
                 ),

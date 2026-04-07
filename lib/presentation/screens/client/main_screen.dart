@@ -62,8 +62,13 @@ class _MainScreenState extends State<MainScreen> {
     final isAuthenticated =
         context.watch<AuthProvider>().isAuthenticated;
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) Navigator.of(context).pop();
+      },
       child: Scaffold(
         body: IndexedStack(
           index: selectedIndex,

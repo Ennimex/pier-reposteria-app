@@ -267,7 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 horizontal: 20),
                             scrollDirection: Axis.horizontal,
                             itemCount: _favoritos.take(5).length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(width: 12),
                             itemBuilder: (context, i) {
                               final p = _favoritos[i];
@@ -293,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           width: 120, height: 100,
                                           fit: BoxFit.cover,
                                           errorBuilder:
-                                              (_, __, ___) => Container(
+                                              (_, _, _) => Container(
                                             width: 120, height: 100,
                                             color: AppColors.pierArena,
                                             child: const Icon(
@@ -604,7 +604,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? Image.network(imagenUrl,
                       width: 48, height: 48,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           _imagePlaceholder())
                   : _imagePlaceholder(),
             ),

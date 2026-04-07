@@ -106,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            errorBuilder: (_, _, _) => const Icon(
                                 Icons.cake,
                                 size: 50,
                                 color: AppColors.pierVerde),
@@ -272,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         : Image.asset(
                             'assets/images/google_logo.png',
                             height: 22, width: 22,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            errorBuilder: (_, _, _) => const Icon(
                                 Icons.g_mobiledata,
                                 size: 28,
                                 color: AppColors.textPrimary),

@@ -81,7 +81,7 @@ class CartScreen extends StatelessWidget {
                       padding:
                           const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       itemCount: cartItems.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final item = cartItems[index];
@@ -136,7 +136,7 @@ class CartScreen extends StatelessWidget {
                 item.imagenUrl,
                 width: 76, height: 76,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, _, _) => Container(
                   width: 76, height: 76,
                   color: AppColors.pierArena,
                   child: const Icon(Icons.cake_outlined,

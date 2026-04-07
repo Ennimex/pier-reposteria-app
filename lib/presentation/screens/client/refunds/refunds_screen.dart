@@ -149,7 +149,7 @@ class _RefundsScreenState extends State<RefundsScreen>
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: AnimatedBuilder(
                 animation: _tabController,
-                builder: (_, __) => Row(
+                builder: (_, _) => Row(
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
@@ -259,7 +259,7 @@ class _RefundsScreenState extends State<RefundsScreen>
       // ── FAB ─────────────────────────────────────────────────────
       floatingActionButton: AnimatedBuilder(
         animation: _tabController,
-        builder: (_, __) => _tabController.index == 0
+        builder: (_, _) => _tabController.index == 0
             ? FloatingActionButton.extended(
                 onPressed: () => _tabController.animateTo(1),
                 backgroundColor: AppColors.pierVerde,
@@ -630,7 +630,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                       border: InputBorder.none,
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 16)),
-                  value: _motivoSeleccionado,
+                  initialValue: _motivoSeleccionado,
                   hint: Text('Selecciona un motivo',
                       style: TextStyle(
                           color: Colors.grey[400], fontSize: 14)),

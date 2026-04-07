@@ -68,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen>
           Image.asset(
             'assets/images/fondo_splash_verde_pier.png',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
+            errorBuilder: (_, _, _) =>
                 Container(color: AppColors.pierVerde),
           ),
           Container(
@@ -103,7 +103,7 @@ class _SplashScreenState extends State<SplashScreen>
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            errorBuilder: (_, _, _) => const Icon(
                                 Icons.cake,
                                 size: 60,
                                 color: AppColors.pierVerde),

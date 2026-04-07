@@ -15,7 +15,6 @@ import '../favorites/favorites_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../refunds/refunds_screen.dart';
 import '../reviews/my_reviews_screen.dart';
-import '../more/edit_profile_screen.dart';
 import '../more/profile_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -351,7 +350,7 @@ class _MoreScreenState extends State<MoreScreen> {
           Image.network(
             'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&fit=crop',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               color: AppColors.pierVerdeOscuro,
               child: const Icon(Icons.bakery_dining_outlined,
                   color: Colors.white54, size: 60),

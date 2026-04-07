@@ -498,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               children: [
                                 Image.network(p['imagen_url'] ?? '',
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, e, __) => Container(
+                                    errorBuilder: (_, e, _) => Container(
                                       color: AppColors.pierArena,
                                       child: const Icon(Icons.cake_outlined,
                                           color: AppColors.pierVerde, size: 40),
@@ -858,7 +858,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: Stack(fit: StackFit.expand, children: [
                         imagenUrl.isNotEmpty
                             ? Image.network(imagenUrl, fit: BoxFit.cover,
-                                errorBuilder: (_, e, __) =>
+                                errorBuilder: (_, e, _) =>
                                     Container(color: gradientColor))
                             : Container(color: gradientColor),
                         Container(
@@ -934,7 +934,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Stack(fit: StackFit.expand, children: [
                       Image.network(promo['image'] as String,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, e, __) => Container(
+                          errorBuilder: (_, e, _) => Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                   colors: gradient,
@@ -1119,7 +1119,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               fit: StackFit.expand,
                               children: [
                                 Image.network(p.imagenUrl, fit: BoxFit.cover,
-                                    errorBuilder: (_, e, __) => Container(
+                                    errorBuilder: (_, e, _) => Container(
                                       color: AppColors.pierArena,
                                       child: const Icon(Icons.cake_outlined,
                                           color: AppColors.pierVerde, size: 40),

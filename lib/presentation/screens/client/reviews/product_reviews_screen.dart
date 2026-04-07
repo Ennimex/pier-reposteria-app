@@ -108,7 +108,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   Future<void> _cargarResenas() async {
     setState(() => _isLoading = true);
     final result =
-        await _api.get('/resenas/producto/' + widget.product.id);
+        await _api.get('/resenas/producto/${widget.product.id}');
     if (!mounted) return;
     if (result['success'] == true) {
       setState(() {

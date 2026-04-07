@@ -915,7 +915,7 @@ class _ProductsScreenState extends State<ProductsScreen>
             fit: StackFit.expand,
             children: [
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, e, __) => Container(
+                  errorBuilder: (_, e, _) => Container(
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined,
                         color: AppColors.pierVerde, size: 40),
@@ -1062,7 +1062,7 @@ class _ProductsScreenState extends State<ProductsScreen>
             fit: StackFit.expand,
             children: [
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, e, __) => Container(
+                  errorBuilder: (_, e, _) => Container(
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined,
                         color: AppColors.pierVerde, size: 36),

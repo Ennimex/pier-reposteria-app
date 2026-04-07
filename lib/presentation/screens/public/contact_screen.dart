@@ -342,7 +342,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16)),
-                            value: _tipoProducto,
+                            initialValue: _tipoProducto,
                             icon: const Icon(
                                 Icons.keyboard_arrow_down_rounded,
                                 color: AppColors.pierVerde),
