@@ -58,7 +58,7 @@ class CartScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                 child: Row(children: [
-                  const Icon(Icons.shopping_bag_outlined,
+                  const Icon(Icons.shopping_cart_outlined,
                       size: 13, color: AppColors.pierVerde),
                   const SizedBox(width: 5),
                   Text(
@@ -307,7 +307,7 @@ class CartScreen extends StatelessWidget {
               color: AppColors.pierVerde.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.shopping_bag_outlined,
+            child: Icon(Icons.shopping_cart_outlined,
                 size: 50,
                 color: AppColors.pierVerde.withValues(alpha: 0.5)),
           ),

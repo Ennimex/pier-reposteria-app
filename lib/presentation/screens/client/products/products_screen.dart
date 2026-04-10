@@ -9,6 +9,7 @@ import '../../../../../data/providers/cart_provider.dart';
 import '../../../../../data/providers/product_provider.dart';
 import '../../../../../data/models/product_model.dart';
 import '../../auth/login_screen.dart';
+import '../cart/cart_screen.dart';
 import 'product_detail_screen.dart';
 
 enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }
@@ -637,7 +638,17 @@ class _ProductsScreenState extends State<ProductsScreen>
 
           // ── CONTENIDO SCROLLABLE ──────────────────────────────────
           Expanded(
-            child: CustomScrollView(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                PaintingBinding.instance.imageCache.clear();
+                PaintingBinding.instance.imageCache.clearLiveImages();
+                await context.read<ProductProvider>().refrescar();
+                await _cargarCategorias();
+                await _cargarFiltros();
+              },
+              color: AppColors.pierVerde,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
@@ -738,9 +749,10 @@ class _ProductsScreenState extends State<ProductsScreen>
               ],
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
   }
 
   Widget _buildHeaderBackground(int cartCount) {
@@ -771,34 +783,42 @@ class _ProductsScreenState extends State<ProductsScreen>
                       style: TextStyle(fontSize: 13, color: Colors.white70)),
                 ],
               ),
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.shopping_bag_outlined,
-                        color: Colors.white, size: 22),
-                  ),
-                  if (cartCount > 0)
-                    Positioned(
-                      right: -6, top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                            color: AppColors.pierDorado,
-                            shape: BoxShape.circle),
-                        child: Text('$cartCount',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold)),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CartScreen()),
+                  );
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Icon(Icons.shopping_cart_outlined,
+                          color: Colors.white, size: 22),
                     ),
-                ],
+                    if (cartCount > 0)
+                      Positioned(
+                        right: -6, top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                              color: AppColors.pierDorado,
+                              shape: BoxShape.circle),
+                          child: Text('$cartCount',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),

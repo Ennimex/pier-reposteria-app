@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../data/models/product_model.dart';
@@ -34,6 +38,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   List<Map<String, dynamic>> _resenas = [];
   bool _loadingResenas = true;
   Map<String, dynamic>? _detalleProducto;
+  bool _isSharing = false;
 
   final List<Map<String, String>> _sizes = [
     {'label': 'Chico',  'sub': '4–6 pers.'},
@@ -113,7 +118,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _resenas = List<Map<String, dynamic>>.from(result['resenas'] ?? []);
         final imagenes = result['producto']?['imagenes'];
         if (imagenes is List && imagenes.isNotEmpty) {
-          _images = imagenes.map((e) => e.toString()).toList();
+          final urls = imagenes
+              .map((e) => e is Map ? (e['url'] ?? '').toString() : e.toString())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (urls.isNotEmpty) _images = urls;
+        } else if (imagenes is String && imagenes.trim().startsWith('[')) {
+          try {
+            final decoded = jsonDecode(imagenes);
+            if (decoded is List && decoded.isNotEmpty) {
+              final urls = decoded
+                  .map((e) => e is Map ? (e['url'] ?? '').toString() : e.toString())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+              if (urls.isNotEmpty) _images = urls;
+            }
+          } catch (_) {}
         }
         _loadingResenas = false;
       });
@@ -144,6 +164,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
     Navigator.pop(context);
+  }
+
+  void _shareProduct() async {
+    if (_isSharing) return;
+    setState(() => _isSharing = true);
+
+    final title = '¡Mira este delicioso producto!\n\n${widget.product.nombre} por solo \$${widget.product.precio.toStringAsFixed(2)}\n\nEncuéntralo en Pier Pastelería.';
+    
+    try {
+      if (widget.product.imagenUrl.isNotEmpty) {
+        final response = await http.get(Uri.parse(widget.product.imagenUrl)).timeout(const Duration(seconds: 5));
+        final tempDir = Directory.systemTemp;
+        final file = File('${tempDir.path}/producto_compartido.jpg');
+        await file.writeAsBytes(response.bodyBytes);
+        
+        await Share.shareXFiles(
+          [XFile(file.path)], 
+          text: title,
+        );
+      } else {
+        await Share.share(title);
+      }
+    } catch (_) {
+      // Si falla la descarga, compartimos solo el texto
+      await Share.share(title);
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
   }
 
 
@@ -226,7 +274,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             color: _isFavorite ? Colors.red : null,
                           ),
                           const SizedBox(width: 10),
-                          _topBtn(Icons.share_rounded, () {}),
+                          _topBtn(Icons.share_rounded, _shareProduct),
                         ]),
                       ],
                     ),
@@ -636,7 +684,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: relatedProducts.length,
-                          separatorBuilder: (_, _) =>
+                          separatorBuilder: (_, __) =>
                               const SizedBox(width: 12),
                           itemBuilder: (context, i) {
                             final p = relatedProducts[i];
@@ -674,7 +722,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                           children: [
                                             Image.network(p.imagenUrl,
                                                 fit: BoxFit.cover,
-                                                errorBuilder: (_, _, _) =>
+                                                errorBuilder: (_, __, ___) =>
                                                     Container(
                                                       color:
                                                           AppColors.pierArena,

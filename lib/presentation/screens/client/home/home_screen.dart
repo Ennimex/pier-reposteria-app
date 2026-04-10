@@ -206,7 +206,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFFF5F2ED),
       body: RefreshIndicator(
         onRefresh: () async {
-          context.read<ProductProvider>().refrescar();
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+          await context.read<ProductProvider>().refrescar();
           _cargarCategorias();
           _cargarPromociones();
           await _cargarDatosUsuario();
@@ -241,6 +243,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: _buildProductSection(
                   title: 'Algunos de nuestros productos',
                   productos: productProvider.populares,
+                ),
+              ),
+
+            // ── MEJOR CALIFICADOS ──────────────────────────────
+            if (productProvider.mejorCalificados.isNotEmpty)
+              SliverToBoxAdapter(
+                child: _buildProductSection(
+                  title: 'Mejor calificados ⭐',
+                  productos: productProvider.mejorCalificados,
+                ),
+              ),
+
+            // ── PRODUCTOS NUEVOS ────────────────────────────────
+            if (productProvider.nuevos.isNotEmpty)
+              SliverToBoxAdapter(
+                child: _buildProductSection(
+                  title: 'Recién llegados 🆕',
+                  productos: productProvider.nuevos,
                 ),
               ),
 
@@ -498,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               children: [
                                 Image.network(p['imagen_url'] ?? '',
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, e, _) => Container(
+                                    errorBuilder: (_, e, __) => Container(
                                       color: AppColors.pierArena,
                                       child: const Icon(Icons.cake_outlined,
                                           color: AppColors.pierVerde, size: 40),
@@ -858,7 +878,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: Stack(fit: StackFit.expand, children: [
                         imagenUrl.isNotEmpty
                             ? Image.network(imagenUrl, fit: BoxFit.cover,
-                                errorBuilder: (_, e, _) =>
+                                errorBuilder: (_, e, __) =>
                                     Container(color: gradientColor))
                             : Container(color: gradientColor),
                         Container(
@@ -934,7 +954,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Stack(fit: StackFit.expand, children: [
                       Image.network(promo['image'] as String,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, e, _) => Container(
+                          errorBuilder: (_, e, __) => Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                   colors: gradient,
@@ -1119,7 +1139,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               fit: StackFit.expand,
                               children: [
                                 Image.network(p.imagenUrl, fit: BoxFit.cover,
-                                    errorBuilder: (_, e, _) => Container(
+                                    errorBuilder: (_, e, __) => Container(
                                       color: AppColors.pierArena,
                                       child: const Icon(Icons.cake_outlined,
                                           color: AppColors.pierVerde, size: 40),

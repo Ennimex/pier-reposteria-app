@@ -6,6 +6,7 @@ import '../../../../data/models/product_model.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../auth/login_screen.dart';
 import 'create_review_screen.dart';
 
 class ProductReviewsScreen extends StatefulWidget {
@@ -67,6 +68,12 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   }
 
   Future<void> _toggleLike(Map<String, dynamic> resena) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
     final id = resena['id'].toString();
     final yaLiked = _likedIds.contains(id);
     final currentCount = int.tryParse(resena['util_count']?.toString() ?? '0') ?? 0;
@@ -189,38 +196,45 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                       ],
                     ),
                   ),
-                  if (auth.isAuthenticated)
-                    GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => CreateReviewScreen(
-                                product: widget.product)),
-                      ).then((_) => _cargarResenas()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: AppColors.pierVerde,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.edit_rounded,
-                                color: Colors.white, size: 14),
-                            SizedBox(width: 5),
-                            Text('Escribir',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+                  GestureDetector(
+                    onTap: () {
+                      if (auth.isAuthenticated) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => CreateReviewScreen(
+                                  product: widget.product)),
+                        ).then((_) => _cargarResenas());
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const LoginScreen()),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: AppColors.pierVerde,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    )
-                  else
-                    const SizedBox(width: 40),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit_rounded,
+                              color: Colors.white, size: 14),
+                          SizedBox(width: 5),
+                          Text('Escribir',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

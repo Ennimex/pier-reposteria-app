@@ -21,6 +21,19 @@ class ProductProvider with ChangeNotifier {
   List<Product> get recientes =>
       _productos.where((p) => p.disponible).take(6).toList();
 
+  // Mejor calificados — rating > 0, ordenados desc, máx 8
+  List<Product> get mejorCalificados {
+    final lista = _productos
+        .where((p) => p.disponible && p.rating > 0)
+        .toList()
+      ..sort((a, b) => b.rating.compareTo(a.rating));
+    return lista.take(8).toList();
+  }
+
+  // Productos nuevos — es_nuevo = true
+  List<Product> get nuevos =>
+      _productos.where((p) => p.disponible && p.esNuevo).take(8).toList();
+
   List<Product> byCategoria(String categoria) {
     if (categoria == 'Todos') {
       return _productos.where((p) => p.disponible).toList();

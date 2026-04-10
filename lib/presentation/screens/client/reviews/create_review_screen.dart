@@ -4,6 +4,9 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../data/models/product_model.dart';
+import 'package:provider/provider.dart';
+import '../../../../data/providers/auth_provider.dart';
+import '../../auth/login_screen.dart';
 
 class CreateReviewScreen extends StatefulWidget {
   final Product product;
@@ -38,6 +41,12 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
   }
 
   Future<void> _enviar() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
     if (_rating == 0) {
       _showSnack('Selecciona una calificación', Colors.red);
       return;

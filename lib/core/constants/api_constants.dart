@@ -2,14 +2,14 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConstants {
-  static const String _webUrl    = 'http://localhost:5000/api';
-  static const String _mobileUrl = 'http://192.168.0.82:5000/api';
+  // static const String _webUrl    = 'http://localhost:5000/api';
+  // static const String _mobileUrl = 'http://192.168.0.82:5000/api';
   // static const String _emulatorUrl = 'http://10.0.2.2:5000/api';
-  // static const String _prodUrl = 'https://pier-reposteria-backend.onrender.com/api';
+  static const String _prodUrl = 'https://pier-reposteria-backend.onrender.com/api';
 
   static String get baseUrl {
-    // return _prodUrl; // ← descomentar para producción
-    return kIsWeb ? _webUrl : _mobileUrl;
+    return _prodUrl; // ← descomentar para producción
+    // return kIsWeb ? _webUrl : _mobileUrl;
   }
 
   // ── AUTH ─────────────────────────────────────────────────────────

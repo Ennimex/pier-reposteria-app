@@ -1,3 +1,4 @@
+import 'dart:convert';
 // lib/data/models/product_model.dart
 class Product {
   final String id;
@@ -43,7 +44,25 @@ class Product {
   // Método estático — Dart no permite funciones locales tipadas dentro de factories
   static List<String> _parseList(dynamic val) {
     if (val == null) return const [];
-    if (val is List) return List<String>.from(val.map((e) => e.toString()));
+    if (val is List) {
+      return val.map((e) {
+        // Si el elemento es un objeto {url, public_id} extraer url
+        if (e is Map) return (e['url'] ?? '').toString();
+        return e.toString();
+      }).where((s) => s.isNotEmpty).toList();
+    }
+    // Backend devuelve JSON string desde PostgreSQL
+    if (val is String && val.trim().startsWith('[')) {
+      try {
+        final decoded = jsonDecode(val);
+        if (decoded is List) {
+          return decoded.map((e) {
+            if (e is Map) return (e['url'] ?? '').toString();
+            return e.toString();
+          }).where((s) => s.isNotEmpty).toList();
+        }
+      } catch (_) {}
+    }
     return const [];
   }
 

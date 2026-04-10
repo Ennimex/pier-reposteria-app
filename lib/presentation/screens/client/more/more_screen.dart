@@ -511,7 +511,7 @@ class _MoreScreenState extends State<MoreScreen> {
                         fontFamily: 'Playfair Display')),
                 const SizedBox(height: 6),
                 Text(
-                    'Acumula puntos en cada compra y canjéalos por tus postres favoritos.',
+                    '¡Tus compras tienen premio! Regístrate para participar en nuestros sorteos exclusivos. Mientras más postres disfrutes, más oportunidades tienes de ganar sorpresas increíbles.',
                     style: TextStyle(
                         fontSize: 12,
                         color: Colors.brown[400],
