@@ -662,6 +662,125 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ? AppColors.pierVerdeOscuro : AppColors.pierDoradoOscuro;
 
                 return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      final productoId = p['producto_id']?.toString() ??
+                          p['id_producto']?.toString();
+                      if (productoId != null && productoId.isNotEmpty) {
+                        final productProvider =
+                            Provider.of<ProductProvider>(context, listen: false);
+                        final producto = productProvider.productos.firstWhere(
+                          (prod) => prod.id.toString() == productoId,
+                          orElse: () => Product(
+                              id: '', nombre: '', descripcion: '',
+                              precio: 0, categoria: '', imagenUrl: ''),
+                        );
+                        if (producto.id.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ProductDetailScreen(product: producto),
+                            ),
+                          );
+                          return;
+                        }
+                      }
+                      context.read<NavigationProvider>().goCatalogo();
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(
+                          left: idx == 0 ? 0 : 8, right: idx == 0 ? 8 : 0),
+                      height: 130,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(
+                            color: gradientColor.withValues(alpha: 0.3),
+                            blurRadius: 12, offset: const Offset(0, 4))],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Stack(fit: StackFit.expand, children: [
+                          imagenUrl.isNotEmpty
+                              ? Image.network(imagenUrl, fit: BoxFit.cover,
+                                  errorBuilder: (_, e, __) =>
+                                      Container(color: gradientColor))
+                              : Container(color: gradientColor),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  gradientColor.withValues(alpha: 0.5),
+                                  gradientColor.withValues(alpha: 0.88),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(tag,
+                                      style: const TextStyle(
+                                          fontSize: 9, fontWeight: FontWeight.w700,
+                                          color: Colors.white)),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(titulo,
+                                        style: const TextStyle(
+                                            fontSize: 15, fontWeight: FontWeight.w900,
+                                            color: Colors.white),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                    if (subtitulo.isNotEmpty)
+                                      Text(subtitulo,
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.85))),
+                                    const SizedBox(height: 2),
+                                    Row(children: [
+                                      const Text('Ver detalle',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(width: 2),
+                                      Icon(Icons.arrow_forward_ios_rounded,
+                                          size: 9,
+                                          color: Colors.white
+                                              .withValues(alpha: 0.9)),
+                                    ]),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final promo = _promos[idx];
+              final gradient = promo['gradient'] as List<Color>;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => context.read<NavigationProvider>().goCatalogo(),
                   child: Container(
                     margin: EdgeInsets.only(
                         left: idx == 0 ? 0 : 8, right: idx == 0 ? 8 : 0),
@@ -669,25 +788,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [BoxShadow(
-                          color: gradientColor.withValues(alpha: 0.3),
+                          color: gradient[0].withValues(alpha: 0.3),
                           blurRadius: 12, offset: const Offset(0, 4))],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Stack(fit: StackFit.expand, children: [
-                        imagenUrl.isNotEmpty
-                            ? Image.network(imagenUrl, fit: BoxFit.cover,
-                                errorBuilder: (_, e, __) =>
-                                    Container(color: gradientColor))
-                            : Container(color: gradientColor),
+                        Image.network(promo['image'] as String,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, e, __) => Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                    colors: gradient,
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight),
+                              ),
+                            )),
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                gradientColor.withValues(alpha: 0.5),
-                                gradientColor.withValues(alpha: 0.88),
+                                gradient[0].withValues(alpha: 0.5),
+                                gradient[0].withValues(alpha: 0.85),
                               ],
                             ),
                           ),
@@ -705,7 +829,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(tag,
+                                child: Text(promo['tag'] as String,
                                     style: const TextStyle(
                                         fontSize: 9, fontWeight: FontWeight.w700,
                                         color: Colors.white)),
@@ -713,17 +837,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(titulo,
+                                  Text(promo['title'] as String,
                                       style: const TextStyle(
-                                          fontSize: 15, fontWeight: FontWeight.w900,
-                                          color: Colors.white),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
-                                  if (subtitulo.isNotEmpty)
-                                    Text(subtitulo,
+                                          fontSize: 16, fontWeight: FontWeight.w900,
+                                          color: Colors.white)),
+                                  Text(promo['subtitle'] as String,
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.white.withValues(alpha: 0.85))),
+                                  const SizedBox(height: 2),
+                                  Row(children: [
+                                    const Text('Ver catálogo',
                                         style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.white.withValues(alpha: 0.85))),
+                                            fontSize: 10,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(width: 2),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        size: 9,
+                                        color: Colors.white.withValues(alpha: 0.9)),
+                                  ]),
                                 ],
                               ),
                             ],
@@ -731,83 +864,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ]),
                     ),
-                  ),
-                );
-              }
-
-              final promo = _promos[idx];
-              final gradient = promo['gradient'] as List<Color>;
-              return Expanded(
-                child: Container(
-                  margin: EdgeInsets.only(
-                      left: idx == 0 ? 0 : 8, right: idx == 0 ? 8 : 0),
-                  height: 130,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(
-                        color: gradient[0].withValues(alpha: 0.3),
-                        blurRadius: 12, offset: const Offset(0, 4))],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Stack(fit: StackFit.expand, children: [
-                      Image.network(promo['image'] as String,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, e, __) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                  colors: gradient,
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight),
-                            ),
-                          )),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              gradient[0].withValues(alpha: 0.5),
-                              gradient[0].withValues(alpha: 0.85),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(promo['tag'] as String,
-                                  style: const TextStyle(
-                                      fontSize: 9, fontWeight: FontWeight.w700,
-                                      color: Colors.white)),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(promo['title'] as String,
-                                    style: const TextStyle(
-                                        fontSize: 16, fontWeight: FontWeight.w900,
-                                        color: Colors.white)),
-                                Text(promo['subtitle'] as String,
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.white.withValues(alpha: 0.85))),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ]),
                   ),
                 ),
               );
