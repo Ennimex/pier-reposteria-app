@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../constants/api_constants.dart';
+import '../utils/logger.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
 
@@ -112,6 +113,7 @@ class AuthService {
 
       return result;
     } catch (e) {
+      PierLog.error('Error al iniciar sesión con Google: $e');
       return {
         'success': false,
         'message': 'Error al iniciar sesión con Google: $e'
@@ -128,7 +130,8 @@ class AuthService {
       if (!kIsWeb) {
         await _googleSignIn.signOut();
       }
-    } catch (_) {
+    } catch (e) {
+      PierLog.error('Error cerrando sesión en backend: $e');
       // Si falla el backend, igual limpiamos local
     } finally {
       await _storage.clearAll();

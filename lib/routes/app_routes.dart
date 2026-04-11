@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../core/utils/logger.dart';
 import '../data/providers/auth_provider.dart';
 import '../data/models/product_model.dart';
 import '../data/models/order_model.dart';
@@ -71,7 +72,7 @@ class AppRoutes {
         final isAuth = authProvider.isAuthenticated;
         final loc = state.matchedLocation;
 
-        debugPrint('🟡 [Router] redirect loc=$loc isAuth=$isAuth');
+        PierLog.nav('redirect loc=$loc isAuth=$isAuth');
 
         if (loc == splash) return null;
 

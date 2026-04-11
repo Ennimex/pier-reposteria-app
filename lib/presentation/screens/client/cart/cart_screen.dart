@@ -6,13 +6,36 @@ import '../../../../data/providers/cart_provider.dart';
 import '../../../../data/models/product_model.dart';
 import '../checkout/checkout_screen.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<CartProvider>().cargarDesdeBackend();
+      if (mounted) setState(() => _loading = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final cart = Provider.of<CartProvider>(context);
     final cartItems = cart.items.values.toList();
+
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: AppColors.pierArena,
+        body: Center(child: CircularProgressIndicator(color: AppColors.pierVerde)),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -58,7 +81,7 @@ class CartScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                 child: Row(children: [
-                  const Icon(Icons.shopping_cart_outlined,
+                  const Icon(Icons.shopping_bag_outlined,
                       size: 13, color: AppColors.pierVerde),
                   const SizedBox(width: 5),
                   Text(
@@ -81,7 +104,7 @@ class CartScreen extends StatelessWidget {
                       padding:
                           const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       itemCount: cartItems.length,
-                      separatorBuilder: (_, _) =>
+                      separatorBuilder: (_, __) =>
                           const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final item = cartItems[index];
@@ -136,7 +159,7 @@ class CartScreen extends StatelessWidget {
                 item.imagenUrl,
                 width: 76, height: 76,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
+                errorBuilder: (_, __, ___) => Container(
                   width: 76, height: 76,
                   color: AppColors.pierArena,
                   child: const Icon(Icons.cake_outlined,
@@ -307,7 +330,7 @@ class CartScreen extends StatelessWidget {
               color: AppColors.pierVerde.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.shopping_cart_outlined,
+            child: Icon(Icons.shopping_bag_outlined,
                 size: 50,
                 color: AppColors.pierVerde.withValues(alpha: 0.5)),
           ),
@@ -361,9 +384,9 @@ class CartScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
-              cart.clearCart();
-              Navigator.pop(context);
+            onPressed: () async {
+              await cart.clearCart();
+              if (context.mounted) Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red, elevation: 0),

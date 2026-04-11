@@ -1,5 +1,6 @@
 // lib/data/providers/order_provider.dart
 import 'package:flutter/foundation.dart';
+import '../../core/utils/logger.dart';
 import '../models/order_model.dart';
 import '../../core/services/api_service.dart';
 import '../../core/constants/api_constants.dart';
@@ -28,6 +29,7 @@ class OrderProvider extends ChangeNotifier {
       .toList();
 
   Future<void> cargarPedidos() async {
+    PierLog.info('📦 Descargando historial de pedidos...');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -41,8 +43,10 @@ class OrderProvider extends ChangeNotifier {
       _orders = (data as List)
           .map((json) => Order.fromJson(json as Map<String, dynamic>))
           .toList();
+      PierLog.info('✅ Historial de pedidos cargados: ${_orders.length}');
     } else {
       _errorMessage = result['message'] ?? 'Error al cargar pedidos';
+      PierLog.error('Error al cargar pedidos: $_errorMessage');
     }
 
     notifyListeners();

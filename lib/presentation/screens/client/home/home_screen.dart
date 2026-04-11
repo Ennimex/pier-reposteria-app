@@ -276,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── HEADER ────────────────────────────────────────────────────────
   Widget _buildHeader(AuthProvider auth) {
     final nombre = auth.currentUser?['nombre']?.toString().split(' ').first ?? '';
+    final fotoUrl = auth.currentUser?['foto_url']?.toString();
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 16,
@@ -306,9 +307,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           if (auth.isAuthenticated)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: GestureDetector(
+            GestureDetector(
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const NotificationsScreen()),
@@ -354,31 +353,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-            ),
-          Container(
-            width: 46, height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [AppColors.pierVerde, AppColors.pierVerdeOscuro],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [BoxShadow(
-                color: AppColors.pierVerde.withValues(alpha: 0.3),
-                blurRadius: 10, offset: const Offset(0, 4),
-              )],
-            ),
-            child: Center(
-              child: auth.isAuthenticated && nombre.isNotEmpty
-                  ? Text(nombre[0].toUpperCase(),
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 20,
-                          fontWeight: FontWeight.bold))
-                  : const Icon(Icons.person_rounded,
-                      color: Colors.white, size: 24),
-            ),
-          ),
         ],
       ),
     );

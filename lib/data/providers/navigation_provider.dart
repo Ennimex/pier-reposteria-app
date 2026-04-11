@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/logger.dart';
 
 class NavigationProvider extends ChangeNotifier {
   int _selectedIndex = 0;
@@ -6,8 +7,11 @@ class NavigationProvider extends ChangeNotifier {
   int get selectedIndex => _selectedIndex;
 
   void setSelectedIndex(int index) {
-    _selectedIndex = index;
-    notifyListeners();
+    if (_selectedIndex != index) {
+      PierLog.nav('Cambiando a pestaña index: $index');
+      _selectedIndex = index;
+      notifyListeners();
+    }
   }
 
   void goToHome() => setSelectedIndex(0);

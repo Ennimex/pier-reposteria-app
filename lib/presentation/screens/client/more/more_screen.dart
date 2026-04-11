@@ -110,10 +110,15 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final isAuth = auth.isAuthenticated;
-    final nombre = auth.currentUser?['nombre']?.toString() ?? '';
-    final email = auth.currentUser?['email']?.toString() ?? '';
-    final inicial =
-        nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U';
+    final user = auth.currentUser;
+    final nombre = user?['nombre']?.toString() ?? '';
+    final apellido = user?['apellido']?.toString() ?? '';
+    final email = user?['email']?.toString() ?? '';
+    final apellidoInicial =
+        apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
+    final iniciales =
+        '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}$apellidoInicial';
+    final fotoUrl = user?['foto_url']?.toString();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F2ED),
@@ -122,7 +127,7 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
 
           // ── HERO HEADER ─────────────────────────────────────────
-          _buildHeroHeader(isAuth, nombre, email, inicial, auth),
+          _buildHeroHeader(isAuth, nombre, email, iniciales, fotoUrl, auth),
           const SizedBox(height: 20),
 
           // ── STATS (autenticado) o REWARDS BANNER (guest) ────────
@@ -341,7 +346,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   // ── HERO HEADER ──────────────────────────────────────────────────
   Widget _buildHeroHeader(bool isAuth, String nombre, String email,
-      String inicial, AuthProvider auth) {
+      String iniciales, String? fotoUrl, AuthProvider auth) {
     return SizedBox(
       height: 220,
       child: Stack(
@@ -374,7 +379,7 @@ class _MoreScreenState extends State<MoreScreen> {
               left: 20, right: 20, bottom: 20,
             ),
             child: isAuth
-                ? _heroAuthContent(nombre, email, inicial, auth)
+                ? _heroAuthContent(nombre, email, iniciales, fotoUrl, auth)
                 : _heroGuestContent(),
           ),
         ],
@@ -425,7 +430,7 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   Widget _heroAuthContent(
-      String nombre, String email, String inicial, AuthProvider auth) {
+      String nombre, String email, String iniciales, String? fotoUrl, AuthProvider auth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.end,
@@ -437,13 +442,28 @@ class _MoreScreenState extends State<MoreScreen> {
               color: Color(0xFFF5E6D3),
               shape: BoxShape.circle,
             ),
-            child: Center(
-              child: Text(inicial,
-                  style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.pierDoradoOscuro)),
-            ),
+            child: fotoUrl != null && fotoUrl.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      fotoUrl,
+                      width: 52, height: 52,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Text(iniciales.isNotEmpty ? iniciales : 'U',
+                            style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.pierDoradoOscuro)),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(iniciales.isNotEmpty ? iniciales : 'U',
+                        style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.pierDoradoOscuro)),
+                  ),
           ),
           const SizedBox(width: 14),
           Expanded(

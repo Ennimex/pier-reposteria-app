@@ -14,6 +14,7 @@ import '../../../../../core/constants/api_constants.dart';
 import '../../auth/login_screen.dart';
 import '../reviews/create_review_screen.dart';
 import '../reviews/product_reviews_screen.dart';
+import '../../../../../core/utils/logger.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -133,7 +134,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   .toList();
               if (urls.isNotEmpty) _images = urls;
             }
-          } catch (_) {}
+          } catch (e) {
+            PierLog.error('Error decodificando imagenes JSON en detalle: $e');
+          }
         }
         _loadingResenas = false;
       });
@@ -186,7 +189,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       } else {
         await Share.share(title);
       }
-    } catch (_) {
+    } catch (e) {
+      PierLog.error('Fallo la descarga de la imagen para compartir: $e');
       // Si falla la descarga, compartimos solo el texto
       await Share.share(title);
     } finally {
@@ -206,7 +210,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       if (diff.inDays < 7) return 'Hace ${diff.inDays} días';
       if (diff.inDays < 30) return 'Hace ${(diff.inDays / 7).floor()} sem.';
       return 'Hace ${(diff.inDays / 30).floor()} mes';
-    } catch (_) {
+    } catch (e) {
+      PierLog.error('Error formateando fecha de reseña: $e');
       return '';
     }
   }

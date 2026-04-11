@@ -1,8 +1,9 @@
 // lib/presentation/screens/client/checkout/order_success_screen.dart
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../main_screen.dart';
-
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../../data/providers/navigation_provider.dart';
 class OrderSuccessScreen extends StatelessWidget {
   final String orderId;
   final String pickupDate;
@@ -97,11 +98,10 @@ class OrderSuccessScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MainScreen()),
-                    (r) => false,
-                  ),
+                  onPressed: () {
+                    context.read<NavigationProvider>().setSelectedIndex(0);
+                    context.go('/main');
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.pierVerde,
                     padding: const EdgeInsets.symmetric(vertical: 16),

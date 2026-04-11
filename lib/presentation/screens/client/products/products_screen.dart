@@ -7,6 +7,7 @@ import '../../../../../core/constants/api_constants.dart';
 import '../../../../../data/providers/auth_provider.dart';
 import '../../../../../data/providers/cart_provider.dart';
 import '../../../../../data/providers/product_provider.dart';
+import '../../../../../data/providers/navigation_provider.dart';
 import '../../../../../data/models/product_model.dart';
 import '../../auth/login_screen.dart';
 import '../cart/cart_screen.dart';
@@ -785,10 +786,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               ),
               GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CartScreen()),
-                  );
+                  context.read<NavigationProvider>().setSelectedIndex(2);
                 },
                 child: Stack(
                   clipBehavior: Clip.none,

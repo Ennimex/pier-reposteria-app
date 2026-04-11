@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../core/utils/logger.dart';
 // lib/data/models/product_model.dart
 class Product {
   final String id;
@@ -61,7 +62,9 @@ class Product {
             return e.toString();
           }).where((s) => s.isNotEmpty).toList();
         }
-      } catch (_) {}
+      } catch (e) {
+        PierLog.error('Error parseando imagen JSON: $e');
+      }
     }
     return const [];
   }

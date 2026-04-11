@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/cart_provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/navigation_provider.dart';
+import 'package:flutter/services.dart';
 
 import 'home/home_screen.dart';
 import 'products/products_screen.dart';
@@ -67,7 +68,13 @@ class _MainScreenState extends State<MainScreen> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) Navigator.of(context).pop();
+        if (shouldPop && context.mounted) {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            SystemNavigator.pop();
+          }
+        }
       },
       child: Scaffold(
         body: IndexedStack(

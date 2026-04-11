@@ -1,5 +1,6 @@
 // lib/data/providers/auth_provider.dart
 import 'package:flutter/material.dart';
+import '../../core/utils/logger.dart';
 import '../../core/services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -54,25 +55,24 @@ class AuthProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    debugPrint('🔵 [AuthProvider] loginWithGoogle iniciado');
+    PierLog.auth('loginWithGoogle iniciado');
 
     final result = await _authService.loginWithGoogle();
 
-    debugPrint('🔵 [AuthProvider] resultado: $result');
+    PierLog.auth('resultado Google: $result');
 
     _isLoading = false;
 
     if (result['success'] == true) {
       _isAuthenticated = true;
       _currentUser = result['user'];
-      debugPrint('🟢 [AuthProvider] isAuthenticated = $_isAuthenticated, llamando notifyListeners()');
+      PierLog.auth('isAuthenticated = $_isAuthenticated, llamando notifyListeners()');
       notifyListeners();
-      debugPrint('🟢 [AuthProvider] notifyListeners() completado');
       return true;
     }
 
     _errorMessage = result['message'] ?? 'Error al iniciar sesión con Google';
-    debugPrint('🔴 [AuthProvider] error: $_errorMessage');
+    PierLog.error('$_errorMessage');
     notifyListeners();
     return false;
   }

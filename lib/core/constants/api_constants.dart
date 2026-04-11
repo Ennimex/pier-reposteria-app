@@ -2,15 +2,9 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConstants {
-  // static const String _webUrl    = 'http://localhost:5000/api';
-  // static const String _mobileUrl = 'http://192.168.0.82:5000/api';
-  // static const String _emulatorUrl = 'http://10.0.2.2:5000/api';
   static const String _prodUrl = 'https://pier-reposteria-backend.onrender.com/api';
 
-  static String get baseUrl {
-    return _prodUrl; // ← descomentar para producción
-    // return kIsWeb ? _webUrl : _mobileUrl;
-  }
+  static String get baseUrl => _prodUrl;
 
   // ── AUTH ─────────────────────────────────────────────────────────
   static const String login                = '/auth/login';
@@ -33,6 +27,11 @@ class ApiConstants {
   static const String crearPedido = '/pedidos/crear';
   static const String misPedidos  = '/pedidos/mis-pedidos';
 
+  // ── PAGOS (Stripe) ────────────────────────────────────────────────
+  static const String crearPaymentIntent  = '/pagos/crear-intent';
+  static const String confirmarPago       = '/pagos/confirmar';
+  static const String stripeConfig        = '/pagos/config';
+
   // ── FAVORITOS ─────────────────────────────────────────────────────
   static const String favoritos = '/favoritos';
   static String favoritoById(String id) => '/favoritos/$id';
@@ -53,6 +52,5 @@ class ApiConstants {
   static const String misReembolsos  = '/reembolsos/mis-reembolsos';
 
   // ── CONTACTO ──────────────────────────────────────────────────────
-  // Backend: POST /contacto (sin /enviar)
   static const String enviarContacto = '/contacto';
 }

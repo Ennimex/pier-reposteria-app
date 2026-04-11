@@ -121,6 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
     final iniciales =
         '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}$apellidoInicial';
+    final fotoUrl = user?['foto_url']?.toString();
     final saludo =
         '$nombre ${apellido.isNotEmpty ? '${apellido[0]}.' : ''}'.trim();
 
@@ -168,13 +169,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: AppColors.pierVerde,
                               shape: BoxShape.circle,
                             ),
-                            child: Center(
-                              child: Text(iniciales,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold)),
-                            ),
+                            child: fotoUrl != null && fotoUrl.isNotEmpty
+                                ? ClipOval(
+                                    child: Image.network(
+                                      fotoUrl,
+                                      width: 52, height: 52,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => _buildAvatarIniciales(iniciales),
+                                    ),
+                                  )
+                                : _buildAvatarIniciales(iniciales),
                           ),
                           Positioned(
                             bottom: 0, right: 0,
@@ -194,25 +198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-            // ── ACCESOS RÁPIDOS ───────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(children: [
-                  _quickAction(Icons.wallet_outlined, 'Métodos', () {}),
-                  const SizedBox(width: 12),
-                  _quickAction(Icons.location_on_outlined,
-                      'Direcciones', () {}),
-                  const SizedBox(width: 12),
-                  _quickAction(
-                      Icons.settings_outlined, 'Ajustes', () {}),
-                ]),
-              ),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 28)),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
             // ── MIS FAVORITOS ─────────────────────────────────
             SliverToBoxAdapter(
@@ -670,6 +656,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: const Icon(Icons.image_outlined,
           color: Colors.grey, size: 22),
+    );
+  }
+
+  Widget _buildAvatarIniciales(String iniciales) {
+    return Center(
+      child: Text(iniciales,
+          style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold)),
     );
   }
 }

@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../data/providers/auth_provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -22,6 +24,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _guardando = false;
   bool _cambios = false;
+  
+  bool _subiendoFoto = false;
+  String? _fotoUrlActual;
+  XFile? _nuevaFotoInfo;
 
   @override
   void initState() {
@@ -34,6 +40,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextEditingController(text: user?['apellido']?.toString() ?? '');
     _telefonoCtrl =
         TextEditingController(text: user?['telefono']?.toString() ?? '');
+    _fotoUrlActual = user?['foto_url']?.toString();
 
     _nombreCtrl.addListener(_onChanged);
     _apellidoCtrl.addListener(_onChanged);
@@ -50,6 +57,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    
+    if (pickedFile != null) {
+      setState(() => _subiendoFoto = true);
+      
+      final result = await _api.uploadImageAuth(
+        '/upload/imagen', 
+        pickedFile.path, 
+        {'tipo': 'perfil'}
+      );
+      
+      if (!mounted) return;
+      setState(() => _subiendoFoto = false);
+      
+      if (result['success'] == true) {
+        setState(() {
+          _fotoUrlActual = result['imagen']['url'];
+          _cambios = true;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] ?? 'Error al subir foto'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _guardando = true);
@@ -62,6 +99,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'telefono': _telefonoCtrl.text.trim().isEmpty
             ? null
             : _telefonoCtrl.text.trim(),
+        if (_fotoUrlActual != null) 'foto_url': _fotoUrlActual,
       },
     );
 
@@ -72,6 +110,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final updatedUser = result['user'] as Map<String, dynamic>?;
       if (updatedUser != null) auth.updateCurrentUser(updatedUser);
+      if (_fotoUrlActual != null) {
+        auth.updateCurrentUser({'foto_url': _fotoUrlActual});
+      }
       setState(() => _cambios = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Row(children: [
@@ -146,7 +187,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   // Guardar derecha — verde si hay cambios
                   GestureDetector(
-                    onTap: (_guardando || !_cambios) ? null : _guardar,
+                    onTap: (_guardando || _subiendoFoto || !_cambios) ? null : _guardar,
                     child: Text(
                       _guardando ? 'Guardando...' : 'Guardar',
                       style: TextStyle(
@@ -174,9 +215,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                       // ── AVATAR ────────────────────────────────
                       Center(
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
+                        child: GestureDetector(
+                          onTap: _subiendoFoto ? null : _pickImage,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
                             Container(
                               width: 100, height: 100,
                               decoration: BoxDecoration(
@@ -186,18 +229,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     color: AppColors.pierDorado,
                                     width: 2),
                               ),
-                              child: Center(
-                                child: Text(
-                                  iniciales.isNotEmpty
-                                      ? iniciales
-                                      : 'U',
-                                  style: const TextStyle(
-                                      fontFamily: 'Playfair Display',
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary),
-                                ),
-                              ),
+                              child: _subiendoFoto
+                                  ? const Center(child: CircularProgressIndicator(color: AppColors.pierVerde))
+                                  : _fotoUrlActual != null && _fotoUrlActual!.isNotEmpty
+                                      ? ClipOval(
+                                          child: Image.network(
+                                            _fotoUrlActual!,
+                                            width: 100, height: 100,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => _buildAvatarIniciales(iniciales),
+                                          ),
+                                        )
+                                      : _buildAvatarIniciales(iniciales),
                             ),
                             // Ícono cámara
                             Positioned(
@@ -217,7 +260,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
+                    ),
+                    const SizedBox(height: 10),
                       Center(
                         child: Text(email,
                             style: TextStyle(
@@ -303,7 +347,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         width: double.infinity,
                         height: 54,
                         child: ElevatedButton.icon(
-                          onPressed: (_guardando || !_cambios)
+                          onPressed: (_guardando || _subiendoFoto || !_cambios)
                               ? null
                               : _guardar,
                           icon: _guardando
@@ -397,6 +441,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         contentPadding: const EdgeInsets.all(14),
       ),
       validator: validator,
+    );
+  }
+
+  Widget _buildAvatarIniciales(String iniciales) {
+    return Center(
+      child: Text(
+        iniciales.isNotEmpty ? iniciales : 'U',
+        style: const TextStyle(
+            fontFamily: 'Playfair Display',
+            fontSize: 36,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary),
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 // lib/data/providers/product_provider.dart
 import 'package:flutter/material.dart';
+import '../../core/utils/logger.dart';
 import '../models/product_model.dart';
 import '../../core/services/api_service.dart';
 import '../../core/constants/api_constants.dart';
@@ -45,6 +46,7 @@ class ProductProvider with ChangeNotifier {
 
   Future<void> cargarProductos() async {
     if (_productos.isNotEmpty) return;
+    PierLog.info('📦 Iniciando carga de productos desde backend...');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -58,8 +60,10 @@ class ProductProvider with ChangeNotifier {
       _productos = (data as List)
           .map((json) => Product.fromJson(json as Map<String, dynamic>))
           .toList();
+      PierLog.info('✅ Productos cargados exitosamente: ${_productos.length}');
     } else {
       _errorMessage = result['message'] ?? 'Error al cargar productos';
+      PierLog.error(_errorMessage!);
     }
 
     notifyListeners();
