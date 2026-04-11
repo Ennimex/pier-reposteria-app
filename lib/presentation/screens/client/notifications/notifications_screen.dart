@@ -2,9 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/services/api_service.dart';
-import '../../../../core/constants/api_constants.dart';
 import '../../../../data/providers/navigation_provider.dart';
+import '../../../../data/providers/notification_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -14,51 +13,16 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final ApiService _api = ApiService();
+  bool _isRefreshing = false;
 
-  List<Map<String, dynamic>> _notificaciones = [];
-  bool _isLoading = true;
-  int _noLeidas = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargarNotificaciones();
-  }
-
-  Future<void> _cargarNotificaciones() async {
-    setState(() => _isLoading = true);
-    final result = await _api.getAuth(ApiConstants.notificaciones);
-    if (!mounted) return;
-    if (result['success'] == true) {
-      setState(() {
-        _notificaciones = List<Map<String, dynamic>>.from(
-            result['notificaciones'] ?? []);
-        _noLeidas =
-            int.tryParse(result['no_leidas']?.toString() ?? '0') ?? 0;
-      });
-    }
-    setState(() => _isLoading = false);
-  }
-
-  Future<void> _marcarLeida(Map<String, dynamic> notif) async {
-    if (notif['leida'] == true) return;
-    setState(() {
-      notif['leida'] = true;
-      if (_noLeidas > 0) _noLeidas--;
-    });
-    await _api.putAuth(
-        ApiConstants.marcarNotificacionLeida(notif['id'].toString()), {});
+  Future<void> _refresh() async {
+    setState(() => _isRefreshing = true);
+    await context.read<NotificationProvider>().refresh();
+    if (mounted) setState(() => _isRefreshing = false);
   }
 
   Future<void> _marcarTodasLeidas() async {
-    setState(() {
-      for (final n in _notificaciones) {
-        n['leida'] = true;
-      }
-      _noLeidas = 0;
-    });
-    await _api.putAuth('/notificaciones/leer-todas', {});
+    await context.read<NotificationProvider>().marcarTodasLeidas();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text('Todas marcadas como leídas'),
@@ -68,14 +32,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   // Agrupa notificaciones por: Hoy, Ayer, Anteriores
-  Map<String, List<Map<String, dynamic>>> _agrupar() {
+  Map<String, List<Map<String, dynamic>>> _agrupar(
+      List<Map<String, dynamic>> notificaciones) {
     final Map<String, List<Map<String, dynamic>>> grupos = {
       'Hoy': [],
       'Ayer': [],
       'Anteriores': [],
     };
     final now = DateTime.now();
-    for (final n in _notificaciones) {
+    for (final n in notificaciones) {
       try {
         final dt = DateTime.parse(n['created_at'].toString()).toLocal();
         final diff = now.difference(dt);
@@ -90,14 +55,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         grupos['Anteriores']!.add(n);
       }
     }
-    // Eliminar grupos vacíos
     grupos.removeWhere((_, v) => v.isEmpty);
     return grupos;
   }
 
   @override
   Widget build(BuildContext context) {
-    final grupos = _agrupar();
+    final notifProvider = context.watch<NotificationProvider>();
+    final notificaciones = notifProvider.notificaciones;
+    final noLeidas = notifProvider.noLeidas;
+    final grupos = _agrupar(notificaciones);
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -129,7 +96,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   ),
                   const Spacer(),
-                  if (_noLeidas > 0)
+                  if (noLeidas > 0)
                     GestureDetector(
                       onTap: _marcarTodasLeidas,
                       child: Text('Leer todas',
@@ -154,7 +121,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           fontSize: 30,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary)),
-                  if (_noLeidas > 0) ...[
+                  if (noLeidas > 0) ...[
                     const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -163,7 +130,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         color: AppColors.pierVerde,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text('$_noLeidas',
+                      child: Text('$noLeidas',
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
@@ -176,14 +143,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
             // ── LISTA ─────────────────────────────────────────────
             Expanded(
-              child: _isLoading
+              child: _isRefreshing
                   ? const Center(
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
-                  : _notificaciones.isEmpty
+                  : notificaciones.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
-                          onRefresh: _cargarNotificaciones,
+                          onRefresh: _refresh,
                           color: AppColors.pierVerde,
                           child: ListView(
                             padding:
@@ -239,12 +206,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return GestureDetector(
-      onTap: () => _marcarLeida(notif),
-      child: Container(
+      onTap: () {
+        final id = notif['id']?.toString() ?? '';
+        if (id.isNotEmpty) {
+          context.read<NotificationProvider>().marcarLeida(id);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: leida ? Colors.white : AppColors.pierVerde.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
+          border: leida
+              ? null
+              : Border.all(
+                  color: AppColors.pierVerde.withValues(alpha: 0.15)),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
@@ -259,11 +236,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
-                color: AppColors.pierVerde.withValues(alpha: 0.1),
+                color: leida
+                    ? Colors.grey.withValues(alpha: 0.08)
+                    : AppColors.pierVerde.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon,
-                  color: AppColors.pierVerde, size: 22),
+                  color: leida ? Colors.grey[400] : AppColors.pierVerde,
+                  size: 22),
             ),
             const SizedBox(width: 14),
 

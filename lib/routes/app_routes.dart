@@ -86,7 +86,11 @@ class AppRoutes {
             loc.startsWith('/cliente/pedido');
 
         if (isProtected && !isAuth) return login;
-        if ([login, registro, verificarEmail].contains(loc) && isAuth) {
+
+        // FIX: verificarEmail removido de esta lista para permitir que
+        // un usuario recién registrado llegue a verificar su email
+        // aunque el backend haya devuelto un token anticipado.
+        if ([login, registro].contains(loc) && isAuth) {
           return main;
         }
 
@@ -142,14 +146,12 @@ class AppRoutes {
         GoRoute(path: notificaciones, builder: (c, s) => const NotificationsScreen()),
         GoRoute(path: reembolsos,     builder: (c, s) => const RefundsScreen()),
 
-        // CreateReviewScreen — recibe Product via extra
         GoRoute(
           path: crearResena,
           builder: (c, s) =>
               CreateReviewScreen(product: s.extra as Product),
         ),
 
-        // ProductReviewsScreen — recibe Product via extra
         GoRoute(
           path: opiniones,
           builder: (c, s) =>

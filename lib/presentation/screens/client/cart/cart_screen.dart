@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/providers/cart_provider.dart';
+import '../../../../data/providers/navigation_provider.dart';
 import '../../../../data/models/product_model.dart';
 import '../checkout/checkout_screen.dart';
 
@@ -348,7 +349,7 @@ class _CartScreenState extends State<CartScreen> {
                   TextStyle(fontSize: 14, color: Colors.grey[500])),
           const SizedBox(height: 28),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () => context.read<NavigationProvider>().goCatalogo(),
             icon: const Icon(Icons.storefront_outlined,
                 color: Colors.white, size: 18),
             label: const Text('Ver Catálogo',

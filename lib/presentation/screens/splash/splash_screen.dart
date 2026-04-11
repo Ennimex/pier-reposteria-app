@@ -113,7 +113,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     const SizedBox(height: 35),
                     const Text(
-                      'Pastelería Pier',
+                      'Pier Repostería',
                       style: TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,

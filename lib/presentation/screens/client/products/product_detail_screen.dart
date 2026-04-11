@@ -634,15 +634,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     .map((r) => Padding(
                                           padding: const EdgeInsets.only(
                                               bottom: 20),
-                                          child: _reviewItem(
-                                            '${r['autor_nombre'] ?? ''} ${((r['autor_apellido'] ?? '') as String).isNotEmpty ? '${(r['autor_apellido'] as String)[0]}.' : ''}'
-                                                .trim(),
-                                            double.tryParse(r['rating']
-                                                        ?.toString() ??
-                                                    '5') ??
-                                                5.0,
-                                            r['comentario'] ?? '',
-                                            _formatFecha(r['created_at']),
+                                          child: ReviewItemWidget(
+                                            id: r['id']?.toString() ?? '',
+                                            name: '${r['autor_nombre'] ?? ''} ${((r['autor_apellido'] ?? '') as String).isNotEmpty ? '${(r['autor_apellido'] as String)[0]}.' : ''}'.trim(),
+                                            rating: double.tryParse(r['rating']?.toString() ?? '5') ?? 5.0,
+                                            comment: r['comentario'] ?? '',
+                                            date: _formatFecha(r['created_at']),
+                                            likesCount: int.tryParse(r['likes_count']?.toString() ?? '0') ?? 0,
+                                            hasLiked: r['user_has_liked'] == true || r['has_liked'] == 1 || r['user_has_liked'] == 1,
                                           ),
                                         ))
                                     .toList(),
@@ -873,23 +872,94 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           child: Icon(icon, color: AppColors.textPrimary, size: 18),
         ),
       );
+}
 
-  Widget _reviewItem(
-          String name, double rating, String comment, String date) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(children: [
+class ReviewItemWidget extends StatefulWidget {
+  final String id;
+  final String name;
+  final double rating;
+  final String comment;
+  final String date;
+  final int likesCount;
+  final bool hasLiked;
+
+  const ReviewItemWidget({
+    super.key,
+    required this.id,
+    required this.name,
+    required this.rating,
+    required this.comment,
+    required this.date,
+    required this.likesCount,
+    required this.hasLiked,
+  });
+
+  @override
+  State<ReviewItemWidget> createState() => _ReviewItemWidgetState();
+}
+
+class _ReviewItemWidgetState extends State<ReviewItemWidget> {
+  final ApiService _api = ApiService();
+  late int _likes;
+  late bool _hasLiked;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _likes = widget.likesCount;
+    _hasLiked = widget.hasLiked;
+  }
+
+  Future<void> _toggleLike() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+    if (_isLoading || widget.id.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _hasLiked = !_hasLiked;
+      _likes += _hasLiked ? 1 : -1;
+    });
+
+    final result = await _api.postAuth(ApiConstants.likeResena(widget.id), {});
+    if (!mounted) return;
+
+    if (result['success'] != true) {
+      setState(() {
+        _hasLiked = !_hasLiked;
+        _likes += _hasLiked ? 1 : -1;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result['message'] ?? 'Error al dar me gusta'),
+        backgroundColor: Colors.red,
+      ));
+    }
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Row(children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor:
-                    AppColors.pierDorado.withValues(alpha: 0.15),
+                backgroundColor: AppColors.pierDorado.withValues(alpha: 0.15),
                 child: Text(
-                  name.length >= 2
-                      ? name.substring(0, 2).toUpperCase()
-                      : name.isNotEmpty
-                          ? name[0]
+                  widget.name.length >= 2
+                      ? widget.name.substring(0, 2).toUpperCase()
+                      : widget.name.isNotEmpty
+                          ? widget.name[0]
                           : '?',
                   style: const TextStyle(
                       color: AppColors.pierDoradoOscuro,
@@ -898,33 +968,66 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              Column(
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name,
+                    Text(widget.name,
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
-                            color: AppColors.textPrimary)),
-                    Text(date,
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey[400])),
-                  ]),
+                            color: AppColors.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    Text(widget.date,
+                        style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                  ],
+                ),
+              ),
             ]),
-            Row(children: [
-              const Icon(Icons.star_rounded, color: Colors.amber, size: 15),
-              const SizedBox(width: 3),
-              Text(rating.toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: AppColors.textPrimary)),
-            ]),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Text(comment,
-            style: TextStyle(
-                fontSize: 13, color: Colors.grey[600], height: 1.5)),
-      ]);
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(children: [
+                const Icon(Icons.star_rounded, color: Colors.amber, size: 15),
+                const SizedBox(width: 3),
+                Text(widget.rating.toStringAsFixed(1),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.textPrimary)),
+              ]),
+              const SizedBox(height: 8),
+              // Botón de Like
+              GestureDetector(
+                onTap: _toggleLike,
+                child: Row(
+                  children: [
+                    Icon(
+                      _hasLiked ? Icons.thumb_up_alt_rounded : Icons.thumb_up_off_alt_rounded,
+                      color: _hasLiked ? AppColors.pierVerde : Colors.grey[400],
+                      size: 15,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_likes',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: _hasLiked ? FontWeight.bold : FontWeight.normal,
+                        color: _hasLiked ? AppColors.pierVerde : Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      const SizedBox(height: 10),
+      Text(widget.comment,
+          style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.5)),
+    ]);
+  }
 }
