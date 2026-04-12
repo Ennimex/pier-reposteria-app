@@ -205,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) =>
-                                const ForgotPasswordScreen())),
+                                ForgotPasswordScreen())),
                     child: const Text('¿Olvidaste tu contraseña?',
                         style: TextStyle(
                             color: AppColors.pierDorado,

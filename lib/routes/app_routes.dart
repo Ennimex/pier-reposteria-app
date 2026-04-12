@@ -101,7 +101,7 @@ class AppRoutes {
 
         GoRoute(path: login,               builder: (c, s) => const LoginScreen()),
         GoRoute(path: registro,            builder: (c, s) => const RegisterScreen()),
-        GoRoute(path: recuperarContrasena, builder: (c, s) => const ForgotPasswordScreen()),
+        GoRoute(path: recuperarContrasena, builder: (c, s) => ForgotPasswordScreen()),
 
         GoRoute(
           path: verificarEmail,
