@@ -40,7 +40,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextEditingController(text: user?['apellido']?.toString() ?? '');
     _telefonoCtrl =
         TextEditingController(text: user?['telefono']?.toString() ?? '');
-    _fotoUrlActual = user?['foto_url']?.toString();
+    // El backend guarda la foto como avatar_url
+    _fotoUrlActual = user?['avatar_url']?.toString() ??
+        user?['foto_url']?.toString();
 
     _nombreCtrl.addListener(_onChanged);
     _apellidoCtrl.addListener(_onChanged);
@@ -99,7 +101,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'telefono': _telefonoCtrl.text.trim().isEmpty
             ? null
             : _telefonoCtrl.text.trim(),
-        if (_fotoUrlActual != null) 'foto_url': _fotoUrlActual,
+        // El backend espera avatar_url
+        if (_fotoUrlActual != null) 'avatar_url': _fotoUrlActual,
       },
     );
 
@@ -111,7 +114,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final updatedUser = result['user'] as Map<String, dynamic>?;
       if (updatedUser != null) auth.updateCurrentUser(updatedUser);
       if (_fotoUrlActual != null) {
-        auth.updateCurrentUser({'foto_url': _fotoUrlActual});
+        auth.updateCurrentUser({'avatar_url': _fotoUrlActual});
       }
       setState(() => _cambios = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

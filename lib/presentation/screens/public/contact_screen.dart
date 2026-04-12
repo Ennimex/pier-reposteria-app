@@ -64,18 +64,23 @@ class _ContactScreenState extends State<ContactScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _enviando = true);
 
-    final result = await ApiService().post(
-      ApiConstants.enviarContacto,
-      {
-        'nombre':        _nombreCtrl.text.trim(),
-        'email':         _emailCtrl.text.trim(),
-        'telefono':      _telefonoCtrl.text.trim().isEmpty
-            ? null
-            : _telefonoCtrl.text.trim(),
-        'tipo_producto': _tipoProducto,
-        'mensaje':       _mensajeCtrl.text.trim(),
-      },
-    );
+    final body = {
+      'nombre':        _nombreCtrl.text.trim(),
+      'email':         _emailCtrl.text.trim(),
+      'telefono':      _telefonoCtrl.text.trim().isEmpty
+          ? null
+          : _telefonoCtrl.text.trim(),
+      'tipo_producto': _tipoProducto,
+      'mensaje':       _mensajeCtrl.text.trim(),
+    };
+
+    // Usar autenticación si el usuario tiene sesión activa
+    final isAuth =
+        Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+    final api = ApiService();
+    final result = isAuth
+        ? await api.postAuth(ApiConstants.enviarContacto, body)
+        : await api.post(ApiConstants.enviarContacto, body);
 
     if (!mounted) return;
     setState(() => _enviando = false);
@@ -100,7 +105,7 @@ class _ContactScreenState extends State<ContactScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24)),
         insetPadding:
@@ -170,7 +175,8 @@ class _ContactScreenState extends State<ContactScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  // Usamos dialogContext para cerrar SOLO el diálogo
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.pierVerde,
                     shape: RoundedRectangleBorder(

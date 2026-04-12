@@ -65,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showLogoutDialog(AuthProvider auth) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16)),
         title: const Text('Cerrar sesión'),
@@ -73,14 +73,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             '¿Estás seguro que deseas cerrar tu sesión?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text('Cancelar',
                 style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              auth.logout();
+            onPressed: () async {
+              Navigator.of(dialogContext).pop(); // cierra el diálogo
+              Navigator.of(context).pop();       // cierra ProfileScreen (vuelve al tab)
+              await auth.logout();               // GoRouter redirige al login
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red, elevation: 0),

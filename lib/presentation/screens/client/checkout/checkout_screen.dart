@@ -23,33 +23,65 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isLoading = false;
   String? _errorMsg;
 
-  final List<String> _timeSlots = [
+  // Horario completo: Lunes – Viernes
+  final List<String> _weekdaySlots = [
     '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
     '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00',
     '15:00 - 16:00', '16:00 - 17:00', '17:00 - 18:00', '18:00 - 19:00',
   ];
 
-  Future<void> _selectDate(BuildContext context) async {
-    final now = DateTime.now();
-    final initial = now.add(const Duration(days: 1));
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: initial,
-      lastDate: now.add(const Duration(days: 30)),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: AppColors.pierVerde,
-            onPrimary: Colors.white,
-            onSurface: AppColors.textPrimary,
+  // Horario reducido: Sábado y Domingo
+  final List<String> _weekendSlots = [
+    '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
+    '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00',
+  ];
+
+  List<String> get _currentTimeSlots {
+    if (_selectedDate == null) return _weekdaySlots;
+    final wd = _selectedDate!.weekday;
+    return (wd == DateTime.saturday || wd == DateTime.sunday)
+        ? _weekendSlots
+        : _weekdaySlots;
+  }
+
+  Future<void> _selectDate() async {
+    if (!mounted) return;
+    try {
+      final now = DateTime.now();
+      final initial = now.add(const Duration(days: 1));
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: initial,
+        firstDate: initial,
+        lastDate: now.add(const Duration(days: 30)),
+        locale: const Locale('es', ''),
+        builder: (ctx, child) => Theme(
+          data: Theme.of(ctx).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.pierVerde,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
           ),
+          child: child!,
         ),
-        child: child!,
-      ),
-      selectableDayPredicate: (day) => day.weekday != DateTime.sunday,
-    );
-    if (picked != null) setState(() => _selectedDate = picked);
+      );
+      if (picked != null && mounted) {
+        setState(() {
+          _selectedDate = picked;
+          // Si el horario elegido ya no existe en el nuevo día, lo limpiamos
+          final wd = picked.weekday;
+          final isWeekend =
+              wd == DateTime.saturday || wd == DateTime.sunday;
+          if (isWeekend && _selectedTime != null &&
+              !_weekendSlots.contains(_selectedTime)) {
+            _selectedTime = null;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error al abrir el selector de fecha: $e');
+    }
   }
 
   void _showSnack(String msg, {bool error = false}) {
@@ -248,29 +280,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () => _selectDate(context),
-                    child: Container(
-                      height: 56,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: _cardDecoration(),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.calendar_today,
-                              size: 20, color: AppColors.pierVerde),
-                          const SizedBox(width: 10),
-                          Text(
-                            _selectedDate == null
-                                ? 'Fecha'
-                                : DateFormat('dd/MM/yyyy').format(_selectedDate!),
-                            style: TextStyle(
-                              color: _selectedDate == null
-                                  ? Colors.grey
-                                  : AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _selectDate,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: _cardDecoration(),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today,
+                                size: 20, color: AppColors.pierVerde),
+                            const SizedBox(width: 10),
+                            Text(
+                              _selectedDate == null
+                                  ? 'Fecha'
+                                  : DateFormat('dd/MM/yyyy').format(_selectedDate!),
+                              style: TextStyle(
+                                color: _selectedDate == null
+                                    ? Colors.grey
+                                    : AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -293,7 +329,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           Text('Hora'),
                         ]),
                         value: _selectedTime,
-                        items: _timeSlots
+                        items: _currentTimeSlots
                             .map((t) => DropdownMenuItem(
                                 value: t,
                                 child: Text(t,

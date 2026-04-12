@@ -48,7 +48,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _productosComprados = [];
   Map<String, dynamic>? _pedidoActivo;
   List<Map<String, dynamic>> _promociones = [];
-  List<Map<String, dynamic>> _categoriasApi = []; // ← categorías del backend
+  List<Map<String, dynamic>> _categoriasApi = [];
+
+  // Para detectar cambio de usuario (usamos email: siempre único y presente)
+  String? _lastUserEmail;
 
   // Fallback si el API no responde
   final List<Map<String, dynamic>> _categoriasFallback = [
@@ -125,13 +128,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context.read<ProductProvider>().cargarProductos();
       _cargarCategorias();
       _cargarPromociones();
-      _cargarDatosUsuario();
-      // Arrancar polling de notificaciones si ya hay sesión activa
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      if (auth.isAuthenticated) {
-        context.read<NotificationProvider>().startPolling();
-      }
+      // _cargarDatosUsuario se maneja en didChangeDependencies
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    // Usamos email como clave: siempre está presente y es único por usuario
+    final userEmail = auth.currentUser?['email']?.toString();
+
+    if (userEmail != _lastUserEmail) {
+      _lastUserEmail = userEmail;
+      if (auth.isAuthenticated && userEmail != null) {
+        // Nuevo usuario → cargar sus datos y arrancar polling
+        _cargarDatosUsuario();
+        context.read<NotificationProvider>().startPolling();
+      } else {
+        // Sesión cerrada → limpiar datos del usuario anterior
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _productosComprados = [];
+              _pedidoActivo = null;
+            });
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -280,7 +305,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── HEADER ────────────────────────────────────────────────────────
   Widget _buildHeader(AuthProvider auth) {
     final nombre = auth.currentUser?['nombre']?.toString().split(' ').first ?? '';
-    final fotoUrl = auth.currentUser?['foto_url']?.toString();
+    // El backend devuelve avatar_url (no foto_url)
+    final fotoUrl = auth.currentUser?['avatar_url']?.toString() ??
+        auth.currentUser?['foto_url']?.toString();
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 16,

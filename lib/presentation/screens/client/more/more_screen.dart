@@ -32,12 +32,41 @@ class _MoreScreenState extends State<MoreScreen> {
   int _totalResenas = 0;
   bool _loadingStats = true;
 
+  // Para detectar cambio de usuario (email: único y siempre presente)
+  String? _lastUserEmail;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarStats();
-    });
+    // La carga inicial se delega a didChangeDependencies
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    // Email como clave: siempre único y presente en cualquier tipo de login
+    final userEmail = auth.currentUser?['email']?.toString();
+
+    if (userEmail != _lastUserEmail) {
+      _lastUserEmail = userEmail;
+      if (auth.isAuthenticated && userEmail != null) {
+        // Nuevo usuario autenticado → recargar stats
+        _cargarStats();
+      } else {
+        // Sesión cerrada → limpiar contadores
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _totalPedidos = 0;
+              _totalFavoritos = 0;
+              _totalResenas = 0;
+              _loadingStats = false;
+            });
+          }
+        });
+      }
+    }
   }
 
   Future<void> _cargarStats() async {
@@ -92,9 +121,9 @@ class _MoreScreenState extends State<MoreScreen> {
                 Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              auth.logout();
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              await auth.logout();
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red, elevation: 0),
@@ -118,7 +147,8 @@ class _MoreScreenState extends State<MoreScreen> {
         apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
     final iniciales =
         '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}$apellidoInicial';
-    final fotoUrl = user?['foto_url']?.toString();
+    final fotoUrl = user?['avatar_url']?.toString() ??
+        user?['foto_url']?.toString();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F2ED),
