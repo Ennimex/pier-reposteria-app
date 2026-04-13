@@ -214,11 +214,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: () => setState(
                           () => _isPasswordVisible = !_isPasswordVisible),
                     ),
-                    helperText: 'Mínimo 8 caracteres',
-                    validator: (v) =>
-                        (v == null || v.length < 8)
-                            ? 'Mínimo 8 caracteres'
-                            : null),
+                    // ✅ FIX: sincronizado con backend (mín 6 + letra + número)
+                    helperText: 'Mínimo 6 caracteres, 1 letra y 1 número',
+                    validator: (v) {
+                      if (v == null || v.length < 6) return 'Mínimo 6 caracteres';
+                      if (!RegExp(r'[a-zA-Z]').hasMatch(v)) return 'Debe contener al menos 1 letra';
+                      if (!RegExp(r'\d').hasMatch(v)) return 'Debe contener al menos 1 número';
+                      return null;
+                    }),
                 const SizedBox(height: 12),
                 _field(_confirmPasswordCtrl, 'Confirmar contraseña',
                     Icons.lock_outline_rounded,

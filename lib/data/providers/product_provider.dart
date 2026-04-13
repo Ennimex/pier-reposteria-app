@@ -12,6 +12,9 @@ class ProductProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // ✅ NUEVO: mapa productoId → promocion activa
+  Map<String, Map<String, dynamic>> _promociones = {};
+
   List<Product> get productos => _productos;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -22,7 +25,6 @@ class ProductProvider with ChangeNotifier {
   List<Product> get recientes =>
       _productos.where((p) => p.disponible).take(6).toList();
 
-  // Mejor calificados — rating > 0, ordenados desc, máx 8
   List<Product> get mejorCalificados {
     final lista = _productos
         .where((p) => p.disponible && p.rating > 0)
@@ -31,7 +33,6 @@ class ProductProvider with ChangeNotifier {
     return lista.take(8).toList();
   }
 
-  // Productos nuevos — es_nuevo = true
   List<Product> get nuevos =>
       _productos.where((p) => p.disponible && p.esNuevo).take(8).toList();
 
@@ -44,6 +45,27 @@ class ProductProvider with ChangeNotifier {
         .toList();
   }
 
+  // ✅ NUEVO: obtener promoción activa para un producto (null si no tiene)
+  Map<String, dynamic>? promocionDeProducto(String productoId) =>
+      _promociones[productoId];
+
+  // ✅ NUEVO: precio con descuento para un producto
+  double precioConDescuento(String productoId, double precioBase) {
+    final promo = _promociones[productoId];
+    if (promo == null) return precioBase;
+    final porcentaje =
+        double.tryParse(promo['descuento_porcentaje']?.toString() ?? '0') ?? 0;
+    final precioOferta =
+        double.tryParse(promo['precio_oferta']?.toString() ?? '0') ?? 0;
+    if (porcentaje > 0) return precioBase * (1 - porcentaje / 100);
+    if (precioOferta > 0) return precioOferta;
+    return precioBase;
+  }
+
+  // ✅ NUEVO: ¿tiene descuento activo?
+  bool tieneDescuento(String productoId) =>
+      _promociones.containsKey(productoId);
+
   Future<void> cargarProductos() async {
     if (_productos.isNotEmpty) return;
     PierLog.info('📦 Iniciando carga de productos desde backend...');
@@ -51,33 +73,63 @@ class ProductProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _api.get(ApiConstants.productos);
+    // Cargar productos y promociones en paralelo
+    PierLog.api('GET ${ApiConstants.productos} + GET ${ApiConstants.promocionesActivas}');
+    final results = await Future.wait([
+      _api.get(ApiConstants.productos),
+      _api.get(ApiConstants.promocionesActivas),
+    ]);
 
     _isLoading = false;
+    final resultProductos   = results[0];
+    final resultPromociones = results[1];
 
-    if (result['success'] == true) {
-      final data = result['productos'] ?? result['data'] ?? [];
+    if (resultProductos['success'] == true) {
+      final data = resultProductos['productos'] ?? resultProductos['data'] ?? [];
       _productos = (data as List)
           .map((json) => Product.fromJson(json as Map<String, dynamic>))
           .toList();
-      PierLog.info('✅ Productos cargados exitosamente: ${_productos.length}');
+      PierLog.info('✅ Productos cargados: ${_productos.length}');
     } else {
-      _errorMessage = result['message'] ?? 'Error al cargar productos';
+      _errorMessage = resultProductos['message'] ?? 'Error al cargar productos';
       PierLog.error(_errorMessage!);
+    }
+
+    // Mapear promociones por producto_id
+    if (resultPromociones['success'] == true) {
+      final promos = List<Map<String, dynamic>>.from(
+          resultPromociones['promociones'] ?? []);
+      _promociones = {};
+      for (final p in promos) {
+        final productoId = p['producto_id']?.toString();
+        if (productoId != null && productoId.isNotEmpty) {
+          _promociones[productoId] = p;
+        }
+      }
+      PierLog.info('🎉 Promociones activas cargadas: ${_promociones.length}');
+    } else {
+      PierLog.debug('Sin promociones activas o error al cargar');
     }
 
     notifyListeners();
   }
 
   Future<void> refrescar() async {
+    PierLog.info('🔄 Refrescando productos y promociones...');
     _productos = [];
+    _promociones = {};
     await cargarProductos();
   }
 
-  // Carga un solo producto por id (para detalle)
+  // ✅ FIX: usando ApiConstants.productoById
   Future<Map<String, dynamic>?> cargarDetalle(String id) async {
-    final result = await _api.get('${ApiConstants.productos}/$id');
-    if (result['success'] == true) return result;
+    PierLog.api('GET ${ApiConstants.productoById(id)}');
+    final result = await _api.get(ApiConstants.productoById(id));
+    if (result['success'] == true) {
+      PierLog.info('✅ Detalle del producto $id cargado');
+      return result;
+    }
+    PierLog.error('Error al cargar detalle del producto $id');
     return null;
   }
 }

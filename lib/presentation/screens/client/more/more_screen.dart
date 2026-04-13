@@ -27,46 +27,69 @@ class MoreScreen extends StatefulWidget {
 class _MoreScreenState extends State<MoreScreen> {
   final ApiService _api = ApiService();
 
-  int _totalPedidos = 0;
+  int _totalPedidos   = 0;
   int _totalFavoritos = 0;
-  int _totalResenas = 0;
-  bool _loadingStats = true;
+  int _totalResenas   = 0;
+  bool _loadingStats  = true;
 
-  // Para detectar cambio de usuario (email: único y siempre presente)
+  // ✅ NUEVO: configuración dinámica del backend
+  Map<String, dynamic> _configContacto = {};
+  Map<String, dynamic> _configHorarios = {};
+  bool _loadingConfig = true;
+
   String? _lastUserEmail;
 
   @override
   void initState() {
     super.initState();
-    // La carga inicial se delega a didChangeDependencies
+    // Configuración es pública — cargar siempre al abrir la pantalla
+    _cargarConfiguracion();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    // Email como clave: siempre único y presente en cualquier tipo de login
     final userEmail = auth.currentUser?['email']?.toString();
 
     if (userEmail != _lastUserEmail) {
       _lastUserEmail = userEmail;
       if (auth.isAuthenticated && userEmail != null) {
-        // Nuevo usuario autenticado → recargar stats
         _cargarStats();
       } else {
-        // Sesión cerrada → limpiar contadores
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
-              _totalPedidos = 0;
+              _totalPedidos   = 0;
               _totalFavoritos = 0;
-              _totalResenas = 0;
-              _loadingStats = false;
+              _totalResenas   = 0;
+              _loadingStats   = false;
             });
           }
         });
       }
     }
+  }
+
+  // ✅ NUEVO: carga horarios y contacto del backend (público, sin auth)
+  Future<void> _cargarConfiguracion() async {
+    final results = await Future.wait([
+      _api.get(ApiConstants.configuracionSeccion('contacto')),
+      _api.get(ApiConstants.configuracionSeccion('horarios')),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      if (results[0]['success'] == true) {
+        _configContacto = Map<String, dynamic>.from(
+            results[0]['config'] ?? {});
+      }
+      if (results[1]['success'] == true) {
+        _configHorarios = Map<String, dynamic>.from(
+            results[1]['config'] ?? {});
+      }
+      _loadingConfig = false;
+    });
   }
 
   Future<void> _cargarStats() async {
@@ -78,22 +101,19 @@ class _MoreScreenState extends State<MoreScreen> {
 
     final results = await Future.wait([
       _api.getAuth(ApiConstants.misPedidos),
-      _api.getAuth('/favoritos/ids'),
+      // ✅ FIX: usando ApiConstants.favoritosIds
+      _api.getAuth(ApiConstants.favoritosIds),
       _api.getAuth(ApiConstants.misResenas),
     ]);
 
     if (!mounted) return;
-
     setState(() {
       _totalPedidos = results[0]['success'] == true
-          ? ((results[0]['pedidos'] ?? []) as List).length
-          : 0;
+          ? ((results[0]['pedidos'] ?? []) as List).length : 0;
       _totalFavoritos = results[1]['success'] == true
-          ? ((results[1]['ids'] ?? []) as List).length
-          : 0;
+          ? ((results[1]['ids'] ?? []) as List).length : 0;
       _totalResenas = results[2]['success'] == true
-          ? ((results[2]['resenas'] ?? []) as List).length
-          : 0;
+          ? ((results[2]['resenas'] ?? []) as List).length : 0;
       _loadingStats = false;
     });
   }
@@ -117,8 +137,8 @@ class _MoreScreenState extends State<MoreScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child:
-                Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
+            child: Text('Cancelar',
+                style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -137,12 +157,12 @@ class _MoreScreenState extends State<MoreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
+    final auth   = Provider.of<AuthProvider>(context);
     final isAuth = auth.isAuthenticated;
-    final user = auth.currentUser;
-    final nombre = user?['nombre']?.toString() ?? '';
+    final user   = auth.currentUser;
+    final nombre   = user?['nombre']?.toString() ?? '';
     final apellido = user?['apellido']?.toString() ?? '';
-    final email = user?['email']?.toString() ?? '';
+    final email    = user?['email']?.toString() ?? '';
     final apellidoInicial =
         apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
     final iniciales =
@@ -157,11 +177,16 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
 
           // ── HERO HEADER ─────────────────────────────────────────
-          _buildHeroHeader(isAuth, nombre, email, iniciales, fotoUrl, auth),
+          _buildHeroHeader(
+              isAuth, nombre, email, iniciales, fotoUrl, auth),
           const SizedBox(height: 20),
 
-          // ── STATS (autenticado) o REWARDS BANNER (guest) ────────
+          // ── STATS (auth) o REWARDS BANNER (guest) ───────────────
           if (isAuth) _buildStatsRow() else _buildRewardsBanner(),
+          const SizedBox(height: 24),
+
+          // ✅ NUEVO: tarjeta Encuéntranos con datos del backend
+          _buildEncuentranos(),
           const SizedBox(height: 24),
 
           // ── MI CUENTA ───────────────────────────────────────────
@@ -208,16 +233,14 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.notifications_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Notificaciones',
-                onTap: () =>
-                    _goProtected(const NotificationsScreen()),
+                onTap: () => _goProtected(const NotificationsScreen()),
               ),
               _buildDivider(),
               _buildTile(
                 icon: Icons.star_rounded,
                 iconColor: AppColors.pierDorado,
                 title: 'Mis Reseñas',
-                onTap: () =>
-                    _goProtected(const MyReviewsScreen()),
+                onTap: () => _goProtected(const MyReviewsScreen()),
               ),
               _buildDivider(),
               _buildTile(
@@ -250,8 +273,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.menu_book_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Nuestra Historia',
-                onTap: () => Navigator.push(
-                    context,
+                onTap: () => Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => const AboutUsScreen())),
               ),
@@ -260,8 +282,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.help_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Preguntas Frecuentes',
-                onTap: () => Navigator.push(
-                    context,
+                onTap: () => Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => const FAQScreen())),
               ),
@@ -270,8 +291,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.chat_bubble_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Contacto',
-                onTap: () => Navigator.push(
-                    context,
+                onTap: () => Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => const ContactScreen())),
               ),
@@ -280,8 +300,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.shield_rounded,
                 iconColor: AppColors.pierVerde,
                 title: 'Términos Legales y Privacidad',
-                onTap: () => Navigator.push(
-                    context,
+                onTap: () => Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => const LegalScreen())),
                 last: true,
@@ -300,8 +319,7 @@ class _MoreScreenState extends State<MoreScreen> {
               const SizedBox(width: 12),
               Expanded(child: _buildBadgeCard(
                   Icons.local_fire_department_outlined,
-                  'Fresco',
-                  'Horneado hoy')),
+                  'Fresco', 'Horneado hoy')),
             ]),
           ),
 
@@ -374,6 +392,261 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
+  // ── ENCUÉNTRANOS ─────────────────────────────────────────────────
+  // ✅ NUEVO: datos cargados dinámicamente desde /configuracion/contacto
+  //           y /configuracion/horarios. Fallback a valores por defecto.
+  Widget _buildEncuentranos() {
+    // Fallbacks si el backend no responde
+    final direccion = _configContacto['direccion']?.toString()
+        ?? 'Calle Allende, Col. Tahuizán';
+    final telefono = _configContacto['telefono']?.toString() ?? '';
+    final emailContacto = _configContacto['email']?.toString() ?? '';
+
+    // Horario: el backend puede devolver un string o un mapa por día
+    // Soporte para ambos formatos
+    String horario;
+    final horarioRaw = _configHorarios['horario'] ??
+        _configHorarios['lunes_sabado'] ??
+        _configHorarios['semana'];
+    if (horarioRaw != null) {
+      horario = horarioRaw.toString();
+    } else {
+      horario = 'Lun–Sáb  9:00 AM – 9:00 PM';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Encuéntranos',
+              style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Playfair Display')),
+          const SizedBox(height: 12),
+          _loadingConfig
+              ? Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.pierVerde, strokeWidth: 2),
+                  ),
+                )
+              : Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.pierVerdeOscuro,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                          color: AppColors.pierVerdeOscuro
+                              .withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6))
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // ── Dirección ──
+                      Row(children: [
+                        Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.location_on_rounded,
+                              color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Sucursal Principal',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14)),
+                              const SizedBox(height: 2),
+                              Text(direccion,
+                                  style: TextStyle(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.75),
+                                      fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ]),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Divider(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            height: 1),
+                      ),
+
+                      // ── Horario ──
+                      Row(children: [
+                        Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.access_time_rounded,
+                              color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Horario de atención',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14)),
+                              const SizedBox(height: 2),
+                              Text(horario,
+                                  style: TextStyle(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.75),
+                                      fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ]),
+
+                      // ── Teléfono (si existe en config) ──
+                      if (telefono.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              height: 1),
+                        ),
+                        Row(children: [
+                          Container(
+                            width: 38, height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.phone_rounded,
+                                color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Teléfono',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14)),
+                                const SizedBox(height: 2),
+                                Text(telefono,
+                                    style: TextStyle(
+                                        color: Colors.white
+                                            .withValues(alpha: 0.75),
+                                        fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ],
+
+                      // ── Email (si existe en config) ──
+                      if (emailContacto.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              height: 1),
+                        ),
+                        Row(children: [
+                          Container(
+                            width: 38, height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.email_outlined,
+                                color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Email',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14)),
+                                const SizedBox(height: 2),
+                                Text(emailContacto,
+                                    style: TextStyle(
+                                        color: Colors.white
+                                            .withValues(alpha: 0.75),
+                                        fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ],
+
+                      // ── Botón ir a contacto ──
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const ContactScreen())),
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.25)),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.chat_bubble_outline_rounded,
+                                    color: Colors.white, size: 16),
+                                SizedBox(width: 8),
+                                Text('Enviar mensaje',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
   // ── HERO HEADER ──────────────────────────────────────────────────
   Widget _buildHeroHeader(bool isAuth, String nombre, String email,
       String iniciales, String? fotoUrl, AuthProvider auth) {
@@ -409,7 +682,8 @@ class _MoreScreenState extends State<MoreScreen> {
               left: 20, right: 20, bottom: 20,
             ),
             child: isAuth
-                ? _heroAuthContent(nombre, email, iniciales, fotoUrl, auth)
+                ? _heroAuthContent(
+                    nombre, email, iniciales, fotoUrl, auth)
                 : _heroGuestContent(),
           ),
         ],
@@ -459,8 +733,8 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  Widget _heroAuthContent(
-      String nombre, String email, String iniciales, String? fotoUrl, AuthProvider auth) {
+  Widget _heroAuthContent(String nombre, String email, String iniciales,
+      String? fotoUrl, AuthProvider auth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.end,
@@ -479,7 +753,8 @@ class _MoreScreenState extends State<MoreScreen> {
                       width: 52, height: 52,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Center(
-                        child: Text(iniciales.isNotEmpty ? iniciales : 'U',
+                        child: Text(
+                            iniciales.isNotEmpty ? iniciales : 'U',
                             style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -488,7 +763,8 @@ class _MoreScreenState extends State<MoreScreen> {
                     ),
                   )
                 : Center(
-                    child: Text(iniciales.isNotEmpty ? iniciales : 'U',
+                    child: Text(
+                        iniciales.isNotEmpty ? iniciales : 'U',
                         style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -536,7 +812,7 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  // ── REWARDS BANNER (solo guest) ──────────────────────────────────
+  // ── REWARDS BANNER (guest) ───────────────────────────────────────
   Widget _buildRewardsBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -561,7 +837,7 @@ class _MoreScreenState extends State<MoreScreen> {
                         fontFamily: 'Playfair Display')),
                 const SizedBox(height: 6),
                 Text(
-                    '¡Tus compras tienen premio! Regístrate para participar en nuestros sorteos exclusivos. Mientras más postres disfrutes, más oportunidades tienes de ganar sorpresas increíbles.',
+                    '¡Tus compras tienen premio! Regístrate para participar en nuestros sorteos exclusivos.',
                     style: TextStyle(
                         fontSize: 12,
                         color: Colors.brown[400],
@@ -608,12 +884,11 @@ class _MoreScreenState extends State<MoreScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(children: [
-        _statCard(_loadingStats ? '—' : '$_totalPedidos', 'Pedidos'),
+        _statCard(_loadingStats ? '—' : '$_totalPedidos',   'Pedidos'),
         const SizedBox(width: 10),
-        _statCard(
-            _loadingStats ? '—' : '$_totalFavoritos', 'Favoritos'),
+        _statCard(_loadingStats ? '—' : '$_totalFavoritos', 'Favoritos'),
         const SizedBox(width: 10),
-        _statCard(_loadingStats ? '—' : '$_totalResenas', 'Reseñas'),
+        _statCard(_loadingStats ? '—' : '$_totalResenas',   'Reseñas'),
       ]),
     );
   }
@@ -714,12 +989,10 @@ class _MoreScreenState extends State<MoreScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: last
-            ? const BorderRadius.vertical(
-                bottom: Radius.circular(18))
+            ? const BorderRadius.vertical(bottom: Radius.circular(18))
             : BorderRadius.zero,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(children: [
             Container(
               width: 36, height: 36,
@@ -755,7 +1028,6 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  Widget _footerIcon(IconData icon) {
-    return Icon(icon, color: Colors.grey[400], size: 22);
-  }
+  Widget _footerIcon(IconData icon) =>
+      Icon(icon, color: Colors.grey[400], size: 22);
 }

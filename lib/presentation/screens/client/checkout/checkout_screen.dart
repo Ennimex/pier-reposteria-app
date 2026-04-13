@@ -4,6 +4,7 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../data/providers/cart_provider.dart';
 import 'order_success_screen.dart';
@@ -23,14 +24,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isLoading = false;
   String? _errorMsg;
 
-  // Horario completo: Lunes – Viernes
+  String _direccionSucursal =
+      'Calle Allende, Col. Tahuizán — Huejutla de Reyes';
+
   final List<String> _weekdaySlots = [
     '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
     '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00',
     '15:00 - 16:00', '16:00 - 17:00', '17:00 - 18:00', '18:00 - 19:00',
   ];
 
-  // Horario reducido: Sábado y Domingo
   final List<String> _weekendSlots = [
     '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
     '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00',
@@ -42,6 +44,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return (wd == DateTime.saturday || wd == DateTime.sunday)
         ? _weekendSlots
         : _weekdaySlots;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarConfiguracion();
+  }
+
+  Future<void> _cargarConfiguracion() async {
+    final result =
+        await _api.get(ApiConstants.configuracionSeccion('contacto'));
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final config = result['config'] as Map<String, dynamic>? ?? {};
+      final dir = config['direccion']?.toString();
+      if (dir != null && dir.isNotEmpty) {
+        setState(() => _direccionSucursal = dir);
+      }
+    }
   }
 
   Future<void> _selectDate() async {
@@ -69,11 +90,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (picked != null && mounted) {
         setState(() {
           _selectedDate = picked;
-          // Si el horario elegido ya no existe en el nuevo día, lo limpiamos
           final wd = picked.weekday;
           final isWeekend =
               wd == DateTime.saturday || wd == DateTime.sunday;
-          if (isWeekend && _selectedTime != null &&
+          if (isWeekend &&
+              _selectedTime != null &&
               !_weekendSlots.contains(_selectedTime)) {
             _selectedTime = null;
           }
@@ -91,7 +112,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       backgroundColor: error ? Colors.red : AppColors.pierVerde,
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
   }
 
@@ -105,11 +127,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       // ── PASO 1: Crear Payment Intent ──────────────────────────────
-      final intentResult = await _api.postAuth('/pagos/crear-intent', {});
+      // El backend calcula el total con descuentos del carrito automáticamente
+      final intentResult =
+          await _api.postAuth(ApiConstants.crearPaymentIntent, {});
       if (!mounted) return;
 
       if (intentResult['success'] != true) {
-        setState(() => _errorMsg = intentResult['message'] ?? 'Error al iniciar pago');
+        setState(() =>
+            _errorMsg = intentResult['message'] ?? 'Error al iniciar pago');
         _showSnack(_errorMsg!, error: true);
         return;
       }
@@ -117,11 +142,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final clientSecret = intentResult['clientSecret'] as String;
       final publishableKey = intentResult['publishableKey'] as String;
 
-      // ── PASO 2: Inicializar Stripe con la publishable key ─────────
+      // ── PASO 2: Inicializar Stripe ────────────────────────────────
       Stripe.publishableKey = publishableKey;
       await Stripe.instance.applySettings();
 
-      // ── PASO 3: Mostrar sheet de pago de Stripe ───────────────────
+      // ── PASO 3: Sheet de pago ─────────────────────────────────────
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
@@ -138,11 +163,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       await Stripe.instance.presentPaymentSheet();
 
       // ── PASO 4: Confirmar pedido en el backend ────────────────────
+      // ✅ FIX: codigo_descuento removido — el backend aplica descuentos
+      //         automáticamente desde tblpromociones, no desde el body
       final paymentIntentId = clientSecret.split('_secret_').first;
       final horario =
           '${DateFormat('yyyy-MM-dd').format(_selectedDate!)} ${_selectedTime!.split(' - ').first}';
 
-      final confirmResult = await _api.postAuth('/pagos/confirmar', {
+      final confirmResult =
+          await _api.postAuth(ApiConstants.confirmarPago, {
         'payment_intent_id': paymentIntentId,
         'horario_recogida': horario,
         'notas': '',
@@ -152,7 +180,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (confirmResult['success'] == true) {
         final cart = Provider.of<CartProvider>(context, listen: false);
-        final pedido = confirmResult['pedido'] as Map<String, dynamic>;
+        final pedido =
+            confirmResult['pedido'] as Map<String, dynamic>;
         final total = cart.totalAmount;
         cart.clearCart();
 
@@ -160,15 +189,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => OrderSuccessScreen(
-              orderId: pedido['numero']?.toString() ?? pedido['id']?.toString() ?? '',
-              pickupDate: DateFormat('dd/MM/yyyy').format(_selectedDate!),
+              orderId: pedido['numero']?.toString() ??
+                  pedido['id']?.toString() ?? '',
+              pickupDate:
+                  DateFormat('dd/MM/yyyy').format(_selectedDate!),
               pickupTime: _selectedTime!,
               total: total,
             ),
           ),
         );
       } else {
-        _showSnack(confirmResult['message'] ?? 'Error al confirmar pedido', error: true);
+        _showSnack(
+            confirmResult['message'] ?? 'Error al confirmar pedido',
+            error: true);
       }
     } on StripeException catch (e) {
       if (!mounted) return;
@@ -217,7 +250,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                   color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8)),
+                                  borderRadius:
+                                      BorderRadius.circular(8)),
                               child: Text('${item.quantity}x',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -225,24 +259,98 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                                child: Text(item.nombre,
-                                    style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500))),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.nombre,
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500)),
+                                  // ✅ NUEVO: descuento por item en checkout
+                                  if (item.tieneDescuento)
+                                    Row(children: [
+                                      Text(
+                                        '\$${item.precio.toStringAsFixed(0)} c/u',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '\$${item.precioOriginal.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[400],
+                                            decoration:
+                                                TextDecoration.lineThrough),
+                                      ),
+                                    ]),
+                                ],
+                              ),
+                            ),
                             Text(
-                                '\$${(item.precio * item.quantity).toStringAsFixed(0)}',
+                                '\$${item.subtotal.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold)),
                           ],
                         ),
                       )),
                   const Divider(height: 24),
+
+                  // ✅ NUEVO: mostrar ahorro si hay descuentos
+                  if (cart.tieneDescuentos) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Subtotal',
+                            style: TextStyle(
+                                color: Colors.grey[500], fontSize: 14)),
+                        Text(
+                          '\$${cart.totalOriginal.toStringAsFixed(0)}',
+                          style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                              decoration: TextDecoration.lineThrough),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.local_offer_rounded,
+                              size: 14, color: Colors.green.shade600),
+                          const SizedBox(width: 6),
+                          Text('Descuentos aplicados',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.green.shade600,
+                                  fontWeight: FontWeight.w600)),
+                        ]),
+                        Text(
+                          '-\$${cart.totalAhorro.toStringAsFixed(0)}',
+                          style: TextStyle(
+                              color: Colors.green.shade600,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                    const SizedBox(height: 10),
+                  ],
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Total a Pagar',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16)),
                       Text('\$${cart.totalAmount.toStringAsFixed(0)}',
                           style: const TextStyle(
                               color: AppColors.pierVerde,
@@ -260,16 +368,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Container(
               decoration: _cardDecoration(),
               child: ListTile(
-                leading: const Icon(Icons.store, color: AppColors.pierDorado),
+                leading: const Icon(Icons.store,
+                    color: AppColors.pierDorado),
                 title: const Text('Sucursal Principal',
                     style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text(
-                    'Calle Allende, Col. Tahuizán — Huejutla de Reyes'),
+                subtitle: Text(_direccionSucursal),
                 trailing: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(
-                      color: AppColors.pierVerde, shape: BoxShape.circle),
-                  child: const Icon(Icons.check, color: Colors.white, size: 16),
+                      color: AppColors.pierVerde,
+                      shape: BoxShape.circle),
+                  child: const Icon(Icons.check,
+                      color: Colors.white, size: 16),
                 ),
               ),
             ),
@@ -287,17 +397,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         height: 56,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12),
                         decoration: _cardDecoration(),
                         child: Row(
                           children: [
                             const Icon(Icons.calendar_today,
-                                size: 20, color: AppColors.pierVerde),
+                                size: 20,
+                                color: AppColors.pierVerde),
                             const SizedBox(width: 10),
                             Text(
                               _selectedDate == null
                                   ? 'Fecha'
-                                  : DateFormat('dd/MM/yyyy').format(_selectedDate!),
+                                  : DateFormat('dd/MM/yyyy')
+                                      .format(_selectedDate!),
                               style: TextStyle(
                                 color: _selectedDate == null
                                     ? Colors.grey
@@ -324,7 +437,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             color: AppColors.pierVerde),
                         hint: const Row(children: [
                           Icon(Icons.access_time,
-                              size: 20, color: AppColors.pierVerde),
+                              size: 20,
+                              color: AppColors.pierVerde),
                           SizedBox(width: 10),
                           Text('Hora'),
                         ]),
@@ -333,7 +447,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             .map((t) => DropdownMenuItem(
                                 value: t,
                                 child: Text(t,
-                                    style: const TextStyle(fontSize: 14))))
+                                    style: const TextStyle(
+                                        fontSize: 14))))
                             .toList(),
                         onChanged: (val) =>
                             setState(() => _selectedTime = val),
@@ -368,10 +483,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       children: [
                         Text('Tarjeta de crédito / débito',
                             style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 15)),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15)),
                         SizedBox(height: 2),
                         Text('Pago seguro con Stripe',
-                            style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -380,7 +497,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     height: 24,
                     errorBuilder: (_, __, ___) => const Icon(
                         Icons.lock_rounded,
-                        color: AppColors.pierVerde, size: 20),
+                        color: AppColors.pierVerde,
+                        size: 20),
                   ),
                 ],
               ),
@@ -396,11 +514,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   border: Border.all(color: Colors.red.shade200),
                 ),
                 child: Row(children: [
-                  Icon(Icons.error_outline, color: Colors.red.shade400, size: 18),
+                  Icon(Icons.error_outline,
+                      color: Colors.red.shade400, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(_errorMsg!,
-                        style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
+                        style: TextStyle(
+                            color: Colors.red.shade700, fontSize: 13)),
                   ),
                 ]),
               ),
@@ -415,7 +535,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 onPressed: _isLoading ? null : _processPayment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.pierVerde,
-                  disabledBackgroundColor: AppColors.pierVerde.withValues(alpha: 0.5),
+                  disabledBackgroundColor:
+                      AppColors.pierVerde.withValues(alpha: 0.5),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -440,10 +561,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.lock_rounded, size: 13, color: Colors.grey[400]),
+                  Icon(Icons.lock_rounded,
+                      size: 13, color: Colors.grey[400]),
                   const SizedBox(width: 4),
                   Text('Pago cifrado y seguro con Stripe',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey[500])),
                 ],
               ),
             ),

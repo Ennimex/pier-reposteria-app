@@ -4,18 +4,17 @@ import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/services/api_service.dart';
 import '../../../../../core/constants/api_constants.dart';
+import '../../../../../core/utils/logger.dart';
 import '../../../../../data/providers/auth_provider.dart';
 import '../../../../../data/providers/cart_provider.dart';
 import '../../../../../data/providers/product_provider.dart';
 import '../../../../../data/providers/navigation_provider.dart';
 import '../../../../../data/models/product_model.dart';
 import '../../auth/login_screen.dart';
-import '../cart/cart_screen.dart';
 import 'product_detail_screen.dart';
 
 enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }
 
-// Icono de fallback según nombre de categoría
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
     case 'pasteles': return Icons.cake_outlined;
@@ -46,14 +45,12 @@ class _ProductsScreenState extends State<ProductsScreen>
   SortOption _sort = SortOption.popular;
   String _category = 'Todos';
   String _searchQuery = '';
-  bool _showOnlyPopular = false;
   bool _isGridView = true;
 
   final Map<String, AnimationController> _cartControllers = {};
   final Map<String, Animation<double>> _cartAnims = {};
   final Set<String> _favoritos = {};
 
-  // Filtros del backend
   List<String> _sabores = [];
   List<String> _tamanos = [];
   List<String> _tipos = [];
@@ -62,7 +59,6 @@ class _ProductsScreenState extends State<ProductsScreen>
   String? _filtroTipo;
   bool _filtrosLoaded = false;
 
-  // Categorías dinámicas del backend
   List<Map<String, dynamic>> _categoriasApi = [];
   final List<Map<String, dynamic>> _categoriasFallback = [
     {'name': 'Todos',     'icon': Icons.apps_rounded},
@@ -73,7 +69,6 @@ class _ProductsScreenState extends State<ProductsScreen>
     {'name': 'Cafetería','icon': Icons.coffee_outlined},
   ];
 
-  // Getter que combina API + fallback
   List<Map<String, dynamic>> get _categories {
     if (_categoriasApi.isEmpty) return _categoriasFallback;
     return [
@@ -89,6 +84,7 @@ class _ProductsScreenState extends State<ProductsScreen>
   void initState() {
     super.initState();
     _category = widget.initialCategory ?? 'Todos';
+    PierLog.nav('ProductsScreen abierto — categoría inicial: $_category');
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<ProductProvider>().cargarProductos();
       _cargarCategorias();
@@ -105,33 +101,44 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   Future<void> _cargarCategorias() async {
-    final result = await _api.get('/categorias');
+    PierLog.api('GET ${ApiConstants.categorias}');
+    final result = await _api.get(ApiConstants.categorias);
     if (!mounted) return;
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(
           result['categorias'] ?? result['data'] ?? []);
-      if (lista.isNotEmpty) setState(() => _categoriasApi = lista);
+      if (lista.isNotEmpty) {
+        PierLog.info('✅ Categorías cargadas: ${lista.length}');
+        setState(() => _categoriasApi = lista);
+      }
+    } else {
+      PierLog.error('Error al cargar categorías: ${result['message']}');
     }
   }
 
   Future<void> _cargarFiltros() async {
-    final result = await _api.get('/filtros');
+    PierLog.api('GET ${ApiConstants.filtros}');
+    final result = await _api.get(ApiConstants.filtros);
     if (!mounted) return;
     if (result['success'] == true) {
       final filtros = result['filtros'] as Map<String, dynamic>? ?? {};
       setState(() {
         _sabores = List<String>.from(filtros['sabores'] ?? []);
         _tamanos = List<String>.from(filtros['tamanos'] ?? []);
-        _tipos = List<String>.from(filtros['tipos'] ?? []);
+        _tipos   = List<String>.from(filtros['tipos'] ?? []);
         _filtrosLoaded = true;
       });
+      PierLog.info('✅ Filtros cargados — sabores:${_sabores.length} tamaños:${_tamanos.length} tipos:${_tipos.length}');
+    } else {
+      PierLog.error('Error al cargar filtros: ${result['message']}');
     }
   }
 
   Future<void> _cargarFavoritosIds() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) return;
-    final result = await _api.getAuth('/favoritos/ids');
+    PierLog.api('GET ${ApiConstants.favoritosIds}');
+    final result = await _api.getAuth(ApiConstants.favoritosIds);
     if (!mounted) return;
     if (result['success'] == true) {
       final ids = List<String>.from(
@@ -140,10 +147,14 @@ class _ProductsScreenState extends State<ProductsScreen>
         _favoritos.clear();
         _favoritos.addAll(ids);
       });
+      PierLog.info('✅ Favoritos cargados: ${ids.length}');
+    } else {
+      PierLog.error('Error al cargar favoritos: ${result['message']}');
     }
   }
 
   Future<void> _goToDetail(Product p) async {
+    PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ProductDetailScreen(product: p)),
@@ -175,7 +186,6 @@ class _ProductsScreenState extends State<ProductsScreen>
           p.categoria.toLowerCase().contains(q)).toList();
     }
 
-    if (_showOnlyPopular) list = list.where((p) => p.popular).toList();
     if (_filtroSabor != null && _filtroSabor != 'Todos') {
       list = list.where((p) => p.sabor == _filtroSabor).toList();
     }
@@ -187,10 +197,14 @@ class _ProductsScreenState extends State<ProductsScreen>
     }
 
     switch (_sort) {
-      case SortOption.priceAsc:  list.sort((a, b) => a.precio.compareTo(b.precio));
-      case SortOption.priceDesc: list.sort((a, b) => b.precio.compareTo(a.precio));
-      case SortOption.nameAsc:   list.sort((a, b) => a.nombre.compareTo(b.nombre));
-      case SortOption.nameDesc:  list.sort((a, b) => b.nombre.compareTo(a.nombre));
+      case SortOption.priceAsc:
+        list.sort((a, b) => a.precio.compareTo(b.precio));
+      case SortOption.priceDesc:
+        list.sort((a, b) => b.precio.compareTo(a.precio));
+      case SortOption.nameAsc:
+        list.sort((a, b) => a.nombre.compareTo(b.nombre));
+      case SortOption.nameDesc:
+        list.sort((a, b) => b.nombre.compareTo(a.nombre));
       case SortOption.popular:
         list.sort((a, b) {
           if (a.popular && !b.popular) return -1;
@@ -202,19 +216,21 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   bool get _hasFilters =>
-      _searchQuery.isNotEmpty || _category != 'Todos' || _showOnlyPopular ||
+      _searchQuery.isNotEmpty || _category != 'Todos' ||
       _filtroSabor != null || _filtroTamano != null || _filtroTipo != null;
 
-  void _clearFilters() => setState(() {
-        _searchQuery = '';
-        _searchController.clear();
-        _category = 'Todos';
-        _showOnlyPopular = false;
-        _sort = SortOption.popular;
-        _filtroSabor = null;
-        _filtroTamano = null;
-        _filtroTipo = null;
-      });
+  void _clearFilters() {
+    PierLog.debug('Filtros limpiados');
+    setState(() {
+      _searchQuery = '';
+      _searchController.clear();
+      _category = 'Todos';
+      _sort = SortOption.popular;
+      _filtroSabor = null;
+      _filtroTamano = null;
+      _filtroTipo = null;
+    });
+  }
 
   void _addToCart(Product p, CartProvider cart) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -223,6 +239,7 @@ class _ProductsScreenState extends State<ProductsScreen>
           MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
+    PierLog.info('🛒 Agregando al carrito desde catálogo: ${p.nombre}');
     cart.addItem(p);
     _getCartController(p.id).forward(from: 0);
     ScaffoldMessenger.of(context)
@@ -252,11 +269,15 @@ class _ProductsScreenState extends State<ProductsScreen>
     setState(() {
       if (yaEsFav) { _favoritos.remove(id); } else { _favoritos.add(id); }
     });
+    PierLog.api(yaEsFav
+        ? 'DELETE ${ApiConstants.favoritoById(id)}'
+        : 'POST /favoritos/$id');
     final result = yaEsFav
         ? await _api.deleteAuth(ApiConstants.favoritoById(id))
         : await _api.postAuth('/favoritos/$id', {});
     if (!mounted) return;
     if (result['success'] != true) {
+      PierLog.error('Error al ${yaEsFav ? 'quitar' : 'agregar'} favorito $id');
       setState(() {
         if (yaEsFav) { _favoritos.add(id); } else { _favoritos.remove(id); }
       });
@@ -299,7 +320,9 @@ class _ProductsScreenState extends State<ProductsScreen>
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary)),
-                    if (_filtroSabor != null || _filtroTamano != null || _filtroTipo != null)
+                    if (_filtroSabor != null ||
+                        _filtroTamano != null ||
+                        _filtroTipo != null)
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -319,13 +342,9 @@ class _ProductsScreenState extends State<ProductsScreen>
                 ),
                 const SizedBox(height: 20),
 
-                // ── SABOR ──
                 if (_sabores.isNotEmpty) ...[
                   const Text('Sabor',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8, runSpacing: 8,
@@ -338,27 +357,14 @@ class _ProductsScreenState extends State<ProductsScreen>
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel
-                                ? AppColors.pierVerde
-                                : Colors.grey.withValues(alpha: 0.08),
+                            color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: sel
-                                    ? AppColors.pierVerde
-                                    : Colors.grey.shade200),
+                            border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
                           ),
                           child: Text(s,
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: sel
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: sel
-                                      ? Colors.white
-                                      : Colors.grey[700])),
+                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : Colors.grey[700])),
                         ),
                       );
                     }).toList(),
@@ -366,13 +372,9 @@ class _ProductsScreenState extends State<ProductsScreen>
                   const SizedBox(height: 20),
                 ],
 
-                // ── TAMAÑO ──
                 if (_tamanos.isNotEmpty) ...[
                   const Text('Tamaño',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8, runSpacing: 8,
@@ -385,27 +387,14 @@ class _ProductsScreenState extends State<ProductsScreen>
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel
-                                ? AppColors.pierVerde
-                                : Colors.grey.withValues(alpha: 0.08),
+                            color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: sel
-                                    ? AppColors.pierVerde
-                                    : Colors.grey.shade200),
+                            border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
                           ),
                           child: Text(t,
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: sel
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: sel
-                                      ? Colors.white
-                                      : Colors.grey[700])),
+                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : Colors.grey[700])),
                         ),
                       );
                     }).toList(),
@@ -413,13 +402,9 @@ class _ProductsScreenState extends State<ProductsScreen>
                   const SizedBox(height: 20),
                 ],
 
-                // ── TIPO ──
                 if (_tipos.isNotEmpty) ...[
                   const Text('Tipo',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8, runSpacing: 8,
@@ -432,27 +417,14 @@ class _ProductsScreenState extends State<ProductsScreen>
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel
-                                ? AppColors.pierVerde
-                                : Colors.grey.withValues(alpha: 0.08),
+                            color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: sel
-                                    ? AppColors.pierVerde
-                                    : Colors.grey.shade200),
+                            border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
                           ),
                           child: Text(t,
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: sel
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: sel
-                                      ? Colors.white
-                                      : Colors.grey[700])),
+                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : Colors.grey[700])),
                         ),
                       );
                     }).toList(),
@@ -464,12 +436,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(20),
-                      child: CircularProgressIndicator(
-                          color: AppColors.pierVerde),
+                      child: CircularProgressIndicator(color: AppColors.pierVerde),
                     ),
                   ),
 
-                // Botón aplicar
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -477,14 +447,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.pierVerde,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     child: const Text('Aplicar filtros',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
+                        style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -503,24 +469,17 @@ class _ProductsScreenState extends State<ProductsScreen>
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (_) => SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(
-              24, 16, 24, MediaQuery.of(context).padding.bottom + 24),
+          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).padding.bottom + 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2))),
+              Container(width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 20),
               const Align(
                   alignment: Alignment.centerLeft,
                   child: Text('Ordenar por',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary))),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary))),
               const SizedBox(height: 16),
               ...[
                 ('Más populares',         SortOption.popular,   Icons.star_rounded),
@@ -539,13 +498,9 @@ class _ProductsScreenState extends State<ProductsScreen>
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: sel
-                          ? AppColors.pierVerde.withValues(alpha: 0.08)
-                          : Colors.grey.withValues(alpha: 0.04),
+                      color: sel ? AppColors.pierVerde.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(14),
-                      border: sel
-                          ? Border.all(color: AppColors.pierVerde.withValues(alpha: 0.3))
-                          : null,
+                      border: sel ? Border.all(color: AppColors.pierVerde.withValues(alpha: 0.3)) : null,
                     ),
                     child: Row(children: [
                       Container(
@@ -554,19 +509,13 @@ class _ProductsScreenState extends State<ProductsScreen>
                           color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(t.$3, size: 18,
-                            color: sel ? Colors.white : Colors.grey),
+                        child: Icon(t.$3, size: 18, color: sel ? Colors.white : Colors.grey),
                       ),
                       const SizedBox(width: 14),
-                      Expanded(
-                          child: Text(t.$1,
-                              style: TextStyle(
-                                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                                  color: sel ? AppColors.pierVerde : AppColors.textPrimary,
-                                  fontSize: 15))),
-                      if (sel)
-                        const Icon(Icons.check_circle_rounded,
-                            color: AppColors.pierVerde, size: 20),
+                      Expanded(child: Text(t.$1,
+                          style: TextStyle(fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                              color: sel ? AppColors.pierVerde : AppColors.textPrimary, fontSize: 15))),
+                      if (sel) const Icon(Icons.check_circle_rounded, color: AppColors.pierVerde, size: 20),
                     ]),
                   ),
                 );
@@ -588,10 +537,7 @@ class _ProductsScreenState extends State<ProductsScreen>
       backgroundColor: const Color(0xFFF5F2ED),
       body: Column(
         children: [
-          // ── HEADER VERDE FIJO ────────────────────────────────────
           _buildHeaderBackground(cartCount),
-
-          // ── CHIPS DE CATEGORÍA FIJOS ──────────────────────────────
           Container(
             color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -605,28 +551,22 @@ class _ProductsScreenState extends State<ProductsScreen>
                   final cat = _categories[i];
                   final sel = _category == cat['name'];
                   return GestureDetector(
-                    onTap: () =>
-                        setState(() => _category = cat['name'] as String),
+                    onTap: () => setState(() => _category = cat['name'] as String),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
                         color: sel ? AppColors.pierVerde : Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: sel ? AppColors.pierVerde : Colors.grey.shade200),
+                        border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(cat['icon'] as IconData,
-                              size: 13,
-                              color: sel ? Colors.white : Colors.grey[600]),
+                          Icon(cat['icon'] as IconData, size: 13, color: sel ? Colors.white : Colors.grey[600]),
                           const SizedBox(width: 6),
                           Text(cat['name'] as String,
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: sel ? FontWeight.bold : FontWeight.w500,
+                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500,
                                   color: sel ? Colors.white : Colors.grey[700])),
                         ],
                       ),
@@ -636,8 +576,6 @@ class _ProductsScreenState extends State<ProductsScreen>
               ),
             ),
           ),
-
-          // ── CONTENIDO SCROLLABLE ──────────────────────────────────
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
@@ -650,110 +588,90 @@ class _ProductsScreenState extends State<ProductsScreen>
               color: AppColors.pierVerde,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Nuestro Menú',
-                            style: TextStyle(
-                                fontFamily: 'Playfair Display',
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary)),
-                        GestureDetector(
-                          onTap: () => setState(() => _isGridView = !_isGridView),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.pierVerde.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: AppColors.pierVerde.withValues(alpha: 0.2)),
-                            ),
-                            child: Row(children: [
-                              Icon(
-                                _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                                color: AppColors.pierVerde, size: 16,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                _isGridView ? 'Cuadrícula' : 'Lista',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.pierVerde,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ]),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                if (_hasFilters)
+                slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                      child: GestureDetector(
-                        onTap: _clearFilters,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(20),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Nuestro Menú',
+                              style: TextStyle(fontFamily: 'Playfair Display', fontSize: 22,
+                                  fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          GestureDetector(
+                            onTap: () => setState(() => _isGridView = !_isGridView),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.pierVerde.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: AppColors.pierVerde.withValues(alpha: 0.2)),
+                              ),
+                              child: Row(children: [
+                                Icon(_isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                                    color: AppColors.pierVerde, size: 16),
+                                const SizedBox(width: 5),
+                                Text(_isGridView ? 'Cuadrícula' : 'Lista',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.pierVerde,
+                                        fontWeight: FontWeight.w600)),
+                              ]),
+                            ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.filter_alt_off_rounded,
-                                  size: 14, color: Colors.red.shade400),
-                              const SizedBox(width: 6),
-                              Text('Quitar filtros',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.red.shade400,
-                                      fontWeight: FontWeight.w600)),
-                            ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_hasFilters)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                        child: GestureDetector(
+                          onTap: _clearFilters,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20)),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.filter_alt_off_rounded, size: 14, color: Colors.red.shade400),
+                                const SizedBox(width: 6),
+                                Text('Quitar filtros',
+                                    style: TextStyle(fontSize: 12, color: Colors.red.shade400, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-
-                if (productProvider.isLoading)
-                  const SliverFillRemaining(
-                    child: Center(
-                        child: CircularProgressIndicator(color: AppColors.pierVerde)),
-                  )
-                else if (products.isEmpty)
-                  SliverFillRemaining(child: _buildEmptyState())
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    sliver: SliverGrid(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, i) => _buildCard(products[i]),
-                        childCount: products.length,
-                      ),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: _isGridView ? 2 : 1,
-                        childAspectRatio: _isGridView ? 0.63 : 3.2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
+                  if (productProvider.isLoading)
+                    const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator(color: AppColors.pierVerde)),
+                    )
+                  else if (products.isEmpty)
+                    SliverFillRemaining(child: _buildEmptyState())
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      sliver: SliverGrid(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => _buildCard(products[i], productProvider),
+                          childCount: products.length,
+                        ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: _isGridView ? 2 : 1,
+                          childAspectRatio: _isGridView ? 0.63 : 3.2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
   }
 
   Widget _buildHeaderBackground(int cartCount) {
@@ -775,19 +693,14 @@ class _ProductsScreenState extends State<ProductsScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Pier Repostería',
-                      style: TextStyle(
-                          fontFamily: 'Playfair Display',
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
+                      style: TextStyle(fontFamily: 'Playfair Display', fontSize: 28,
+                          fontWeight: FontWeight.bold, color: Colors.white)),
                   Text('Artesanal & Gourmet',
                       style: TextStyle(fontSize: 13, color: Colors.white70)),
                 ],
               ),
               GestureDetector(
-                onTap: () {
-                  context.read<NavigationProvider>().setSelectedIndex(2);
-                },
+                onTap: () => context.read<NavigationProvider>().setSelectedIndex(2),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -797,22 +710,16 @@ class _ProductsScreenState extends State<ProductsScreen>
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.shopping_cart_outlined,
-                          color: Colors.white, size: 22),
+                      child: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 22),
                     ),
                     if (cartCount > 0)
                       Positioned(
                         right: -6, top: -6,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                              color: AppColors.pierDorado,
-                              shape: BoxShape.circle),
+                          decoration: const BoxDecoration(color: AppColors.pierDorado, shape: BoxShape.circle),
                           child: Text('$cartCount',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold)),
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
                       ),
                   ],
@@ -832,12 +739,7 @@ class _ProductsScreenState extends State<ProductsScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(50),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4))
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: TextField(
         controller: _searchController,
@@ -856,40 +758,20 @@ class _ProductsScreenState extends State<ProductsScreen>
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Botón ordenar
-                    IconButton(
-                      icon: const Icon(Icons.sort_rounded,
-                          color: Colors.grey, size: 20),
-                      onPressed: _showSortSheet,
-                      tooltip: 'Ordenar',
-                    ),
-                    // Botón filtrar — con badge si hay filtros activos
+                    IconButton(icon: const Icon(Icons.sort_rounded, color: Colors.grey, size: 20),
+                        onPressed: _showSortSheet, tooltip: 'Ordenar'),
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
                         IconButton(
                           icon: Icon(Icons.tune_rounded,
-                              color: _filtroSabor != null ||
-                                      _filtroTamano != null ||
-                                      _filtroTipo != null
-                                  ? AppColors.pierVerde
-                                  : Colors.grey,
-                              size: 20),
-                          onPressed: _showFilterSheet,
-                          tooltip: 'Filtrar',
-                        ),
-                        if (_filtroSabor != null ||
-                            _filtroTamano != null ||
-                            _filtroTipo != null)
-                          Positioned(
-                            right: 8, top: 8,
-                            child: Container(
-                              width: 8, height: 8,
-                              decoration: const BoxDecoration(
-                                  color: AppColors.pierVerde,
-                                  shape: BoxShape.circle),
-                            ),
-                          ),
+                              color: _filtroSabor != null || _filtroTamano != null || _filtroTipo != null
+                                  ? AppColors.pierVerde : Colors.grey, size: 20),
+                          onPressed: _showFilterSheet, tooltip: 'Filtrar'),
+                        if (_filtroSabor != null || _filtroTamano != null || _filtroTipo != null)
+                          Positioned(right: 8, top: 8,
+                              child: Container(width: 8, height: 8,
+                                  decoration: const BoxDecoration(color: AppColors.pierVerde, shape: BoxShape.circle))),
                       ],
                     ),
                   ],
@@ -901,29 +783,36 @@ class _ProductsScreenState extends State<ProductsScreen>
     );
   }
 
-  Widget _buildCard(Product p) {
+  // ✅ ACTUALIZADO: recibe productProvider para consultar promociones
+  Widget _buildCard(Product p, ProductProvider provider) {
     return GestureDetector(
       onTap: () => _goToDetail(p),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 6)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 6))],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: _isGridView ? _buildGridCard(p) : _buildListCard(p),
+          child: _isGridView
+              ? _buildGridCard(p, provider)
+              : _buildListCard(p, provider),
         ),
       ),
     );
   }
 
-  Widget _buildGridCard(Product p) {
+  Widget _buildGridCard(Product p, ProductProvider provider) {
+    // ✅ NUEVO: obtener precio con descuento si hay promo
+    final tienePromo = provider.tieneDescuento(p.id);
+    final precioFinal = provider.precioConDescuento(p.id, p.precio);
+    final promo = provider.promocionDeProducto(p.id);
+    final badge = promo?['badge_destacado']?.toString() ??
+        (promo?['descuento_porcentaje'] != null
+            ? '${promo!['descuento_porcentaje']}% OFF'
+            : null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -933,34 +822,45 @@ class _ProductsScreenState extends State<ProductsScreen>
             fit: StackFit.expand,
             children: [
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, e, _) => Container(
+                  errorBuilder: (_, e, __) => Container(
                     color: AppColors.pierArena,
-                    child: const Icon(Icons.cake_outlined,
-                        color: AppColors.pierVerde, size: 40),
+                    child: const Icon(Icons.cake_outlined, color: AppColors.pierVerde, size: 40),
                   )),
-              if (p.popular)
+              // Badge popular
+              if (p.popular && !tienePromo)
                 Positioned(
                   top: 10, left: 10,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                        color: AppColors.pierDorado,
-                        borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: AppColors.pierDorado, borderRadius: BorderRadius.circular(8)),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.star_rounded, color: Colors.white, size: 10),
                         SizedBox(width: 3),
-                        Text('POPULAR',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5)),
+                        Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                       ],
                     ),
                   ),
                 ),
+              // ✅ NUEVO: badge de descuento (reemplaza popular si hay promo)
+              if (tienePromo && badge != null)
+                Positioned(
+                  top: 10, left: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.red.shade500, borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.local_offer_rounded, color: Colors.white, size: 10),
+                        const SizedBox(width: 3),
+                        Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              // Favorito
               Positioned(
                 top: 8, right: 8,
                 child: GestureDetector(
@@ -971,13 +871,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                     decoration: BoxDecoration(
                       color: _favoritos.contains(p.id) ? Colors.red : Colors.white,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15), blurRadius: 8)],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8)],
                     ),
                     child: Icon(
-                      _favoritos.contains(p.id)
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
+                      _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                       color: _favoritos.contains(p.id) ? Colors.white : Colors.grey[500],
                       size: 16,
                     ),
@@ -995,49 +892,46 @@ class _ProductsScreenState extends State<ProductsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('\$${p.precio.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.pierDoradoOscuro)),
+                // ✅ NUEVO: precio con tachado si hay descuento
+                Row(
+                  children: [
+                    Text('\$${precioFinal.toStringAsFixed(0)}',
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: tienePromo ? Colors.red.shade600 : AppColors.pierDoradoOscuro)),
+                    if (tienePromo) ...[
+                      const SizedBox(width: 5),
+                      Text('\$${p.precio.toStringAsFixed(0)}',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[400], decoration: TextDecoration.lineThrough)),
+                    ],
+                  ],
+                ),
                 if (p.categoria.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(p.categoria,
-                        style: const TextStyle(
-                            fontSize: 9,
-                            color: AppColors.pierVerde,
-                            fontWeight: FontWeight.w700)),
+                        style: const TextStyle(fontSize: 9, color: AppColors.pierVerde, fontWeight: FontWeight.w700)),
                   ),
                 const SizedBox(height: 3),
                 Text(p.nombre,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: AppColors.textPrimary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(p.descripcion,
                     style: TextStyle(fontSize: 10, color: Colors.grey[500], height: 1.3),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(children: [
                       const Icon(Icons.star_rounded, color: Colors.amber, size: 13),
                       const SizedBox(width: 3),
-                      Text(
-                          p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w600)),
+                      Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600)),
                     ]),
                     Consumer<CartProvider>(
                       builder: (context, cart, child) {
@@ -1048,13 +942,8 @@ class _ProductsScreenState extends State<ProductsScreen>
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             width: 34, height: 34,
-                            decoration: BoxDecoration(
-                                color: AppColors.pierVerde,
-                                borderRadius: BorderRadius.circular(10)),
-                            child: Icon(
-                              inCart ? Icons.check_rounded : Icons.add_rounded,
-                              color: Colors.white, size: 20,
-                            ),
+                            decoration: BoxDecoration(color: AppColors.pierVerde, borderRadius: BorderRadius.circular(10)),
+                            child: Icon(inCart ? Icons.check_rounded : Icons.add_rounded, color: Colors.white, size: 20),
                           ),
                         );
                         if (anim != null) btn = ScaleTransition(scale: anim, child: btn);
@@ -1071,7 +960,15 @@ class _ProductsScreenState extends State<ProductsScreen>
     );
   }
 
-  Widget _buildListCard(Product p) {
+  Widget _buildListCard(Product p, ProductProvider provider) {
+    final tienePromo = provider.tieneDescuento(p.id);
+    final precioFinal = provider.precioConDescuento(p.id, p.precio);
+    final promo = provider.promocionDeProducto(p.id);
+    final badge = promo?['badge_destacado']?.toString() ??
+        (promo?['descuento_porcentaje'] != null
+            ? '${promo!['descuento_porcentaje']}% OFF'
+            : null);
+
     return Row(
       children: [
         SizedBox(
@@ -1080,31 +977,30 @@ class _ProductsScreenState extends State<ProductsScreen>
             fit: StackFit.expand,
             children: [
               Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, e, _) => Container(
+                  errorBuilder: (_, e, __) => Container(
                     color: AppColors.pierArena,
-                    child: const Icon(Icons.cake_outlined,
-                        color: AppColors.pierVerde, size: 36),
+                    child: const Icon(Icons.cake_outlined, color: AppColors.pierVerde, size: 36),
                   )),
-              if (p.popular)
+              if (tienePromo && badge != null)
+                Positioned(
+                  top: 8, left: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.red.shade500, borderRadius: BorderRadius.circular(6)),
+                    child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                  ),
+                )
+              else if (p.popular)
                 Positioned(
                   top: 8, left: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: AppColors.pierDorado,
-                        borderRadius: BorderRadius.circular(6)),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star_rounded, color: Colors.white, size: 9),
-                        SizedBox(width: 2),
-                        Text('POP',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 7,
-                                fontWeight: FontWeight.bold)),
-                      ],
-                    ),
+                    decoration: BoxDecoration(color: AppColors.pierDorado, borderRadius: BorderRadius.circular(6)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.star_rounded, color: Colors.white, size: 9),
+                      SizedBox(width: 2),
+                      Text('POP', style: TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold)),
+                    ]),
                   ),
                 ),
               Positioned(
@@ -1117,13 +1013,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                     decoration: BoxDecoration(
                       color: _favoritos.contains(p.id) ? Colors.red : Colors.white,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15), blurRadius: 6)],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6)],
                     ),
                     child: Icon(
-                      _favoritos.contains(p.id)
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
+                      _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                       color: _favoritos.contains(p.id) ? Colors.white : Colors.grey[500],
                       size: 14,
                     ),
@@ -1141,36 +1034,35 @@ class _ProductsScreenState extends State<ProductsScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(p.nombre,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: AppColors.textPrimary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(p.descripcion,
                     style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.3),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('\$${p.precio.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.pierDoradoOscuro)),
+                        // ✅ NUEVO: precio con tachado en lista
+                        Row(children: [
+                          Text('\$${precioFinal.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                  fontSize: 17, fontWeight: FontWeight.w800,
+                                  color: tienePromo ? Colors.red.shade600 : AppColors.pierDoradoOscuro)),
+                          if (tienePromo) ...[
+                            const SizedBox(width: 6),
+                            Text('\$${p.precio.toStringAsFixed(0)}',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[400],
+                                    decoration: TextDecoration.lineThrough)),
+                          ],
+                        ]),
                         Row(children: [
                           const Icon(Icons.star_rounded, color: Colors.amber, size: 12),
                           const SizedBox(width: 3),
-                          Text(
-                              p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.w600)),
+                          Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600)),
                         ]),
                       ],
                     ),
@@ -1183,13 +1075,8 @@ class _ProductsScreenState extends State<ProductsScreen>
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                                color: AppColors.pierVerde,
-                                borderRadius: BorderRadius.circular(12)),
-                            child: Icon(
-                              inCart ? Icons.check_rounded : Icons.add_rounded,
-                              color: Colors.white, size: 20,
-                            ),
+                            decoration: BoxDecoration(color: AppColors.pierVerde, borderRadius: BorderRadius.circular(12)),
+                            child: Icon(inCart ? Icons.check_rounded : Icons.add_rounded, color: Colors.white, size: 20),
                           ),
                         );
                         if (anim != null) btn = ScaleTransition(scale: anim, child: btn);
@@ -1213,32 +1100,23 @@ class _ProductsScreenState extends State<ProductsScreen>
         children: [
           Container(
             width: 100, height: 100,
-            decoration: BoxDecoration(
-                color: AppColors.pierVerde.withValues(alpha: 0.08),
-                shape: BoxShape.circle),
-            child: const Icon(Icons.search_off_rounded,
-                size: 48, color: AppColors.pierVerde),
+            decoration: BoxDecoration(color: AppColors.pierVerde.withValues(alpha: 0.08), shape: BoxShape.circle),
+            child: const Icon(Icons.search_off_rounded, size: 48, color: AppColors.pierVerde),
           ),
           const SizedBox(height: 20),
           const Text('Sin resultados',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary)),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
           Text('Intenta con otros términos\no ajusta los filtros',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Colors.grey[500])),
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: Colors.grey[500])),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _clearFilters,
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            label: const Text('Limpiar filtros',
-                style: TextStyle(color: Colors.white)),
+            label: const Text('Limpiar filtros', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.pierVerde,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],

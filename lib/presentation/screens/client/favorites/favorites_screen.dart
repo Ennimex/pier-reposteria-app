@@ -10,6 +10,21 @@ import '../../../../data/providers/auth_provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
 import '../products/product_detail_screen.dart';
 
+// Icono de fallback según nombre de categoría
+IconData _iconForCategoria(String nombre) {
+  switch (nombre.toLowerCase()) {
+    case 'pasteles': return Icons.cake_outlined;
+    case 'roscas': return Icons.donut_large_outlined;
+    case 'pays': return Icons.pie_chart_outline;
+    case 'postres': return Icons.cookie_outlined;
+    case 'cafetería':
+    case 'cafeteria': return Icons.coffee_outlined;
+    case 'bebidas': return Icons.local_drink_outlined;
+    case 'panes': return Icons.breakfast_dining_outlined;
+    default: return Icons.fastfood_outlined;
+  }
+}
+
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
 
@@ -25,11 +40,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   String _searchQuery = '';
   bool _isLoading = true;
 
-  final List<Map<String, dynamic>> _categories = [
-    {'name': 'Pasteles', 'icon': Icons.cake_outlined},
-    {'name': 'Roscas',   'icon': Icons.donut_large_outlined},
-    {'name': 'Pays',     'icon': Icons.pie_chart_outline},
-    {'name': 'Café',     'icon': Icons.coffee_outlined},
+  // ✅ FIX: categorías cargadas del backend en vez de hardcodeadas
+  List<Map<String, dynamic>> _categoriasApi = [];
+
+  // Fallback si el API no responde
+  final List<Map<String, dynamic>> _categoriasFallback = [
+    {'nombre': 'Pasteles', 'icon': Icons.cake_outlined},
+    {'nombre': 'Roscas',   'icon': Icons.donut_large_outlined},
+    {'nombre': 'Pays',     'icon': Icons.pie_chart_outline},
+    {'nombre': 'Café',     'icon': Icons.coffee_outlined},
   ];
 
   List<Product> get _filtered {
@@ -44,12 +63,25 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   void initState() {
     super.initState();
     _cargarFavoritos();
+    _cargarCategorias();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cargarCategorias() async {
+    final result = await _api.get(ApiConstants.categorias);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final lista = List<Map<String, dynamic>>.from(
+          result['categorias'] ?? result['data'] ?? []);
+      if (lista.isNotEmpty) {
+        setState(() => _categoriasApi = lista);
+      }
+    }
   }
 
   Future<void> _cargarFavoritos() async {
@@ -223,8 +255,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.search_off_rounded,
-                                size: 56,
-                                color: Colors.grey[300]),
+                                size: 56, color: Colors.grey[300]),
                             const SizedBox(height: 16),
                             Text('Sin resultados para "$_searchQuery"',
                                 style: TextStyle(
@@ -277,7 +308,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── IMAGEN ────────────────────────────────────────────
             Expanded(
               flex: 58,
               child: Stack(
@@ -296,7 +326,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ),
                     ),
                   ),
-                  // Corazón para quitar
                   Positioned(
                     top: 10, right: 10,
                     child: GestureDetector(
@@ -320,8 +349,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 ],
               ),
             ),
-
-            // ── INFO ──────────────────────────────────────────────
             Expanded(
               flex: 42,
               child: Padding(
@@ -384,6 +411,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   // ── EMPTY STATE ───────────────────────────────────────────────────
   Widget _buildEmptyState() {
+    // ✅ FIX: usar categorías del backend, fallback si no hay
+    final cats = _categoriasApi.isNotEmpty
+        ? _categoriasApi.take(4).toList()
+        : _categoriasFallback;
+
     return Column(
       children: [
         const Spacer(),
@@ -490,7 +522,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: _categories.map((cat) {
+                children: cats.map((cat) {
+                  final nombre =
+                      (cat['nombre'] ?? cat['name'] ?? '').toString();
+                  final IconData icon = cat['icon'] != null
+                      ? cat['icon'] as IconData
+                      : _iconForCategoria(nombre);
+
                   return GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
@@ -507,11 +545,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           border: Border.all(
                               color: Colors.grey.withValues(alpha: 0.2)),
                         ),
-                        child: Icon(cat['icon'] as IconData,
+                        child: Icon(icon,
                             color: AppColors.pierVerde, size: 26),
                       ),
                       const SizedBox(height: 6),
-                      Text(cat['name'] as String,
+                      Text(nombre,
                           style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey[700],

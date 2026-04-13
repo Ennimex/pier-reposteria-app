@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/utils/logger.dart';
 
 class MyReviewsScreen extends StatefulWidget {
   const MyReviewsScreen({super.key});
@@ -19,17 +20,22 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   @override
   void initState() {
     super.initState();
+    PierLog.nav('→ MyReviewsScreen');
     _cargarResenas();
   }
 
   Future<void> _cargarResenas() async {
     setState(() => _isLoading = true);
+    PierLog.api('GET ${ApiConstants.misResenas}');
     final result = await _api.getAuth(ApiConstants.misResenas);
     if (!mounted) return;
     if (result['success'] == true) {
-      setState(() {
-        _resenas = List<Map<String, dynamic>>.from(result['resenas'] ?? []);
-      });
+      final lista =
+          List<Map<String, dynamic>>.from(result['resenas'] ?? []);
+      setState(() => _resenas = lista);
+      PierLog.info('✅ Mis reseñas cargadas: ${lista.length}');
+    } else {
+      PierLog.error('Error al cargar mis reseñas: ${result['message']}');
     }
     setState(() => _isLoading = false);
   }
@@ -38,8 +44,10 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     if (fecha == null) return '';
     try {
       final dt = DateTime.parse(fecha.toString()).toLocal();
-      final months = ['Ene','Feb','Mar','Abr','May','Jun',
-                      'Jul','Ago','Sep','Oct','Nov','Dic'];
+      const months = [
+        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+      ];
       return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
     } catch (_) {
       return '';
@@ -118,7 +126,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                             padding:
                                 const EdgeInsets.fromLTRB(16, 0, 16, 32),
                             itemCount: _resenas.length,
-                            separatorBuilder: (_, _) =>
+                            separatorBuilder: (_, __) =>
                                 const SizedBox(height: 12),
                             itemBuilder: (context, i) =>
                                 _buildCard(_resenas[i]),
@@ -179,7 +187,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
               children: [
-                // Imagen producto
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: productoImagen.isNotEmpty
@@ -187,7 +194,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           productoImagen,
                           width: 52, height: 52,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _productoPlaceholder(),
+                          errorBuilder: (_, __, ___) =>
+                              _productoPlaceholder(),
                         )
                       : _productoPlaceholder(),
                 ),
@@ -210,7 +218,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     ],
                   ),
                 ),
-                // Estado chip
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 5),
@@ -240,17 +247,18 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Estrellas
                 Row(children: [
-                  ...List.generate(5, (i) => Icon(
-                        i < rating.round()
-                            ? Icons.star_rounded
-                            : Icons.star_border_rounded,
-                        size: 18,
-                        color: i < rating.round()
-                            ? Colors.amber
-                            : Colors.grey[300],
-                      )),
+                  ...List.generate(
+                      5,
+                      (i) => Icon(
+                            i < rating.round()
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            size: 18,
+                            color: i < rating.round()
+                                ? Colors.amber
+                                : Colors.grey[300],
+                          )),
                   const SizedBox(width: 8),
                   Text(rating.toStringAsFixed(1),
                       style: const TextStyle(
@@ -273,7 +281,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                         color: Colors.grey[600],
                         height: 1.4)),
 
-                // Respuesta del negocio si existe
+                // Respuesta del negocio
                 if (r['respuesta_negocio'] != null &&
                     r['respuesta_negocio'].toString().isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -283,8 +291,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                       color: AppColors.pierArena,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color:
-                              AppColors.pierDorado.withValues(alpha: 0.3)),
+                          color: AppColors.pierDorado
+                              .withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +319,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   ),
                 ],
 
-                // Motivo de rechazo si existe
+                // Motivo de rechazo
                 if (estado == 'rechazada' &&
                     r['motivo_rechazo'] != null &&
                     r['motivo_rechazo'].toString().isNotEmpty) ...[
@@ -349,17 +357,15 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 
-  Widget _productoPlaceholder() {
-    return Container(
-      width: 52, height: 52,
-      decoration: BoxDecoration(
-        color: AppColors.pierArena,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(Icons.cake_outlined,
-          color: AppColors.pierVerde, size: 24),
-    );
-  }
+  Widget _productoPlaceholder() => Container(
+        width: 52, height: 52,
+        decoration: BoxDecoration(
+          color: AppColors.pierArena,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.cake_outlined,
+            color: AppColors.pierVerde, size: 24),
+      );
 
   Widget _buildEmptyState() {
     return Center(

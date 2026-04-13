@@ -14,32 +14,31 @@ class ContactScreen extends StatefulWidget {
 }
 
 class _ContactScreenState extends State<ContactScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nombreCtrl    = TextEditingController();
-  final _emailCtrl     = TextEditingController();
-  final _telefonoCtrl  = TextEditingController();
-  final _mensajeCtrl   = TextEditingController();
+  final _formKey     = GlobalKey<FormState>();
+  final _nombreCtrl  = TextEditingController();
+  final _emailCtrl   = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
+  final _mensajeCtrl = TextEditingController();
 
   String _tipoProducto = 'Información general';
   bool _enviando = false;
 
+  // ✅ NUEVO: datos de contacto cargados del backend con fallbacks
+  String _telefono = '771 123 4567';
+  String _emailContacto = 'hola@pier.com';
+  String _horario = 'Lun–Sáb • 9:00 – 21:00 hrs';
+  String _whatsapp = '';
+
   final List<String> _tiposProducto = [
-    'Información general',
-    'Pasteles',
-    'Roscas',
-    'Pays',
-    'Postres',
-    'Cafetería',
-    'Pedidos',
-    'Reembolsos',
-    'Sugerencias',
-    'Quejas',
-    'Otro',
+    'Información general', 'Pasteles', 'Roscas', 'Pays',
+    'Postres', 'Cafetería', 'Pedidos', 'Reembolsos',
+    'Sugerencias', 'Quejas', 'Otro',
   ];
 
   @override
   void initState() {
     super.initState();
+    _cargarConfiguracion();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user =
           Provider.of<AuthProvider>(context, listen: false).currentUser;
@@ -47,6 +46,43 @@ class _ContactScreenState extends State<ContactScreen> {
         _nombreCtrl.text =
             '${user['nombre'] ?? ''} ${user['apellido'] ?? ''}'.trim();
         _emailCtrl.text = user['email'] ?? '';
+      }
+    });
+  }
+
+  // ✅ NUEVO: cargar contacto y horarios del backend
+  Future<void> _cargarConfiguracion() async {
+    final api = ApiService();
+    final results = await Future.wait([
+      api.get(ApiConstants.configuracionSeccion('contacto')),
+      api.get(ApiConstants.configuracionSeccion('horarios')),
+    ]);
+    if (!mounted) return;
+
+    final configContacto =
+        results[0]['success'] == true
+            ? Map<String, dynamic>.from(results[0]['config'] ?? {})
+            : <String, dynamic>{};
+    final configHorarios =
+        results[1]['success'] == true
+            ? Map<String, dynamic>.from(results[1]['config'] ?? {})
+            : <String, dynamic>{};
+
+    setState(() {
+      if (configContacto['telefono'] != null) {
+        _telefono = configContacto['telefono'].toString();
+      }
+      if (configContacto['email'] != null) {
+        _emailContacto = configContacto['email'].toString();
+      }
+      if (configContacto['whatsapp'] != null) {
+        _whatsapp = configContacto['whatsapp'].toString();
+      }
+      final horarioRaw = configHorarios['horario'] ??
+          configHorarios['lunes_sabado'] ??
+          configHorarios['semana'];
+      if (horarioRaw != null) {
+        _horario = horarioRaw.toString();
       }
     });
   }
@@ -74,7 +110,6 @@ class _ContactScreenState extends State<ContactScreen> {
       'mensaje':       _mensajeCtrl.text.trim(),
     };
 
-    // Usar autenticación si el usuario tiene sesión activa
     final isAuth =
         Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
     final api = ApiService();
@@ -95,8 +130,7 @@ class _ContactScreenState extends State<ContactScreen> {
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
     }
   }
@@ -108,8 +142,7 @@ class _ContactScreenState extends State<ContactScreen> {
       builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24)),
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 32),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
           child: Column(
@@ -150,9 +183,7 @@ class _ContactScreenState extends State<ContactScreen> {
               Text(
                 'Gracias por contactarnos. Te responderemos a la brevedad en tu correo electrónico.',
                 style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    height: 1.5),
+                    fontSize: 14, color: Colors.grey[600], height: 1.5),
               ),
               const SizedBox(height: 24),
               Row(children: [
@@ -160,8 +191,7 @@ class _ContactScreenState extends State<ContactScreen> {
                     child: Divider(
                         color: Colors.grey.withValues(alpha: 0.2))),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Icon(Icons.storefront_outlined,
                       size: 18,
                       color: Colors.grey.withValues(alpha: 0.4)),
@@ -175,7 +205,6 @@ class _ContactScreenState extends State<ContactScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  // Usamos dialogContext para cerrar SOLO el diálogo
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.pierVerde,
@@ -199,8 +228,7 @@ class _ContactScreenState extends State<ContactScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAuth =
-        Provider.of<AuthProvider>(context).isAuthenticated;
+    final isAuth = Provider.of<AuthProvider>(context).isAuthenticated;
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -221,8 +249,7 @@ class _ContactScreenState extends State<ContactScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: 0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                               blurRadius: 8,
                               offset: const Offset(0, 2))
                         ],
@@ -257,21 +284,18 @@ class _ContactScreenState extends State<ContactScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.pierVerde
-                              .withValues(alpha: 0.08),
+                          color: AppColors.pierVerde.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                               color: AppColors.pierVerde
                                   .withValues(alpha: 0.2)),
                         ),
                         child: Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(
                                 Icons.chat_bubble_outline_rounded,
-                                color: AppColors.pierVerde,
-                                size: 20),
+                                color: AppColors.pierVerde, size: 20),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -287,21 +311,18 @@ class _ContactScreenState extends State<ContactScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ── NOMBRE ───────────────────────────────────
                       _label('Nombre completo'),
                       const SizedBox(height: 8),
                       _inputField(
                         controller: _nombreCtrl,
                         hint: 'Tu nombre',
                         readOnly: isAuth,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty)
-                                ? 'Ingresa tu nombre'
-                                : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Ingresa tu nombre'
+                            : null,
                       ),
                       const SizedBox(height: 16),
 
-                      // ── EMAIL ─────────────────────────────────────
                       _label('Correo electrónico'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -313,15 +334,12 @@ class _ContactScreenState extends State<ContactScreen> {
                           if (v == null || v.trim().isEmpty) {
                             return 'Ingresa tu correo';
                           }
-                          if (!v.contains('@')) {
-                            return 'Correo inválido';
-                          }
+                          if (!v.contains('@')) return 'Correo inválido';
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
 
-                      // ── TELÉFONO ─────────────────────────────────
                       _label('Teléfono (opcional)'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -331,7 +349,6 @@ class _ContactScreenState extends State<ContactScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── ASUNTO ────────────────────────────────────
                       _label('Asunto'),
                       const SizedBox(height: 8),
                       Container(
@@ -339,8 +356,7 @@ class _ContactScreenState extends State<ContactScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: Colors.grey
-                                  .withValues(alpha: 0.2)),
+                              color: Colors.grey.withValues(alpha: 0.2)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButtonFormField<String>(
@@ -359,14 +375,13 @@ class _ContactScreenState extends State<ContactScreen> {
                                         style: const TextStyle(
                                             fontSize: 14))))
                                 .toList(),
-                            onChanged: (val) => setState(
-                                () => _tipoProducto = val!),
+                            onChanged: (val) =>
+                                setState(() => _tipoProducto = val!),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      // ── MENSAJE ───────────────────────────────────
                       _label('Mensaje'),
                       const SizedBox(height: 8),
                       TextFormField(
@@ -381,31 +396,25 @@ class _ContactScreenState extends State<ContactScreen> {
                           filled: true,
                           fillColor: Colors.white,
                           enabledBorder: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
                                   color: Colors.grey
                                       .withValues(alpha: 0.2))),
                           focusedBorder: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12),
                               borderSide: const BorderSide(
                                   color: AppColors.pierVerde,
                                   width: 1.5)),
                           errorBorder: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Colors.red)),
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Colors.red)),
                           contentPadding: const EdgeInsets.all(14),
                           suffixText:
                               '${_mensajeCtrl.text.trim().length} / mín. 20',
                           suffixStyle: TextStyle(
                               fontSize: 11,
-                              color: _mensajeCtrl.text
-                                          .trim()
-                                          .length >=
-                                      20
+                              color: _mensajeCtrl.text.trim().length >= 20
                                   ? AppColors.pierVerde
                                   : Colors.grey[400]),
                         ),
@@ -416,7 +425,6 @@ class _ContactScreenState extends State<ContactScreen> {
                       ),
                       const SizedBox(height: 28),
 
-                      // ── BOTÓN ─────────────────────────────────────
                       SizedBox(
                         width: double.infinity,
                         height: 54,
@@ -431,27 +439,24 @@ class _ContactScreenState extends State<ContactScreen> {
                               : const Icon(Icons.send_rounded,
                                   color: Colors.white, size: 18),
                           label: Text(
-                              _enviando
-                                  ? 'Enviando...'
-                                  : 'Enviar Mensaje',
+                              _enviando ? 'Enviando...' : 'Enviar Mensaje',
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.pierVerde,
-                            disabledBackgroundColor: AppColors
-                                .pierVerde
-                                .withValues(alpha: 0.4),
+                            disabledBackgroundColor:
+                                AppColors.pierVerde.withValues(alpha: 0.4),
                             shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(50)),
+                                borderRadius: BorderRadius.circular(50)),
                             elevation: 0,
                           ),
                         ),
                       ),
 
-                      // ── CONTACTO DIRECTO ──────────────────────────
+                      // ── OTROS MEDIOS ──────────────────────────────
+                      // ✅ ACTUALIZADO: datos cargados del backend
                       const SizedBox(height: 32),
                       Divider(color: Colors.grey.withValues(alpha: 0.2)),
                       const SizedBox(height: 20),
@@ -462,17 +467,17 @@ class _ContactScreenState extends State<ContactScreen> {
                               fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary)),
                       const SizedBox(height: 14),
-                      _contactTile(Icons.phone_outlined,
-                          '771 123 4567', 'Llámanos'),
+                      _contactTile(
+                          Icons.phone_outlined, _telefono, 'Llámanos'),
                       const SizedBox(height: 10),
                       _contactTile(Icons.email_outlined,
-                          'hola@pier.com', 'Escríbenos'),
+                          _emailContacto, 'Escríbenos'),
                       const SizedBox(height: 10),
                       _contactTile(Icons.access_time_rounded,
-                          'Lun–Sáb • 9:00 – 21:00 hrs',
-                          'Horario de atención'),
+                          _horario, 'Horario de atención'),
                       const SizedBox(height: 16),
-                      // WhatsApp
+
+                      // WhatsApp — solo visible si el backend lo tiene
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -480,17 +485,18 @@ class _ContactScreenState extends State<ContactScreen> {
                           onPressed: () {},
                           icon: const Icon(Icons.message_rounded,
                               color: Colors.white, size: 18),
-                          label: const Text(
-                              'Escríbenos por WhatsApp',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
+                          label: Text(
+                            _whatsapp.isNotEmpty
+                                ? 'WhatsApp: $_whatsapp'
+                                : 'Escríbenos por WhatsApp',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color(0xFF25D366),
+                            backgroundColor: const Color(0xFF25D366),
                             shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(14)),
+                                borderRadius: BorderRadius.circular(14)),
                             elevation: 0,
                           ),
                         ),
@@ -525,14 +531,13 @@ class _ContactScreenState extends State<ContactScreen> {
       readOnly: readOnly,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            TextStyle(color: Colors.grey[400], fontSize: 14),
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
         filled: true,
         fillColor: readOnly ? AppColors.pierArena : Colors.white,
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-                color: Colors.grey.withValues(alpha: 0.2))),
+            borderSide:
+                BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
@@ -548,13 +553,11 @@ class _ContactScreenState extends State<ContactScreen> {
 
   Widget _contactTile(IconData icon, String value, String label) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: Colors.grey.withValues(alpha: 0.15)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
       ),
       child: Row(children: [
         Container(
@@ -570,8 +573,8 @@ class _ContactScreenState extends State<ContactScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: TextStyle(
-                    fontSize: 11, color: Colors.grey[500])),
+                style:
+                    TextStyle(fontSize: 11, color: Colors.grey[500])),
             const SizedBox(height: 2),
             Text(value,
                 style: const TextStyle(

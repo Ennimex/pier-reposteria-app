@@ -29,7 +29,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _isConfirmPasswordVisible = false;
 
   bool _isLoading   = false;
-  bool _codigoListo = false; // true cuando los 6 campos están llenos
+  bool _codigoListo = false;
 
   @override
   void initState() {
@@ -65,9 +65,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _showSnack('Ingresa el código completo de 6 dígitos', Colors.red);
       return;
     }
+
     final pass = _passwordCtrl.text.trim();
-    if (pass.length < 8) {
-      _showSnack('La contraseña debe tener al menos 8 caracteres', Colors.red);
+
+    // ✅ FIX: sincronizado con backend (mín 6 + letra + número)
+    if (pass.length < 6) {
+      _showSnack('La contraseña debe tener al menos 6 caracteres', Colors.red);
+      return;
+    }
+    if (!RegExp(r'[a-zA-Z]').hasMatch(pass)) {
+      _showSnack('La contraseña debe contener al menos 1 letra', Colors.red);
+      return;
+    }
+    if (!RegExp(r'\d').hasMatch(pass)) {
+      _showSnack('La contraseña debe contener al menos 1 número', Colors.red);
       return;
     }
     if (pass != _confirmPasswordCtrl.text.trim()) {
@@ -88,7 +99,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (result['success'] == true) {
       _showSuccessDialog();
     } else {
-      // Código incorrecto — limpiar campos de código
       for (final c in _codeControllers) { c.clear(); }
       _focusNodes[0].requestFocus();
       setState(() => _codigoListo = false);
@@ -118,7 +128,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Ícono check
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -160,9 +169,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Cerrar el diálogo primero usando el rootNavigator
                     Navigator.of(context, rootNavigator: true).pop();
-                    // Limpiar todo el stack de Navigator y navegar al login
                     Navigator.of(context).popUntil((route) => route.isFirst);
                     context.go(AppRoutes.login);
                   },
@@ -314,7 +321,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 label: 'Nueva contraseña',
                 icon: Icons.lock_outline_rounded,
                 obscureText: !_isPasswordVisible,
-                helperText: 'Mínimo 8 caracteres',
+                // ✅ FIX: helper text sincronizado con backend
+                helperText: 'Mínimo 6 caracteres, 1 letra y 1 número',
                 suffixIcon: IconButton(
                   icon: Icon(
                     _isPasswordVisible

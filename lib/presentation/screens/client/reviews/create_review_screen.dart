@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/utils/logger.dart';
 import '../../../../data/models/product_model.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/providers/auth_provider.dart';
@@ -34,6 +35,12 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    PierLog.nav('→ CreateReviewScreen: ${widget.product.nombre}');
+  }
+
+  @override
   void dispose() {
     _comentarioCtrl.dispose();
     _tituloCtrl.dispose();
@@ -43,7 +50,9 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
   Future<void> _enviar() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      PierLog.debug('No autenticado — redirigiendo a login');
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
 
@@ -52,11 +61,13 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
       return;
     }
     if (_comentarioCtrl.text.trim().length < 10) {
-      _showSnack('El comentario debe tener al menos 10 caracteres', Colors.red);
+      _showSnack('El comentario debe tener al menos 10 caracteres',
+          Colors.red);
       return;
     }
 
     setState(() => _enviando = true);
+    PierLog.api('POST ${ApiConstants.crearResena}');
 
     final result = await _api.postAuth(
       ApiConstants.crearResena,
@@ -73,8 +84,10 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
 
     if (result['success'] == true) {
       final autoAprobada = result['resena']?['auto_aprobada'] == true;
+      PierLog.info('✅ Reseña enviada — auto_aprobada: $autoAprobada');
       _showSuccessDialog(autoAprobada);
     } else {
+      PierLog.error('Error al enviar reseña: ${result['message']}');
       _showSnack(result['message'] ?? 'Error al enviar', Colors.red);
     }
   }
@@ -95,7 +108,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         insetPadding: const EdgeInsets.symmetric(horizontal: 32),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
@@ -103,7 +117,6 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── ÍCONO CHECK ──────────────────────────────────
               Center(
                 child: Stack(
                   alignment: Alignment.center,
@@ -128,8 +141,6 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // ── TÍTULO ───────────────────────────────────────
               const Text('¡Gracias por tu\nopinión!',
                   style: TextStyle(
                       fontFamily: 'Playfair Display',
@@ -138,20 +149,14 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                       color: AppColors.textPrimary,
                       height: 1.2)),
               const SizedBox(height: 12),
-
-              // ── DESCRIPCIÓN ──────────────────────────────────
               Text(
                 autoAprobada
                     ? 'Tu reseña ha sido publicada. ¡Otros clientes podrán verla y disfrutar de nuestras delicias!'
                     : 'Tu reseña está en revisión y será publicada pronto. ¡Gracias por tomarte el tiempo!',
                 style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    height: 1.5),
+                    fontSize: 14, color: Colors.grey[600], height: 1.5),
               ),
               const SizedBox(height: 24),
-
-              // ── SEPARADOR CON ÍCONO ──────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -169,8 +174,6 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-
-              // ── BOTÓN ENTENDIDO ──────────────────────────────
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -193,8 +196,6 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-
-              // ── LINK VER MI RESEÑA ───────────────────────────
               Center(
                 child: GestureDetector(
                   onTap: () {
@@ -280,14 +281,13 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                       ),
                       child: Row(
                         children: [
-                          // Imagen más grande
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
                               widget.product.imagenUrl,
                               width: 90, height: 90,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(
+                              errorBuilder: (_, __, ___) => Container(
                                 width: 90, height: 90,
                                 color: AppColors.pierArena,
                                 child: const Icon(Icons.cake_outlined,
@@ -300,7 +300,6 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Chip categoría arriba del nombre
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 3),
@@ -366,8 +365,11 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             children: List.generate(5, (i) {
                               final selected = i < _rating;
                               return GestureDetector(
-                                onTap: () =>
-                                    setState(() => _rating = i + 1),
+                                onTap: () {
+                                  setState(() => _rating = i + 1);
+                                  PierLog.debug(
+                                      'Rating seleccionado: ${i + 1}');
+                                },
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 4),
@@ -375,7 +377,6 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                     selected
                                         ? Icons.star_rounded
                                         : Icons.star_border_rounded,
-                                    // Estrellas oscuras como en el diseño
                                     color: selected
                                         ? const Color(0xFF2D2D2D)
                                         : Colors.grey[300],
@@ -386,7 +387,6 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             }),
                           ),
                           const SizedBox(height: 12),
-                          // Label en chip redondeado gris
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
                             child: Container(
@@ -433,7 +433,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                                color: Colors.grey.withValues(alpha: 0.2))),
+                                color:
+                                    Colors.grey.withValues(alpha: 0.2))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
@@ -443,7 +444,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // ── TU EXPERIENCIA ────────────────────────────
+                    // ── COMENTARIO ────────────────────────────────
                     const Text('Tu experiencia',
                         style: TextStyle(
                             fontSize: 14,
@@ -464,21 +465,20 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                                color: Colors.grey.withValues(alpha: 0.2))),
+                                color:
+                                    Colors.grey.withValues(alpha: 0.2))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
                                 color: AppColors.pierVerde, width: 1.5)),
                         contentPadding: const EdgeInsets.all(14),
-                        // Contador dentro del campo
                         suffixText:
                             '${_comentarioCtrl.text.trim().length} / mín. 10',
                         suffixStyle: TextStyle(
                             fontSize: 11,
-                            color:
-                                _comentarioCtrl.text.trim().length >= 10
-                                    ? AppColors.pierVerde
-                                    : Colors.grey[400]),
+                            color: _comentarioCtrl.text.trim().length >= 10
+                                ? AppColors.pierVerde
+                                : Colors.grey[400]),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -522,11 +522,14 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             ? const SizedBox(
                                 height: 18, width: 18,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
+                                    strokeWidth: 2,
+                                    color: Colors.white))
                             : const Icon(Icons.send_rounded,
                                 color: Colors.white, size: 18),
                         label: Text(
-                            _enviando ? 'Publicando...' : 'Publicar Opinión',
+                            _enviando
+                                ? 'Publicando...'
+                                : 'Publicar Opinión',
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

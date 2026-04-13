@@ -34,7 +34,8 @@ class _CartScreenState extends State<CartScreen> {
     if (_loading) {
       return const Scaffold(
         backgroundColor: AppColors.pierArena,
-        body: Center(child: CircularProgressIndicator(color: AppColors.pierVerde)),
+        body: Center(
+            child: CircularProgressIndicator(color: AppColors.pierVerde)),
       );
     }
 
@@ -92,6 +93,35 @@ class _CartScreenState extends State<CartScreen> {
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500),
                   ),
+                  // ✅ NUEVO: badge de ahorro total
+                  if (cart.tieneDescuentos) ...[
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border:
+                            Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.local_offer_rounded,
+                              size: 11, color: Colors.green.shade600),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Ahorras \$${cart.totalAhorro.toStringAsFixed(0)}',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ]),
               )
             else
@@ -115,8 +145,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
 
             // ── RESUMEN ──────────────────────────────────────────
-            if (cartItems.isNotEmpty)
-              _buildSummary(context, cart),
+            if (cartItems.isNotEmpty) _buildSummary(context, cart),
           ],
         ),
       ),
@@ -183,9 +212,53 @@ class _CartScreenState extends State<CartScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('\$${item.precio.toStringAsFixed(0)} c/u',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey[500])),
+
+                  // ✅ NUEVO: precio con/sin descuento
+                  Row(
+                    children: [
+                      Text(
+                        '\$${item.precio.toStringAsFixed(0)} c/u',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.pierVerde,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      if (item.tieneDescuento) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '\$${item.precioOriginal.toStringAsFixed(0)}',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[400],
+                              decoration: TextDecoration.lineThrough),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  // ✅ NUEVO: badge de promoción
+                  if (item.tieneDescuento &&
+                      item.promoNombre != null) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                        border:
+                            Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Text(
+                        item.promoNombre!,
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 8),
                   // Selector cantidad
                   Row(
@@ -231,12 +304,21 @@ class _CartScreenState extends State<CartScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${(item.precio * item.quantity).toStringAsFixed(0)}',
+                  '\$${item.subtotal.toStringAsFixed(0)}',
                   style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                       color: AppColors.pierDoradoOscuro),
                 ),
+                // ✅ NUEVO: ahorro por item
+                if (item.tieneDescuento)
+                  Text(
+                    '-\$${item.ahorroTotal.toStringAsFixed(0)}',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.green.shade600,
+                        fontWeight: FontWeight.w600),
+                  ),
               ],
             ),
           ],
@@ -261,7 +343,52 @@ class _CartScreenState extends State<CartScreen> {
       ),
       child: Column(
         children: [
-          // Total
+          // ✅ NUEVO: mostrar subtotal tachado si hay descuentos
+          if (cart.tieneDescuentos) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Subtotal',
+                    style: TextStyle(
+                        fontSize: 14, color: Colors.grey[500])),
+                Text(
+                  '\$${cart.totalOriginal.toStringAsFixed(0)} MXN',
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[400],
+                      decoration: TextDecoration.lineThrough),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(children: [
+                  Icon(Icons.local_offer_rounded,
+                      size: 14, color: Colors.green.shade600),
+                  const SizedBox(width: 6),
+                  Text('Descuentos',
+                      style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.green.shade600,
+                          fontWeight: FontWeight.w600)),
+                ]),
+                Text(
+                  '-\$${cart.totalAhorro.toStringAsFixed(0)} MXN',
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.green.shade600,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Divider(color: Colors.grey.withValues(alpha: 0.2)),
+            const SizedBox(height: 10),
+          ],
+
+          // Total final
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -284,8 +411,8 @@ class _CartScreenState extends State<CartScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Text('IVA incluido',
-                  style: TextStyle(
-                      fontSize: 11, color: Colors.grey[400])),
+                  style:
+                      TextStyle(fontSize: 11, color: Colors.grey[400])),
             ],
           ),
           const SizedBox(height: 16),
@@ -343,18 +470,21 @@ class _CartScreenState extends State<CartScreen> {
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          Text('Agrega productos desde el catálogo\npara comenzar tu pedido.',
+          Text(
+              'Agrega productos desde el catálogo\npara comenzar tu pedido.',
               textAlign: TextAlign.center,
-              style:
-                  TextStyle(fontSize: 14, color: Colors.grey[500])),
+              style: TextStyle(
+                  fontSize: 14, color: Colors.grey[500])),
           const SizedBox(height: 28),
           ElevatedButton.icon(
-            onPressed: () => context.read<NavigationProvider>().goCatalogo(),
+            onPressed: () =>
+                context.read<NavigationProvider>().goCatalogo(),
             icon: const Icon(Icons.storefront_outlined,
                 color: Colors.white, size: 18),
             label: const Text('Ver Catálogo',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.pierVerde,
               padding: const EdgeInsets.symmetric(
@@ -372,7 +502,7 @@ class _CartScreenState extends State<CartScreen> {
   void _showClearDialog(BuildContext context, CartProvider cart) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16)),
         title: const Text('Vaciar carrito'),
@@ -380,14 +510,14 @@ class _CartScreenState extends State<CartScreen> {
             '¿Estás seguro que deseas eliminar todos los productos?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancelar',
                 style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
             onPressed: () async {
+              Navigator.pop(dialogContext);
               await cart.clearCart();
-              if (context.mounted) Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red, elevation: 0),
@@ -411,8 +541,7 @@ class _CartScreenState extends State<CartScreen> {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border:
-              Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Icon(icon, size: 16, color: color),
       ),
