@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/navigation_provider.dart';
 import '../../../../data/providers/notification_provider.dart';
 
@@ -15,13 +16,21 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isRefreshing = false;
 
+  @override
+  void initState() {
+    super.initState();
+    PierLog.nav('→ NotificationsScreen');
+  }
+
   Future<void> _refresh() async {
     setState(() => _isRefreshing = true);
+    PierLog.info('Refrescando notificaciones...');
     await context.read<NotificationProvider>().refresh();
     if (mounted) setState(() => _isRefreshing = false);
   }
 
   Future<void> _marcarTodasLeidas() async {
+    PierLog.api('PUT /notificaciones/leer-todas');
     await context.read<NotificationProvider>().marcarTodasLeidas();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -153,8 +162,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           onRefresh: _refresh,
                           color: AppColors.pierVerde,
                           child: ListView(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 0, 16, 32),
                             children: grupos.entries.map((entry) {
                               return Column(
                                 crossAxisAlignment:
@@ -162,21 +171,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 children: [
                                   // ── SEPARADOR DE GRUPO ─────────
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
+                                    padding:
+                                        const EdgeInsets.symmetric(
+                                            vertical: 14),
                                     child: Center(
                                       child: Text(entry.key,
                                           style: TextStyle(
                                               fontSize: 13,
                                               color: Colors.grey[500],
-                                              fontWeight: FontWeight.w600,
+                                              fontWeight:
+                                                  FontWeight.w600,
                                               letterSpacing: 0.3)),
                                     ),
                                   ),
                                   // ── ITEMS DEL GRUPO ────────────
                                   ...entry.value.map((n) => Padding(
-                                        padding: const EdgeInsets.only(
-                                            bottom: 10),
+                                        padding:
+                                            const EdgeInsets.only(
+                                                bottom: 10),
                                         child: _buildItem(n),
                                       )),
                                 ],
@@ -209,6 +221,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       onTap: () {
         final id = notif['id']?.toString() ?? '';
         if (id.isNotEmpty) {
+          PierLog.info('Marcando leída: $id');
           context.read<NotificationProvider>().marcarLeida(id);
         }
       },
@@ -216,12 +229,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: leida ? Colors.white : AppColors.pierVerde.withValues(alpha: 0.05),
+          color: leida
+              ? Colors.white
+              : AppColors.pierVerde.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: leida
               ? null
               : Border.all(
-                  color: AppColors.pierVerde.withValues(alpha: 0.15)),
+                  color:
+                      AppColors.pierVerde.withValues(alpha: 0.15)),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
@@ -242,7 +258,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon,
-                  color: leida ? Colors.grey[400] : AppColors.pierVerde,
+                  color: leida
+                      ? Colors.grey[400]
+                      : AppColors.pierVerde,
                   size: 22),
             ),
             const SizedBox(width: 14),
@@ -316,7 +334,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               child: Icon(Icons.notifications_off_outlined,
                   size: 56,
-                  color: AppColors.pierVerde.withValues(alpha: 0.45)),
+                  color:
+                      AppColors.pierVerde.withValues(alpha: 0.45)),
             ),
             const SizedBox(height: 28),
             const Text('Sin notificaciones',
@@ -374,15 +393,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (diff.inMinutes < 1) return 'Ahora';
       if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
       if (diff.inHours < 24) {
-        return 'Hace ${diff.inHours} ${diff.inHours == 1 ? 'hora' : 'horas'}';
+        return 'Hace ${diff.inHours} '
+            '${diff.inHours == 1 ? 'hora' : 'horas'}';
       }
       if (diff.inDays == 1) {
         final h = dt.hour.toString().padLeft(2, '0');
         final m = dt.minute.toString().padLeft(2, '0');
         return 'Ayer, $h:$m ${dt.hour < 12 ? 'AM' : 'PM'}';
       }
-      final months = ['Ene','Feb','Mar','Abr','May','Jun',
-                      'Jul','Ago','Sep','Oct','Nov','Dic'];
+      // ✅ FIX: const en lugar de final
+      const months = [
+        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+      ];
       return '${dt.day} ${months[dt.month - 1]}';
     } catch (_) {
       return '';

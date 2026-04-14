@@ -1,11 +1,23 @@
 // lib/presentation/screens/client/orders/order_detail_screen.dart
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/logger.dart';
 import '../../../../data/models/order_model.dart';
 
-class OrderDetailScreen extends StatelessWidget {
+class OrderDetailScreen extends StatefulWidget {
   final Order order;
   const OrderDetailScreen({super.key, required this.order});
+
+  @override
+  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+}
+
+class _OrderDetailScreenState extends State<OrderDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    PierLog.nav('→ OrderDetailScreen: ${widget.order.numero}');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +54,7 @@ class OrderDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ← Corregido: usa order.numero
-                        Text(order.numero,
+                        Text(widget.order.numero,
                             style: const TextStyle(
                                 fontFamily: 'Playfair Display',
                                 fontSize: 22,
@@ -51,14 +62,14 @@ class OrderDetailScreen extends StatelessWidget {
                                 color: AppColors.textPrimary),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
-                        Text(_formatDate(order.createdAt),
+                        Text(_formatDate(widget.order.createdAt),
                             style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[500])),
                       ],
                     ),
                   ),
-                  _buildStatusChip(order.status),
+                  _buildStatusChip(widget.order.status),
                 ],
               ),
             ),
@@ -79,24 +90,26 @@ class OrderDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           vertical: 24, horizontal: 20),
                       decoration: BoxDecoration(
-                        color: order.statusColor.withValues(alpha: 0.08),
+                        color: widget.order.statusColor
+                            .withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: order.statusColor
+                            color: widget.order.statusColor
                                 .withValues(alpha: 0.25)),
                       ),
                       child: Column(
                         children: [
-                          Icon(_statusIcon(order.status),
-                              size: 52, color: order.statusColor),
+                          Icon(_statusIcon(widget.order.status),
+                              size: 52,
+                              color: widget.order.statusColor),
                           const SizedBox(height: 10),
-                          Text(order.statusText,
+                          Text(widget.order.statusText,
                               style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: order.statusColor)),
+                                  color: widget.order.statusColor)),
                           const SizedBox(height: 6),
-                          Text(_statusMessage(order.status),
+                          Text(_statusMessage(widget.order.status),
                               style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey[600]),
@@ -115,24 +128,25 @@ class OrderDetailScreen extends StatelessWidget {
                       title: 'Información del pedido',
                       child: Column(children: [
                         _infoRow(Icons.tag_rounded, 'Número',
-                            order.numero),
+                            widget.order.numero),
                         _divider(),
                         _infoRow(Icons.calendar_today_rounded,
-                            'Fecha', _formatDateFull(order.createdAt)),
-                        if (order.horarioRecogida != null) ...[
+                            'Fecha',
+                            _formatDateFull(widget.order.createdAt)),
+                        if (widget.order.horarioRecogida != null) ...[
                           _divider(),
                           _infoRow(Icons.access_time_rounded,
                               'Horario de recogida',
-                              order.horarioRecogida!),
+                              widget.order.horarioRecogida!),
                         ],
                         _divider(),
                         _infoRow(Icons.storefront_rounded, 'Sucursal',
                             'Principal — Huejutla de Reyes'),
-                        if (order.notas != null &&
-                            order.notas!.isNotEmpty) ...[
+                        if (widget.order.notas != null &&
+                            widget.order.notas!.isNotEmpty) ...[
                           _divider(),
                           _infoRow(Icons.note_outlined, 'Notas',
-                              order.notas!),
+                              widget.order.notas!),
                         ],
                       ]),
                     ),
@@ -140,9 +154,13 @@ class OrderDetailScreen extends StatelessWidget {
 
                     // ── PRODUCTOS ─────────────────────────────────
                     _buildCard(
-                      title: 'Productos (${order.items.length})',
+                      title:
+                          'Productos (${widget.order.items.length})',
                       child: Column(
-                        children: order.items.asMap().entries.map((e) {
+                        children: widget.order.items
+                            .asMap()
+                            .entries
+                            .map((e) {
                           final i = e.key;
                           final item = e.value;
                           return Column(children: [
@@ -170,12 +188,13 @@ class OrderDetailScreen extends StatelessWidget {
                                         style: const TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
-                                            color: AppColors.textPrimary)),
+                                            color:
+                                                AppColors.textPrimary)),
                                     const SizedBox(height: 2),
                                     Text(
                                       '${item.cantidad}× '
                                       '\$${item.precioUnitario.toStringAsFixed(0)} c/u'
-                                      '${item.tamano != null ? ' • ${item.tamano}' : ''}',
+                                      '${item.tamano != null ? ' · ${item.tamano}' : ''}',
                                       style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey[500]),
@@ -188,7 +207,8 @@ class OrderDetailScreen extends StatelessWidget {
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
-                                    color: AppColors.pierDoradoOscuro),
+                                    color:
+                                        AppColors.pierDoradoOscuro),
                               ),
                             ]),
                           ]);
@@ -210,7 +230,7 @@ class OrderDetailScreen extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textPrimary)),
                           Text(
-                            '\$${order.total.toStringAsFixed(0)} MXN',
+                            '\$${widget.order.total.toStringAsFixed(0)} MXN',
                             style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
@@ -231,13 +251,14 @@ class OrderDetailScreen extends StatelessWidget {
 
   // ── TIMELINE ─────────────────────────────────────────────────────
   Widget _buildTimeline() {
-    if (order.status == OrderStatus.cancelled) {
+    if (widget.order.status == OrderStatus.cancelled) {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.red.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+          border:
+              Border.all(color: Colors.red.withValues(alpha: 0.2)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -259,10 +280,12 @@ class OrderDetailScreen extends StatelessWidget {
       (OrderStatus.completed, 'Entregado',  Icons.done_all_rounded),
     ];
 
-    final currentIdx = steps.indexWhere((s) => s.$1 == order.status);
+    final currentIdx =
+        steps.indexWhere((s) => s.$1 == widget.order.status);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding:
+          const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -419,8 +442,9 @@ class OrderDetailScreen extends StatelessWidget {
         label = 'Preparando';
         break;
       case OrderStatus.ready:
+        // ✅ FIX: sin ✓ en string — el icono ya lo transmite
         color = AppColors.pierVerde;
-        label = 'Listo ✓';
+        label = 'Listo';
         break;
       case OrderStatus.completed:
         color = Colors.grey;
@@ -447,15 +471,15 @@ class OrderDetailScreen extends StatelessWidget {
   }
 
   String _formatDate(DateTime dt) {
-    final months = ['Ene','Feb','Mar','Abr','May','Jun',
+    const months = ['Ene','Feb','Mar','Abr','May','Jun',
                     'Jul','Ago','Sep','Oct','Nov','Dic'];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
   String _formatDateFull(DateTime dt) {
-    final months = ['Ene','Feb','Mar','Abr','May','Jun',
+    const months = ['Ene','Feb','Mar','Abr','May','Jun',
                     'Jul','Ago','Sep','Oct','Nov','Dic'];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year} • '
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year} · '
         '${dt.hour.toString().padLeft(2, '0')}:'
         '${dt.minute.toString().padLeft(2, '0')} hrs';
   }
@@ -475,11 +499,14 @@ class OrderDetailScreen extends StatelessWidget {
       case OrderStatus.pending:
         return 'Tu pedido fue recibido y está en cola';
       case OrderStatus.preparing:
-        return 'Estamos preparando tu pedido con cariño 👨‍🍳';
+        // ✅ FIX: sin emoji — texto limpio
+        return 'Estamos preparando tu pedido con mucho cariño';
       case OrderStatus.ready:
-        return '¡Tu pedido está listo! Pasa a recogerlo 🎉';
+        // ✅ FIX: sin emoji
+        return 'Tu pedido está listo. Pasa a recogerlo';
       case OrderStatus.completed:
-        return '¡Pedido entregado! Gracias por tu compra 🎂';
+        // ✅ FIX: sin emoji
+        return 'Pedido entregado. Gracias por tu compra';
       case OrderStatus.cancelled:
         return 'Este pedido fue cancelado';
     }

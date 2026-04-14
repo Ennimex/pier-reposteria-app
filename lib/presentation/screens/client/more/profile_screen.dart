@@ -2,8 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../data/models/product_model.dart';
 import '../favorites/favorites_screen.dart';
@@ -29,36 +30,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    PierLog.nav('→ ProfileScreen');
     _cargarDatos();
   }
 
   Future<void> _cargarDatos() async {
-    // Favoritos
+    // ── Favoritos ──────────────────────────────────────────────────
+    PierLog.api('GET ${ApiConstants.favoritos}');
     final favResult = await _api.getAuth(ApiConstants.favoritos);
-    if (mounted && favResult['success'] == true) {
-      final data = favResult['favoritos'] ?? favResult['data'] ?? [];
-      setState(() {
-        _favoritos = (data as List).map((json) {
-          final map = Map<String, dynamic>.from(json as Map<String, dynamic>);
-          map['activo'] = true;
-          return Product.fromJson(map);
-        }).toList();
-        _loadingFavoritos = false;
-      });
-    } else if (mounted) {
-      setState(() => _loadingFavoritos = false);
+    if (mounted) {
+      if (favResult['success'] == true) {
+        final data = favResult['favoritos'] ?? favResult['data'] ?? [];
+        setState(() {
+          _favoritos = (data as List).map((json) {
+            final map = Map<String, dynamic>.from(json as Map<String, dynamic>);
+            map['activo'] = true;
+            return Product.fromJson(map);
+          }).toList();
+          _loadingFavoritos = false;
+        });
+        PierLog.info('✅ Favoritos: ${_favoritos.length}');
+      } else {
+        PierLog.error('Error favoritos: ${favResult['message']}');
+        setState(() => _loadingFavoritos = false);
+      }
     }
 
-    // Pedidos
+    // ── Pedidos ────────────────────────────────────────────────────
+    PierLog.api('GET ${ApiConstants.misPedidos}');
     final pedResult = await _api.getAuth(ApiConstants.misPedidos);
-    if (mounted && pedResult['success'] == true) {
-      setState(() {
-        _pedidos = List<Map<String, dynamic>>.from(
-            pedResult['pedidos'] ?? []);
-        _loadingPedidos = false;
-      });
-    } else if (mounted) {
-      setState(() => _loadingPedidos = false);
+    if (mounted) {
+      if (pedResult['success'] == true) {
+        setState(() {
+          _pedidos = List<Map<String, dynamic>>.from(
+              pedResult['pedidos'] ?? []);
+          _loadingPedidos = false;
+        });
+        PierLog.info('✅ Pedidos: ${_pedidos.length}');
+      } else {
+        PierLog.error('Error pedidos: ${pedResult['message']}');
+        setState(() => _loadingPedidos = false);
+      }
     }
   }
 
@@ -69,8 +81,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16)),
         title: const Text('Cerrar sesión'),
-        content: const Text(
-            '¿Estás seguro que deseas cerrar tu sesión?'),
+        content:
+            const Text('¿Estás seguro que deseas cerrar tu sesión?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -79,9 +91,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.of(dialogContext).pop(); // cierra el diálogo
-              Navigator.of(context).pop();       // cierra ProfileScreen (vuelve al tab)
-              await auth.logout();               // GoRouter redirige al login
+              Navigator.of(dialogContext).pop();
+              Navigator.of(context).pop();
+              await auth.logout();
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red, elevation: 0),
@@ -104,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final m = dt.minute.toString().padLeft(2, '0');
         return 'Hoy, $h:$m ${dt.hour < 12 ? 'AM' : 'PM'}';
       }
-      final months = ['Ene','Feb','Mar','Abr','May','Jun',
+      const months = ['Ene','Feb','Mar','Abr','May','Jun',
                       'Jul','Ago','Sep','Oct','Nov','Dic'];
       return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
     } catch (_) {
@@ -122,7 +134,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
     final iniciales =
         '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}$apellidoInicial';
-    final fotoUrl = user?['foto_url']?.toString();
+    final fotoUrl = user?['avatar_url']?.toString() ??
+        user?['foto_url']?.toString();
     final saludo =
         '$nombre ${apellido.isNotEmpty ? '${apellido[0]}.' : ''}'.trim();
 
@@ -155,13 +168,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ),
-                    // Avatar circular verde
+                    // Avatar circular — toca para editar perfil
                     GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const EditProfileScreen()),
-                      ).then((_) => setState(() {})),
+                      onTap: () {
+                        PierLog.nav('→ EditProfileScreen');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  const EditProfileScreen()),
+                        ).then((_) => setState(() {}));
+                      },
                       child: Stack(
                         children: [
                           Container(
@@ -176,7 +193,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       fotoUrl,
                                       width: 52, height: 52,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => _buildAvatarIniciales(iniciales),
+                                      errorBuilder: (_, e, __) =>
+                                          _buildAvatarIniciales(iniciales),
                                     ),
                                   )
                                 : _buildAvatarIniciales(iniciales),
@@ -199,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
             // ── MIS FAVORITOS ─────────────────────────────────
             SliverToBoxAdapter(
@@ -215,11 +233,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary)),
                     GestureDetector(
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  const FavoritesScreen())),
+                      onTap: () {
+                        PierLog.nav('→ FavoritesScreen');
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const FavoritesScreen()));
+                      },
                       child: const Text('Ver todo',
                           style: TextStyle(
                               fontSize: 13,
@@ -231,6 +252,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
+
             SliverToBoxAdapter(
               child: _loadingFavoritos
                   ? const Center(
@@ -241,11 +263,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ))
                   : _favoritos.isEmpty
                       ? Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20),
                           child: Text('Sin favoritos aún',
                               style: TextStyle(
-                                  color: Colors.grey[500], fontSize: 14)),
+                                  color: Colors.grey[500],
+                                  fontSize: 14)),
                         )
                       : SizedBox(
                           height: 160,
@@ -253,19 +276,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 20),
                             scrollDirection: Axis.horizontal,
-                            itemCount: _favoritos.take(5).length,
-                            separatorBuilder: (_, _) =>
+                            // ✅ FIX: (_, i) en lugar de (_, _)
+                            separatorBuilder: (_, i) =>
                                 const SizedBox(width: 12),
+                            itemCount:
+                                _favoritos.take(5).length,
                             itemBuilder: (context, i) {
                               final p = _favoritos[i];
                               return GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          ProductDetailScreen(
-                                              product: p)),
-                                ),
+                                onTap: () {
+                                  PierLog.nav(
+                                      '→ ProductDetailScreen: ${p.nombre}');
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            ProductDetailScreen(
+                                                product: p)),
+                                  );
+                                },
                                 child: SizedBox(
                                   width: 120,
                                   child: Column(
@@ -275,13 +304,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ClipRRect(
                                         borderRadius:
                                             BorderRadius.circular(12),
+                                        // ✅ FIX: (_, e, __) en lugar de (_, _, _)
                                         child: Image.network(
                                           p.imagenUrl,
-                                          width: 120, height: 100,
+                                          width: 120,
+                                          height: 100,
                                           fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (_, _, _) => Container(
-                                            width: 120, height: 100,
+                                          errorBuilder: (_, e, __) =>
+                                              Container(
+                                            width: 120,
+                                            height: 100,
                                             color: AppColors.pierArena,
                                             child: const Icon(
                                                 Icons.cake_outlined,
@@ -293,17 +325,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       const SizedBox(height: 6),
                                       Text(p.nombre,
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
+                                              fontWeight:
+                                                  FontWeight.w600,
                                               fontSize: 13,
-                                              color: AppColors.textPrimary),
+                                              color:
+                                                  AppColors.textPrimary),
                                           maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
+                                          overflow:
+                                              TextOverflow.ellipsis),
                                       Row(children: [
                                         Text(
                                             '\$${p.precio.toStringAsFixed(0)}',
                                             style: const TextStyle(
                                                 fontSize: 12,
-                                                color: AppColors.pierVerde,
+                                                color:
+                                                    AppColors.pierVerde,
                                                 fontWeight:
                                                     FontWeight.w700)),
                                         const Spacer(),
@@ -337,10 +373,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary)),
                     GestureDetector(
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const OrdersScreen())),
+                      onTap: () {
+                        PierLog.nav('→ OrdersScreen');
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const OrdersScreen()));
+                      },
                       child: Icon(Icons.history_rounded,
                           color: Colors.grey[500], size: 22),
                     ),
@@ -361,43 +401,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 : _pedidos.isEmpty
                     ? SliverToBoxAdapter(
                         child: Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20),
                           child: Text('Sin pedidos aún',
                               style: TextStyle(
-                                  color: Colors.grey[500], fontSize: 14)),
+                                  color: Colors.grey[500],
+                                  fontSize: 14)),
                         ),
                       )
                     : SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, i) {
                               final p = _pedidos[i];
                               final numero =
-                                  p['numero']?.toString() ?? '#${p['id']}';
+                                  p['numero']?.toString() ??
+                                      '#${p['id']}';
                               final estado =
-                                  p['estado']?.toString() ?? 'pendiente';
-                              final items = List<Map<String, dynamic>>.from(
-                                  p['items'] ?? []);
+                                  p['estado']?.toString() ??
+                                      'pendiente';
+                              final items =
+                                  List<Map<String, dynamic>>.from(
+                                      p['items'] ?? []);
                               final total = double.tryParse(
-                                      p['total']?.toString() ?? '0') ??
+                                      p['total']?.toString() ??
+                                          '0') ??
                                   0.0;
                               final resumen = items.isEmpty
                                   ? 'Sin productos'
                                   : items.length == 1
                                       ? '1x ${items.first['nombre_producto'] ?? items.first['nombre'] ?? ''}'
-                                      : '${items.first['cantidad']}x ${(items.first['nombre_producto'] ?? items.first['nombre'] ?? '').toString().split(' ').take(2).join(' ')}..., ${items.length > 1 ? '${items.length - 1}x más' : ''}';
+                                      : '${items.first['cantidad']}x ${(items.first['nombre_producto'] ?? items.first['nombre'] ?? '').toString().split(' ').take(2).join(' ')}..., '
+                                          '${items.length > 1 ? '${items.length - 1}x más' : ''}';
                               final imagen = items.isNotEmpty
-                                  ? items.first['imagen_url']?.toString() ??
+                                  ? items.first['imagen_url']
+                                          ?.toString() ??
                                       ''
                                   : '';
-
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.only(
+                                    bottom: 12),
                                 child: _buildPedidoCard(
                                   numero: numero,
-                                  fecha: _formatFechaPedido(p['created_at']),
+                                  fecha: _formatFechaPedido(
+                                      p['created_at']),
                                   estado: estado,
                                   resumen: resumen,
                                   total: total,
@@ -413,7 +462,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // ── CERRAR SESIÓN ──────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                padding:
+                    const EdgeInsets.fromLTRB(20, 16, 20, 40),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -421,7 +471,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
+                          color:
+                              Colors.black.withValues(alpha: 0.04),
                           blurRadius: 8,
                           offset: const Offset(0, 3))
                     ],
@@ -432,7 +483,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Container(
                           width: 44, height: 44,
                           decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.08),
+                            color: Colors.red
+                                .withValues(alpha: 0.08),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.logout_rounded,
@@ -440,14 +492,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 14),
                         Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
                             const Text('¿Deseas salir?',
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
                                     color: AppColors.textPrimary)),
-                            Text('Cerrar sesión de tu cuenta actual',
+                            Text(
+                                'Cerrar sesión de tu cuenta actual',
                                 style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey[500])),
@@ -463,7 +517,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _showLogoutDialog(auth),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color: Colors.grey.withValues(alpha: 0.3)),
+                                color: Colors.grey
+                                    .withValues(alpha: 0.3)),
                             shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(12)),
@@ -480,36 +535,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _quickAction(IconData icon, String label, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3))
-            ],
-          ),
-          child: Column(children: [
-            Icon(icon, color: AppColors.pierVerde, size: 22),
-            const SizedBox(height: 6),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500)),
-          ]),
         ),
       ),
     );
@@ -545,7 +570,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       child: Column(children: [
-        // Header
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
           child: Row(children: [
@@ -572,26 +596,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 16),
-          child: Text(fecha,
-              style:
-                  TextStyle(fontSize: 12, color: Colors.grey[500])),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(fecha,
+                style: TextStyle(
+                    fontSize: 12, color: Colors.grey[500])),
+          ),
         ),
         Divider(
             height: 20,
             color: Colors.grey.withValues(alpha: 0.12)),
-
-        // Items + Reordenar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: Row(children: [
-            // Imagen
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: imagenUrl.isNotEmpty
                   ? Image.network(imagenUrl,
                       width: 48, height: 48,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
+                      // ✅ FIX: (_, e, __)
+                      errorBuilder: (_, e, __) =>
                           _imagePlaceholder())
                   : _imagePlaceholder(),
             ),
@@ -615,7 +640,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            // Botón Reordenar
             GestureDetector(
               onTap: () {},
               child: Container(
@@ -625,7 +649,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.25)),
+                      color:
+                          Colors.grey.withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -648,25 +673,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _imagePlaceholder() {
-    return Container(
-      width: 48, height: 48,
-      decoration: BoxDecoration(
-        color: AppColors.pierArena,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Icon(Icons.image_outlined,
-          color: Colors.grey, size: 22),
-    );
-  }
+  Widget _imagePlaceholder() => Container(
+        width: 48, height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.pierArena,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.image_outlined,
+            color: Colors.grey, size: 22),
+      );
 
-  Widget _buildAvatarIniciales(String iniciales) {
-    return Center(
-      child: Text(iniciales,
-          style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold)),
-    );
-  }
+  Widget _buildAvatarIniciales(String iniciales) => Center(
+        child: Text(iniciales,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
+      );
 }

@@ -1,11 +1,12 @@
 // lib/presentation/screens/client/more/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/services/api_service.dart';
-import '../../../../data/providers/auth_provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../data/providers/auth_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -24,14 +25,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _guardando = false;
   bool _cambios = false;
-  
   bool _subiendoFoto = false;
   String? _fotoUrlActual;
-  XFile? _nuevaFotoInfo;
 
   @override
   void initState() {
     super.initState();
+    PierLog.nav('→ EditProfileScreen');
     final user =
         Provider.of<AuthProvider>(context, listen: false).currentUser;
     _nombreCtrl =
@@ -61,57 +61,62 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    
-    if (pickedFile != null) {
-      setState(() => _subiendoFoto = true);
-      
-      final result = await _api.uploadImageAuth(
-        '/upload/imagen', 
-        pickedFile.path, 
-        {'tipo': 'perfil'}
-      );
-      
-      if (!mounted) return;
-      setState(() => _subiendoFoto = false);
-      
-      if (result['success'] == true) {
-        setState(() {
-          _fotoUrlActual = result['imagen']['url'];
-          _cambios = true;
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(result['message'] ?? 'Error al subir foto'),
-          backgroundColor: Colors.red,
-        ));
-      }
+    final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery, imageQuality: 80);
+    if (pickedFile == null) return;
+
+    setState(() => _subiendoFoto = true);
+    PierLog.api('POST ${ApiConstants.uploadImagen}');
+
+    final result = await _api.uploadImageAuth(
+      ApiConstants.uploadImagen,
+      pickedFile.path,
+      {'tipo': 'perfil'},
+    );
+
+    if (!mounted) return;
+    setState(() => _subiendoFoto = false);
+
+    if (result['success'] == true) {
+      setState(() {
+        _fotoUrlActual = result['imagen']['url']?.toString();
+        _cambios = true;
+      });
+      PierLog.info('✅ Foto subida: $_fotoUrlActual');
+    } else {
+      PierLog.error('Error subiendo foto: ${result['message']}');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result['message'] ?? 'Error al subir foto'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _guardando = true);
+    PierLog.api('PUT ${ApiConstants.updateProfileData}');
+
+    final body = <String, dynamic>{
+      'nombre': _nombreCtrl.text.trim(),
+      'apellido': _apellidoCtrl.text.trim(),
+      'telefono': _telefonoCtrl.text.trim().isEmpty
+          ? null
+          : _telefonoCtrl.text.trim(),
+      if (_fotoUrlActual != null) 'avatar_url': _fotoUrlActual,
+    };
 
     final result = await _api.putAuth(
-      '/usuarios/perfil/actualizar',
-      {
-        'nombre':   _nombreCtrl.text.trim(),
-        'apellido': _apellidoCtrl.text.trim(),
-        'telefono': _telefonoCtrl.text.trim().isEmpty
-            ? null
-            : _telefonoCtrl.text.trim(),
-        // El backend espera avatar_url
-        if (_fotoUrlActual != null) 'avatar_url': _fotoUrlActual,
-      },
-    );
+        ApiConstants.updateProfileData, body);
 
     if (!mounted) return;
     setState(() => _guardando = false);
 
     if (result['success'] == true) {
+      PierLog.info('✅ Perfil actualizado');
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final updatedUser = result['user'] as Map<String, dynamic>?;
+      final updatedUser =
+          result['user'] as Map<String, dynamic>?;
       if (updatedUser != null) auth.updateCurrentUser(updatedUser);
       if (_fotoUrlActual != null) {
         auth.updateCurrentUser({'avatar_url': _fotoUrlActual});
@@ -119,7 +124,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       setState(() => _cambios = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Row(children: [
-          Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+          Icon(Icons.check_circle_rounded,
+              color: Colors.white, size: 18),
           SizedBox(width: 8),
           Text('Perfil actualizado'),
         ]),
@@ -130,6 +136,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             borderRadius: BorderRadius.circular(12)),
       ));
     } else {
+      PierLog.error('Error al guardar perfil: ${result['message']}');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al guardar'),
         backgroundColor: Colors.red,
@@ -148,7 +155,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final nombre = _nombreCtrl.text;
     final apellido = _apellidoCtrl.text;
     final iniciales =
-        '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}${apellido.isNotEmpty ? apellido[0].toUpperCase() : ''}';
+        '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}'
+        '${apellido.isNotEmpty ? apellido[0].toUpperCase() : ''}';
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -169,7 +177,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
+                              color:
+                                  Colors.black.withValues(alpha: 0.06),
                               blurRadius: 8,
                               offset: const Offset(0, 2))
                         ],
@@ -188,9 +197,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               color: AppColors.textPrimary)),
                     ),
                   ),
-                  // Guardar derecha — verde si hay cambios
+                  // Guardar — verde si hay cambios pendientes
                   GestureDetector(
-                    onTap: (_guardando || _subiendoFoto || !_cambios) ? null : _guardar,
+                    onTap: (_guardando || _subiendoFoto || !_cambios)
+                        ? null
+                        : _guardar,
                     child: Text(
                       _guardando ? 'Guardando...' : 'Guardar',
                       style: TextStyle(
@@ -219,52 +230,61 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       // ── AVATAR ────────────────────────────────
                       Center(
                         child: GestureDetector(
-                          onTap: _subiendoFoto ? null : _pickImage,
+                          onTap:
+                              _subiendoFoto ? null : _pickImage,
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
-                            Container(
-                              width: 100, height: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: AppColors.pierDorado,
-                                    width: 2),
-                              ),
-                              child: _subiendoFoto
-                                  ? const Center(child: CircularProgressIndicator(color: AppColors.pierVerde))
-                                  : _fotoUrlActual != null && _fotoUrlActual!.isNotEmpty
-                                      ? ClipOval(
-                                          child: Image.network(
-                                            _fotoUrlActual!,
-                                            width: 100, height: 100,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => _buildAvatarIniciales(iniciales),
-                                          ),
-                                        )
-                                      : _buildAvatarIniciales(iniciales),
-                            ),
-                            // Ícono cámara
-                            Positioned(
-                              bottom: 0, right: -8,
-                              child: Container(
-                                width: 34, height: 34,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.pierVerde,
+                              Container(
+                                width: 100, height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
                                   shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: AppColors.pierDorado,
+                                      width: 2),
                                 ),
-                                child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    color: Colors.white,
-                                    size: 16),
+                                child: _subiendoFoto
+                                    ? const Center(
+                                        child:
+                                            CircularProgressIndicator(
+                                                color:
+                                                    AppColors.pierVerde))
+                                    : _fotoUrlActual != null &&
+                                            _fotoUrlActual!.isNotEmpty
+                                        ? ClipOval(
+                                            child: Image.network(
+                                              _fotoUrlActual!,
+                                              width: 100,
+                                              height: 100,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, e, __) =>
+                                                  _buildAvatarIniciales(
+                                                      iniciales),
+                                            ),
+                                          )
+                                        : _buildAvatarIniciales(
+                                            iniciales),
                               ),
-                            ),
-                          ],
+                              Positioned(
+                                bottom: 0, right: -8,
+                                child: Container(
+                                  width: 34, height: 34,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.pierVerde,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                      Icons.camera_alt_rounded,
+                                      color: Colors.white,
+                                      size: 16),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
+                      const SizedBox(height: 10),
                       Center(
                         child: Text(email,
                             style: TextStyle(
@@ -302,7 +322,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: 8),
                       _field(
                         controller: _telefonoCtrl,
-                        hint: '+52 55 1234 5678',
+                        hint: '7711234567',
                         icon: Icons.phone_android_outlined,
                         keyboardType: TextInputType.phone,
                       ),
@@ -338,7 +358,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
-                            'El correo electrónico no puede ser modificado por seguridad.',
+                            'El correo no puede ser modificado.',
                             style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[500])),
@@ -350,9 +370,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         width: double.infinity,
                         height: 54,
                         child: ElevatedButton.icon(
-                          onPressed: (_guardando || _subiendoFoto || !_cambios)
-                              ? null
-                              : _guardar,
+                          onPressed:
+                              (_guardando || _subiendoFoto || !_cambios)
+                                  ? null
+                                  : _guardar,
                           icon: _guardando
                               ? const SizedBox(
                                   height: 18, width: 18,
@@ -371,8 +392,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.pierVerde,
-                            disabledBackgroundColor:
-                                Colors.grey[300],
+                            disabledBackgroundColor: Colors.grey[300],
                             shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(14)),
@@ -381,7 +401,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
 
-                      // ── BADGE CLIENTE DISTINGUIDO ─────────────
                       const SizedBox(height: 20),
                       Center(
                         child: Row(
@@ -447,16 +466,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildAvatarIniciales(String iniciales) {
-    return Center(
-      child: Text(
-        iniciales.isNotEmpty ? iniciales : 'U',
-        style: const TextStyle(
-            fontFamily: 'Playfair Display',
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary),
-      ),
-    );
-  }
+  Widget _buildAvatarIniciales(String iniciales) => Center(
+        child: Text(
+          iniciales.isNotEmpty ? iniciales : 'U',
+          style: const TextStyle(
+              fontFamily: 'Playfair Display',
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary),
+        ),
+      );
 }

@@ -77,6 +77,10 @@ class ApiConstants {
   // ── CONTACTO ──────────────────────────────────────────────────────
   static const String enviarContacto = '/contacto';
 
+  // ── UPLOAD ────────────────────────────────────────────────────────
+  static const String uploadImagen        = '/upload/imagen';
+  static const String updateProfileData   = '/usuarios/perfil/actualizar'; // PUT
+
   // ── CONFIGURACIÓN (público, solo lectura) ─────────────────────────
   static String configuracionSeccion(String seccion) => '/configuracion/$seccion';
 }
