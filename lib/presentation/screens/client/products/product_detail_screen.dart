@@ -277,10 +277,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final precioFinalBase =
         provider.precioConDescuento(widget.product.id, widget.product.precio);
     final promo = provider.promocionDeProducto(widget.product.id);
-    final badge = promo?['badge_destacado']?.toString() ??
-        (promo?['descuento_porcentaje'] != null
-            ? '${promo!['descuento_porcentaje']}% OFF'
-            : null);
+
+    // ✅ FIX: extraer tipo igual que en products_screen y web PromoBadge
+    final tipo = promo?['tipo']?.toString() ?? '';
+    final porcentaje = promo?['descuento_porcentaje']?.toString();
+    final badgeDestacado = promo?['badge_destacado']?.toString();
+    final nombreTemporada = promo?['nombre_temporada']?.toString();
 
     final totalPrice =
         provider.precioConDescuento(widget.product.id, _precioBase) * _quantity;
@@ -342,32 +344,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ],
                     ),
                   ),
-                  if (tienePromo && badge != null)
+                  // ✅ FIX: badges múltiples por tipo (igual que web PromoBadge)
+                  if (tienePromo || widget.product.popular)
                     Positioned(
                       bottom: 20, left: 16,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade500,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.4),
-                              blurRadius: 8)],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.local_offer_rounded,
-                                color: Colors.white, size: 14),
-                            const SizedBox(width: 5),
-                            Text(badge,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (widget.product.popular && !tienePromo)
+                            _detailBadge(AppColors.pierDorado,
+                                icon: Icons.star_rounded, label: 'Popular'),
+                          if (tienePromo) ...[
+                            if (porcentaje != null)
+                              _detailBadge(Colors.red.shade500,
+                                  icon: Icons.local_offer_rounded,
+                                  label: '-$porcentaje%'),
+                            if (tipo == 'relampago')
+                              _detailBadge(Colors.orange.shade600,
+                                  icon: Icons.bolt_rounded,
+                                  label: 'Oferta Relámpago'),
+                            if (tipo == 'temporada')
+                              _detailBadge(Colors.orange.shade700,
+                                  icon: Icons.auto_awesome_rounded,
+                                  label: nombreTemporada ?? 'De Temporada'),
+                            if (tipo == 'nuevo')
+                              _detailBadge(Colors.blue.shade500,
+                                  icon: Icons.fiber_new_rounded,
+                                  label: 'Nuevo'),
+                            if (tipo == 'destacado' && badgeDestacado != null)
+                              _detailBadge(Colors.purple.shade500,
+                                  icon: Icons.auto_awesome_rounded,
+                                  label: badgeDestacado),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                   if (_images.length > 1)
@@ -429,6 +438,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 letterSpacing: 0.5),
                           ),
                         ),
+                        // ✅ NUEVO: chips tipo y sabor (igual que web)
+                        if (widget.product.tipo != null &&
+                            widget.product.tipo!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: AppColors.pierDorado
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(widget.product.tipo!,
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.pierDoradoOscuro,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        if (widget.product.sabor != null &&
+                            widget.product.sabor!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(widget.product.sabor!,
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.purple.shade700,
+                                    fontWeight: FontWeight.w700)),
+                          ),
                         Row(children: [
                           const Icon(Icons.star_rounded,
                               color: Colors.amber, size: 18),
@@ -474,25 +515,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 fontSize: 16,
                                 color: Colors.grey[400],
                                 decoration: TextDecoration.lineThrough)),
-                        const SizedBox(width: 10),
-                        if (promo?['nombre_temporada'] != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.shade200),
-                            ),
-                            child: Text(
-                              promo!['nombre_temporada'].toString(),
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.red.shade700,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ),
                       ]),
+                      const SizedBox(height: 8),
+                      // ✅ FIX: badges de promo en sección info (igual que web PromoBadge)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          if (tipo == 'relampago')
+                            _detailBadge(Colors.orange.shade600,
+                                icon: Icons.bolt_rounded,
+                                label: 'Oferta Relámpago'),
+                          if (tipo == 'temporada')
+                            _detailBadge(Colors.orange.shade700,
+                                icon: Icons.auto_awesome_rounded,
+                                label: nombreTemporada ?? 'De Temporada'),
+                          if (tipo == 'nuevo')
+                            _detailBadge(Colors.blue.shade500,
+                                icon: Icons.fiber_new_rounded,
+                                label: 'Nuevo'),
+                          if (tipo == 'destacado' && badgeDestacado != null)
+                            _detailBadge(Colors.purple.shade500,
+                                icon: Icons.auto_awesome_rounded,
+                                label: badgeDestacado),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                     ],
 
@@ -517,6 +564,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       Row(
                         children: List.generate(_sizes.length, (i) {
                           final sel = _selectedSize == i;
+                          final precioTam = i == 0
+                              ? widget.product.precio
+                              : (widget.product.precioGrande ??
+                                  widget.product.precio * 1.4);
+                          final precioFinalTam = tienePromo
+                              ? provider.precioConDescuento(
+                                  widget.product.id, precioTam)
+                              : precioTam;
                           return Expanded(
                             child: GestureDetector(
                               onTap: () =>
@@ -525,8 +580,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 duration: const Duration(milliseconds: 200),
                                 margin: EdgeInsets.only(
                                     right: i < _sizes.length - 1 ? 10 : 0),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: sel
                                       ? AppColors.pierVerde
@@ -544,23 +598,57 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     )
                                   ],
                                 ),
-                                child: Column(children: [
-                                  Text(_sizes[i]['label']!,
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: sel
-                                              ? Colors.white
-                                              : AppColors.textPrimary)),
-                                  const SizedBox(height: 3),
-                                  Text(_sizes[i]['sub']!,
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: sel
-                                              ? Colors.white
-                                                  .withValues(alpha: 0.75)
-                                              : Colors.grey[500])),
-                                ]),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_sizes[i]['label']!,
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: sel
+                                                ? Colors.white
+                                                : AppColors.textPrimary)),
+                                    const SizedBox(height: 3),
+                                    Text(_sizes[i]['sub']!,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: sel
+                                                ? Colors.white
+                                                    .withValues(alpha: 0.75)
+                                                : Colors.grey[500])),
+                                    const SizedBox(height: 6),
+                                    // ✅ NUEVO: precio por tamaño con tachado si hay descuento
+                                    if (tienePromo) ...[
+                                      Text(
+                                          '\$${precioTam.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: sel
+                                                  ? Colors.white
+                                                      .withValues(alpha: 0.6)
+                                                  : Colors.grey[400],
+                                              decoration:
+                                                  TextDecoration.lineThrough)),
+                                      Text(
+                                          '\$${precioFinalTam.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: sel
+                                                  ? Colors.white
+                                                  : Colors.red.shade600)),
+                                    ] else
+                                      Text(
+                                          '\$${precioTam.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: sel
+                                                  ? Colors.white
+                                                  : AppColors.pierVerde)),
+                                  ],
+                                ),
                               ),
                             ),
                           );
@@ -568,30 +656,83 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ),
                     ],
 
-                    const SizedBox(height: 28),
-                    const Text('Instrucciones especiales',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 10),
-                    TextField(
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        hintText: "Ej. 'Feliz Cumpleaños Ana'...",
-                        hintStyle: TextStyle(
-                            color: Colors.grey[400], fontSize: 14),
-                        filled: true,
-                        fillColor: Colors.white,
-                        enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                                color: Colors.grey.withValues(alpha: 0.2))),
-                        focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                                color: AppColors.pierVerde, width: 1.5)),
-                        contentPadding: const EdgeInsets.all(14),
+                    const SizedBox(height: 24),
+
+                    // ✅ NUEVO: Info rápida — tiempo de preparación + pickup (igual que web)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: Colors.grey.withValues(alpha: 0.12)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Row(children: [
+                              Container(
+                                width: 36, height: 36,
+                                decoration: BoxDecoration(
+                                  color: AppColors.pierVerde
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.access_time_rounded,
+                                    color: AppColors.pierVerde, size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Preparación',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[500])),
+                                  const Text('24–48 horas',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary)),
+                                ],
+                              ),
+                            ]),
+                          ),
+                          Container(
+                              width: 1, height: 36,
+                              color: Colors.grey.withValues(alpha: 0.15)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Row(children: [
+                              Container(
+                                width: 36, height: 36,
+                                decoration: BoxDecoration(
+                                  color: AppColors.pierVerde
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                    Icons.storefront_rounded,
+                                    color: AppColors.pierVerde, size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Recoger en',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[500])),
+                                  const Text('Sucursal Principal',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary)),
+                                ],
+                              ),
+                            ]),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -703,6 +844,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         ],
                       ),
                     ),
+
+                    // ✅ NUEVO: Sección ingredientes (igual que web)
+                    if (widget.product.ingredientes.isNotEmpty) ...[
+                      const SizedBox(height: 28),
+                      const Text('Ingredientes principales',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: widget.product.ingredientes.map((ing) =>
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.pierVerde
+                                  .withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: AppColors.pierVerde
+                                      .withValues(alpha: 0.2)),
+                            ),
+                            child: Text(ing,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.pierVerde,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ).toList(),
+                      ),
+                    ],
 
                     // ── RESEÑAS ────────────────────────────────────────
                     const SizedBox(height: 32),
@@ -876,10 +1051,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final tienePromo = prov.tieneDescuento(p.id);
     final precioFinal = prov.precioConDescuento(p.id, p.precio);
     final promo = prov.promocionDeProducto(p.id);
-    final badge = promo?['badge_destacado']?.toString() ??
-        (promo?['descuento_porcentaje'] != null
-            ? '${promo!['descuento_porcentaje']}% OFF'
-            : null);
+    final tipoRel = promo?['tipo']?.toString() ?? '';
+    final porcentajeRel = promo?['descuento_porcentaje']?.toString();
+    final badgeDestacadoRel = promo?['badge_destacado']?.toString();
 
     return Container(
       width: 165,
@@ -941,62 +1115,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           shadows: [Shadow(color: Colors.black38, blurRadius: 4)]),
                     ),
                   ),
-                  // Badge popular o descuento
-                  if (tienePromo && badge != null)
-                    Positioned(
-                      top: 8, left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                            color: Colors.red.shade500,
-                            borderRadius: BorderRadius.circular(7),
-                            boxShadow: [BoxShadow(
-                                color: Colors.red.withValues(alpha: 0.5),
-                                blurRadius: 6)]),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.local_offer_rounded,
-                                color: Colors.white, size: 9),
-                            const SizedBox(width: 3),
-                            Text(badge,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    )
-                  else if (p.popular)
-                    Positioned(
-                      top: 8, left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.pierDorado,
-                          borderRadius: BorderRadius.circular(7),
-                          boxShadow: [BoxShadow(
-                              color: AppColors.pierDorado.withValues(alpha: 0.5),
-                              blurRadius: 6)],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.star_rounded, color: Colors.white, size: 9),
-                            SizedBox(width: 3),
-                            Text('POPULAR',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5)),
-                          ],
-                        ),
-                      ),
+                  // ✅ FIX: badges múltiples en relacionados (mismo sistema)
+                  Positioned(
+                    top: 8, left: 8,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (p.popular && !tienePromo)
+                          _detailBadge(AppColors.pierDorado,
+                              icon: Icons.star_rounded, label: 'Popular',
+                              small: true),
+                        if (tienePromo) ...[
+                          if (porcentajeRel != null)
+                            _detailBadge(Colors.red.shade500,
+                                icon: Icons.local_offer_rounded,
+                                label: '-$porcentajeRel%', small: true),
+                          if (tipoRel == 'relampago')
+                            _detailBadge(Colors.orange.shade600,
+                                icon: Icons.bolt_rounded,
+                                label: 'Flash', small: true),
+                          if (tipoRel == 'temporada')
+                            _detailBadge(Colors.orange.shade700,
+                                icon: Icons.auto_awesome_rounded,
+                                label: 'Temporada', small: true),
+                          if (tipoRel == 'destacado' && badgeDestacadoRel != null)
+                            _detailBadge(Colors.purple.shade500,
+                                icon: Icons.auto_awesome_rounded,
+                                label: badgeDestacadoRel, small: true),
+                          if (tipoRel == 'nuevo')
+                            _detailBadge(Colors.blue.shade500,
+                                icon: Icons.fiber_new_rounded,
+                                label: 'Nuevo', small: true),
+                        ],
+                      ],
                     ),
+                  ),
                   // Botón añadir al carrito
                   Positioned(
                     bottom: 8, right: 8,
@@ -1111,6 +1264,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Helper: badge para la pantalla de detalle (galería + sección info + relacionados)
+  Widget _detailBadge(Color color,
+      {required IconData icon, required String label, bool small = false}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.symmetric(
+          horizontal: small ? 6 : 10, vertical: small ? 3 : 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(
+            color: color.withValues(alpha: 0.4), blurRadius: 6)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: small ? 9 : 13),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: small ? 8 : 11,
+                  fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

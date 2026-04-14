@@ -30,7 +30,7 @@ class ApiConstants {
   static String categoriaOpciones(String catId) => '/categoria-opciones/$catId';
 
   // ── PEDIDOS ───────────────────────────────────────────────────────
-  static const String crearPedido        = '/pedidos'; // ✅ FIX: era '/pedidos/crear'
+  static const String crearPedido        = '/pedidos';
   static const String misPedidos         = '/pedidos/mis-pedidos';
   static const String productosComprados = '/pedidos/productos-comprados';
 
@@ -40,9 +40,9 @@ class ApiConstants {
   static const String stripeConfig       = '/pagos/config';
 
   // ── CARRITO ───────────────────────────────────────────────────────
-  static const String carrito      = '/carrito';          // GET, POST, DELETE (vaciar)
-  static const String carritoCount = '/carrito/count';    // ✅ NUEVO: badge rápido
-  static String carritoItem(String itemId) => '/carrito/$itemId'; // PUT, DELETE
+  static const String carrito      = '/carrito';
+  static const String carritoCount = '/carrito/count';
+  static String carritoItem(String itemId) => '/carrito/$itemId';
 
   // ── PROMOCIONES ───────────────────────────────────────────────────
   static const String promocionesActivas     = '/promociones/activas';
@@ -69,6 +69,10 @@ class ApiConstants {
   // ── REEMBOLSOS ────────────────────────────────────────────────────
   static const String crearReembolso = '/reembolsos';
   static const String misReembolsos  = '/reembolsos/mis-reembolsos';
+
+  // ── QUEJAS Y SUGERENCIAS ──────────────────────────────────────────
+  static const String crearQueja = '/quejas';       // ✅ NUEVO: POST auth
+  static const String misQuejas  = '/quejas/mis-quejas'; // ✅ NUEVO: GET auth
 
   // ── CONTACTO ──────────────────────────────────────────────────────
   static const String enviarContacto = '/contacto';

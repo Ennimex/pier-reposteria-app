@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../data/providers/product_provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
@@ -18,15 +19,15 @@ import '../notifications/notifications_screen.dart';
 
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
-    case 'pasteles': return Icons.cake_outlined;
-    case 'roscas': return Icons.donut_large_outlined;
-    case 'pays': return Icons.pie_chart_outline;
-    case 'postres': return Icons.cookie_outlined;
+    case 'pasteles':  return Icons.cake_outlined;
+    case 'roscas':    return Icons.donut_large_outlined;
+    case 'pays':      return Icons.pie_chart_outline;
+    case 'postres':   return Icons.cookie_outlined;
     case 'cafetería':
     case 'cafeteria': return Icons.coffee_outlined;
-    case 'bebidas': return Icons.local_drink_outlined;
-    case 'panes': return Icons.breakfast_dining_outlined;
-    default: return Icons.fastfood_outlined;
+    case 'bebidas':   return Icons.local_drink_outlined;
+    case 'panes':     return Icons.breakfast_dining_outlined;
+    default:          return Icons.fastfood_outlined;
   }
 }
 
@@ -37,19 +38,23 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin {
   final ApiService _api = ApiService();
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _timer;
 
-  // ── DATOS DINÁMICOS ──────────────────────────────────────────────
   List<Map<String, dynamic>> _productosComprados = [];
   Map<String, dynamic>? _pedidoActivo;
   List<Map<String, dynamic>> _categoriasApi = [];
   List<Map<String, dynamic>> _resenasDestacadas = [];
-  // ✅ RESTAURADO: promociones del backend
-  List<Map<String, dynamic>> _promociones = [];
+
+  // ── Promociones separadas por tipo (igual que el web) ──
+  Map<String, dynamic>? _promoBanner;           // tipo == 'banner'
+  List<Map<String, dynamic>> _promoRelampago = []; // tipo == 'relampago'
+  List<Map<String, dynamic>> _promoTemporada = []; // tipo == 'temporada'
+  List<Map<String, dynamic>> _promoDestacado = []; // tipo == 'destacado'
 
   Map<String, dynamic> _configContacto = {};
   Map<String, dynamic> _configHorarios = {};
@@ -58,29 +63,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   final List<Map<String, dynamic>> _categoriasFallback = [
     {'nombre': 'Pasteles',  'icon': Icons.cake_outlined},
-    {'nombre': 'Roscas',   'icon': Icons.donut_large_outlined},
-    {'nombre': 'Pays',     'icon': Icons.pie_chart_outline},
-    {'nombre': 'Postres',  'icon': Icons.cookie_outlined},
-    {'nombre': 'Cafetería','icon': Icons.coffee_outlined},
+    {'nombre': 'Roscas',    'icon': Icons.donut_large_outlined},
+    {'nombre': 'Pays',      'icon': Icons.pie_chart_outline},
+    {'nombre': 'Postres',   'icon': Icons.cookie_outlined},
+    {'nombre': 'Cafetería', 'icon': Icons.coffee_outlined},
   ];
 
-  // Fallback hardcodeado si el backend no devuelve promociones
-  final List<Map<String, dynamic>> _promosFallback = [
-    {
-      'tag': '🎂 OFERTA',
-      'title': '2x1 Postres',
-      'subtitle': 'Solo hoy martes',
-      'image': 'https://images.unsplash.com/photo-1551404973-761c83cd8339?w=300&fit=crop',
-      'gradient': [const Color(0xFF4A5A2B), AppColors.pierVerde],
-    },
-    {
-      'tag': '☕ COMBO',
-      'title': 'Combo Café',
-      'subtitle': 'Desde \$85 MXN',
-      'image': 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=300&fit=crop',
-      'gradient': [AppColors.pierDoradoOscuro, const Color(0xFFD4A574)],
-    },
-  ];
+  // Sin fallbacks — si no hay datos del backend no se muestra la sección
 
   final List<Map<String, String>> _heroSlides = [
     {
@@ -112,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    PierLog.nav('→ HomeScreen');
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
       final next = (_currentPage + 1) % _heroSlides.length;
@@ -127,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _cargarCategorias();
       _cargarResenasDestacadas();
       _cargarConfiguracion();
-      // ✅ RESTAURADO: ahora que el endpoint existe
       _cargarPromociones();
     });
   }
@@ -144,12 +133,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         context.read<NotificationProvider>().startPolling();
       } else {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              _productosComprados = [];
-              _pedidoActivo = null;
-            });
-          }
+          if (mounted) setState(() { _productosComprados = []; _pedidoActivo = null; });
         });
       }
     }
@@ -163,37 +147,87 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _cargarCategorias() async {
+    PierLog.api('GET ${ApiConstants.categorias}');
     final result = await _api.get(ApiConstants.categorias);
     if (!mounted) return;
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(
           result['categorias'] ?? result['data'] ?? []);
-      if (lista.isNotEmpty) setState(() => _categoriasApi = lista);
+      if (lista.isNotEmpty) {
+        PierLog.info('✅ Categorías: ${lista.length}');
+        setState(() => _categoriasApi = lista);
+      }
+    } else {
+      PierLog.error('Error categorías: ${result['message']}');
     }
   }
 
   Future<void> _cargarResenasDestacadas() async {
+    PierLog.api('GET ${ApiConstants.resenasDestacadas}');
     final result = await _api.get(ApiConstants.resenasDestacadas);
     if (!mounted) return;
     if (result['success'] == true) {
-      final lista =
-          List<Map<String, dynamic>>.from(result['resenas'] ?? []);
-      if (lista.isNotEmpty) setState(() => _resenasDestacadas = lista);
+      final lista = List<Map<String, dynamic>>.from(result['resenas'] ?? []);
+      if (lista.isNotEmpty) {
+        PierLog.info('✅ Reseñas destacadas: ${lista.length}');
+        setState(() => _resenasDestacadas = lista);
+      }
+    } else {
+      PierLog.error('Error reseñas: ${result['message']}');
     }
   }
 
-  // ✅ RESTAURADO: carga promociones activas del backend
+  /// ✅ FIX: ahora separa por campo `tipo` igual que el web
   Future<void> _cargarPromociones() async {
+    PierLog.api('GET ${ApiConstants.promocionesActivas}');
     final result = await _api.get(ApiConstants.promocionesActivas);
     if (!mounted) return;
     if (result['success'] == true) {
-      final lista =
-          List<Map<String, dynamic>>.from(result['promociones'] ?? []);
-      if (lista.isNotEmpty) setState(() => _promociones = lista);
+      final lista = List<Map<String, dynamic>>.from(
+          result['promociones'] ?? []);
+
+      Map<String, dynamic>? banner;
+      final relampago = <Map<String, dynamic>>[];
+      final temporada = <Map<String, dynamic>>[];
+      final destacado = <Map<String, dynamic>>[];
+
+      for (final p in lista) {
+        final tipo = p['tipo']?.toString() ?? '';
+        switch (tipo) {
+          case 'banner':
+            banner ??= p; // tomar solo el primero
+            break;
+          case 'relampago':
+            if (p['producto_id'] != null) relampago.add(p);
+            break;
+          case 'temporada':
+            if (p['producto_id'] != null) temporada.add(p);
+            break;
+          case 'destacado':
+            if (p['producto_id'] != null) destacado.add(p);
+            break;
+        }
+      }
+
+      setState(() {
+        _promoBanner   = banner;
+        _promoRelampago = relampago;
+        _promoTemporada = temporada;
+        _promoDestacado = destacado;
+      });
+
+      PierLog.info(
+          '✅ Promociones → banner:${banner != null ? 1 : 0} '
+          'relámpago:${relampago.length} '
+          'temporada:${temporada.length} '
+          'destacado:${destacado.length}');
+    } else {
+      PierLog.error('Error promociones: ${result['message']}');
     }
   }
 
   Future<void> _cargarConfiguracion() async {
+    PierLog.api('GET configuracion/contacto + horarios');
     final results = await Future.wait([
       _api.get(ApiConstants.configuracionSeccion('contacto')),
       _api.get(ApiConstants.configuracionSeccion('horarios')),
@@ -201,47 +235,58 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!mounted) return;
     setState(() {
       if (results[0]['success'] == true) {
-        _configContacto =
-            Map<String, dynamic>.from(results[0]['config'] ?? {});
+        _configContacto = Map<String, dynamic>.from(results[0]['config'] ?? {});
       }
       if (results[1]['success'] == true) {
-        _configHorarios =
-            Map<String, dynamic>.from(results[1]['config'] ?? {});
+        _configHorarios = Map<String, dynamic>.from(results[1]['config'] ?? {});
       }
     });
+    PierLog.info('✅ Configuración cargada');
   }
 
   Future<void> _cargarDatosUsuario() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) return;
-
+    PierLog.info('Cargando datos usuario...');
     final results = await Future.wait([
       _api.getAuth(ApiConstants.productosComprados),
       _api.getAuth(ApiConstants.misPedidos),
-      _api.getAuth(ApiConstants.notificaciones),
     ]);
-
     if (!mounted) return;
-
     if (results[0]['success'] == true) {
       setState(() {
         _productosComprados = List<Map<String, dynamic>>.from(
             results[0]['productos'] ?? []);
       });
+      PierLog.debug('Productos comprados: ${_productosComprados.length}');
     }
-
     if (results[1]['success'] == true) {
-      final pedidos =
-          List<Map<String, dynamic>>.from(results[1]['pedidos'] ?? []);
+      final pedidos = List<Map<String, dynamic>>.from(
+          results[1]['pedidos'] ?? []);
       final activo = pedidos.firstWhere(
-        (p) => ['pendiente', 'en_preparacion', 'listo']
-            .contains(p['estado']),
+        (p) => ['pendiente', 'en_preparacion', 'listo'].contains(p['estado']),
         orElse: () => {},
       );
       setState(() => _pedidoActivo = activo.isNotEmpty ? activo : null);
+      if (_pedidoActivo != null) {
+        PierLog.info(
+            'Pedido activo: ${_pedidoActivo!['numero']} — ${_pedidoActivo!['estado']}');
+      }
     }
-
     context.read<NotificationProvider>().startPolling();
+  }
+
+  String _tiempoRestante(String? fechaFinStr) {
+    if (fechaFinStr == null) return '';
+    try {
+      final diff = DateTime.parse(fechaFinStr).difference(DateTime.now());
+      if (diff.isNegative) return 'Expirada';
+      if (diff.inDays > 0) return '${diff.inDays}d ${diff.inHours % 24}h';
+      if (diff.inHours > 0) return '${diff.inHours}h ${diff.inMinutes % 60}m';
+      return '${diff.inMinutes}m';
+    } catch (_) {
+      return '';
+    }
   }
 
   @override
@@ -253,6 +298,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFFF5F2ED),
       body: RefreshIndicator(
         onRefresh: () async {
+          PierLog.info('Refresh HomeScreen');
           PaintingBinding.instance.imageCache.clear();
           PaintingBinding.instance.imageCache.clearLiveImages();
           await context.read<ProductProvider>().refrescar();
@@ -272,7 +318,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             SliverToBoxAdapter(child: _buildSearchBar()),
             SliverToBoxAdapter(child: _buildHeroCarousel()),
-            SliverToBoxAdapter(child: _buildPromos()),
+
+            // ✅ NUEVO: banner de tipo 'banner'
+            if (_promoBanner != null)
+              SliverToBoxAdapter(child: _buildPromoBanner()),
+
+            // Relámpago — solo si hay datos del backend
+            if (_promoRelampago.isNotEmpty)
+              SliverToBoxAdapter(child: _buildOfertasRelampago()),
+
+            // Temporada — solo si hay datos del backend
+            if (_promoTemporada.isNotEmpty)
+              SliverToBoxAdapter(child: _buildOfertasTemporada()),
+
+            // ✅ NUEVO: destacado — filtrado por tipo == 'destacado'
+            if (_promoDestacado.isNotEmpty)
+              SliverToBoxAdapter(child: _buildPromoDestacado()),
+
             SliverToBoxAdapter(child: _buildCategories()),
 
             if (auth.isAuthenticated && _productosComprados.isNotEmpty)
@@ -282,9 +344,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.all(40),
-                  child: Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.pierVerde)),
+                  child: Center(child: CircularProgressIndicator(
+                      color: AppColors.pierVerde)),
                 ),
               )
             else if (productProvider.populares.isNotEmpty)
@@ -343,8 +404,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 Text(
                   auth.isAuthenticated && nombre.isNotEmpty
-                      ? '¡Hola, $nombre! 👋'
-                      : '¡Bienvenido! 👋',
+                      ? 'Hola, $nombre'
+                      : 'Bienvenido',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -360,11 +421,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           if (auth.isAuthenticated)
             GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const NotificationsScreen()),
-              ).then((_) => _cargarDatosUsuario()),
+              onTap: () {
+                PierLog.nav('→ NotificationsScreen');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen()),
+                ).then((_) => _cargarDatosUsuario());
+              },
               child: Builder(builder: (context) {
                 final count =
                     context.watch<NotificationProvider>().noLeidas;
@@ -417,8 +481,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── BANNER PEDIDO ACTIVO ──────────────────────────────────────────
   Widget _buildBannerPedidoActivo() {
-    final estado =
-        _pedidoActivo!['estado']?.toString() ?? 'pendiente';
+    final estado = _pedidoActivo!['estado']?.toString() ?? 'pendiente';
     final numero = _pedidoActivo!['numero']?.toString() ?? '';
     IconData icon;
     String mensaje;
@@ -426,25 +489,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     switch (estado) {
       case 'en_preparacion':
         icon = Icons.blender_outlined;
-        mensaje = 'Tu pedido #$numero está en preparación 👨‍🍳';
+        mensaje = 'Pedido #$numero en preparación';
         color = Colors.blue.shade600;
         break;
       case 'listo':
         icon = Icons.check_circle_outline_rounded;
-        mensaje = '¡Tu pedido #$numero está listo! Pasa a recogerlo 🎉';
+        mensaje = 'Pedido #$numero listo para recoger';
         color = AppColors.pierVerde;
         break;
       default:
         icon = Icons.hourglass_empty_rounded;
-        mensaje = 'Tu pedido #$numero fue recibido y está en cola ⏳';
+        mensaje = 'Pedido #$numero recibido, en cola';
         color = Colors.orange.shade600;
     }
     return GestureDetector(
       onTap: () {
+        PierLog.nav('→ OrderDetailScreen');
         final order = Order.fromJson(_pedidoActivo!);
         Navigator.push(context,
-            MaterialPageRoute(
-                builder: (_) => OrderDetailScreen(order: order)));
+            MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order)));
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -478,34 +541,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── PIDE DE NUEVO ─────────────────────────────────────────────────
-  Widget _buildPideDeNuevo() {
-    final provider = Provider.of<ProductProvider>(context, listen: false);
-    final listaProductos = _productosComprados.map((p) {
-      final precio = double.tryParse(
-              p['precio_unitario']?.toString() ??
-              p['precio_chico']?.toString() ?? '0') ??
-          0.0;
-      return provider.productos.firstWhere(
-        (prod) => prod.id.toString() == p['id']?.toString(),
-        orElse: () => Product(
-          id: p['id']?.toString() ?? '',
-          nombre: p['nombre'] ?? '',
-          descripcion: '',
-          precio: precio,
-          categoria: p['categoria'] ?? '',
-          imagenUrl: p['imagen_url'] ?? '',
-        ),
-      );
-    }).toList();
-
-    return _buildProductSection(
-      title: 'Pide de nuevo',
-      titleIcon: Icons.replay_rounded,
-      productos: listaProductos,
-    );
-  }
-
   // ── BUSCADOR ──────────────────────────────────────────────────────
   Widget _buildSearchBar() {
     return Padding(
@@ -513,8 +548,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: GestureDetector(
         onTap: () => context.read<NavigationProvider>().goCatalogo(),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(50),
@@ -526,13 +560,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           child: Row(
             children: [
-              Icon(Icons.search_rounded,
-                  color: Colors.grey[400], size: 20),
+              Icon(Icons.search_rounded, color: Colors.grey[400], size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text('Busca tu pastel favorit...',
-                    style: TextStyle(
-                        color: Colors.grey[400], fontSize: 14)),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 14)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -582,12 +614,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   fit: StackFit.expand,
                   children: [
                     Image.network(slide['image']!, fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Container(
-                              color: AppColors.pierVerdeOscuro,
-                              child: const Icon(Icons.cake_outlined,
-                                  color: Colors.white, size: 60),
-                            )),
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.pierVerdeOscuro,
+                          child: const Icon(Icons.cake_outlined,
+                              color: Colors.white, size: 60),
+                        )),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -632,21 +663,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(slide['subtitle']!,
                               style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.white
-                                      .withValues(alpha: 0.85))),
+                                  color: Colors.white.withValues(alpha: 0.85))),
                           const SizedBox(height: 14),
                           GestureDetector(
                             onTap: () {
                               if (slide['route'] == 'catalog') {
-                                context
-                                    .read<NavigationProvider>()
-                                    .goCatalogo();
+                                context.read<NavigationProvider>().goCatalogo();
                               } else {
-                                Navigator.push(
-                                    context,
+                                Navigator.push(context,
                                     MaterialPageRoute(
-                                        builder: (context) =>
-                                            const ContactScreen()));
+                                        builder: (_) => const ContactScreen()));
                               }
                             },
                             child: Container(
@@ -695,236 +721,265 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── OFERTAS RELÁMPAGO ─────────────────────────────────────────────
-  // ✅ RESTAURADO: usa datos del backend si existen, fallback hardcodeado si no
-  Widget _buildPromos() {
-    final usarBackend = _promociones.isNotEmpty;
-    final fuente = usarBackend
-        ? _promociones.take(2).toList()
-        : _promosFallback;
+  // ✅ NUEVO: Banner tipo 'banner' — mismo concepto que el web
+  Widget _buildPromoBanner() {
+    final p = _promoBanner!;
+    final titulo = p['titulo_banner']?.toString() ?? 'Promoción especial';
+    final subtitulo = p['subtitulo_banner']?.toString() ?? '';
+    final descripcion = p['descripcion_banner']?.toString() ?? '';
+    final codigo = p['codigo_descuento']?.toString();
+    final fechaFin = p['fecha_fin']?.toString();
+    final tiempo = _tiempoRestante(fechaFin);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.pierVerdeOscuro, AppColors.pierVerde],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(
+              color: AppColors.pierVerdeOscuro.withValues(alpha: 0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 6))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header badge
+            Row(children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.local_fire_department_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text('Oferta activa',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600)),
+              ),
+              if (tiempo.isNotEmpty) ...[
+                const Spacer(),
+                Row(children: [
+                  const Icon(Icons.timer_outlined,
+                      color: Colors.white70, size: 13),
+                  const SizedBox(width: 4),
+                  Text(tiempo,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500)),
+                ]),
+              ],
+            ]),
+            const SizedBox(height: 14),
+
+            // Título
+            Text(titulo,
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    height: 1.2)),
+            if (subtitulo.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(subtitulo,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.pierDorado,
+                      fontWeight: FontWeight.w600)),
+            ],
+            if (descripcion.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(descripcion,
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.8),
+                      height: 1.4),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Código de descuento
+            if (codigo != null && codigo.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.pierDorado.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.pierDorado.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.card_giftcard_rounded,
+                        color: AppColors.pierDorado, size: 16),
+                    const SizedBox(width: 8),
+                    Text(codigo,
+                        style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 2)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Botón CTA
+            SizedBox(
+              width: double.infinity,
+              child: GestureDetector(
+                onTap: () => context.read<NavigationProvider>().goCatalogo(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Ver productos',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.pierVerdeOscuro)),
+                      SizedBox(width: 6),
+                      Icon(Icons.arrow_forward_rounded,
+                          color: AppColors.pierVerdeOscuro, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── OFERTAS RELÁMPAGO (tipo == 'relampago') ───────────────────────
+  // Solo se llama cuando _promoRelampago.isNotEmpty
+  Widget _buildOfertasRelampago() {
+    final fuente = _promoRelampago.take(2).toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(children: [
-            Text('Ofertas Relámpago',
+          Row(children: [
+            Container(
+              width: 28, height: 28,
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.bolt_rounded,
+                  color: Colors.amber.shade700, size: 18),
+            ),
+            const SizedBox(width: 8),
+            const Text('Ofertas Relámpago',
                 style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
                     color: AppColors.textPrimary)),
-            SizedBox(width: 6),
-            Text('⚡', style: TextStyle(fontSize: 16)),
           ]),
           const SizedBox(height: 12),
           Row(
             children: List.generate(fuente.length, (idx) {
               final promo = fuente[idx];
+              final imagenUrl = promo['producto_imagen']?.toString() ?? '';
+              final porcentaje = promo['descuento_porcentaje']?.toString() ?? '';
+              final tag = promo['badge_destacado']?.toString() ??
+                  (porcentaje.isNotEmpty ? '$porcentaje% OFF' : 'OFERTA');
+              final titulo = promo['titulo_banner']?.toString() ??
+                  promo['producto_nombre']?.toString() ??
+                  'Oferta especial';
+              final precioOferta = promo['precio_oferta']?.toString();
+              final subtitulo = promo['subtitulo_banner']?.toString() ??
+                  (precioOferta != null
+                      ? 'Desde \$${double.tryParse(precioOferta)?.toStringAsFixed(0) ?? ''} MXN'
+                      : '');
+              final tiempo = _tiempoRestante(promo['fecha_fin']?.toString());
+              final gradientColor =
+                  idx == 0 ? AppColors.pierVerdeOscuro : AppColors.pierDoradoOscuro;
 
-              // ── CARD del backend ──
-              if (usarBackend) {
-                final imagenUrl =
-                    promo['producto_imagen']?.toString() ?? '';
-                final tag = promo['badge_destacado']?.toString() ??
-                    (promo['descuento_porcentaje'] != null
-                        ? '🔥 ${promo['descuento_porcentaje']}% OFF'
-                        : '🎂 OFERTA');
-                final titulo = promo['titulo_banner']?.toString() ??
-                    promo['nombre_temporada']?.toString() ??
-                    'Oferta especial';
-                final subtitulo = promo['subtitulo_banner']?.toString() ??
-                    (promo['precio_oferta'] != null
-                        ? 'Desde \$${double.tryParse(promo['precio_oferta'].toString())?.toStringAsFixed(0) ?? ''} MXN'
-                        : '');
-                final gradientColor = idx == 0
-                    ? AppColors.pierVerdeOscuro
-                    : AppColors.pierDoradoOscuro;
-
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      final productoId =
-                          promo['producto_id']?.toString();
-                      if (productoId != null &&
-                          productoId.isNotEmpty) {
-                        final productProvider =
-                            Provider.of<ProductProvider>(context,
-                                listen: false);
-                        final producto =
-                            productProvider.productos.firstWhere(
-                          (p) => p.id.toString() == productoId,
-                          orElse: () => Product(
-                              id: '',
-                              nombre: '',
-                              descripcion: '',
-                              precio: 0,
-                              categoria: '',
-                              imagenUrl: ''),
-                        );
-                        if (producto.id.isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ProductDetailScreen(
-                                  product: producto),
-                            ),
-                          );
-                          return;
-                        }
-                      }
-                      context.read<NavigationProvider>().goCatalogo();
-                    },
-                    child: Container(
-                      margin: EdgeInsets.only(
-                          left: idx == 0 ? 0 : 8,
-                          right: idx == 0 ? 8 : 0),
-                      height: 130,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(
-                            color: gradientColor
-                                .withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4))],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child:
-                            Stack(fit: StackFit.expand, children: [
-                          imagenUrl.isNotEmpty
-                              ? Image.network(imagenUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, e, __) =>
-                                      Container(
-                                          color: gradientColor))
-                              : Container(color: gradientColor),
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  gradientColor
-                                      .withValues(alpha: 0.5),
-                                  gradientColor
-                                      .withValues(alpha: 0.88),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding:
-                                      const EdgeInsets.symmetric(
-                                          horizontal: 7, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.2),
-                                    borderRadius:
-                                        BorderRadius.circular(8),
-                                  ),
-                                  child: Text(tag,
-                                      style: const TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white)),
-                                ),
-                                Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(titulo,
-                                        style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight:
-                                                FontWeight.w900,
-                                            color: Colors.white),
-                                        maxLines: 1,
-                                        overflow:
-                                            TextOverflow.ellipsis),
-                                    if (subtitulo.isNotEmpty)
-                                      Text(subtitulo,
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.white
-                                                  .withValues(
-                                                      alpha: 0.85))),
-                                    const SizedBox(height: 2),
-                                    Row(children: [
-                                      const Text('Ver detalle',
-                                          style: TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.white,
-                                              fontWeight:
-                                                  FontWeight.w600)),
-                                      const SizedBox(width: 2),
-                                      Icon(
-                                          Icons
-                                              .arrow_forward_ios_rounded,
-                                          size: 9,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.9)),
-                                    ]),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              // ── CARD fallback ──
-              final gradient = promo['gradient'] as List<Color>;
               return Expanded(
                 child: GestureDetector(
-                  onTap: () =>
-                      context.read<NavigationProvider>().goCatalogo(),
+                  onTap: () {
+                    final productoId = promo['producto_id']?.toString();
+                    if (productoId != null && productoId.isNotEmpty) {
+                      final pp =
+                          Provider.of<ProductProvider>(context, listen: false);
+                      final producto = pp.productos.firstWhere(
+                        (p) => p.id.toString() == productoId,
+                        orElse: () => Product(
+                            id: '', nombre: '', descripcion: '',
+                            precio: 0, categoria: '', imagenUrl: ''),
+                      );
+                      if (producto.id.isNotEmpty) {
+                        PierLog.nav('→ ProductDetailScreen desde relámpago');
+                        Navigator.push(context, MaterialPageRoute(
+                            builder: (_) =>
+                                ProductDetailScreen(product: producto)));
+                        return;
+                      }
+                    }
+                    context.read<NavigationProvider>().goCatalogo();
+                  },
                   child: Container(
                     margin: EdgeInsets.only(
-                        left: idx == 0 ? 0 : 8,
-                        right: idx == 0 ? 8 : 0),
-                    height: 130,
+                        left: idx == 0 ? 0 : 8, right: idx == 0 ? 8 : 0),
+                    height: 140,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [BoxShadow(
-                          color: gradient[0].withValues(alpha: 0.3),
+                          color: gradientColor.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4))],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child:
-                          Stack(fit: StackFit.expand, children: [
-                        Image.network(promo['image'] as String,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, e, __) => Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                    colors: gradient,
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight),
-                              ),
-                            )),
+                      child: Stack(fit: StackFit.expand, children: [
+                        imagenUrl.isNotEmpty
+                            ? Image.network(imagenUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    Container(color: gradientColor))
+                            : Container(color: gradientColor),
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                gradient[0].withValues(alpha: 0.5),
-                                gradient[0].withValues(alpha: 0.85),
+                                gradientColor.withValues(alpha: 0.5),
+                                gradientColor.withValues(alpha: 0.88),
                               ],
                             ),
                           ),
@@ -932,55 +987,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 7, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.white
-                                      .withValues(alpha: 0.2),
-                                  borderRadius:
-                                      BorderRadius.circular(8),
-                                ),
-                                child: Text(promo['tag'] as String,
-                                    style: const TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white)),
-                              ),
-                              Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(promo['title'] as String,
+                              Row(children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(tag,
                                       style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w900,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
                                           color: Colors.white)),
-                                  Text(promo['subtitle'] as String,
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.85))),
+                                ),
+                                if (tiempo.isNotEmpty) ...[
+                                  const Spacer(),
+                                  Row(children: [
+                                    const Icon(Icons.timer_outlined,
+                                        color: Colors.white70, size: 11),
+                                    const SizedBox(width: 2),
+                                    Text(tiempo,
+                                        style: const TextStyle(
+                                            fontSize: 9,
+                                            color: Colors.white70)),
+                                  ]),
+                                ],
+                              ]),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(titulo,
+                                      style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                  if (subtitulo.isNotEmpty)
+                                    Text(subtitulo,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.white
+                                                .withValues(alpha: 0.85))),
                                   const SizedBox(height: 2),
                                   Row(children: [
-                                    const Text('Ver catálogo',
+                                    const Text('Ver detalle',
                                         style: TextStyle(
                                             fontSize: 10,
                                             color: Colors.white,
-                                            fontWeight:
-                                                FontWeight.w600)),
+                                            fontWeight: FontWeight.w600)),
                                     const SizedBox(width: 2),
-                                    Icon(
-                                        Icons
-                                            .arrow_forward_ios_rounded,
+                                    Icon(Icons.arrow_forward_ios_rounded,
                                         size: 9,
-                                        color: Colors.white
-                                            .withValues(alpha: 0.9)),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.9)),
                                   ]),
                                 ],
                               ),
@@ -999,10 +1063,522 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+
+  // ── OFERTAS DE TEMPORADA (tipo == 'temporada') ────────────────────
+  // Solo se llama cuando _promoTemporada.isNotEmpty
+  Widget _buildOfertasTemporada() {
+    const accentColors = [
+      Color(0xFFC1665A), Color(0xFFD4925A),
+      Color(0xFF4E7C5F), Color(0xFF7B5EA7),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 28, 0, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFAE3D0),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.auto_awesome_rounded,
+                      size: 13, color: Color(0xFFC1665A)),
+                  SizedBox(width: 4),
+                  Text('Temporada',
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFC1665A))),
+                ]),
+              ),
+              const SizedBox(width: 10),
+              const Text('De Temporada',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary)),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 230,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _promoTemporada.length,
+              itemBuilder: (context, idx) {
+                final promo = _promoTemporada[idx];
+                final accent = accentColors[idx % accentColors.length];
+                final imagenUrl = promo['producto_imagen']?.toString() ?? '';
+                final titulo = promo['nombre_temporada']?.toString() ??
+                    promo['titulo_banner']?.toString() ??
+                    promo['producto_nombre']?.toString() ?? 'Temporada';
+                final subtitulo = promo['subtitulo_banner']?.toString() ?? '';
+                final precioBruto =
+                    double.tryParse(promo['precio_chico']?.toString() ?? '0') ?? 0;
+                final porcentaje = double.tryParse(
+                        promo['descuento_porcentaje']?.toString() ?? '0') ??
+                    0;
+                final precioFinal = porcentaje > 0
+                    ? (precioBruto * (1 - porcentaje / 100))
+                    : (double.tryParse(
+                            promo['precio_oferta']?.toString() ?? '0') ??
+                        precioBruto);
+                final precioStr =
+                    precioFinal > 0 ? '\$${precioFinal.toStringAsFixed(0)}' : '';
+                final tiempo =
+                    _tiempoRestante(promo['fecha_fin']?.toString());
+                return _buildTemporadaCard(
+                  idx: idx,
+                  imagenUrl: imagenUrl,
+                  titulo: titulo,
+                  subtitulo: subtitulo.isNotEmpty
+                      ? subtitulo
+                      : (tiempo.isNotEmpty ? 'Hasta $tiempo' : ''),
+                  precio: precioStr,
+                  precioOriginal:
+                      porcentaje > 0 ? '\$${precioBruto.toStringAsFixed(0)}' : null,
+                  accent: accent,
+                  onTap: () {
+                    final productoId = promo['producto_id']?.toString();
+                    if (productoId != null && productoId.isNotEmpty) {
+                      final pp =
+                          Provider.of<ProductProvider>(context, listen: false);
+                      final producto = pp.productos.firstWhere(
+                        (p) => p.id.toString() == productoId,
+                        orElse: () => Product(
+                            id: '', nombre: '', descripcion: '',
+                            precio: 0, categoria: '', imagenUrl: ''),
+                      );
+                      if (producto.id.isNotEmpty) {
+                        PierLog.nav('→ ProductDetailScreen desde temporada');
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    ProductDetailScreen(product: producto)));
+                        return;
+                      }
+                    }
+                    context.read<NavigationProvider>().goCatalogo();
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTemporadaCard({
+    required int idx,
+    required String imagenUrl,
+    required String titulo,
+    required String subtitulo,
+    required String precio,
+    String? precioOriginal,
+    required Color accent,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 155,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(
+            color: accent.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          )],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 115,
+                width: double.infinity,
+                child: Stack(fit: StackFit.expand, children: [
+                  imagenUrl.isNotEmpty
+                      ? Image.network(imagenUrl, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: accent.withValues(alpha: 0.12),
+                            child: Icon(Icons.cake_outlined,
+                                color: accent, size: 40),
+                          ))
+                      : Container(
+                          color: accent.withValues(alpha: 0.12),
+                          child: Icon(Icons.cake_outlined,
+                              color: accent, size: 40),
+                        ),
+                  Positioned(
+                    bottom: 0, left: 0, right: 0,
+                    child: Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.18),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8, left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome_rounded,
+                              size: 8, color: Colors.white),
+                          SizedBox(width: 3),
+                          Text('Temporada',
+                              style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(titulo,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                  height: 1.2),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                          if (subtitulo.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(subtitulo,
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey[500]),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (precio.isNotEmpty)
+                                Text(precio,
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                        color: accent)),
+                              // ✅ Precio tachado si hay descuento
+                              if (precioOriginal != null)
+                                Text(precioOriginal,
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey[400],
+                                        decoration:
+                                            TextDecoration.lineThrough)),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Ver',
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: accent)),
+                                const SizedBox(width: 2),
+                                Icon(Icons.arrow_forward_ios_rounded,
+                                    size: 8, color: accent),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ NUEVO: Productos Destacados (tipo == 'destacado')
+  Widget _buildPromoDestacado() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              width: 28, height: 28,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [AppColors.pierDorado, Color(0xFFB8895C)]),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 8),
+            const Text('Productos Destacados',
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary)),
+          ]),
+          const SizedBox(height: 4),
+          Text('Seleccionados especialmente para ti',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+          const SizedBox(height: 14),
+          ...(_promoDestacado.map((promo) {
+            final imagenUrl = promo['producto_imagen']?.toString() ?? '';
+            final nombre =
+                promo['producto_nombre']?.toString() ?? 'Producto';
+            final badge = promo['badge_destacado']?.toString() ?? 'Destacado';
+            final precioOferta =
+                double.tryParse(promo['precio_oferta']?.toString() ?? '0') ??
+                    0;
+            final precioOriginal =
+                double.tryParse(promo['precio_original']?.toString() ??
+                        promo['precio_chico']?.toString() ?? '0') ??
+                    0;
+            final porcentaje =
+                double.tryParse(promo['descuento_porcentaje']?.toString() ?? '0') ??
+                    0;
+            final fechaFin = promo['fecha_fin']?.toString();
+            final tiempo = _tiempoRestante(fechaFin);
+
+            return GestureDetector(
+              onTap: () {
+                final productoId = promo['producto_id']?.toString();
+                if (productoId != null && productoId.isNotEmpty) {
+                  final pp =
+                      Provider.of<ProductProvider>(context, listen: false);
+                  final producto = pp.productos.firstWhere(
+                    (p) => p.id.toString() == productoId,
+                    orElse: () => Product(
+                        id: '', nombre: '', descripcion: '',
+                        precio: 0, categoria: '', imagenUrl: ''),
+                  );
+                  if (producto.id.isNotEmpty) {
+                    PierLog.nav('→ ProductDetailScreen desde destacado');
+                    Navigator.push(context, MaterialPageRoute(
+                        builder: (_) =>
+                            ProductDetailScreen(product: producto)));
+                    return;
+                  }
+                }
+                context.read<NavigationProvider>().goCatalogo();
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                height: 110,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(
+                      color: AppColors.pierDorado.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4))],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Row(
+                    children: [
+                      // Imagen
+                      SizedBox(
+                        width: 110,
+                        child: Stack(fit: StackFit.expand, children: [
+                          imagenUrl.isNotEmpty
+                              ? Image.network(imagenUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: const Color(0xFFF5F0E8),
+                                    child: const Icon(Icons.cake_outlined,
+                                        color: AppColors.pierDorado, size: 36),
+                                  ))
+                              : Container(
+                                  color: const Color(0xFFF5F0E8),
+                                  child: const Icon(Icons.cake_outlined,
+                                      color: AppColors.pierDorado, size: 36),
+                                ),
+                          // Badge dorado
+                          Positioned(
+                            top: 8, left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.pierDorado,
+                                      Color(0xFFB8895C)
+                                    ]),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.auto_awesome_rounded,
+                                      size: 8, color: Colors.white),
+                                  const SizedBox(width: 3),
+                                  Text(badge,
+                                      style: const TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Badge descuento
+                          if (porcentaje > 0)
+                            Positioned(
+                              bottom: 8, right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade500,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                    '-${porcentaje.round()}%',
+                                    style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              ),
+                            ),
+                        ]),
+                      ),
+                      // Info
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(nombre,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: AppColors.textPrimary),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Precio final
+                                      Text(
+                                        '\$${precioOferta > 0 ? precioOferta.toStringAsFixed(0) : precioOriginal.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.pierDorado),
+                                      ),
+                                      // Precio tachado
+                                      if (precioOferta > 0 &&
+                                          precioOriginal > 0)
+                                        Text(
+                                          '\$${precioOriginal.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey[400],
+                                              decoration:
+                                                  TextDecoration.lineThrough),
+                                        ),
+                                    ],
+                                  ),
+                                  // Tiempo restante
+                                  if (tiempo.isNotEmpty)
+                                    Row(children: [
+                                      const Icon(Icons.timer_outlined,
+                                          size: 12,
+                                          color: AppColors.pierDorado),
+                                      const SizedBox(width: 3),
+                                      Text(tiempo,
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.pierDorado,
+                                              fontWeight: FontWeight.w600)),
+                                    ]),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          })),
+        ],
+      ),
+    );
+  }
+
   // ── CATEGORÍAS ────────────────────────────────────────────────────
   Widget _buildCategories() {
-    final cats =
-        _categoriasApi.isNotEmpty ? _categoriasApi : _categoriasFallback;
+    final cats = _categoriasApi.isNotEmpty ? _categoriasApi : _categoriasFallback;
     final display = cats.take(5).toList();
 
     return Padding(
@@ -1019,8 +1595,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: display.map((cat) {
-              final nombre =
-                  (cat['nombre'] ?? cat['name'] ?? '').toString();
+              final nombre = (cat['nombre'] ?? cat['name'] ?? '').toString();
               final IconData icon = cat['icon'] != null
                   ? cat['icon'] as IconData
                   : _iconForCategoria(nombre);
@@ -1058,6 +1633,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ── PIDE DE NUEVO ─────────────────────────────────────────────────
+  Widget _buildPideDeNuevo() {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final listaProductos = _productosComprados.map((p) {
+      final precio = double.tryParse(
+              p['precio_unitario']?.toString() ??
+              p['precio_chico']?.toString() ?? '0') ??
+          0.0;
+      return provider.productos.firstWhere(
+        (prod) => prod.id.toString() == p['id']?.toString(),
+        orElse: () => Product(
+          id: p['id']?.toString() ?? '',
+          nombre: p['nombre'] ?? '',
+          descripcion: '',
+          precio: precio,
+          categoria: p['categoria'] ?? '',
+          imagenUrl: p['imagen_url'] ?? '',
+        ),
+      );
+    }).toList();
+
+    return _buildProductSection(
+      title: 'Pide de nuevo',
+      titleIcon: Icons.replay_rounded,
+      productos: listaProductos,
+    );
+  }
+
   // ── RESEÑAS DESTACADAS ────────────────────────────────────────────
   Widget _buildResenasDestacadas() {
     return Padding(
@@ -1065,9 +1668,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: const [
-            Icon(Icons.star_rounded,
-                color: AppColors.pierDorado, size: 20),
+          const Row(children: [
+            Icon(Icons.star_rounded, color: AppColors.pierDorado, size: 20),
             SizedBox(width: 6),
             Text('Lo que dicen nuestros clientes',
                 style: TextStyle(
@@ -1078,13 +1680,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(height: 14),
           ..._resenasDestacadas.map((r) {
             final nombre =
-                '${r['autor_nombre'] ?? ''} ${r['autor_apellido'] ?? ''}'
-                    .trim();
+                '${r['autor_nombre'] ?? ''} ${r['autor_apellido'] ?? ''}'.trim();
             final iniciales = nombre.length >= 2
                 ? nombre.substring(0, 2).toUpperCase()
-                : nombre.isNotEmpty
-                    ? nombre[0].toUpperCase()
-                    : '?';
+                : nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
             final rating =
                 double.tryParse(r['rating']?.toString() ?? '5') ?? 5.0;
             final comentario = r['comentario']?.toString() ?? '';
@@ -1130,8 +1729,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           if (producto.isNotEmpty)
                             Text(producto,
                                 style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[500])),
+                                    fontSize: 11, color: Colors.grey[500])),
                         ],
                       ),
                     ),
@@ -1143,15 +1741,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ? Icons.star_rounded
                                       : Icons.star_outline_rounded,
                                   color: Colors.amber,
-                                  size: 14,
-                                ))),
+                                  size: 14))),
                   ]),
                   const SizedBox(height: 10),
                   Text(comentario,
                       style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                          height: 1.5),
+                          fontSize: 13, color: Colors.grey[600], height: 1.5),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis),
                 ],
@@ -1187,16 +1782,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => const ContactScreen())),
+                MaterialPageRoute(builder: (_) => const ContactScreen())),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.pierVerdeOscuro,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [BoxShadow(
-                    color:
-                        AppColors.pierVerdeOscuro.withValues(alpha: 0.3),
+                    color: AppColors.pierVerdeOscuro.withValues(alpha: 0.3),
                     blurRadius: 16,
                     offset: const Offset(0, 6))],
               ),
@@ -1225,8 +1818,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(height: 3),
                           Text(direccion,
                               style: TextStyle(
-                                  color: Colors.white
-                                      .withValues(alpha: 0.75),
+                                  color: Colors.white.withValues(alpha: 0.75),
                                   fontSize: 12)),
                         ],
                       ),
@@ -1270,8 +1862,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(height: 3),
                           Text(horario,
                               style: TextStyle(
-                                  color: Colors.white
-                                      .withValues(alpha: 0.75),
+                                  color: Colors.white.withValues(alpha: 0.75),
                                   fontSize: 12)),
                         ],
                       ),
@@ -1305,8 +1896,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Row(
                   children: [
                     if (titleIcon != null) ...[
-                      Icon(titleIcon,
-                          color: AppColors.pierVerde, size: 20),
+                      Icon(titleIcon, color: AppColors.pierVerde, size: 20),
                       const SizedBox(width: 6),
                     ],
                     Text(title,
@@ -1335,16 +1925,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: productos.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
                 final p = productos[i];
                 return GestureDetector(
-                  onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              ProductDetailScreen(product: p))),
+                  onTap: () {
+                    PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
+                    Navigator.push(context,
+                        MaterialPageRoute(
+                            builder: (_) => ProductDetailScreen(product: p)));
+                  },
                   child: Container(
                     width: 165,
                     decoration: BoxDecoration(
@@ -1365,29 +1955,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                Image.network(p.imagenUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, e, __) =>
-                                        Container(
-                                          color: AppColors.pierArena,
-                                          child: const Icon(
-                                              Icons.cake_outlined,
-                                              color: AppColors.pierVerde,
-                                              size: 40),
-                                        )),
+                                Image.network(p.imagenUrl, fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: AppColors.pierArena,
+                                      child: const Icon(Icons.cake_outlined,
+                                          color: AppColors.pierVerde, size: 40),
+                                    )),
                                 Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  height: 70,
+                                  bottom: 0, left: 0, right: 0, height: 70,
                                   child: Container(
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         begin: Alignment.bottomCenter,
                                         end: Alignment.topCenter,
                                         colors: [
-                                          Colors.black
-                                              .withValues(alpha: 0.6),
+                                          Colors.black.withValues(alpha: 0.6),
                                           Colors.transparent,
                                         ],
                                       ),
@@ -1396,30 +1978,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                                 Positioned(
                                   bottom: 10, left: 10,
-                                  child: Text(
-                                      '\$${p.precio.toStringAsFixed(0)}',
+                                  child: Text('\$${p.precio.toStringAsFixed(0)}',
                                       style: const TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w900,
                                           fontSize: 16,
-                                          shadows: [
-                                            Shadow(
-                                                color: Colors.black38,
-                                                blurRadius: 4)
-                                          ])),
+                                          shadows: [Shadow(
+                                              color: Colors.black38,
+                                              blurRadius: 4)])),
                                 ),
                                 if (p.popular)
                                   Positioned(
                                     top: 8, left: 8,
                                     child: Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 7,
-                                              vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 7, vertical: 3),
                                       decoration: BoxDecoration(
                                         color: AppColors.pierDorado,
-                                        borderRadius:
-                                            BorderRadius.circular(7),
+                                        borderRadius: BorderRadius.circular(7),
                                         boxShadow: [BoxShadow(
                                             color: AppColors.pierDorado
                                                 .withValues(alpha: 0.5),
@@ -1429,15 +2005,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(Icons.star_rounded,
-                                              color: Colors.white,
-                                              size: 9),
+                                              color: Colors.white, size: 9),
                                           SizedBox(width: 3),
                                           Text('POPULAR',
                                               style: TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 8,
-                                                  fontWeight:
-                                                      FontWeight.bold,
+                                                  fontWeight: FontWeight.bold,
                                                   letterSpacing: 0.5)),
                                         ],
                                       ),
@@ -1449,8 +2023,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     width: 30, height: 30,
                                     decoration: BoxDecoration(
                                       color: AppColors.pierVerde,
-                                      borderRadius:
-                                          BorderRadius.circular(9),
+                                      borderRadius: BorderRadius.circular(9),
                                       boxShadow: [BoxShadow(
                                           color: Colors.black
                                               .withValues(alpha: 0.15),
@@ -1466,11 +2039,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Expanded(
                             flex: 45,
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                  10, 8, 10, 10),
+                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
@@ -1479,10 +2050,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 7,
-                                                vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: AppColors.pierVerde
                                               .withValues(alpha: 0.1),
@@ -1493,19 +2062,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             style: const TextStyle(
                                                 fontSize: 9,
                                                 color: AppColors.pierVerde,
-                                                fontWeight:
-                                                    FontWeight.w700)),
+                                                fontWeight: FontWeight.w700)),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(p.nombre,
                                           style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
-                                              color:
-                                                  AppColors.textPrimary),
+                                              color: AppColors.textPrimary),
                                           maxLines: 1,
-                                          overflow:
-                                              TextOverflow.ellipsis),
+                                          overflow: TextOverflow.ellipsis),
                                       const SizedBox(height: 3),
                                       Text(p.descripcion,
                                           style: TextStyle(
@@ -1513,8 +2079,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               color: Colors.grey[500],
                                               height: 1.3),
                                           maxLines: 2,
-                                          overflow:
-                                              TextOverflow.ellipsis),
+                                          overflow: TextOverflow.ellipsis),
                                     ],
                                   ),
                                   Row(children: [
@@ -1596,8 +2161,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Container(
                       width: 40, height: 40,
                       decoration: BoxDecoration(
-                        color:
-                            AppColors.pierVerde.withValues(alpha: 0.1),
+                        color: AppColors.pierVerde.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(f['icon'] as IconData,
@@ -1616,8 +2180,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   color: AppColors.textPrimary)),
                           Text(f['desc'] as String,
                               style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[500])),
+                                  fontSize: 10, color: Colors.grey[500])),
                         ],
                       ),
                     ),

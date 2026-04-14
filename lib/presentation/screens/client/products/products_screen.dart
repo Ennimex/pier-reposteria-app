@@ -804,14 +804,12 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   Widget _buildGridCard(Product p, ProductProvider provider) {
-    // ✅ NUEVO: obtener precio con descuento si hay promo
     final tienePromo = provider.tieneDescuento(p.id);
     final precioFinal = provider.precioConDescuento(p.id, p.precio);
     final promo = provider.promocionDeProducto(p.id);
-    final badge = promo?['badge_destacado']?.toString() ??
-        (promo?['descuento_porcentaje'] != null
-            ? '${promo!['descuento_porcentaje']}% OFF'
-            : null);
+    final tipo = promo?['tipo']?.toString() ?? '';
+    final porcentaje = promo?['descuento_porcentaje']?.toString();
+    final badgeDestacado = promo?['badge_destacado']?.toString();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -826,40 +824,44 @@ class _ProductsScreenState extends State<ProductsScreen>
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined, color: AppColors.pierVerde, size: 40),
                   )),
-              // Badge popular
-              if (p.popular && !tienePromo)
-                Positioned(
-                  top: 10, left: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: AppColors.pierDorado, borderRadius: BorderRadius.circular(8)),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star_rounded, color: Colors.white, size: 10),
-                        SizedBox(width: 3),
-                        Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                      ],
-                    ),
-                  ),
+              // ✅ NUEVO: columna de badges por tipo (igual que el web)
+              Positioned(
+                top: 8, left: 8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Popular — solo si no hay promo
+                    if (p.popular && !tienePromo)
+                      _badge(AppColors.pierDorado,
+                          icon: Icons.star_rounded, label: 'Popular'),
+                    if (tienePromo) ...[
+                      // Descuento porcentaje
+                      if (porcentaje != null)
+                        _badge(Colors.red.shade500,
+                            icon: Icons.local_offer_rounded,
+                            label: '-$porcentaje%'),
+                      // Tipo relámpago
+                      if (tipo == 'relampago')
+                        _badge(Colors.orange.shade600,
+                            icon: Icons.bolt_rounded, label: 'Flash'),
+                      // Tipo temporada
+                      if (tipo == 'temporada')
+                        _badge(Colors.orange.shade700,
+                            icon: Icons.auto_awesome_rounded,
+                            label: 'Temporada'),
+                      // Tipo destacado con badge
+                      if (tipo == 'destacado' && badgeDestacado != null)
+                        _badge(Colors.purple.shade500,
+                            icon: Icons.auto_awesome_rounded,
+                            label: badgeDestacado),
+                      // Tipo nuevo
+                      if (tipo == 'nuevo')
+                        _badge(Colors.blue.shade500,
+                            icon: Icons.fiber_new_rounded, label: 'Nuevo'),
+                    ],
+                  ],
                 ),
-              // ✅ NUEVO: badge de descuento (reemplaza popular si hay promo)
-              if (tienePromo && badge != null)
-                Positioned(
-                  top: 10, left: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.red.shade500, borderRadius: BorderRadius.circular(8)),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.local_offer_rounded, color: Colors.white, size: 10),
-                        const SizedBox(width: 3),
-                        Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ),
+              ),
               // Favorito
               Positioned(
                 top: 8, right: 8,
@@ -964,10 +966,9 @@ class _ProductsScreenState extends State<ProductsScreen>
     final tienePromo = provider.tieneDescuento(p.id);
     final precioFinal = provider.precioConDescuento(p.id, p.precio);
     final promo = provider.promocionDeProducto(p.id);
-    final badge = promo?['badge_destacado']?.toString() ??
-        (promo?['descuento_porcentaje'] != null
-            ? '${promo!['descuento_porcentaje']}% OFF'
-            : null);
+    final tipo = promo?['tipo']?.toString() ?? '';
+    final porcentaje = promo?['descuento_porcentaje']?.toString();
+    final badgeDestacado = promo?['badge_destacado']?.toString();
 
     return Row(
       children: [
@@ -981,28 +982,40 @@ class _ProductsScreenState extends State<ProductsScreen>
                     color: AppColors.pierArena,
                     child: const Icon(Icons.cake_outlined, color: AppColors.pierVerde, size: 36),
                   )),
-              if (tienePromo && badge != null)
-                Positioned(
-                  top: 8, left: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.red.shade500, borderRadius: BorderRadius.circular(6)),
-                    child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-                  ),
-                )
-              else if (p.popular)
-                Positioned(
-                  top: 8, left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(color: AppColors.pierDorado, borderRadius: BorderRadius.circular(6)),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.star_rounded, color: Colors.white, size: 9),
-                      SizedBox(width: 2),
-                      Text('POP', style: TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold)),
-                    ]),
-                  ),
+              // ✅ Badges múltiples apilados igual que el web
+              Positioned(
+                top: 6, left: 6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (p.popular)
+                      _badge(AppColors.pierDorado,
+                          icon: Icons.star_rounded, label: 'Popular', small: true),
+                    if (tienePromo) ...[
+                      if (porcentaje != null)
+                        _badge(Colors.red.shade500,
+                            icon: Icons.local_offer_rounded,
+                            label: '-$porcentaje%', small: true),
+                      if (tipo == 'relampago')
+                        _badge(Colors.orange.shade600,
+                            icon: Icons.bolt_rounded,
+                            label: 'Flash', small: true),
+                      if (tipo == 'temporada')
+                        _badge(Colors.orange.shade700,
+                            icon: Icons.auto_awesome_rounded,
+                            label: 'Temporada', small: true),
+                      if (tipo == 'destacado' && badgeDestacado != null)
+                        _badge(Colors.purple.shade500,
+                            icon: Icons.auto_awesome_rounded,
+                            label: badgeDestacado, small: true),
+                      if (tipo == 'nuevo')
+                        _badge(Colors.blue.shade500,
+                            icon: Icons.fiber_new_rounded,
+                            label: 'Nuevo', small: true),
+                    ],
+                  ],
                 ),
+              ),
               Positioned(
                 bottom: 8, right: 8,
                 child: GestureDetector(
@@ -1090,6 +1103,33 @@ class _ProductsScreenState extends State<ProductsScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Helper: badge de promoción reutilizable para grid y lista
+  /// [small] = true para vista lista (texto más compacto)
+  Widget _badge(Color color, {required IconData icon, required String label, bool small = false}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 3),
+      padding: EdgeInsets.symmetric(
+          horizontal: small ? 5 : 7, vertical: small ? 2 : 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: small ? 8 : 9),
+          const SizedBox(width: 3),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: small ? 7 : 8,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.2)),
+        ],
+      ),
     );
   }
 

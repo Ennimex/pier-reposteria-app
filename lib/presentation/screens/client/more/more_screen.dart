@@ -16,6 +16,7 @@ import '../notifications/notifications_screen.dart';
 import '../refunds/refunds_screen.dart';
 import '../reviews/my_reviews_screen.dart';
 import '../more/profile_screen.dart';
+import 'quejas_screen.dart'; // ✅ NUEVO
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -32,7 +33,6 @@ class _MoreScreenState extends State<MoreScreen> {
   int _totalResenas   = 0;
   bool _loadingStats  = true;
 
-  // ✅ NUEVO: configuración dinámica del backend
   Map<String, dynamic> _configContacto = {};
   Map<String, dynamic> _configHorarios = {};
   bool _loadingConfig = true;
@@ -42,7 +42,6 @@ class _MoreScreenState extends State<MoreScreen> {
   @override
   void initState() {
     super.initState();
-    // Configuración es pública — cargar siempre al abrir la pantalla
     _cargarConfiguracion();
   }
 
@@ -71,7 +70,6 @@ class _MoreScreenState extends State<MoreScreen> {
     }
   }
 
-  // ✅ NUEVO: carga horarios y contacto del backend (público, sin auth)
   Future<void> _cargarConfiguracion() async {
     final results = await Future.wait([
       _api.get(ApiConstants.configuracionSeccion('contacto')),
@@ -101,7 +99,6 @@ class _MoreScreenState extends State<MoreScreen> {
 
     final results = await Future.wait([
       _api.getAuth(ApiConstants.misPedidos),
-      // ✅ FIX: usando ApiConstants.favoritosIds
       _api.getAuth(ApiConstants.favoritosIds),
       _api.getAuth(ApiConstants.misResenas),
     ]);
@@ -132,8 +129,10 @@ class _MoreScreenState extends State<MoreScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás seguro que deseas cerrar tu sesión?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content:
+            const Text('¿Estás seguro que deseas cerrar tu sesión?'),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -157,9 +156,9 @@ class _MoreScreenState extends State<MoreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth   = Provider.of<AuthProvider>(context);
-    final isAuth = auth.isAuthenticated;
-    final user   = auth.currentUser;
+    final auth     = Provider.of<AuthProvider>(context);
+    final isAuth   = auth.isAuthenticated;
+    final user     = auth.currentUser;
     final nombre   = user?['nombre']?.toString() ?? '';
     final apellido = user?['apellido']?.toString() ?? '';
     final email    = user?['email']?.toString() ?? '';
@@ -181,15 +180,15 @@ class _MoreScreenState extends State<MoreScreen> {
               isAuth, nombre, email, iniciales, fotoUrl, auth),
           const SizedBox(height: 20),
 
-          // ── STATS (auth) o REWARDS BANNER (guest) ───────────────
+          // ── STATS / REWARDS BANNER ───────────────────────────────
           if (isAuth) _buildStatsRow() else _buildRewardsBanner(),
           const SizedBox(height: 24),
 
-          // ✅ NUEVO: tarjeta Encuéntranos con datos del backend
+          // ── ENCUÉNTRANOS ─────────────────────────────────────────
           _buildEncuentranos(),
           const SizedBox(height: 24),
 
-          // ── MI CUENTA ───────────────────────────────────────────
+          // ── MI CUENTA ────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -248,6 +247,13 @@ class _MoreScreenState extends State<MoreScreen> {
                 iconColor: AppColors.pierVerde,
                 title: 'Mis Reembolsos',
                 onTap: () => _goProtected(const RefundsScreen()),
+              ),
+              _buildDivider(), // ✅ NUEVO
+              _buildTile(     // ✅ NUEVO
+                icon: Icons.chat_bubble_outline_rounded,
+                iconColor: AppColors.pierDoradoOscuro,
+                title: 'Quejas y Sugerencias',
+                onTap: () => _goProtected(QuejasScreen()),
                 last: true,
               ),
             ]),
@@ -325,7 +331,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
           const SizedBox(height: 24),
 
-          // ── CERRAR SESIÓN ────────────────────────────────────────
+          // ── CERRAR SESIÓN ─────────────────────────────────────────
           if (isAuth)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -363,7 +369,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
           const SizedBox(height: 28),
 
-          // ── FOOTER ──────────────────────────────────────────────
+          // ── FOOTER ───────────────────────────────────────────────
           Column(children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -393,17 +399,12 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   // ── ENCUÉNTRANOS ─────────────────────────────────────────────────
-  // ✅ NUEVO: datos cargados dinámicamente desde /configuracion/contacto
-  //           y /configuracion/horarios. Fallback a valores por defecto.
   Widget _buildEncuentranos() {
-    // Fallbacks si el backend no responde
     final direccion = _configContacto['direccion']?.toString()
         ?? 'Calle Allende, Col. Tahuizán';
     final telefono = _configContacto['telefono']?.toString() ?? '';
     final emailContacto = _configContacto['email']?.toString() ?? '';
 
-    // Horario: el backend puede devolver un string o un mapa por día
-    // Soporte para ambos formatos
     String horario;
     final horarioRaw = _configHorarios['horario'] ??
         _configHorarios['lunes_sabado'] ??
@@ -453,7 +454,6 @@ class _MoreScreenState extends State<MoreScreen> {
                   ),
                   child: Column(
                     children: [
-                      // ── Dirección ──
                       Row(children: [
                         Container(
                           width: 38, height: 38,
@@ -492,7 +492,6 @@ class _MoreScreenState extends State<MoreScreen> {
                             height: 1),
                       ),
 
-                      // ── Horario ──
                       Row(children: [
                         Container(
                           width: 38, height: 38,
@@ -524,7 +523,6 @@ class _MoreScreenState extends State<MoreScreen> {
                         ),
                       ]),
 
-                      // ── Teléfono (si existe en config) ──
                       if (telefono.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -564,7 +562,6 @@ class _MoreScreenState extends State<MoreScreen> {
                         ]),
                       ],
 
-                      // ── Email (si existe en config) ──
                       if (emailContacto.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -604,7 +601,6 @@ class _MoreScreenState extends State<MoreScreen> {
                         ]),
                       ],
 
-                      // ── Botón ir a contacto ──
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
@@ -617,11 +613,12 @@ class _MoreScreenState extends State<MoreScreen> {
                             padding:
                                 const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
+                              color:
+                                  Colors.white.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.25)),
+                                  color: Colors.white
+                                      .withValues(alpha: 0.25)),
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -658,7 +655,7 @@ class _MoreScreenState extends State<MoreScreen> {
           Image.network(
             'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&fit=crop',
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
+            errorBuilder: (_, __, ___) => Container(
               color: AppColors.pierVerdeOscuro,
               child: const Icon(Icons.bakery_dining_outlined,
                   color: Colors.white54, size: 60),
@@ -812,7 +809,6 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  // ── REWARDS BANNER (guest) ───────────────────────────────────────
   Widget _buildRewardsBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -879,7 +875,6 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  // ── STATS ROW ────────────────────────────────────────────────────
   Widget _buildStatsRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -992,7 +987,8 @@ class _MoreScreenState extends State<MoreScreen> {
             ? const BorderRadius.vertical(bottom: Radius.circular(18))
             : BorderRadius.zero,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(children: [
             Container(
               width: 36, height: 36,
