@@ -137,7 +137,7 @@ class _MoreScreenState extends State<MoreScreen> {
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancelar',
-                style: TextStyle(color: Colors.grey[600])),
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -145,7 +145,7 @@ class _MoreScreenState extends State<MoreScreen> {
               await auth.logout();
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, elevation: 0),
+                backgroundColor: AppColors.error, elevation: 0),
             child: const Text('Salir',
                 style: TextStyle(color: Colors.white)),
           ),
@@ -170,7 +170,7 @@ class _MoreScreenState extends State<MoreScreen> {
         user?['foto_url']?.toString();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F2ED),
+      backgroundColor: AppColors.pierArena,
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -344,24 +344,24 @@ class _MoreScreenState extends State<MoreScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color: Colors.red.withValues(alpha: 0.3)),
+                        color: AppColors.error.withValues(alpha: 0.3)),
                   ),
                   child: Row(children: [
                     Container(
                       width: 36, height: 36,
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.08),
+                        color: AppColors.error.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.logout_rounded,
-                          color: Colors.red, size: 18),
+                          color: AppColors.error, size: 18),
                     ),
                     const SizedBox(width: 14),
                     const Text('Cerrar sesión',
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: Colors.red)),
+                            color: AppColors.error)),
                   ]),
                 ),
               ),
@@ -385,11 +385,11 @@ class _MoreScreenState extends State<MoreScreen> {
             const Text('Versión 1.0.0 • Pier Repostería',
                 style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             const Text('Hecho con amor en la panadería',
-                style: TextStyle(fontSize: 11, color: Colors.grey)),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ]),
 
           const SizedBox(height: 40),
@@ -815,7 +815,7 @@ class _MoreScreenState extends State<MoreScreen> {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F0E8),
+          color: AppColors.pierArena,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
               color: AppColors.pierDorado.withValues(alpha: 0.3)),
@@ -848,7 +848,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: Colors.grey.withValues(alpha: 0.3)),
+                          color: AppColors.textSecondary.withValues(alpha: 0.3)),
                     ),
                     child: const Text('Iniciar sesión',
                         style: TextStyle(
@@ -915,7 +915,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       color: AppColors.pierVerde)),
           const SizedBox(height: 4),
           Text(label,
-              style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ]),
       ),
     );
@@ -951,7 +951,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 color: AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(sub,
-            style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ]),
     );
   }
@@ -1007,7 +1007,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       color: AppColors.textPrimary)),
             ),
             const Icon(Icons.chevron_right_rounded,
-                color: Colors.grey, size: 20),
+                color: AppColors.textSecondary, size: 20),
           ]),
         ),
       ),
@@ -1020,10 +1020,10 @@ class _MoreScreenState extends State<MoreScreen> {
       child: Divider(
           height: 0.5,
           thickness: 0.5,
-          color: Colors.grey.withValues(alpha: 0.2)),
+          color: AppColors.textSecondary.withValues(alpha: 0.2)),
     );
   }
 
   Widget _footerIcon(IconData icon) =>
-      Icon(icon, color: Colors.grey[400], size: 22);
+      Icon(icon, color: AppColors.textSecondary.withValues(alpha: 0.5), size: 22);
 }

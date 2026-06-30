@@ -62,7 +62,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   Future<void> _handleReset() async {
     if (_codigo.length < 6) {
-      _showSnack('Ingresa el código completo de 6 dígitos', Colors.red);
+      _showSnack('Ingresa el código completo de 6 dígitos', AppColors.error);
       return;
     }
 
@@ -70,19 +70,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     // ✅ FIX: sincronizado con backend (mín 6 + letra + número)
     if (pass.length < 6) {
-      _showSnack('La contraseña debe tener al menos 6 caracteres', Colors.red);
+      _showSnack('La contraseña debe tener al menos 6 caracteres', AppColors.error);
       return;
     }
     if (!RegExp(r'[a-zA-Z]').hasMatch(pass)) {
-      _showSnack('La contraseña debe contener al menos 1 letra', Colors.red);
+      _showSnack('La contraseña debe contener al menos 1 letra', AppColors.error);
       return;
     }
     if (!RegExp(r'\d').hasMatch(pass)) {
-      _showSnack('La contraseña debe contener al menos 1 número', Colors.red);
+      _showSnack('La contraseña debe contener al menos 1 número', AppColors.error);
       return;
     }
     if (pass != _confirmPasswordCtrl.text.trim()) {
-      _showSnack('Las contraseñas no coinciden', Colors.red);
+      _showSnack('Las contraseñas no coinciden', AppColors.error);
       return;
     }
 
@@ -102,7 +102,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       for (final c in _codeControllers) { c.clear(); }
       _focusNodes[0].requestFocus();
       setState(() => _codigoListo = false);
-      _showSnack(result['message'] ?? 'Código inválido o expirado', Colors.red);
+      _showSnack(result['message'] ?? 'Código inválido o expirado', AppColors.error);
     }
   }
 
@@ -134,7 +134,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   Container(
                     width: 72, height: 72,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.12),
+                      color: AppColors.textSecondary.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -160,7 +160,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               const SizedBox(height: 10),
               Text(
                 'Tu contraseña ha sido actualizada correctamente. Ya puedes iniciar sesión.',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
@@ -255,7 +256,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               const SizedBox(height: 8),
               Text(
                 'Ingresa el código que enviamos a',
-                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
@@ -293,7 +295,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         filled: true,
                         fillColor: isFocused || hasValue
                             ? Colors.white
-                            : Colors.grey.withValues(alpha: 0.15),
+                            : AppColors.textSecondary.withValues(alpha: 0.15),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(
@@ -328,7 +330,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     _isPasswordVisible
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: Colors.grey, size: 20,
+                    color: AppColors.textSecondary, size: 20,
                   ),
                   onPressed: () =>
                       setState(() => _isPasswordVisible = !_isPasswordVisible),
@@ -347,7 +349,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     _isConfirmPasswordVisible
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: Colors.grey, size: 20,
+                    color: AppColors.textSecondary, size: 20,
                   ),
                   onPressed: () => setState(() =>
                       _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
@@ -408,15 +410,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         fillColor: Colors.white,
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+            borderSide: BorderSide(
+                color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
                 const BorderSide(color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red)),
+            borderSide: const BorderSide(color: AppColors.error)),
         contentPadding: const EdgeInsets.all(14),
       ),
     );

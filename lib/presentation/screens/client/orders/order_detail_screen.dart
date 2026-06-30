@@ -1,8 +1,10 @@
 // lib/presentation/screens/client/orders/order_detail_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/models/order_model.dart';
+import '../../../../data/providers/order_provider.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final Order order;
@@ -13,10 +15,27 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
+  late Order _order;
+  bool _refreshing = false;
+
   @override
   void initState() {
     super.initState();
-    PierLog.nav('→ OrderDetailScreen: ${widget.order.numero}');
+    _order = widget.order; // snapshot inmediato: sin pantalla en blanco
+    PierLog.nav('→ OrderDetailScreen: ${_order.numero}');
+    _loadDetail(); // refresco silencioso al abrir
+  }
+
+  Future<void> _loadDetail() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    final fresh =
+        await context.read<OrderProvider>().fetchOrderDetail(_order.id);
+    if (!mounted) return;
+    setState(() {
+      if (fresh != null) _order = fresh;
+      _refreshing = false;
+    });
   }
 
   @override
@@ -54,7 +73,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.order.numero,
+                        Text(_order.numero,
                             style: const TextStyle(
                                 fontFamily: 'Playfair Display',
                                 fontSize: 22,
@@ -62,14 +81,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 color: AppColors.textPrimary),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
-                        Text(_formatDate(widget.order.createdAt),
+                        Text(_formatDate(_order.createdAt),
                             style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[500])),
                       ],
                     ),
                   ),
-                  _buildStatusChip(widget.order.status),
+                  _buildStatusChip(_order.status),
                 ],
               ),
             ),
@@ -78,11 +97,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
             // ── CONTENIDO ────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: RefreshIndicator(
+                onRefresh: _loadDetail,
+                color: AppColors.pierVerde,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
 
                     // ── ESTADO VISUAL ─────────────────────────────
                     Container(
@@ -90,26 +113,26 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       padding: const EdgeInsets.symmetric(
                           vertical: 24, horizontal: 20),
                       decoration: BoxDecoration(
-                        color: widget.order.statusColor
+                        color: _order.statusColor
                             .withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: widget.order.statusColor
+                            color: _order.statusColor
                                 .withValues(alpha: 0.25)),
                       ),
                       child: Column(
                         children: [
-                          Icon(_statusIcon(widget.order.status),
+                          Icon(_statusIcon(_order.status),
                               size: 52,
-                              color: widget.order.statusColor),
+                              color: _order.statusColor),
                           const SizedBox(height: 10),
-                          Text(widget.order.statusText,
+                          Text(_order.statusText,
                               style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: widget.order.statusColor)),
+                                  color: _order.statusColor)),
                           const SizedBox(height: 6),
-                          Text(_statusMessage(widget.order.status),
+                          Text(_statusMessage(_order.status),
                               style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey[600]),
@@ -128,25 +151,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       title: 'Información del pedido',
                       child: Column(children: [
                         _infoRow(Icons.tag_rounded, 'Número',
-                            widget.order.numero),
+                            _order.numero),
                         _divider(),
                         _infoRow(Icons.calendar_today_rounded,
                             'Fecha',
-                            _formatDateFull(widget.order.createdAt)),
-                        if (widget.order.horarioRecogida != null) ...[
+                            _formatDateFull(_order.createdAt)),
+                        if (_order.horarioRecogida != null) ...[
                           _divider(),
                           _infoRow(Icons.access_time_rounded,
                               'Horario de recogida',
-                              widget.order.horarioRecogida!),
+                              _order.horarioRecogida!),
                         ],
                         _divider(),
                         _infoRow(Icons.storefront_rounded, 'Sucursal',
                             'Principal — Huejutla de Reyes'),
-                        if (widget.order.notas != null &&
-                            widget.order.notas!.isNotEmpty) ...[
+                        if (_order.notas != null &&
+                            _order.notas!.isNotEmpty) ...[
                           _divider(),
                           _infoRow(Icons.note_outlined, 'Notas',
-                              widget.order.notas!),
+                              _order.notas!),
                         ],
                       ]),
                     ),
@@ -155,9 +178,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     // ── PRODUCTOS ─────────────────────────────────
                     _buildCard(
                       title:
-                          'Productos (${widget.order.items.length})',
+                          'Productos (${_order.items.length})',
                       child: Column(
-                        children: widget.order.items
+                        children: _order.items
                             .asMap()
                             .entries
                             .map((e) {
@@ -230,7 +253,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textPrimary)),
                           Text(
-                            '\$${widget.order.total.toStringAsFixed(0)} MXN',
+                            '\$${_order.total.toStringAsFixed(0)} MXN',
                             style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
@@ -240,6 +263,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       ),
                     ),
                   ],
+                  ),
                 ),
               ),
             ),
@@ -251,7 +275,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // ── TIMELINE ─────────────────────────────────────────────────────
   Widget _buildTimeline() {
-    if (widget.order.status == OrderStatus.cancelled) {
+    if (_order.status == OrderStatus.cancelled) {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -281,7 +305,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     ];
 
     final currentIdx =
-        steps.indexWhere((s) => s.$1 == widget.order.status);
+        steps.indexWhere((s) => s.$1 == _order.status);
 
     return Container(
       padding:
@@ -430,30 +454,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
 
   Widget _buildStatusChip(OrderStatus status) {
-    Color color;
+    final color = _order.statusColor;
     String label;
     switch (status) {
-      case OrderStatus.pending:
-        color = Colors.orange;
-        label = 'Pendiente';
-        break;
-      case OrderStatus.preparing:
-        color = Colors.blue;
-        label = 'Preparando';
-        break;
-      case OrderStatus.ready:
-        // ✅ FIX: sin ✓ en string — el icono ya lo transmite
-        color = AppColors.pierVerde;
-        label = 'Listo';
-        break;
-      case OrderStatus.completed:
-        color = Colors.grey;
-        label = 'Completado';
-        break;
-      case OrderStatus.cancelled:
-        color = Colors.red;
-        label = 'Cancelado';
-        break;
+      case OrderStatus.pending:    label = 'Pendiente'; break;
+      case OrderStatus.preparing:  label = 'Preparando'; break;
+      case OrderStatus.ready:      label = 'Listo'; break;
+      case OrderStatus.completed:  label = 'Completado'; break;
+      case OrderStatus.cancelled:  label = 'Cancelado'; break;
     }
     return Container(
       padding:

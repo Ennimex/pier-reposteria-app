@@ -25,7 +25,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _handleSend() async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      _showSnack('Ingresa un correo electrónico válido', Colors.red);
+      _showSnack('Ingresa un correo electrónico válido', AppColors.error);
       return;
     }
 
@@ -43,7 +43,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
       );
     } else {
-      _showSnack(result['message'] ?? 'No se pudo enviar el correo', Colors.red);
+      _showSnack(
+          result['message'] ?? 'No se pudo enviar el correo', AppColors.error);
     }
   }
 
@@ -126,7 +127,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 12),
               Text(
                 'Ingresa tu correo y te enviaremos un código para restablecer tu contraseña.',
-                style: TextStyle(fontSize: 14, color: Colors.grey[500], height: 1.5),
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                 textAlign: TextAlign.center,
               ),
 
@@ -144,8 +146,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   fillColor: Colors.white,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                    borderSide: BorderSide(
+                        color: AppColors.textSecondary.withValues(alpha: 0.2)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -154,7 +156,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.red),
+                    borderSide: const BorderSide(color: AppColors.error),
                   ),
                   contentPadding: const EdgeInsets.all(14),
                 ),

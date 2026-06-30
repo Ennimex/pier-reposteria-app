@@ -82,7 +82,7 @@ class _RefundsScreenState extends State<RefundsScreen>
   Future<void> _enviarSolicitud() async {
     if (!_formKey.currentState!.validate()) return;
     if (_pedidoSeleccionado == null) {
-      _showSnack('Selecciona un pedido', Colors.red);
+      _showSnack('Selecciona un pedido', AppColors.error);
       return;
     }
 
@@ -116,7 +116,7 @@ class _RefundsScreenState extends State<RefundsScreen>
       await _cargarReembolsos();
     } else {
       _showSnack(
-          result['message'] ?? 'Error al enviar solicitud', Colors.red);
+          result['message'] ?? 'Error al enviar solicitud', AppColors.error);
     }
   }
 
@@ -220,7 +220,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                   controller: _tabController,
                   onTap: (_) => setState(() {}),
                   labelColor: Colors.white,
-                  unselectedLabelColor: Colors.grey[600],
+                  unselectedLabelColor: AppColors.textSecondary,
                   indicator: BoxDecoration(
                     color: AppColors.pierVerde,
                     borderRadius: BorderRadius.circular(50),
@@ -297,7 +297,7 @@ class _RefundsScreenState extends State<RefundsScreen>
             child: Text('Historial de solicitudes',
                 style: TextStyle(
                     fontSize: 15,
-                    color: Colors.grey[500],
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500)),
           ),
           ..._reembolsos
@@ -328,15 +328,15 @@ class _RefundsScreenState extends State<RefundsScreen>
         statusLabel = estado == 'procesado' ? 'Procesado' : 'Aprobado';
         break;
       case 'rechazado':
-        statusColor = Colors.red.shade400;
+        statusColor = AppColors.estadoCancelado;
         statusLabel = 'Rechazado';
         break;
       case 'en_revision':
-        statusColor = Colors.blue.shade400;
+        statusColor = AppColors.estadoPreparacion;
         statusLabel = 'En revisión';
         break;
       default:
-        statusColor = Colors.orange.shade400;
+        statusColor = AppColors.estadoPendiente;
         statusLabel = 'Pendiente';
     }
 
@@ -384,7 +384,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                       Text(
                         _formatFecha(r['created_at']),
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey[500]),
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -407,7 +407,7 @@ class _RefundsScreenState extends State<RefundsScreen>
             ),
           ),
 
-          Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+          Divider(height: 1, color: AppColors.textSecondary.withValues(alpha: 0.15)),
 
           // ── MOTIVO + MONTO ─────────────────────────────────────
           Padding(
@@ -422,7 +422,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                       Text('Motivo',
                           style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey[400],
+                              color: AppColors.textSecondary.withValues(alpha: 0.5),
                               fontWeight: FontWeight.w500)),
                       const SizedBox(height: 4),
                       Text(r['motivo'] ?? '—',
@@ -439,7 +439,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     Text('Monto',
                         style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey[400],
+                            color: AppColors.textSecondary.withValues(alpha: 0.5),
                             fontWeight: FontWeight.w500)),
                     const SizedBox(height: 4),
                     Text('\$${monto.toStringAsFixed(2)}',
@@ -485,7 +485,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                       r['respuesta_admin'].toString(),
                       style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey[700],
+                          color: AppColors.textSecondary,
                           height: 1.4),
                     ),
                   ],
@@ -550,18 +550,18 @@ class _RefundsScreenState extends State<RefundsScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: Colors.grey.withValues(alpha: 0.2)),
+                    color: AppColors.textSecondary.withValues(alpha: 0.2)),
               ),
               child: _pedidosCompletados.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(children: [
                         Icon(Icons.info_outline,
-                            color: Colors.grey[400], size: 18),
+                            color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                         const SizedBox(width: 10),
                         Text('No tienes pedidos completados',
                             style: TextStyle(
-                                color: Colors.grey[500], fontSize: 13)),
+                                color: AppColors.textSecondary, fontSize: 13)),
                       ]),
                     )
                   : DropdownButtonHideUnderline(
@@ -578,7 +578,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                             style: TextStyle(
                                 color: _pedidosCompletados.isNotEmpty
                                     ? AppColors.textPrimary
-                                    : Colors.grey[400],
+                                    : AppColors.textSecondary.withValues(alpha: 0.5),
                                 fontSize: 14),
                           ),
                         ),
@@ -622,7 +622,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: Colors.grey.withValues(alpha: 0.2)),
+                    color: AppColors.textSecondary.withValues(alpha: 0.2)),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButtonFormField<String>(
@@ -633,7 +633,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                   initialValue: _motivoSeleccionado,
                   hint: Text('Selecciona un motivo',
                       style: TextStyle(
-                          color: Colors.grey[400], fontSize: 14)),
+                          color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
                   icon: const Icon(Icons.keyboard_arrow_down_rounded,
                       color: AppColors.pierVerde),
                   items: _motivos
@@ -666,13 +666,13 @@ class _RefundsScreenState extends State<RefundsScreen>
               decoration: InputDecoration(
                 hintText: 'Describe el problema con detalle...',
                 hintStyle:
-                    TextStyle(color: Colors.grey[400], fontSize: 14),
+                    TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14),
                 filled: true,
                 fillColor: Colors.white,
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                        color: Colors.grey.withValues(alpha: 0.2))),
+                        color: AppColors.textSecondary.withValues(alpha: 0.2))),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: const BorderSide(
@@ -680,7 +680,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                 errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide:
-                        const BorderSide(color: Colors.red)),
+                        const BorderSide(color: AppColors.error)),
                 contentPadding: const EdgeInsets.all(14),
               ),
               validator: (val) =>
@@ -758,7 +758,7 @@ class _RefundsScreenState extends State<RefundsScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[500],
+                  color: AppColors.textSecondary,
                   height: 1.5),
             ),
           ],

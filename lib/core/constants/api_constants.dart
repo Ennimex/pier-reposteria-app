@@ -33,6 +33,7 @@ class ApiConstants {
   static const String crearPedido        = '/pedidos';
   static const String misPedidos         = '/pedidos/mis-pedidos';
   static const String productosComprados = '/pedidos/productos-comprados';
+  static String pedidoById(String id)    => '/pedidos/$id';
 
   // ── PAGOS (Stripe) ────────────────────────────────────────────────
   static const String crearPaymentIntent = '/pagos/crear-intent';
@@ -65,6 +66,7 @@ class ApiConstants {
   static const String resenasDestacadas = '/resenas/destacadas';
   static String resenasPorProducto(String id) => '/resenas/producto/$id';
   static String likeResena(String id)          => '/resenas/$id/like';
+  static String editarResena(String id)        => '/resenas/$id';
 
   // ── REEMBOLSOS ────────────────────────────────────────────────────
   static const String crearReembolso = '/reembolsos';

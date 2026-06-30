@@ -148,7 +148,8 @@ class _FAQScreenState extends State<FAQScreen> {
                         border: Border.all(
                             color: sel
                                 ? AppColors.pierVerde
-                                : Colors.grey.withValues(alpha: 0.2)),
+                                : AppColors.textSecondary
+                                    .withValues(alpha: 0.2)),
                       ),
                       child: Text(cat,
                           style: TextStyle(
@@ -206,7 +207,8 @@ class _FAQScreenState extends State<FAQScreen> {
           childrenPadding:
               const EdgeInsets.fromLTRB(16, 0, 16, 16),
           iconColor: AppColors.pierVerde,
-          collapsedIconColor: Colors.grey[400],
+          collapsedIconColor:
+              AppColors.textSecondary.withValues(alpha: 0.6),
           title: Text(
             faq['question']!,
             style: const TextStyle(
@@ -224,9 +226,9 @@ class _FAQScreenState extends State<FAQScreen> {
               ),
               child: Text(
                 faq['answer']!,
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[700],
+                    color: AppColors.textSecondary,
                     height: 1.5),
               ),
             ),

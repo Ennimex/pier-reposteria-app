@@ -109,7 +109,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: error ? Colors.red : AppColors.pierVerde,
+      backgroundColor: error ? AppColors.error : AppColors.pierVerde,
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
       shape:
@@ -222,7 +222,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final cart = Provider.of<CartProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: AppColors.pierArena,
       appBar: AppBar(
         title: const Text('Finalizar Pedido'),
         backgroundColor: Colors.white,
@@ -249,7 +249,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                  color: Colors.grey[100],
+                                  color: AppColors.textSecondary.withValues(alpha: 0.06),
                                   borderRadius:
                                       BorderRadius.circular(8)),
                               child: Text('${item.quantity}x',
@@ -274,7 +274,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                         '\$${item.precio.toStringAsFixed(0)} c/u',
                                         style: const TextStyle(
                                             fontSize: 12,
-                                            color: Colors.green,
+                                            color: AppColors.pierVerde,
                                             fontWeight: FontWeight.w600),
                                       ),
                                       const SizedBox(width: 6),
@@ -282,7 +282,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                         '\$${item.precioOriginal.toStringAsFixed(0)}',
                                         style: TextStyle(
                                             fontSize: 11,
-                                            color: Colors.grey[400],
+                                            color: AppColors.textSecondary.withValues(alpha: 0.5),
                                             decoration:
                                                 TextDecoration.lineThrough),
                                       ),
@@ -306,11 +306,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       children: [
                         Text('Subtotal',
                             style: TextStyle(
-                                color: Colors.grey[500], fontSize: 14)),
+                                color: AppColors.textSecondary, fontSize: 14)),
                         Text(
                           '\$${cart.totalOriginal.toStringAsFixed(0)}',
                           style: TextStyle(
-                              color: Colors.grey[400],
+                              color: AppColors.textSecondary.withValues(alpha: 0.5),
                               fontSize: 14,
                               decoration: TextDecoration.lineThrough),
                         ),
@@ -322,25 +322,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       children: [
                         Row(children: [
                           Icon(Icons.local_offer_rounded,
-                              size: 14, color: Colors.green.shade600),
+                              size: 14, color: AppColors.pierVerde),
                           const SizedBox(width: 6),
                           Text('Descuentos aplicados',
                               style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.green.shade600,
+                                  color: AppColors.pierVerde,
                                   fontWeight: FontWeight.w600)),
                         ]),
                         Text(
                           '-\$${cart.totalAhorro.toStringAsFixed(0)}',
                           style: TextStyle(
-                              color: Colors.green.shade600,
+                              color: AppColors.pierVerde,
                               fontWeight: FontWeight.bold,
                               fontSize: 14),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                    Divider(color: AppColors.textSecondary.withValues(alpha: 0.2)),
                     const SizedBox(height: 10),
                   ],
 
@@ -413,7 +413,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                       .format(_selectedDate!),
                               style: TextStyle(
                                 color: _selectedDate == null
-                                    ? Colors.grey
+                                    ? AppColors.textSecondary
                                     : AppColors.textPrimary,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -488,7 +488,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         SizedBox(height: 2),
                         Text('Pago seguro con Stripe',
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey)),
+                                fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
@@ -509,18 +509,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: AppColors.error.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade200),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
                 ),
                 child: Row(children: [
                   Icon(Icons.error_outline,
-                      color: Colors.red.shade400, size: 18),
+                      color: AppColors.error, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(_errorMsg!,
                         style: TextStyle(
-                            color: Colors.red.shade700, fontSize: 13)),
+                            color: AppColors.error, fontSize: 13)),
                   ),
                 ]),
               ),
@@ -562,11 +562,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.lock_rounded,
-                      size: 13, color: Colors.grey[400]),
+                      size: 13, color: AppColors.textSecondary.withValues(alpha: 0.5)),
                   const SizedBox(width: 4),
                   Text('Pago cifrado y seguro con Stripe',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey[500])),
+                          fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
             ),

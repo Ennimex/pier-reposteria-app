@@ -83,7 +83,7 @@ class _LegalScreenState extends State<LegalScreen>
                 child: TabBar(
                   controller: _tabController,
                   labelColor: Colors.white,
-                  unselectedLabelColor: Colors.grey[600],
+                  unselectedLabelColor: AppColors.textSecondary,
                   indicator: BoxDecoration(
                     color: AppColors.pierVerde,
                     borderRadius: BorderRadius.circular(50),
@@ -255,9 +255,9 @@ class _LegalScreenState extends State<LegalScreen>
                               color: AppColors.textPrimary)),
                       const SizedBox(height: 8),
                       Text(s.content,
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 13,
-                              color: Colors.grey[600],
+                              color: AppColors.textSecondary,
                               height: 1.5)),
                     ],
                   ),
@@ -268,10 +268,10 @@ class _LegalScreenState extends State<LegalScreen>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.06),
+              color: AppColors.textSecondary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+              border: Border.all(
+                  color: AppColors.textSecondary.withValues(alpha: 0.15)),
             ),
             child: Row(children: [
               Icon(Icons.email_outlined,

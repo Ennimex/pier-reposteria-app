@@ -295,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen>
     final productProvider = Provider.of<ProductProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F2ED),
+      backgroundColor: AppColors.pierArena,
       body: RefreshIndicator(
         onRefresh: () async {
           PierLog.info('Refresh HomeScreen');
@@ -395,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen>
         top: MediaQuery.of(context).padding.top + 16,
         left: 20, right: 20, bottom: 16,
       ),
-      color: const Color(0xFFF5F2ED),
+      color: AppColors.pierArena,
       child: Row(
         children: [
           Expanded(
@@ -407,15 +407,16 @@ class _HomeScreenState extends State<HomeScreen>
                       ? 'Hola, $nombre'
                       : 'Bienvenido',
                   style: const TextStyle(
+                    fontFamily: 'Playfair Display',
                     fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                     letterSpacing: -0.3,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text('Descubre algo dulce hoy',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -490,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen>
       case 'en_preparacion':
         icon = Icons.blender_outlined;
         mensaje = 'Pedido #$numero en preparación';
-        color = Colors.blue.shade600;
+        color = AppColors.estadoPreparacion;
         break;
       case 'listo':
         icon = Icons.check_circle_outline_rounded;
@@ -500,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen>
       default:
         icon = Icons.hourglass_empty_rounded;
         mensaje = 'Pedido #$numero recibido, en cola';
-        color = Colors.orange.shade600;
+        color = AppColors.estadoPendiente;
     }
     return GestureDetector(
       onTap: () {
@@ -552,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen>
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
             boxShadow: [BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 10,
@@ -560,11 +561,11 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           child: Row(
             children: [
-              Icon(Icons.search_rounded, color: Colors.grey[400], size: 20),
+              Icon(Icons.search_rounded, color: AppColors.textSecondary.withValues(alpha: 0.5), size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text('Busca tu pastel favorit...',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 14)),
+                    style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -905,8 +906,9 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(width: 8),
             const Text('Ofertas Relámpago',
                 style: TextStyle(
+                    fontFamily: 'Playfair Display',
                     fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
           ]),
           const SizedBox(height: 12),
@@ -1068,8 +1070,8 @@ class _HomeScreenState extends State<HomeScreen>
   // Solo se llama cuando _promoTemporada.isNotEmpty
   Widget _buildOfertasTemporada() {
     const accentColors = [
-      Color(0xFFC1665A), Color(0xFFD4925A),
-      Color(0xFF4E7C5F), Color(0xFF7B5EA7),
+      AppColors.pierVerde, AppColors.pierDorado,
+      AppColors.estadoCancelado, AppColors.pierDoradoOscuro,
     ];
 
     return Padding(
@@ -1089,20 +1091,21 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 child: const Row(children: [
                   Icon(Icons.auto_awesome_rounded,
-                      size: 13, color: Color(0xFFC1665A)),
+                      size: 13, color: AppColors.estadoCancelado),
                   SizedBox(width: 4),
                   Text('Temporada',
                       style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFFC1665A))),
+                          color: AppColors.estadoCancelado)),
                 ]),
               ),
               const SizedBox(width: 10),
               const Text('De Temporada',
                   style: TextStyle(
+                      fontFamily: 'Playfair Display',
                       fontSize: 17,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary)),
             ]),
           ),
@@ -1289,7 +1292,7 @@ class _HomeScreenState extends State<HomeScreen>
                               child: Text(subtitulo,
                                   style: TextStyle(
                                       fontSize: 10,
-                                      color: Colors.grey[500]),
+                                      color: AppColors.textSecondary),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis),
                             ),
@@ -1312,7 +1315,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 Text(precioOriginal,
                                     style: TextStyle(
                                         fontSize: 10,
-                                        color: Colors.grey[400],
+                                        color: AppColors.textSecondary.withValues(alpha: 0.5),
                                         decoration:
                                             TextDecoration.lineThrough)),
                             ],
@@ -1363,7 +1366,7 @@ class _HomeScreenState extends State<HomeScreen>
               width: 28, height: 28,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                    colors: [AppColors.pierDorado, Color(0xFFB8895C)]),
+                    colors: [AppColors.pierDorado, AppColors.pierDoradoOscuro]),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.auto_awesome_rounded,
@@ -1372,13 +1375,14 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(width: 8),
             const Text('Productos Destacados',
                 style: TextStyle(
+                    fontFamily: 'Playfair Display',
                     fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
           ]),
           const SizedBox(height: 4),
           Text('Seleccionados especialmente para ti',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 14),
           ...(_promoDestacado.map((promo) {
             final imagenUrl = promo['producto_imagen']?.toString() ?? '';
@@ -1443,12 +1447,12 @@ class _HomeScreenState extends State<HomeScreen>
                               ? Image.network(imagenUrl,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
-                                    color: const Color(0xFFF5F0E8),
+                                    color: AppColors.pierArena,
                                     child: const Icon(Icons.cake_outlined,
                                         color: AppColors.pierDorado, size: 36),
                                   ))
                               : Container(
-                                  color: const Color(0xFFF5F0E8),
+                                  color: AppColors.pierArena,
                                   child: const Icon(Icons.cake_outlined,
                                       color: AppColors.pierDorado, size: 36),
                                 ),
@@ -1462,7 +1466,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 gradient: const LinearGradient(
                                     colors: [
                                       AppColors.pierDorado,
-                                      Color(0xFFB8895C)
+                                      AppColors.pierDoradoOscuro
                                     ]),
                                 borderRadius: BorderRadius.circular(6),
                               ),
@@ -1540,7 +1544,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           '\$${precioOriginal.toStringAsFixed(0)}',
                                           style: TextStyle(
                                               fontSize: 11,
-                                              color: Colors.grey[400],
+                                              color: AppColors.textSecondary.withValues(alpha: 0.5),
                                               decoration:
                                                   TextDecoration.lineThrough),
                                         ),
@@ -1588,8 +1592,9 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           const Text('Categorías',
               style: TextStyle(
+                  fontFamily: 'Playfair Display',
                   fontSize: 17,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 14),
           Row(
@@ -1622,7 +1627,7 @@ class _HomeScreenState extends State<HomeScreen>
                         style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[700])),
+                            color: AppColors.textSecondary)),
                   ],
                 ),
               );
@@ -1673,8 +1678,9 @@ class _HomeScreenState extends State<HomeScreen>
             SizedBox(width: 6),
             Text('Lo que dicen nuestros clientes',
                 style: TextStyle(
+                    fontFamily: 'Playfair Display',
                     fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
           ]),
           const SizedBox(height: 14),
@@ -1729,7 +1735,7 @@ class _HomeScreenState extends State<HomeScreen>
                           if (producto.isNotEmpty)
                             Text(producto,
                                 style: TextStyle(
-                                    fontSize: 11, color: Colors.grey[500])),
+                                    fontSize: 11, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -1746,7 +1752,7 @@ class _HomeScreenState extends State<HomeScreen>
                   const SizedBox(height: 10),
                   Text(comentario,
                       style: TextStyle(
-                          fontSize: 13, color: Colors.grey[600], height: 1.5),
+                          fontSize: 13, color: AppColors.textSecondary, height: 1.5),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis),
                 ],
@@ -1776,8 +1782,9 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           const Text('Encuéntranos',
               style: TextStyle(
+                  fontFamily: 'Playfair Display',
                   fontSize: 17,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           GestureDetector(
@@ -1901,8 +1908,9 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                     Text(title,
                         style: const TextStyle(
+                            fontFamily: 'Playfair Display',
                             fontSize: 17,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary)),
                   ],
                 ),
@@ -2076,7 +2084,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       Text(p.descripcion,
                                           style: TextStyle(
                                               fontSize: 10,
-                                              color: Colors.grey[500],
+                                              color: AppColors.textSecondary,
                                               height: 1.3),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis),
@@ -2092,7 +2100,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           : '5.0',
                                       style: TextStyle(
                                           fontSize: 10,
-                                          color: Colors.grey[600],
+                                          color: AppColors.textSecondary,
                                           fontWeight: FontWeight.w600),
                                     ),
                                     if (p.totalResenas > 0) ...[
@@ -2100,7 +2108,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       Text('(${p.totalResenas})',
                                           style: TextStyle(
                                               fontSize: 9,
-                                              color: Colors.grey[400])),
+                                              color: AppColors.textSecondary.withValues(alpha: 0.5))),
                                     ],
                                   ]),
                                 ],
@@ -2134,8 +2142,9 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           const Text('¿Por qué elegirnos?',
               style: TextStyle(
+                  fontFamily: 'Playfair Display',
                   fontSize: 17,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 14),
           GridView.count(
@@ -2180,7 +2189,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   color: AppColors.textPrimary)),
                           Text(f['desc'] as String,
                               style: TextStyle(
-                                  fontSize: 10, color: Colors.grey[500])),
+                                  fontSize: 10, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),

@@ -1,6 +1,7 @@
 // lib/presentation/screens/client/reviews/my_reviews_screen.dart
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/logger.dart';
@@ -38,6 +39,32 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       PierLog.error('Error al cargar mis reseñas: ${result['message']}');
     }
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _editarResena(Map<String, dynamic> r) async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditarResenaSheet(resena: r),
+    );
+    if (result == null || !mounted) return;
+    PierLog.api('PUT ${ApiConstants.editarResena(r['id'].toString())}');
+    final resp = await _api.putAuth(
+      ApiConstants.editarResena(r['id'].toString()),
+      {
+        'rating': result['rating'],
+        'titulo': result['titulo'],
+        'comentario': result['comentario'],
+      },
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(
+              resp['message']?.toString() ?? 'Reseña actualizada')),
+    );
+    if (resp['success'] == true) _cargarResenas();
   }
 
   String _formatFecha(dynamic fecha) {
@@ -235,6 +262,14 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                             fontWeight: FontWeight.w600)),
                   ]),
                 ),
+                GestureDetector(
+                  onTap: () => _editarResena(r),
+                  child: const Padding(
+                    padding: EdgeInsets.only(left: 4, top: 4, bottom: 4),
+                    child: Icon(Icons.edit_outlined,
+                        size: 18, color: AppColors.pierVerde),
+                  ),
+                ),
               ],
             ),
           ),
@@ -396,6 +431,154 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── HOJA DE EDICIÓN DE RESEÑA ──────────────────────────────────────
+class _EditarResenaSheet extends StatefulWidget {
+  final Map<String, dynamic> resena;
+  const _EditarResenaSheet({required this.resena});
+
+  @override
+  State<_EditarResenaSheet> createState() => _EditarResenaSheetState();
+}
+
+class _EditarResenaSheetState extends State<_EditarResenaSheet> {
+  late int _rating;
+  late final TextEditingController _tituloCtrl;
+  late final TextEditingController _comentarioCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = double.tryParse(widget.resena['rating']?.toString() ?? '5') ?? 5;
+    _rating = r.round().clamp(1, 5);
+    _tituloCtrl = TextEditingController(
+        text: widget.resena['titulo']?.toString() ?? '');
+    _comentarioCtrl = TextEditingController(
+        text: widget.resena['comentario']?.toString() ?? '');
+  }
+
+  @override
+  void dispose() {
+    _tituloCtrl.dispose();
+    _comentarioCtrl.dispose();
+    super.dispose();
+  }
+
+  void _guardar() {
+    final comentario = _comentarioCtrl.text.trim();
+    if (comentario.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El comentario es obligatorio')),
+      );
+      return;
+    }
+    Navigator.pop(context, {
+      'rating': _rating,
+      'titulo': _tituloCtrl.text.trim(),
+      'comentario': comentario,
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final productoNombre =
+        widget.resena['producto_nombre']?.toString() ?? '';
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppDimensions.radiusXl)),
+        ),
+        padding: const EdgeInsets.fromLTRB(
+            AppDimensions.space20, AppDimensions.space12,
+            AppDimensions.space20, AppDimensions.space24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textSecondary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppDimensions.space16),
+            const Text('Editar reseña',
+                style: TextStyle(
+                    fontFamily: 'Playfair Display',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary)),
+            if (productoNombre.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(productoNombre,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+            ],
+            const SizedBox(height: AppDimensions.space16),
+            Row(
+              children: List.generate(5, (i) {
+                final filled = i < _rating;
+                return GestureDetector(
+                  onTap: () => setState(() => _rating = i + 1),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Icon(
+                      filled
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      size: 34,
+                      color: filled ? Colors.amber : Colors.grey[300],
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: AppDimensions.space16),
+            TextField(
+              controller: _tituloCtrl,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  hintText: 'Título (opcional)'),
+            ),
+            const SizedBox(height: AppDimensions.space12),
+            TextField(
+              controller: _comentarioCtrl,
+              maxLines: 4,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  hintText: 'Tu comentario'),
+            ),
+            const SizedBox(height: AppDimensions.space20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: AppDimensions.space12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _guardar,
+                    child: const Text('Guardar'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

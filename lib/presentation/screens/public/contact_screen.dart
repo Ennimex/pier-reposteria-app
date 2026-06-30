@@ -127,7 +127,7 @@ class _ContactScreenState extends State<ContactScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al enviar'),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -156,7 +156,7 @@ class _ContactScreenState extends State<ContactScreen> {
                     Container(
                       width: 72, height: 72,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.12),
+                        color: AppColors.textSecondary.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -183,22 +183,27 @@ class _ContactScreenState extends State<ContactScreen> {
               Text(
                 'Gracias por contactarnos. Te responderemos a la brevedad en tu correo electrónico.',
                 style: TextStyle(
-                    fontSize: 14, color: Colors.grey[600], height: 1.5),
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.5),
               ),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(
                     child: Divider(
-                        color: Colors.grey.withValues(alpha: 0.2))),
+                        color: AppColors.textSecondary
+                            .withValues(alpha: 0.2))),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Icon(Icons.storefront_outlined,
                       size: 18,
-                      color: Colors.grey.withValues(alpha: 0.4)),
+                      color: AppColors.textSecondary
+                          .withValues(alpha: 0.4)),
                 ),
                 Expanded(
                     child: Divider(
-                        color: Colors.grey.withValues(alpha: 0.2))),
+                        color: AppColors.textSecondary
+                            .withValues(alpha: 0.2))),
               ]),
               const SizedBox(height: 20),
               SizedBox(
@@ -356,7 +361,8 @@ class _ContactScreenState extends State<ContactScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: Colors.grey.withValues(alpha: 0.2)),
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.2)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButtonFormField<String>(
@@ -392,13 +398,15 @@ class _ContactScreenState extends State<ContactScreen> {
                           hintText:
                               'Describe tu consulta o queja con detalle...',
                           hintStyle: TextStyle(
-                              color: Colors.grey[400], fontSize: 14),
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.6),
+                              fontSize: 14),
                           filled: true,
                           fillColor: Colors.white,
                           enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                  color: Colors.grey
+                                  color: AppColors.textSecondary
                                       .withValues(alpha: 0.2))),
                           focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -408,7 +416,7 @@ class _ContactScreenState extends State<ContactScreen> {
                           errorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide:
-                                  const BorderSide(color: Colors.red)),
+                                  const BorderSide(color: AppColors.error)),
                           contentPadding: const EdgeInsets.all(14),
                           suffixText:
                               '${_mensajeCtrl.text.trim().length} / mín. 20',
@@ -416,7 +424,8 @@ class _ContactScreenState extends State<ContactScreen> {
                               fontSize: 11,
                               color: _mensajeCtrl.text.trim().length >= 20
                                   ? AppColors.pierVerde
-                                  : Colors.grey[400]),
+                                  : AppColors.textSecondary
+                                      .withValues(alpha: 0.6)),
                         ),
                         validator: (v) =>
                             (v == null || v.trim().length < 20)
@@ -458,7 +467,9 @@ class _ContactScreenState extends State<ContactScreen> {
                       // ── OTROS MEDIOS ──────────────────────────────
                       // ✅ ACTUALIZADO: datos cargados del backend
                       const SizedBox(height: 32),
-                      Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                      Divider(
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.2)),
                       const SizedBox(height: 20),
                       const Text('Otros medios',
                           style: TextStyle(
@@ -531,20 +542,22 @@ class _ContactScreenState extends State<ContactScreen> {
       readOnly: readOnly,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        hintStyle: TextStyle(
+            color: AppColors.textSecondary.withValues(alpha: 0.6),
+            fontSize: 14),
         filled: true,
         fillColor: readOnly ? AppColors.pierArena : Colors.white,
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+            borderSide: BorderSide(
+                color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
                 color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red)),
+            borderSide: const BorderSide(color: AppColors.error)),
         contentPadding: const EdgeInsets.all(14),
       ),
       validator: validator,
@@ -557,7 +570,8 @@ class _ContactScreenState extends State<ContactScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+        border: Border.all(
+            color: AppColors.textSecondary.withValues(alpha: 0.15)),
       ),
       child: Row(children: [
         Container(
@@ -573,8 +587,8 @@ class _ContactScreenState extends State<ContactScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style:
-                    TextStyle(fontSize: 11, color: Colors.grey[500])),
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary)),
             const SizedBox(height: 2),
             Text(value,
                 style: const TextStyle(

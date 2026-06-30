@@ -1,5 +1,6 @@
 // lib/data/models/order_model.dart
 import 'package:flutter/material.dart';
+import '../../core/constants/app_colors.dart';
 
 enum OrderStatus { pending, preparing, ready, completed, cancelled }
 
@@ -113,11 +114,11 @@ class Order {
 
   Color get statusColor {
     switch (status) {
-      case OrderStatus.pending:    return const Color(0xFFFFA500);
-      case OrderStatus.preparing:  return const Color(0xFF2196F3);
-      case OrderStatus.ready:      return const Color(0xFF4CAF50);
-      case OrderStatus.completed:  return const Color(0xFF9E9E9E);
-      case OrderStatus.cancelled:  return const Color(0xFFF44336);
+      case OrderStatus.pending:    return AppColors.estadoPendiente;
+      case OrderStatus.preparing:  return AppColors.estadoPreparacion;
+      case OrderStatus.ready:      return AppColors.estadoListo;
+      case OrderStatus.completed:  return AppColors.estadoCompletado;
+      case OrderStatus.cancelled:  return AppColors.estadoCancelado;
     }
   }
 }

@@ -211,9 +211,9 @@ class AboutUsScreen extends StatelessWidget {
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
                 Text(content,
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[600],
+                        color: AppColors.textSecondary,
                         height: 1.4)),
               ],
             ),
@@ -315,7 +315,8 @@ class AboutUsScreen extends StatelessWidget {
                   color: AppColors.pierVerde)),
           const SizedBox(height: 4),
           Text(label,
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary),
               textAlign: TextAlign.center),
         ]),
       ),

@@ -42,9 +42,10 @@ class OrderSuccessScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                      color: Colors.green[50], shape: BoxShape.circle),
+                      color: AppColors.pierVerde.withValues(alpha: 0.1),
+                      shape: BoxShape.circle),
                   child: const Icon(Icons.check_rounded,
-                      color: Colors.green, size: 60),
+                      color: AppColors.pierVerde, size: 60),
                 ),
                 const SizedBox(height: 24),
                 const Text('¡Pedido Confirmado!',
@@ -56,7 +57,8 @@ class OrderSuccessScreen extends StatelessWidget {
                 Text(
                   'Tu pedido #$orderId ha sido registrado.\nTe notificaremos cuando esté listo.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Colors.grey[600]),
+                  style: const TextStyle(
+                      fontSize: 15, color: AppColors.textSecondary),
                 ),
 
                 const SizedBox(height: 40),
@@ -132,7 +134,8 @@ class OrderSuccessScreen extends StatelessWidget {
         Icon(icon, size: 18, color: AppColors.pierVerde),
         const SizedBox(width: 10),
         Text(label,
-            style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            style: const TextStyle(
+                color: AppColors.textSecondary, fontSize: 13)),
         const Spacer(),
         Text(value,
             style: const TextStyle(

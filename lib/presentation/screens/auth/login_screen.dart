@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: Colors.red,
+      backgroundColor: AppColors.error,
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -154,8 +154,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center),
                 const SizedBox(height: 6),
                 Text('Inicia sesión para continuar',
-                    style: TextStyle(
-                        fontSize: 15, color: Colors.grey[500]),
+                    style: const TextStyle(
+                        fontSize: 15, color: AppColors.textSecondary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 32),
 
@@ -184,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _isPasswordVisible
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      color: Colors.grey,
+                      color: AppColors.textSecondary,
                       size: 20,
                     ),
                     onPressed: () => setState(
@@ -243,16 +243,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(children: [
                   Expanded(
                       child: Divider(
-                          color: Colors.grey.withValues(alpha: 0.3))),
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.3))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     child: Text('O continúa con',
-                        style: TextStyle(
-                            color: Colors.grey[500], fontSize: 13)),
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13)),
                   ),
                   Expanded(
                       child: Divider(
-                          color: Colors.grey.withValues(alpha: 0.3))),
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.3))),
                 ]),
                 const SizedBox(height: 20),
 
@@ -283,7 +285,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontSize: 15)),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(
-                          color: Colors.grey.withValues(alpha: 0.3)),
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.3)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                       backgroundColor: Colors.white,
@@ -297,7 +300,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('¿No tienes cuenta?',
-                        style: TextStyle(color: Colors.grey[600])),
+                        style: const TextStyle(
+                            color: AppColors.textSecondary)),
                     TextButton(
                       onPressed: () => Navigator.push(
                           context,
@@ -344,14 +348,14 @@ class _LoginScreenState extends State<LoginScreen> {
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-                color: Colors.grey.withValues(alpha: 0.2))),
+                color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
                 const BorderSide(color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red)),
+            borderSide: const BorderSide(color: AppColors.error)),
         contentPadding: const EdgeInsets.all(14),
       ),
       validator: validator,

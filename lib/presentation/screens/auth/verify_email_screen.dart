@@ -45,7 +45,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   Future<void> _handleVerify() async {
     if (_codigo.length < 6) {
-      _showSnack('Ingresa el código completo de 6 dígitos', Colors.red);
+      _showSnack('Ingresa el código completo de 6 dígitos', AppColors.error);
       return;
     }
     setState(() => _isLoading = true);
@@ -60,7 +60,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       _focusNodes[0].requestFocus();
       _showSnack(
           auth.errorMessage ?? 'Código inválido o expirado',
-          Colors.red);
+          AppColors.error);
     }
   }
 
@@ -73,7 +73,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     setState(() => _isResending = false);
     _showSnack(
       result['message'] ?? 'Código reenviado',
-      result['success'] == true ? AppColors.pierVerde : Colors.red,
+      result['success'] == true ? AppColors.pierVerde : AppColors.error,
     );
   }
 
@@ -139,13 +139,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 child: Container(
                   width: 100, height: 100,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.12),
+                    color: AppColors.textSecondary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.mark_email_unread_outlined,
                     size: 48,
-                    color: Colors.grey[500],
+                    color: AppColors.textSecondary.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -162,8 +162,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               const SizedBox(height: 10),
               Text(
                 'Ingresa el código de 6 dígitos que enviamos a',
-                style: TextStyle(
-                    fontSize: 14, color: Colors.grey[500]),
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
@@ -205,7 +205,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                         filled: true,
                         fillColor: isFocused || hasValue
                             ? Colors.white
-                            : Colors.grey.withValues(alpha: 0.15),
+                            : AppColors.textSecondary.withValues(alpha: 0.15),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(
@@ -260,8 +260,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('¿No recibiste el código?  ',
-                      style: TextStyle(
-                          color: Colors.grey[500], fontSize: 13)),
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13)),
                   GestureDetector(
                     onTap: _isResending ? null : _handleResend,
                     child: _isResending

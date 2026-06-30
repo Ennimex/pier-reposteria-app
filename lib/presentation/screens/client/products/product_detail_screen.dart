@@ -127,7 +127,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       setState(() => _isFavorite = yaEsFav);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al actualizar favorito'),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.error,
       ));
     } else {
       PierLog.info('Favorito ${yaEsFav ? 'removido' : 'agregado'}');
@@ -298,7 +298,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : widget.product.rating;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F2ED),
+      backgroundColor: AppColors.pierArena,
       body: CustomScrollView(
         slivers: [
           // ── GALERÍA ────────────────────────────────────────────────
@@ -316,9 +316,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       _images[i],
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, _) => Container(
-                        color: const Color(0xFFE8E4DF),
+                        color: AppColors.pierArena,
                         child: const Icon(Icons.image_outlined,
-                            size: 60, color: Colors.grey),
+                            size: 60, color: AppColors.textSecondary),
                       ),
                     ),
                   ),
@@ -410,7 +410,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           SliverToBoxAdapter(
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFFF5F2ED),
+                color: AppColors.pierArena,
                 borderRadius:
                     BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -461,13 +461,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: Colors.purple.withValues(alpha: 0.08),
+                              color: AppColors.pierDorado.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(widget.product.sabor!,
-                                style: TextStyle(
+                                style: const TextStyle(
                                     fontSize: 10,
-                                    color: Colors.purple.shade700,
+                                    color: AppColors.pierDoradoOscuro,
                                     fontWeight: FontWeight.w700)),
                           ),
                         Row(children: [
@@ -484,7 +484,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           const SizedBox(width: 4),
                           Text('($totalResenas)',
                               style: TextStyle(
-                                  fontSize: 13, color: Colors.grey[500])),
+                                  fontSize: 13, color: AppColors.textSecondary)),
                         ]),
                       ],
                     ),
@@ -513,7 +513,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             '\$${widget.product.precio.toStringAsFixed(0)}',
                             style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey[400],
+                                color: AppColors.textSecondary.withValues(alpha: 0.5),
                                 decoration: TextDecoration.lineThrough)),
                       ]),
                       const SizedBox(height: 8),
@@ -547,7 +547,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       widget.product.descripcion,
                       style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: AppColors.textSecondary,
                           height: 1.5),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
@@ -616,7 +616,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                             color: sel
                                                 ? Colors.white
                                                     .withValues(alpha: 0.75)
-                                                : Colors.grey[500])),
+                                                : AppColors.textSecondary)),
                                     const SizedBox(height: 6),
                                     // ✅ NUEVO: precio por tamaño con tachado si hay descuento
                                     if (tienePromo) ...[
@@ -627,7 +627,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                               color: sel
                                                   ? Colors.white
                                                       .withValues(alpha: 0.6)
-                                                  : Colors.grey[400],
+                                                  : AppColors.textSecondary.withValues(alpha: 0.5),
                                               decoration:
                                                   TextDecoration.lineThrough)),
                                       Text(
@@ -665,7 +665,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: Colors.grey.withValues(alpha: 0.12)),
+                            color: AppColors.textSecondary.withValues(alpha: 0.12)),
                       ),
                       child: Row(
                         children: [
@@ -688,7 +688,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   Text('Preparación',
                                       style: TextStyle(
                                           fontSize: 10,
-                                          color: Colors.grey[500])),
+                                          color: AppColors.textSecondary)),
                                   const Text('24–48 horas',
                                       style: TextStyle(
                                           fontSize: 13,
@@ -700,7 +700,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           ),
                           Container(
                               width: 1, height: 36,
-                              color: Colors.grey.withValues(alpha: 0.15)),
+                              color: AppColors.textSecondary.withValues(alpha: 0.15)),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Row(children: [
@@ -722,7 +722,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   Text('Recoger en',
                                       style: TextStyle(
                                           fontSize: 10,
-                                          color: Colors.grey[500])),
+                                          color: AppColors.textSecondary)),
                                   const Text('Sucursal Principal',
                                       style: TextStyle(
                                           fontSize: 13,
@@ -758,7 +758,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                               Text('Total',
                                   style: TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey[500])),
+                                      color: AppColors.textSecondary)),
                               const SizedBox(height: 2),
                               Text(
                                 '\$${totalPrice.toStringAsFixed(2)}',
@@ -774,7 +774,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           const SizedBox(width: 16),
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF5F2ED),
+                              color: AppColors.pierArena,
                               borderRadius: BorderRadius.circular(50),
                             ),
                             child: Row(children: [
@@ -920,7 +920,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     const EdgeInsets.symmetric(vertical: 12),
                                 child: Text('Aún no hay opiniones.',
                                     style: TextStyle(
-                                        color: Colors.grey[500],
+                                        color: AppColors.textSecondary,
                                         fontSize: 14)),
                               )
                             : Column(
@@ -968,7 +968,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             padding:
                                 const EdgeInsets.symmetric(vertical: 16),
                             side: BorderSide(
-                                color: Colors.grey.withValues(alpha: 0.3)),
+                                color: AppColors.textSecondary.withValues(alpha: 0.3)),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
                           ),
@@ -1224,7 +1224,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         Text(p.descripcion,
                             style: TextStyle(
                                 fontSize: 10,
-                                color: Colors.grey[500],
+                                color: AppColors.textSecondary,
                                 height: 1.3),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis),
@@ -1234,7 +1234,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           Text('\$${p.precio.toStringAsFixed(0)}',
                               style: TextStyle(
                                   fontSize: 10,
-                                  color: Colors.grey[400],
+                                  color: AppColors.textSecondary.withValues(alpha: 0.5),
                                   decoration: TextDecoration.lineThrough)),
                         ],
                       ],
@@ -1248,14 +1248,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
                         style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey[600],
+                            color: AppColors.textSecondary,
                             fontWeight: FontWeight.w600),
                       ),
                       if (p.totalResenas > 0) ...[
                         const SizedBox(width: 3),
                         Text('(${p.totalResenas})',
                             style: TextStyle(
-                                fontSize: 9, color: Colors.grey[400])),
+                                fontSize: 9, color: AppColors.textSecondary.withValues(alpha: 0.5))),
                       ],
                     ]),
                   ],
@@ -1388,7 +1388,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al dar me gusta'),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.error,
       ));
     } else {
       PierLog.info(
@@ -1436,7 +1436,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
                         overflow: TextOverflow.ellipsis),
                     Text(widget.date,
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey[400])),
+                            fontSize: 11, color: AppColors.textSecondary.withValues(alpha: 0.5))),
                   ],
                 ),
               ),
@@ -1466,7 +1466,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
                           : Icons.thumb_up_off_alt_rounded,
                       color: _hasLiked
                           ? AppColors.pierVerde
-                          : Colors.grey[400],
+                          : AppColors.textSecondary.withValues(alpha: 0.5),
                       size: 15,
                     ),
                     const SizedBox(width: 4),
@@ -1479,7 +1479,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
                             : FontWeight.normal,
                         color: _hasLiked
                             ? AppColors.pierVerde
-                            : Colors.grey[500],
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -1492,7 +1492,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
       const SizedBox(height: 10),
       Text(widget.comment,
           style: TextStyle(
-              fontSize: 13, color: Colors.grey[600], height: 1.5)),
+              fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
     ]);
   }
 }

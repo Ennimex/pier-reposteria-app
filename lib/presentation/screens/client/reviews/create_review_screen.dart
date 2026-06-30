@@ -8,6 +8,7 @@ import '../../../../data/models/product_model.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../auth/login_screen.dart';
+import 'my_reviews_screen.dart';
 
 class CreateReviewScreen extends StatefulWidget {
   final Product product;
@@ -57,12 +58,12 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
     }
 
     if (_rating == 0) {
-      _showSnack('Selecciona una calificación', Colors.red);
+      _showSnack('Selecciona una calificación', AppColors.error);
       return;
     }
     if (_comentarioCtrl.text.trim().length < 10) {
       _showSnack('El comentario debe tener al menos 10 caracteres',
-          Colors.red);
+          AppColors.error);
       return;
     }
 
@@ -88,7 +89,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
       _showSuccessDialog(autoAprobada);
     } else {
       PierLog.error('Error al enviar reseña: ${result['message']}');
-      _showSnack(result['message'] ?? 'Error al enviar', Colors.red);
+      _showSnack(result['message'] ?? 'Error al enviar', AppColors.error);
     }
   }
 
@@ -103,11 +104,14 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
   }
 
   void _showSuccessDialog(bool autoAprobada) {
+    // Capturamos el navigator de la pantalla ANTES de mostrar el diálogo,
+    // para no usar el context del State después de que se desmonte al cerrar.
+    final navigator = Navigator.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.5),
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         insetPadding: const EdgeInsets.symmetric(horizontal: 32),
@@ -124,7 +128,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                     Container(
                       width: 72, height: 72,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.15),
+                        color: AppColors.textSecondary.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -154,23 +158,28 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                     ? 'Tu reseña ha sido publicada. ¡Otros clientes podrán verla y disfrutar de nuestras delicias!'
                     : 'Tu reseña está en revisión y será publicada pronto. ¡Gracias por tomarte el tiempo!',
                 style: TextStyle(
-                    fontSize: 14, color: Colors.grey[600], height: 1.5),
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.5),
               ),
               const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
                       child: Divider(
-                          color: Colors.grey.withValues(alpha: 0.2))),
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.2))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Icon(Icons.cake_outlined,
                         size: 20,
-                        color: Colors.grey.withValues(alpha: 0.4)),
+                        color: AppColors.textSecondary
+                            .withValues(alpha: 0.4)),
                   ),
                   Expanded(
                       child: Divider(
-                          color: Colors.grey.withValues(alpha: 0.2))),
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.2))),
                 ],
               ),
               const SizedBox(height: 20),
@@ -179,8 +188,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.of(dialogContext).pop(); // cierra el diálogo
+                    navigator.pop(); // cierra la pantalla de reseña
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.pierVerde,
@@ -199,8 +208,10 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.of(dialogContext).pop(); // cierra el diálogo
+                    navigator.pop(); // cierra la pantalla de reseña
+                    navigator.push(MaterialPageRoute(
+                        builder: (_) => const MyReviewsScreen()));
                   },
                   child: const Text('Ver mi reseña',
                       style: TextStyle(
@@ -325,7 +336,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                   Text(widget.product.descripcion,
                                       style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[500],
+                                          color: AppColors.textSecondary
+                                              .withValues(alpha: 0.7),
                                           height: 1.3),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis),
@@ -379,7 +391,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                         : Icons.star_border_rounded,
                                     color: selected
                                         ? const Color(0xFF2D2D2D)
-                                        : Colors.grey[300],
+                                        : AppColors.textSecondary
+                                            .withValues(alpha: 0.35),
                                     size: 46,
                                   ),
                                 ),
@@ -396,7 +409,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               decoration: BoxDecoration(
                                 color: _rating == 0
                                     ? Colors.transparent
-                                    : Colors.grey.withValues(alpha: 0.12),
+                                    : AppColors.textSecondary
+                                        .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(50),
                               ),
                               child: Text(
@@ -405,7 +419,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: _rating == 0
-                                        ? Colors.grey[400]
+                                        ? AppColors.textSecondary
+                                            .withValues(alpha: 0.6)
                                         : AppColors.textPrimary),
                               ),
                             ),
@@ -427,14 +442,16 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                       decoration: InputDecoration(
                         hintText: 'Ej. Delicioso y fresco',
                         hintStyle: TextStyle(
-                            color: Colors.grey[400], fontSize: 14),
+                            color: AppColors.textSecondary
+                                .withValues(alpha: 0.6),
+                            fontSize: 14),
                         filled: true,
                         fillColor: Colors.white,
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                                color:
-                                    Colors.grey.withValues(alpha: 0.2))),
+                                color: AppColors.textSecondary
+                                    .withValues(alpha: 0.2))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
@@ -459,14 +476,16 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                         hintText:
                             'Cuéntanos qué te gustó más de este past...',
                         hintStyle: TextStyle(
-                            color: Colors.grey[400], fontSize: 14),
+                            color: AppColors.textSecondary
+                                .withValues(alpha: 0.6),
+                            fontSize: 14),
                         filled: true,
                         fillColor: Colors.white,
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                                color:
-                                    Colors.grey.withValues(alpha: 0.2))),
+                                color: AppColors.textSecondary
+                                    .withValues(alpha: 0.2))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
@@ -478,7 +497,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             fontSize: 11,
                             color: _comentarioCtrl.text.trim().length >= 10
                                 ? AppColors.pierVerde
-                                : Colors.grey[400]),
+                                : AppColors.textSecondary
+                                    .withValues(alpha: 0.6)),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -487,23 +507,25 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.07),
+                        color: AppColors.textSecondary
+                            .withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Colors.grey.withValues(alpha: 0.15)),
+                            color: AppColors.textSecondary
+                                .withValues(alpha: 0.15)),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.info_outline_rounded,
-                              size: 16, color: Colors.grey[500]),
+                              size: 16, color: AppColors.textSecondary),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Solo puedes reseñar productos que hayas comprado. Las reseñas con calificación ≥ 4 se publican automáticamente.',
                               style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: AppColors.textSecondary,
                                   height: 1.4),
                             ),
                           ),

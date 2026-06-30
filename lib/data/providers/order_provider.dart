@@ -64,4 +64,26 @@ class OrderProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  /// Trae el detalle fresco de un pedido (GET /pedidos/:id) y sincroniza la
+  /// copia cacheada en la lista. El backend valida que el pedido sea del
+  /// usuario (403 si no). El detalle devuelve los items por separado; aquí se
+  /// fusionan para que Order.fromJson los lea.
+  Future<Order?> fetchOrderDetail(String id) async {
+    final result = await _api.getAuth(ApiConstants.pedidoById(id));
+    if (result['success'] == true && result['pedido'] != null) {
+      final pedidoJson = Map<String, dynamic>.from(result['pedido'] as Map);
+      pedidoJson['items'] =
+          result['items'] ?? pedidoJson['items'] ?? <dynamic>[];
+      final fresh = Order.fromJson(pedidoJson);
+      final idx = _orders.indexWhere((o) => o.id == fresh.id);
+      if (idx != -1) {
+        _orders[idx] = fresh;
+        notifyListeners();
+      }
+      return fresh;
+    }
+    PierLog.error('Error detalle pedido $id: ${result['message']}');
+    return null;
+  }
 }

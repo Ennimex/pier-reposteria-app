@@ -215,7 +215,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                                 color: AppColors.textPrimary)),
                         Text(widget.product.nombre,
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey[500]),
+                                fontSize: 12,
+                                color: AppColors.textSecondary
+                                    .withValues(alpha: 0.7)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
                       ],
@@ -303,7 +305,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                                       child: Text(
                                           'Aún no hay calificaciones',
                                           style: TextStyle(
-                                              color: Colors.grey,
+                                              color: AppColors.textSecondary,
                                               fontSize: 14)),
                                     ))
                                   : _buildResumen(),
@@ -327,7 +329,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                                   child: Text(
                                     'No hay opiniones de $_filtroEstrellas estrella${_filtroEstrellas == 1 ? '' : 's'}',
                                     style: TextStyle(
-                                        color: Colors.grey[500],
+                                        color: AppColors.textSecondary,
                                         fontSize: 14),
                                     textAlign: TextAlign.center,
                                   ),
@@ -392,7 +394,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
             ),
             const SizedBox(height: 4),
             Text('$total reseña${total == 1 ? '' : 's'}',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary)),
           ],
         ),
         const SizedBox(width: 24),
@@ -408,9 +411,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                     SizedBox(
                       width: 14,
                       child: Text('$star',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: AppColors.textSecondary,
                               fontWeight: FontWeight.w500)),
                     ),
                     const SizedBox(width: 8),
@@ -419,7 +422,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
                           value: pct,
-                          backgroundColor: Colors.grey[100],
+                          backgroundColor: AppColors.textSecondary
+                              .withValues(alpha: 0.1),
                           valueColor:
                               const AlwaysStoppedAnimation<Color>(
                                   AppColors.pierDorado),
@@ -433,7 +437,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                       child: Text('$count',
                           style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey[400],
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.6),
                               fontWeight: FontWeight.w500)),
                     ),
                   ],
@@ -465,7 +470,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
             }),
             Container(
               width: 1, height: 28,
-              color: Colors.grey.withValues(alpha: 0.2),
+              color: AppColors.textSecondary.withValues(alpha: 0.2),
               margin: const EdgeInsets.only(right: 8),
             ),
             GestureDetector(
@@ -477,7 +482,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.2)),
+                      color: AppColors.textSecondary
+                          .withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -523,7 +529,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           border: Border.all(
               color: sel
                   ? AppColors.pierVerde
-                  : Colors.grey.withValues(alpha: 0.2)),
+                  : AppColors.textSecondary.withValues(alpha: 0.2)),
         ),
         child: Text(label,
             style: TextStyle(
@@ -551,7 +557,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
             Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: AppColors.textSecondary.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             const Align(
@@ -582,7 +588,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   decoration: BoxDecoration(
                     color: sel
                         ? AppColors.pierVerde.withValues(alpha: 0.08)
-                        : Colors.grey.withValues(alpha: 0.04),
+                        : AppColors.textSecondary.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(12),
                     border: sel
                         ? Border.all(
@@ -593,8 +599,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   child: Row(children: [
                     Icon(t.$3,
                         size: 18,
-                        color:
-                            sel ? AppColors.pierVerde : Colors.grey),
+                        color: sel
+                            ? AppColors.pierVerde
+                            : AppColors.textSecondary),
                     const SizedBox(width: 12),
                     Expanded(
                         child: Text(t.$1,
@@ -679,8 +686,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                             fontSize: 15,
                             color: AppColors.textPrimary)),
                     Text(_formatFecha(r['created_at']),
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey[500])),
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
@@ -731,9 +738,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           ],
 
           Text(comentario,
-              style: TextStyle(
+              style: const TextStyle(
                   fontSize: 13,
-                  color: Colors.grey[600],
+                  color: AppColors.textSecondary,
                   height: 1.5)),
 
           const SizedBox(height: 12),
@@ -750,14 +757,15 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   decoration: BoxDecoration(
                     color: _likedIds.contains(r['id'].toString())
                         ? AppColors.pierVerde.withValues(alpha: 0.1)
-                        : Colors.grey.withValues(alpha: 0.08),
+                        : AppColors.textSecondary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                         color:
                             _likedIds.contains(r['id'].toString())
                                 ? AppColors.pierVerde
                                     .withValues(alpha: 0.3)
-                                : Colors.grey.withValues(alpha: 0.15)),
+                                : AppColors.textSecondary
+                                    .withValues(alpha: 0.15)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -769,7 +777,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                         size: 14,
                         color: _likedIds.contains(r['id'].toString())
                             ? AppColors.pierVerde
-                            : Colors.grey[500],
+                            : AppColors.textSecondary,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -782,7 +790,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                             color: _likedIds
                                     .contains(r['id'].toString())
                                 ? AppColors.pierVerde
-                                : Colors.grey[500],
+                                : AppColors.textSecondary,
                             fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -821,7 +829,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           const SizedBox(height: 8),
           Text('Sé el primero en calificar\neste producto.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),
     );

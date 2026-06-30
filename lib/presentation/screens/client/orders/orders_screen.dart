@@ -1,9 +1,11 @@
 // lib/presentation/screens/client/orders/orders_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../data/models/order_model.dart';
+import '../../../../data/providers/navigation_provider.dart';
 import 'order_detail_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class _OrdersScreenState extends State<OrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ApiService _api = ApiService();
+  NavigationProvider? _nav;
 
   List<Order> _activeOrders = [];
   List<Order> _completedOrders = [];
@@ -30,13 +33,33 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Recargar la lista cada vez que se entra a la pestaña Pedidos (index 3),
+    // para que no quede con datos viejos como pasa con el resto de la app.
+    final nav = context.read<NavigationProvider>();
+    if (!identical(nav, _nav)) {
+      _nav?.removeListener(_onNavChanged);
+      _nav = nav;
+      _nav!.addListener(_onNavChanged);
+    }
+  }
+
+  void _onNavChanged() {
+    if (mounted && _nav?.selectedIndex == 3) {
+      _cargarPedidos(silent: true);
+    }
+  }
+
+  @override
   void dispose() {
+    _nav?.removeListener(_onNavChanged);
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _cargarPedidos() async {
-    setState(() => _isLoading = true);
+  Future<void> _cargarPedidos({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     final result = await _api.getAuth(ApiConstants.misPedidos);
     if (!mounted) return;
     if (result['success'] == true) {
@@ -57,7 +80,7 @@ class _OrdersScreenState extends State<OrdersScreen>
             .toList();
       });
     }
-    setState(() => _isLoading = false);
+    if (!silent) setState(() => _isLoading = false);
   }
 
   @override
@@ -144,7 +167,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
                   : RefreshIndicator(
-                      onRefresh: _cargarPedidos,
+                      onRefresh: () => _cargarPedidos(silent: true),
                       color: AppColors.pierVerde,
                       child: TabBarView(
                         controller: _tabController,
@@ -174,10 +197,15 @@ class _OrdersScreenState extends State<OrdersScreen>
   Widget _buildOrdersList(List<Order> orders, String title,
       String subtitle, IconData icon) {
     if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
             Container(
               width: 100, height: 100,
               decoration: BoxDecoration(
@@ -200,12 +228,16 @@ class _OrdersScreenState extends State<OrdersScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 14, color: Colors.grey[500])),
-          ],
+                ],
+              ),
+            ),
+          ),
         ),
       );
     }
 
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       itemCount: orders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -315,23 +347,23 @@ class _OrdersScreenState extends State<OrdersScreen>
     String label;
     switch (status) {
       case OrderStatus.pending:
-        color = Colors.orange;
+        color = AppColors.estadoPendiente;
         label = 'Pendiente';
         break;
       case OrderStatus.preparing:
-        color = Colors.blue;
+        color = AppColors.estadoPreparacion;
         label = 'Preparando';
         break;
       case OrderStatus.ready:
-        color = AppColors.pierVerde;
+        color = AppColors.estadoListo;
         label = 'Listo ✓';
         break;
       case OrderStatus.completed:
-        color = Colors.grey;
+        color = AppColors.estadoCompletado;
         label = 'Completado';
         break;
       case OrderStatus.cancelled:
-        color = Colors.red;
+        color = AppColors.estadoCancelado;
         label = 'Cancelado';
         break;
     }

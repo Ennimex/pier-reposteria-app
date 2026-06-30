@@ -178,7 +178,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       child: Text(entry.key,
                                           style: TextStyle(
                                               fontSize: 13,
-                                              color: Colors.grey[500],
+                                              color: AppColors.textSecondary,
                                               fontWeight:
                                                   FontWeight.w600,
                                               letterSpacing: 0.3)),
@@ -253,13 +253,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               width: 44, height: 44,
               decoration: BoxDecoration(
                 color: leida
-                    ? Colors.grey.withValues(alpha: 0.08)
+                    ? AppColors.textSecondary.withValues(alpha: 0.08)
                     : AppColors.pierVerde.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon,
                   color: leida
-                      ? Colors.grey[400]
+                      ? AppColors.textSecondary.withValues(alpha: 0.5)
                       : AppColors.pierVerde,
                   size: 22),
             ),
@@ -285,7 +285,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        color: Colors.grey[600],
+                        color: AppColors.textSecondary,
                         fontSize: 13,
                         height: 1.4),
                   ),
@@ -293,7 +293,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Text(
                     _formatFecha(notif['created_at']),
                     style: TextStyle(
-                        color: Colors.grey[400],
+                        color: AppColors.textSecondary.withValues(alpha: 0.5),
                         fontSize: 11,
                         fontWeight: FontWeight.w500),
                   ),
@@ -350,7 +350,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[500],
+                  color: AppColors.textSecondary,
                   height: 1.5),
             ),
             const SizedBox(height: 32),

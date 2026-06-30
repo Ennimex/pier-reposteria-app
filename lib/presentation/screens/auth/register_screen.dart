@@ -57,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     if (!_acceptTerms) {
-      _showSnack('Debes aceptar los términos y condiciones', Colors.red);
+      _showSnack('Debes aceptar los términos y condiciones', AppColors.error);
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -78,7 +78,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context.go(AppRoutes.verificarEmail,
           extra: {'email': _emailCtrl.text.trim()});
     } else {
-      _showSnack(result['message'] ?? 'Error al registrar', Colors.red);
+      _showSnack(result['message'] ?? 'Error al registrar', AppColors.error);
     }
   }
 
@@ -163,8 +163,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textAlign: TextAlign.center),
                 const SizedBox(height: 6),
                 Text('Completa los siguientes datos',
-                    style: TextStyle(
-                        fontSize: 14, color: Colors.grey[500]),
+                    style: const TextStyle(
+                        fontSize: 14, color: AppColors.textSecondary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 28),
 
@@ -209,7 +209,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _isPasswordVisible
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        color: Colors.grey, size: 20,
+                        color: AppColors.textSecondary, size: 20,
                       ),
                       onPressed: () => setState(
                           () => _isPasswordVisible = !_isPasswordVisible),
@@ -231,7 +231,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _isConfirmPasswordVisible
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        color: Colors.grey, size: 20,
+                        color: AppColors.textSecondary, size: 20,
                       ),
                       onPressed: () => setState(() =>
                           _isConfirmPasswordVisible =
@@ -261,8 +261,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Expanded(
                       child: RichText(
                         text: TextSpan(
-                          style: TextStyle(
-                              color: Colors.grey[700], fontSize: 13),
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13),
                           children: [
                             const TextSpan(text: 'Acepto los '),
                             TextSpan(
@@ -344,14 +344,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-                color: Colors.grey.withValues(alpha: 0.2))),
+                color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
                 color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red)),
+            borderSide: const BorderSide(color: AppColors.error)),
         contentPadding: const EdgeInsets.all(14),
       ),
       validator: validator,

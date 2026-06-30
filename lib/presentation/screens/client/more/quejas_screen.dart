@@ -56,16 +56,16 @@ extension EstadoQuejaExt on EstadoQueja {
   }
   Color get color {
     switch (this) {
-      case EstadoQueja.pendiente: return Colors.orange.shade600;
-      case EstadoQueja.en_proceso: return Colors.blue.shade600;
-      case EstadoQueja.resuelto: return AppColors.pierVerde;
+      case EstadoQueja.pendiente: return AppColors.estadoPendiente;
+      case EstadoQueja.en_proceso: return AppColors.estadoPreparacion;
+      case EstadoQueja.resuelto: return AppColors.estadoListo;
     }
   }
   Color get bgColor {
     switch (this) {
-      case EstadoQueja.pendiente: return Colors.orange.shade50;
-      case EstadoQueja.en_proceso: return Colors.blue.shade50;
-      case EstadoQueja.resuelto: return const Color(0xFFE1F5EE);
+      case EstadoQueja.pendiente: return AppColors.estadoPendiente.withValues(alpha: 0.1);
+      case EstadoQueja.en_proceso: return AppColors.estadoPreparacion.withValues(alpha: 0.1);
+      case EstadoQueja.resuelto: return AppColors.estadoListo.withValues(alpha: 0.1);
     }
   }
   IconData get icon {
@@ -355,7 +355,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                                 style: TextStyle(
                                     fontSize: 11,
                                     fontFamily: 'monospace',
-                                    color: Colors.grey[400])),
+                                    color: AppColors.textSecondary.withValues(alpha: 0.5))),
                             const SizedBox(width: 6),
                             _estadoBadge(estado),
                             const SizedBox(width: 6),
@@ -375,7 +375,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                         const SizedBox(height: 2),
                         Text(fecha,
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey[400])),
+                                fontSize: 11, color: AppColors.textSecondary.withValues(alpha: 0.5))),
                       ],
                     ),
                   ),
@@ -383,7 +383,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                     expandida
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: Colors.grey[400],
+                    color: AppColors.textSecondary.withValues(alpha: 0.5),
                     size: 22,
                   ),
                 ],
@@ -393,7 +393,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
 
           // ── DETALLE EXPANDIDO ────────────────────────────────────
           if (expandida) ...[
-            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.08)),
+            Divider(height: 1, color: AppColors.textSecondary.withValues(alpha: 0.08)),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
               child: Column(
@@ -404,13 +404,13 @@ class _QuejasScreenState extends State<QuejasScreen> {
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey[500],
+                          color: AppColors.textSecondary,
                           letterSpacing: .3)),
                   const SizedBox(height: 6),
                   Text(descripcion,
                       style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey[700],
+                          color: AppColors.textSecondary,
                           height: 1.5)),
 
                   // Pedido asociado
@@ -420,7 +420,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[500],
+                            color: AppColors.textSecondary,
                             letterSpacing: .3)),
                     const SizedBox(height: 4),
                     Container(
@@ -519,11 +519,11 @@ class _QuejasScreenState extends State<QuejasScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
+        color: AppColors.textSecondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(label,
-          style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+          style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
     );
   }
 
@@ -574,7 +574,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
             Text(
               'Si tienes alguna queja, sugerencia o\ncomentario, cuéntanoslo.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 28),
             ElevatedButton.icon(
@@ -674,7 +674,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: Colors.red,
+      backgroundColor: AppColors.error,
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
       shape:
@@ -720,7 +720,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                 width: 40, height: 4,
                 margin: const EdgeInsets.only(top: 12, bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: AppColors.textSecondary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -741,7 +741,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: AppColors.textSecondary.withValues(alpha: 0.06),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.close_rounded,
@@ -777,7 +777,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
             Container(
               decoration: BoxDecoration(
                 border: Border.all(
-                    color: Colors.grey.withValues(alpha: 0.25)),
+                    color: AppColors.textSecondary.withValues(alpha: 0.25)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: DropdownButtonHideUnderline(
@@ -790,14 +790,14 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                       const EdgeInsets.symmetric(horizontal: 14),
                   hint: Text('Sin pedido asociado',
                       style: TextStyle(
-                          fontSize: 14, color: Colors.grey[400])),
+                          fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.5))),
                   items: [
                     DropdownMenuItem<String>(
                       value: null,
                       child: Text('Sin pedido asociado',
                           style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[500])),
+                              color: AppColors.textSecondary)),
                     ),
                     ...widget.pedidos.map((p) {
                       final num = p['numero']?.toString() ?? '';
@@ -894,7 +894,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
             const SizedBox(width: 4),
             Text('(opcional)',
                 style: TextStyle(
-                    fontSize: 12, color: Colors.grey[400])),
+                    fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.5))),
           ],
         ],
       ),
@@ -910,7 +910,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
-            color: Colors.grey.withValues(alpha: 0.25)),
+            color: AppColors.textSecondary.withValues(alpha: 0.25)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(
@@ -936,14 +936,14 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
   InputDecoration _inputDeco({required String hint}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+      hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14),
       filled: true,
       fillColor: Colors.white,
-      counterStyle: TextStyle(fontSize: 11, color: Colors.grey[400]),
+      counterStyle: TextStyle(fontSize: 11, color: AppColors.textSecondary.withValues(alpha: 0.5)),
       enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-              color: Colors.grey.withValues(alpha: 0.25))),
+              color: AppColors.textSecondary.withValues(alpha: 0.25))),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(

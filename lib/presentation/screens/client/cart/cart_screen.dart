@@ -63,15 +63,15 @@ class _CartScreenState extends State<CartScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.08),
+                          color: AppColors.error.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: Colors.red.withValues(alpha: 0.2)),
+                              color: AppColors.error.withValues(alpha: 0.2)),
                         ),
                         child: const Text('Vaciar',
                             style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.red,
+                                color: AppColors.error,
                                 fontWeight: FontWeight.w600)),
                       ),
                     ),
@@ -90,7 +90,7 @@ class _CartScreenState extends State<CartScreen> {
                     '${cart.totalQuantity} producto${cart.totalQuantity == 1 ? '' : 's'}',
                     style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500),
                   ),
                   // ✅ NUEVO: badge de ahorro total
@@ -100,22 +100,22 @@ class _CartScreenState extends State<CartScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: AppColors.pierVerde.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(20),
                         border:
-                            Border.all(color: Colors.green.shade200),
+                            Border.all(color: AppColors.pierVerde.withValues(alpha: 0.25)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.local_offer_rounded,
-                              size: 11, color: Colors.green.shade600),
+                              size: 11, color: AppColors.pierVerde),
                           const SizedBox(width: 4),
                           Text(
                             'Ahorras \$${cart.totalAhorro.toStringAsFixed(0)}',
                             style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.green.shade700,
+                                color: AppColors.pierVerdeOscuro,
                                 fontWeight: FontWeight.w600),
                           ),
                         ],
@@ -161,7 +161,7 @@ class _CartScreenState extends State<CartScreen> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: Colors.red.shade400,
+          color: AppColors.error,
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.delete_outline_rounded,
@@ -229,7 +229,7 @@ class _CartScreenState extends State<CartScreen> {
                           '\$${item.precioOriginal.toStringAsFixed(0)}',
                           style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey[400],
+                              color: AppColors.textSecondary.withValues(alpha: 0.5),
                               decoration: TextDecoration.lineThrough),
                         ),
                       ],
@@ -244,16 +244,16 @@ class _CartScreenState extends State<CartScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: AppColors.pierVerde.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6),
                         border:
-                            Border.all(color: Colors.green.shade200),
+                            Border.all(color: AppColors.pierVerde.withValues(alpha: 0.25)),
                       ),
                       child: Text(
                         item.promoNombre!,
                         style: TextStyle(
                             fontSize: 10,
-                            color: Colors.green.shade700,
+                            color: AppColors.pierVerdeOscuro,
                             fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -268,7 +268,7 @@ class _CartScreenState extends State<CartScreen> {
                             ? Icons.delete_outline_rounded
                             : Icons.remove_rounded,
                         color: item.quantity == 1
-                            ? Colors.red
+                            ? AppColors.error
                             : AppColors.pierVerde,
                         onTap: () => cart.removeSingleItem(item.id),
                       ),
@@ -316,7 +316,7 @@ class _CartScreenState extends State<CartScreen> {
                     '-\$${item.ahorroTotal.toStringAsFixed(0)}',
                     style: TextStyle(
                         fontSize: 11,
-                        color: Colors.green.shade600,
+                        color: AppColors.pierVerde,
                         fontWeight: FontWeight.w600),
                   ),
               ],
@@ -350,12 +350,12 @@ class _CartScreenState extends State<CartScreen> {
               children: [
                 Text('Subtotal',
                     style: TextStyle(
-                        fontSize: 14, color: Colors.grey[500])),
+                        fontSize: 14, color: AppColors.textSecondary)),
                 Text(
                   '\$${cart.totalOriginal.toStringAsFixed(0)} MXN',
                   style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[400],
+                      color: AppColors.textSecondary.withValues(alpha: 0.5),
                       decoration: TextDecoration.lineThrough),
                 ),
               ],
@@ -366,25 +366,25 @@ class _CartScreenState extends State<CartScreen> {
               children: [
                 Row(children: [
                   Icon(Icons.local_offer_rounded,
-                      size: 14, color: Colors.green.shade600),
+                      size: 14, color: AppColors.pierVerde),
                   const SizedBox(width: 6),
                   Text('Descuentos',
                       style: TextStyle(
                           fontSize: 14,
-                          color: Colors.green.shade600,
+                          color: AppColors.pierVerde,
                           fontWeight: FontWeight.w600)),
                 ]),
                 Text(
                   '-\$${cart.totalAhorro.toStringAsFixed(0)} MXN',
                   style: TextStyle(
                       fontSize: 14,
-                      color: Colors.green.shade600,
+                      color: AppColors.pierVerde,
                       fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Divider(color: Colors.grey.withValues(alpha: 0.2)),
+            Divider(color: AppColors.textSecondary.withValues(alpha: 0.2)),
             const SizedBox(height: 10),
           ],
 
@@ -412,7 +412,7 @@ class _CartScreenState extends State<CartScreen> {
             children: [
               Text('IVA incluido',
                   style:
-                      TextStyle(fontSize: 11, color: Colors.grey[400])),
+                      TextStyle(fontSize: 11, color: AppColors.textSecondary.withValues(alpha: 0.5))),
             ],
           ),
           const SizedBox(height: 16),
@@ -474,7 +474,7 @@ class _CartScreenState extends State<CartScreen> {
               'Agrega productos desde el catálogo\npara comenzar tu pedido.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 14, color: Colors.grey[500])),
+                  fontSize: 14, color: AppColors.textSecondary)),
           const SizedBox(height: 28),
           ElevatedButton.icon(
             onPressed: () =>
@@ -512,7 +512,7 @@ class _CartScreenState extends State<CartScreen> {
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancelar',
-                style: TextStyle(color: Colors.grey[600])),
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -520,7 +520,7 @@ class _CartScreenState extends State<CartScreen> {
               await cart.clearCart();
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, elevation: 0),
+                backgroundColor: AppColors.error, elevation: 0),
             child: const Text('Vaciar',
                 style: TextStyle(color: Colors.white)),
           ),

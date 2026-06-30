@@ -283,7 +283,7 @@ class _ProductsScreenState extends State<ProductsScreen>
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al actualizar favorito'),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.error,
       ));
     }
   }
@@ -308,7 +308,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                   child: Container(
                       width: 40, height: 4,
                       decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                          color: AppColors.textSecondary.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(2))),
                 ),
                 const SizedBox(height: 20),
@@ -359,12 +359,12 @@ class _ProductsScreenState extends State<ProductsScreen>
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.08),
+                            color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
+                            border: Border.all(color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.2)),
                           ),
                           child: Text(s,
-                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : Colors.grey[700])),
+                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : AppColors.textSecondary)),
                         ),
                       );
                     }).toList(),
@@ -389,12 +389,12 @@ class _ProductsScreenState extends State<ProductsScreen>
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.08),
+                            color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
+                            border: Border.all(color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.2)),
                           ),
                           child: Text(t,
-                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : Colors.grey[700])),
+                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : AppColors.textSecondary)),
                         ),
                       );
                     }).toList(),
@@ -419,12 +419,12 @@ class _ProductsScreenState extends State<ProductsScreen>
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.08),
+                            color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
+                            border: Border.all(color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.2)),
                           ),
                           child: Text(t,
-                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : Colors.grey[700])),
+                              style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500, color: sel ? Colors.white : AppColors.textSecondary)),
                         ),
                       );
                     }).toList(),
@@ -474,7 +474,7 @@ class _ProductsScreenState extends State<ProductsScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                  decoration: BoxDecoration(color: AppColors.textSecondary.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 20),
               const Align(
                   alignment: Alignment.centerLeft,
@@ -498,7 +498,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: sel ? AppColors.pierVerde.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.04),
+                      color: sel ? AppColors.pierVerde.withValues(alpha: 0.08) : AppColors.textSecondary.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(14),
                       border: sel ? Border.all(color: AppColors.pierVerde.withValues(alpha: 0.3)) : null,
                     ),
@@ -506,10 +506,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: sel ? AppColors.pierVerde : Colors.grey.withValues(alpha: 0.1),
+                          color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(t.$3, size: 18, color: sel ? Colors.white : Colors.grey),
+                        child: Icon(t.$3, size: 18, color: sel ? Colors.white : AppColors.textSecondary),
                       ),
                       const SizedBox(width: 14),
                       Expanded(child: Text(t.$1,
@@ -534,7 +534,7 @@ class _ProductsScreenState extends State<ProductsScreen>
     final cartCount = context.watch<CartProvider>().totalQuantity;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F2ED),
+      backgroundColor: AppColors.pierArena,
       body: Column(
         children: [
           _buildHeaderBackground(cartCount),
@@ -558,16 +558,16 @@ class _ProductsScreenState extends State<ProductsScreen>
                       decoration: BoxDecoration(
                         color: sel ? AppColors.pierVerde : Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: sel ? AppColors.pierVerde : Colors.grey.shade200),
+                        border: Border.all(color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(cat['icon'] as IconData, size: 13, color: sel ? Colors.white : Colors.grey[600]),
+                          Icon(cat['icon'] as IconData, size: 13, color: sel ? Colors.white : AppColors.textSecondary),
                           const SizedBox(width: 6),
                           Text(cat['name'] as String,
                               style: TextStyle(fontSize: 13, fontWeight: sel ? FontWeight.bold : FontWeight.w500,
-                                  color: sel ? Colors.white : Colors.grey[700])),
+                                  color: sel ? Colors.white : AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -746,11 +746,11 @@ class _ProductsScreenState extends State<ProductsScreen>
         onChanged: (v) => setState(() => _searchQuery = v),
         decoration: InputDecoration(
           hintText: 'Busca tu antojo...',
-          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
-          prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey, size: 22),
+          hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 15),
+          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 22),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 18),
+                  icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 18),
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
@@ -758,7 +758,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(icon: const Icon(Icons.sort_rounded, color: Colors.grey, size: 20),
+                    IconButton(icon: const Icon(Icons.sort_rounded, color: AppColors.textSecondary, size: 20),
                         onPressed: _showSortSheet, tooltip: 'Ordenar'),
                     Stack(
                       clipBehavior: Clip.none,
@@ -877,7 +877,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     ),
                     child: Icon(
                       _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: _favoritos.contains(p.id) ? Colors.white : Colors.grey[500],
+                      color: _favoritos.contains(p.id) ? Colors.white : AppColors.textSecondary,
                       size: 16,
                     ),
                   ),
@@ -905,7 +905,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     if (tienePromo) ...[
                       const SizedBox(width: 5),
                       Text('\$${p.precio.toStringAsFixed(0)}',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[400], decoration: TextDecoration.lineThrough)),
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withValues(alpha: 0.5), decoration: TextDecoration.lineThrough)),
                     ],
                   ],
                 ),
@@ -924,7 +924,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(p.descripcion,
-                    style: TextStyle(fontSize: 10, color: Colors.grey[500], height: 1.3),
+                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary, height: 1.3),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -933,7 +933,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                       const Icon(Icons.star_rounded, color: Colors.amber, size: 13),
                       const SizedBox(width: 3),
                       Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                     ]),
                     Consumer<CartProvider>(
                       builder: (context, cart, child) {
@@ -1030,7 +1030,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     ),
                     child: Icon(
                       _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: _favoritos.contains(p.id) ? Colors.white : Colors.grey[500],
+                      color: _favoritos.contains(p.id) ? Colors.white : AppColors.textSecondary,
                       size: 14,
                     ),
                   ),
@@ -1050,7 +1050,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(p.descripcion,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.3),
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1067,7 +1067,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                           if (tienePromo) ...[
                             const SizedBox(width: 6),
                             Text('\$${p.precio.toStringAsFixed(0)}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[400],
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.5),
                                     decoration: TextDecoration.lineThrough)),
                           ],
                         ]),
@@ -1075,7 +1075,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                           const Icon(Icons.star_rounded, color: Colors.amber, size: 12),
                           const SizedBox(width: 3),
                           Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                         ]),
                       ],
                     ),
@@ -1148,7 +1148,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
           Text('Intenta con otros términos\no ajusta los filtros',
-              textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: Colors.grey[500])),
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: AppColors.textSecondary)),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _clearFilters,

@@ -87,7 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text('Cancelar',
-                style: TextStyle(color: Colors.grey[600])),
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -96,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               await auth.logout();
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, elevation: 0),
+                backgroundColor: AppColors.error, elevation: 0),
             child: const Text('Salir',
                 style: TextStyle(color: Colors.white)),
           ),
@@ -164,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text('Hola, $saludo',
                               style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey[500])),
+                                  color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -204,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Container(
                               width: 16, height: 16,
                               decoration: const BoxDecoration(
-                                color: Colors.green,
+                                color: AppColors.pierVerde,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -267,7 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               horizontal: 20),
                           child: Text('Sin favoritos aún',
                               style: TextStyle(
-                                  color: Colors.grey[500],
+                                  color: AppColors.textSecondary,
                                   fontSize: 14)),
                         )
                       : SizedBox(
@@ -382,7 +382,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     const OrdersScreen()));
                       },
                       child: Icon(Icons.history_rounded,
-                          color: Colors.grey[500], size: 22),
+                          color: AppColors.textSecondary, size: 22),
                     ),
                   ],
                 ),
@@ -405,7 +405,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               horizontal: 20),
                           child: Text('Sin pedidos aún',
                               style: TextStyle(
-                                  color: Colors.grey[500],
+                                  color: AppColors.textSecondary,
                                   fontSize: 14)),
                         ),
                       )
@@ -483,12 +483,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Container(
                           width: 44, height: 44,
                           decoration: BoxDecoration(
-                            color: Colors.red
+                            color: AppColors.error
                                 .withValues(alpha: 0.08),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.logout_rounded,
-                              color: Colors.red, size: 20),
+                              color: AppColors.error, size: 20),
                         ),
                         const SizedBox(width: 14),
                         Column(
@@ -504,7 +504,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 'Cerrar sesión de tu cuenta actual',
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[500])),
+                                    color: AppColors.textSecondary)),
                           ],
                         ),
                       ]),
@@ -517,7 +517,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _showLogoutDialog(auth),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color: Colors.grey
+                                color: AppColors.textSecondary
                                     .withValues(alpha: 0.3)),
                             shape: RoundedRectangleBorder(
                                 borderRadius:
@@ -550,12 +550,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     Color estadoColor;
     switch (estado) {
-      case 'completado': estadoColor = Colors.grey; break;
+      case 'completado': estadoColor = AppColors.estadoCompletado; break;
       case 'en_preparacion':
-      case 'preparando': estadoColor = Colors.blue; break;
-      case 'listo': estadoColor = AppColors.pierVerde; break;
-      case 'cancelado': estadoColor = Colors.red; break;
-      default: estadoColor = Colors.orange;
+      case 'preparando': estadoColor = AppColors.estadoPreparacion; break;
+      case 'listo': estadoColor = AppColors.estadoListo; break;
+      case 'cancelado': estadoColor = AppColors.estadoCancelado; break;
+      default: estadoColor = AppColors.estadoPendiente;
     }
 
     return Container(
@@ -600,12 +600,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             alignment: Alignment.centerLeft,
             child: Text(fecha,
                 style: TextStyle(
-                    fontSize: 12, color: Colors.grey[500])),
+                    fontSize: 12, color: AppColors.textSecondary)),
           ),
         ),
         Divider(
             height: 20,
-            color: Colors.grey.withValues(alpha: 0.12)),
+            color: AppColors.textSecondary.withValues(alpha: 0.12)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: Row(children: [
@@ -650,18 +650,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                       color:
-                          Colors.grey.withValues(alpha: 0.25)),
+                          AppColors.textSecondary.withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.replay_rounded,
-                        size: 14, color: Colors.grey[600]),
+                        size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text('Reordenar',
                         style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[700],
+                            color: AppColors.textSecondary,
                             fontWeight: FontWeight.w500)),
                   ],
                 ),
@@ -680,7 +680,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Icon(Icons.image_outlined,
-            color: Colors.grey, size: 22),
+            color: AppColors.textSecondary, size: 22),
       );
 
   Widget _buildAvatarIniciales(String iniciales) => Center(

@@ -12,4 +12,15 @@ class AppColors {
   // Colores de texto de apoyo
   static const Color textPrimary = Color(0xFF222222);
   static const Color textSecondary = Color(0xFF757575);
+
+  // Semánticos derivados (estado de pedido / feedback) — dentro de la familia Pier.
+  // Se declaran después de la paleta base para referenciarla sin forward-reference.
+  static const Color estadoPendiente   = pierDorado;        // espera (cálido)
+  static const Color estadoPreparacion = pierDoradoOscuro;  // en proceso
+  static const Color estadoListo       = pierVerde;         // listo / go
+  static const Color estadoCompletado  = textSecondary;     // cerrado
+  static const Color estadoCancelado   = Color(0xFFC1665A); // terracota Pier
+  static const Color exito = pierVerde;
+  static const Color aviso = pierDoradoOscuro;
+  static const Color error = Color(0xFFC1665A);
 }

@@ -87,7 +87,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       PierLog.error('Error subiendo foto: ${result['message']}');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al subir foto'),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.error,
       ));
     }
   }
@@ -139,7 +139,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       PierLog.error('Error al guardar perfil: ${result['message']}');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Error al guardar'),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(
@@ -209,7 +209,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           fontWeight: FontWeight.w600,
                           color: _cambios
                               ? AppColors.pierVerde
-                              : Colors.grey[400]),
+                              : AppColors.textSecondary.withValues(alpha: 0.5)),
                     ),
                   ),
                 ],
@@ -289,7 +289,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: Text(email,
                             style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey[500])),
+                                color: AppColors.textSecondary)),
                       ),
                       const SizedBox(height: 32),
 
@@ -338,21 +338,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: Colors.grey
+                              color: AppColors.textSecondary
                                   .withValues(alpha: 0.2)),
                         ),
                         child: Row(children: [
                           Icon(Icons.email_outlined,
-                              color: Colors.grey[400], size: 18),
+                              color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(email,
                                 style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[500])),
+                                    color: AppColors.textSecondary)),
                           ),
                           Icon(Icons.lock_outline_rounded,
-                              color: Colors.grey[400], size: 16),
+                              color: AppColors.textSecondary.withValues(alpha: 0.5), size: 16),
                         ]),
                       ),
                       Padding(
@@ -361,7 +361,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             'El correo no puede ser modificado.',
                             style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.grey[500])),
+                                color: AppColors.textSecondary)),
                       ),
                       const SizedBox(height: 36),
 
@@ -392,7 +392,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.pierVerde,
-                            disabledBackgroundColor: Colors.grey[300],
+                            disabledBackgroundColor: AppColors.textSecondary.withValues(alpha: 0.3),
                             shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(14)),
@@ -407,12 +407,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.workspace_premium_outlined,
-                                color: Colors.grey[500], size: 14),
+                                color: AppColors.textSecondary, size: 14),
                             const SizedBox(width: 5),
                             Text('Cliente Distinguido Pier',
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[500])),
+                                    color: AppColors.textSecondary)),
                           ],
                         ),
                       ),
@@ -445,21 +445,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-        prefixIcon: Icon(icon, color: Colors.grey[400], size: 18),
+        hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14),
+        prefixIcon: Icon(icon, color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
         filled: true,
         fillColor: Colors.white,
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-                color: Colors.grey.withValues(alpha: 0.2))),
+                color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
                 color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red)),
+            borderSide: const BorderSide(color: AppColors.error)),
         contentPadding: const EdgeInsets.all(14),
       ),
       validator: validator,
