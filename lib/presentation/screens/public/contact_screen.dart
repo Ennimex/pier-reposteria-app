@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/config_format.dart';
 import '../../../data/providers/auth_provider.dart';
 
 class ContactScreen extends StatefulWidget {
@@ -78,12 +79,7 @@ class _ContactScreenState extends State<ContactScreen> {
       if (configContacto['whatsapp'] != null) {
         _whatsapp = configContacto['whatsapp'].toString();
       }
-      final horarioRaw = configHorarios['horario'] ??
-          configHorarios['lunes_sabado'] ??
-          configHorarios['semana'];
-      if (horarioRaw != null) {
-        _horario = horarioRaw.toString();
-      }
+      _horario = formatearHorario(configHorarios, fallback: _horario);
     });
   }
 

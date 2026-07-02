@@ -16,6 +16,10 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   Map<String, dynamic>? get currentUser => _currentUser;
 
+  // Rol del usuario autenticado (cliente, repartidor, empleado, etc.)
+  String? get rol => _currentUser?['rol']?.toString();
+  bool get isRepartidor => rol == 'repartidor';
+
   // Verificar sesión al iniciar app
   Future<void> checkSession() async {
     _isAuthenticated = await _authService.isAuthenticated();

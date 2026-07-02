@@ -7,7 +7,9 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/providers/cart_provider.dart';
 import '../../../../data/providers/auth_provider.dart';
+import '../../../../data/providers/product_provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
+import '../../auth/login_screen.dart';
 import '../products/product_detail_screen.dart';
 
 // Icono de fallback según nombre de categoría
@@ -64,6 +66,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     super.initState();
     _cargarFavoritos();
     _cargarCategorias();
+    // Asegura que promociones estén disponibles para mostrar precios con descuento.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ProductProvider>().cargarProductos();
+    });
   }
 
   @override
@@ -87,6 +93,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Future<void> _cargarFavoritos() async {
     setState(() => _isLoading = true);
     final result = await _api.getAuth(ApiConstants.favoritos);
+    if (!mounted) return;
     if (result['success'] == true) {
       final data = result['favoritos'] ?? result['data'] ?? [];
       setState(() {
@@ -116,7 +123,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   void _addToCart(Product p) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) return;
+    if (!auth.isAuthenticated) {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
     final cart = Provider.of<CartProvider>(context, listen: false);
     cart.addItem(p);
     ScaffoldMessenger.of(context)
@@ -134,6 +145,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
+    final prov = context.watch<ProductProvider>();
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -269,7 +281,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
                       sliver: SliverGrid(
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildCard(filtered[index]),
+                          (context, index) => _buildCard(filtered[index], prov),
                           childCount: filtered.length,
                         ),
                         gridDelegate:
@@ -288,7 +300,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   // ── CARD ──────────────────────────────────────────────────────────
-  Widget _buildCard(Product p) {
+  Widget _buildCard(Product p, ProductProvider prov) {
+    final tienePromo = prov.tieneDescuento(p.id);
+    final precioFinal = prov.precioConDescuento(p.id, p.precio);
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -380,11 +394,44 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('\$${p.precio.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary)),
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  '\$${precioFinal.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: tienePromo
+                                          ? Colors.red.shade600
+                                          : AppColors.textPrimary),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (tienePromo) ...[
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    '\$${p.precio.toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary
+                                            .withValues(alpha: 0.5),
+                                        decoration:
+                                            TextDecoration.lineThrough),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
                         GestureDetector(
                           onTap: () => _addToCart(p),
                           child: Container(

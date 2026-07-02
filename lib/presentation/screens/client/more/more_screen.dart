@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/utils/config_format.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../routes/app_routes.dart';
 import '../../public/about_us_screen.dart';
@@ -400,20 +401,10 @@ class _MoreScreenState extends State<MoreScreen> {
 
   // ── ENCUÉNTRANOS ─────────────────────────────────────────────────
   Widget _buildEncuentranos() {
-    final direccion = _configContacto['direccion']?.toString()
-        ?? 'Calle Allende, Col. Tahuizán';
+    final direccion = formatearDireccion(_configContacto['direccion']);
     final telefono = _configContacto['telefono']?.toString() ?? '';
     final emailContacto = _configContacto['email']?.toString() ?? '';
-
-    String horario;
-    final horarioRaw = _configHorarios['horario'] ??
-        _configHorarios['lunes_sabado'] ??
-        _configHorarios['semana'];
-    if (horarioRaw != null) {
-      horario = horarioRaw.toString();
-    } else {
-      horario = 'Lun–Sáb  9:00 AM – 9:00 PM';
-    }
+    final horario = formatearHorario(_configHorarios);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

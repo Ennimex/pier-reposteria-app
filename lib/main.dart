@@ -9,6 +9,7 @@ import 'data/providers/auth_provider.dart';
 import 'data/providers/product_provider.dart';
 import 'data/providers/navigation_provider.dart';
 import 'data/providers/notification_provider.dart';
+import 'data/providers/entregas_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => EntregasProvider()),
       ],
       child: const MyApp(),
     ),

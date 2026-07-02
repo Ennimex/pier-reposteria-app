@@ -50,7 +50,11 @@ class _SplashScreenState extends State<SplashScreen>
     await authProvider.checkSession();
     await minWait;
     if (!mounted) return;
-    context.go(AppRoutes.main);
+    context.go(
+      authProvider.isAuthenticated
+          ? AppRoutes.homeForRole(authProvider.rol)
+          : AppRoutes.main,
+    );
   }
 
   @override

@@ -19,6 +19,9 @@ import '../presentation/screens/auth/verify_email_screen.dart';
 // Shell cliente (BottomNavBar)
 import '../presentation/screens/client/main_screen.dart';
 
+// Shell repartidor
+import '../presentation/screens/repartidor/repartidor_main_screen.dart';
+
 // Públicas
 import '../presentation/screens/public/about_us_screen.dart';
 import '../presentation/screens/public/contact_screen.dart';
@@ -45,6 +48,7 @@ class AppRoutes {
   static const String recuperarContrasena = '/recuperar-contrasena';
   static const String verificarEmail      = '/verificar-email';
   static const String main                = '/main';
+  static const String repartidor          = '/repartidor';
   static const String nosotros            = '/nosotros';
   static const String contacto            = '/contacto';
   static const String faq                 = '/faq';
@@ -61,6 +65,10 @@ class AppRoutes {
   static const String clienteContacto     = '/cliente/contacto';
   static const String perfil              = '/cliente/perfil';
   static const String editarPerfil        = '/cliente/perfil/editar';
+
+  /// Ruta de inicio según el rol del usuario autenticado.
+  static String homeForRole(String? rol) =>
+      rol == 'repartidor' ? repartidor : main;
 
   static GoRouter router(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -83,15 +91,22 @@ class AppRoutes {
         ];
 
         final isProtected = protectedRoutes.contains(loc) ||
-            loc.startsWith('/cliente/pedido');
+            loc.startsWith('/cliente/pedido') ||
+            loc == repartidor;
 
         if (isProtected && !isAuth) return login;
+
+        // El repartidor tiene su propio shell: si cae en el shell de cliente
+        // (p. ej. desde el splash), lo mandamos a su panel de entregas.
+        if (isAuth && authProvider.isRepartidor && loc == main) {
+          return repartidor;
+        }
 
         // FIX: verificarEmail removido de esta lista para permitir que
         // un usuario recién registrado llegue a verificar su email
         // aunque el backend haya devuelto un token anticipado.
         if ([login, registro].contains(loc) && isAuth) {
-          return main;
+          return homeForRole(authProvider.rol);
         }
 
         return null;
@@ -111,7 +126,8 @@ class AppRoutes {
           },
         ),
 
-        GoRoute(path: main,     builder: (c, s) => const MainScreen()),
+        GoRoute(path: main,        builder: (c, s) => const MainScreen()),
+        GoRoute(path: repartidor,  builder: (c, s) => const RepartidorMainScreen()),
         GoRoute(path: nosotros, builder: (c, s) => const AboutUsScreen()),
         GoRoute(path: contacto, builder: (c, s) => const ContactScreen()),
         GoRoute(path: faq,      builder: (c, s) => const FAQScreen()),

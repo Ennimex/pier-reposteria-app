@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (success) {
-      context.go(AppRoutes.main);
+      context.go(AppRoutes.homeForRole(auth.rol));
     } else {
       _showSnack(auth.errorMessage ?? 'Verifica tus credenciales');
     }

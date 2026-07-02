@@ -182,15 +182,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
-    PierLog.info('🛒 Agregando: ${widget.product.nombre} x$_quantity');
+    // Tamaño elegido: el selector solo aparece si hay precio grande, así que
+    // sin selector _selectedSize queda en 0 (chico).
+    final tamano = _selectedSize == 1 ? 'grande' : 'chico';
+    PierLog.info('🛒 Agregando: ${widget.product.nombre} ($tamano) x$_quantity');
     final cart = Provider.of<CartProvider>(context, listen: false);
-    cart.addItem(widget.product, _quantity);
+    cart.addItem(widget.product, _quantity, tamano, _precioBase);
     _cartAnimController.forward(from: 0);
+    final sufijoTam = tamano == 'grande' ? ' (Grande)' : '';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Row(children: [
         const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
         const SizedBox(width: 8),
-        Text('$_quantity × ${widget.product.nombre} agregado'),
+        Text('$_quantity × ${widget.product.nombre}$sufijoTam agregado'),
       ]),
       backgroundColor: AppColors.pierVerde,
       behavior: SnackBarBehavior.floating,
@@ -1019,7 +1023,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 itemBuilder: (context, i) {
                                   final p = relacionados[i];
                                   return GestureDetector(
-                                    onTap: () => Navigator.pushReplacement(
+                                    // push (no pushReplacement): así el botón
+                                    // atrás regresa al producto de origen.
+                                    onTap: () => Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                             builder: (_) =>

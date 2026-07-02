@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/utils/config_format.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../data/providers/product_provider.dart';
@@ -337,9 +338,7 @@ class _HomeScreenState extends State<HomeScreen>
 
             SliverToBoxAdapter(child: _buildCategories()),
 
-            if (auth.isAuthenticated && _productosComprados.isNotEmpty)
-              SliverToBoxAdapter(child: _buildPideDeNuevo()),
-
+            // Destacados (productos populares) — arriba de "Pide de nuevo" para mayor visibilidad
             if (productProvider.isLoading)
               const SliverToBoxAdapter(
                 child: Padding(
@@ -351,10 +350,14 @@ class _HomeScreenState extends State<HomeScreen>
             else if (productProvider.populares.isNotEmpty)
               SliverToBoxAdapter(
                 child: _buildProductSection(
-                  title: 'Algunos de nuestros productos',
+                  title: 'Destacados',
+                  titleIcon: Icons.star_rounded,
                   productos: productProvider.populares,
                 ),
               ),
+
+            if (auth.isAuthenticated && _productosComprados.isNotEmpty)
+              SliverToBoxAdapter(child: _buildPideDeNuevo()),
 
             if (productProvider.mejorCalificados.isNotEmpty)
               SliverToBoxAdapter(
@@ -1766,14 +1769,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── SUCURSAL ──────────────────────────────────────────────────────
   Widget _buildSucursal() {
-    final direccion = _configContacto['direccion']?.toString() ??
-        'Calle Allende, Col. Tahuizán';
-    final horarioRaw = _configHorarios['horario'] ??
-        _configHorarios['lunes_sabado'] ??
-        _configHorarios['semana'];
-    final horario = horarioRaw != null
-        ? horarioRaw.toString()
-        : 'Lun–Sáb  9:00 AM – 9:00 PM';
+    final direccion = formatearDireccion(_configContacto['direccion']);
+    final horario = formatearHorario(_configHorarios);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),

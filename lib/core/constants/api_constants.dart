@@ -1,5 +1,4 @@
 // lib/core/constants/api_constants.dart
-import 'package:flutter/foundation.dart';
 
 class ApiConstants {
   static const String _prodUrl = 'https://pier-reposteria-backend.onrender.com/api';
@@ -78,6 +77,11 @@ class ApiConstants {
 
   // ── CONTACTO ──────────────────────────────────────────────────────
   static const String enviarContacto = '/contacto';
+
+  // ── ENTREGAS (repartidor) ─────────────────────────────────────────
+  static const String misEntregas          = '/entregas/mis-entregas';
+  static const String disponibilidad       = '/entregas/disponibilidad';
+  static String entregaEstado(String id)   => '/entregas/$id/estado';
 
   // ── UPLOAD ────────────────────────────────────────────────────────
   static const String uploadImagen        = '/upload/imagen';

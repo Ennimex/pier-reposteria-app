@@ -23,4 +23,12 @@ class AppColors {
   static const Color exito = pierVerde;
   static const Color aviso = pierDoradoOscuro;
   static const Color error = Color(0xFFC1665A);
+
+  // Estados de entrega a domicilio (repartidor). Dentro de la familia Pier,
+  // con un azul apizarrado para "en camino" (tránsito) que se distingue del
+  // verde de "entregada".
+  static const Color estadoAsignada  = pierDorado;         // por iniciar (cálido)
+  static const Color estadoEnCamino  = Color(0xFF5B7BA5);  // en tránsito (azul apagado)
+  static const Color estadoEntregada = pierVerde;          // entregada OK
+  static const Color estadoFallida   = error;              // fallo (terracota)
 }

@@ -27,8 +27,11 @@ dependencies:
   # Imágenes de red con caché
   cached_network_image: ^3.3.1
 
-  # Selector de imágenes (perfil, reseñas, reembolsos)
+  # Selector de imágenes (perfil, reseñas, reembolsos, evidencia de entrega)
   image_picker: ^1.1.2
+
+  # Abrir marcador / WhatsApp (módulo repartidor)
+  url_launcher: ^6.3.0
 
   # Formatos de fecha y moneda
   intl: ^0.20.2

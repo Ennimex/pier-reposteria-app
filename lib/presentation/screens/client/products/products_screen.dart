@@ -579,8 +579,8 @@ class _ProductsScreenState extends State<ProductsScreen>
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
-                PaintingBinding.instance.imageCache.clear();
-                PaintingBinding.instance.imageCache.clearLiveImages();
+                // No se limpia el imageCache global: recargar los datos basta y
+                // evita que TODA la app tenga que volver a descargar imágenes.
                 await context.read<ProductProvider>().refrescar();
                 await _cargarCategorias();
                 await _cargarFiltros();

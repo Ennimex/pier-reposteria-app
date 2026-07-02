@@ -155,7 +155,7 @@ class _CartScreenState extends State<CartScreen> {
   Widget _buildCartItem(
       BuildContext context, CartItem item, CartProvider cart) {
     return Dismissible(
-      key: ValueKey(item.id),
+      key: ValueKey(item.lineKey),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -167,7 +167,7 @@ class _CartScreenState extends State<CartScreen> {
         child: const Icon(Icons.delete_outline_rounded,
             color: Colors.white, size: 26),
       ),
-      onDismissed: (_) => cart.removeItem(item.id),
+      onDismissed: (_) => cart.removeItem(item.lineKey),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -211,6 +211,14 @@ class _CartScreenState extends State<CartScreen> {
                           color: AppColors.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
+                  // Tamaño de la línea (chico / grande)
+                  Text(
+                    item.tamano == 'grande' ? 'Grande' : 'Chico',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500),
+                  ),
                   const SizedBox(height: 4),
 
                   // ✅ NUEVO: precio con/sin descuento
@@ -270,7 +278,7 @@ class _CartScreenState extends State<CartScreen> {
                         color: item.quantity == 1
                             ? AppColors.error
                             : AppColors.pierVerde,
-                        onTap: () => cart.removeSingleItem(item.id),
+                        onTap: () => cart.removeSingleItem(item.lineKey),
                       ),
                       Padding(
                         padding:
@@ -284,14 +292,19 @@ class _CartScreenState extends State<CartScreen> {
                       _qtyBtn(
                         icon: Icons.add_rounded,
                         color: AppColors.pierVerde,
-                        onTap: () => cart.addItem(Product(
-                          id: item.id,
-                          nombre: item.nombre,
-                          precio: item.precio,
-                          imagenUrl: item.imagenUrl,
-                          descripcion: '',
-                          categoria: '',
-                        )),
+                        onTap: () => cart.addItem(
+                          Product(
+                            id: item.id,
+                            nombre: item.nombre,
+                            precio: item.precio,
+                            imagenUrl: item.imagenUrl,
+                            descripcion: '',
+                            categoria: '',
+                          ),
+                          1,
+                          item.tamano,
+                          item.precio,
+                        ),
                       ),
                     ],
                   ),
