@@ -6,6 +6,8 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/auth_provider.dart';
+import '../../../../data/providers/cart_provider.dart';
+import '../../../../data/providers/navigation_provider.dart';
 import '../../../../data/models/product_model.dart';
 import '../favorites/favorites_screen.dart';
 import '../orders/orders_screen.dart';
@@ -26,6 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _pedidos = [];
   bool _loadingFavoritos = true;
   bool _loadingPedidos = true;
+  String? _reordenandoId; // id del pedido que se está reordenando
 
   @override
   void initState() {
@@ -72,6 +75,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _loadingPedidos = false);
       }
     }
+  }
+
+  // Vuelve a agregar los productos de un pedido al carrito y lleva al carrito.
+  // mis-pedidos no trae producto_id, así que pedimos el detalle /pedidos/:id.
+  Future<void> _reordenar(String pedidoId) async {
+    if (pedidoId.isEmpty || _reordenandoId != null) return;
+    setState(() => _reordenandoId = pedidoId);
+
+    final result = await _api.getAuth(ApiConstants.pedidoById(pedidoId));
+    if (!mounted) return;
+
+    final items = result['success'] == true
+        ? List<Map<String, dynamic>>.from(result['items'] ?? [])
+        : <Map<String, dynamic>>[];
+
+    if (items.isEmpty) {
+      setState(() => _reordenandoId = null);
+      _snack('No se pudieron cargar los productos del pedido');
+      return;
+    }
+
+    final cart = context.read<CartProvider>();
+    var agregados = 0;
+    for (final it in items) {
+      final pid = it['producto_id']?.toString() ?? '';
+      if (pid.isEmpty) continue;
+      final nombre = (it['nombre_producto'] ?? it['nombre'] ?? '').toString();
+      final tamano = it['tamano']?.toString() ?? 'chico';
+      final precio =
+          double.tryParse(it['precio_unitario']?.toString() ?? '0') ?? 0.0;
+      final cantidad = int.tryParse(it['cantidad']?.toString() ?? '1') ?? 1;
+      await cart.addItem(
+        Product(
+          id: pid,
+          nombre: nombre,
+          precio: precio,
+          imagenUrl: '',
+          descripcion: '',
+          categoria: '',
+        ),
+        cantidad,
+        tamano,
+        precio,
+      );
+      agregados++;
+    }
+
+    if (!mounted) return;
+    setState(() => _reordenandoId = null);
+
+    if (agregados == 0) {
+      _snack('No se pudieron agregar los productos');
+      return;
+    }
+
+    _snack('Productos agregados al carrito', success: true);
+    // Cierra el perfil y cambia a la pestaña Carrito (índice 2).
+    Navigator.of(context).pop();
+    context.read<NavigationProvider>().setSelectedIndex(2);
+  }
+
+  void _snack(String msg, {bool success = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: success ? AppColors.pierVerde : AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   void _showLogoutDialog(AuthProvider auth) {
@@ -416,6 +488,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           delegate: SliverChildBuilderDelegate(
                             (context, i) {
                               final p = _pedidos[i];
+                              final pedidoId = p['id']?.toString() ?? '';
                               final numero =
                                   p['numero']?.toString() ??
                                       '#${p['id']}';
@@ -451,6 +524,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   resumen: resumen,
                                   total: total,
                                   imagenUrl: imagen,
+                                  reordenando: _reordenandoId == pedidoId,
+                                  onReordenar: () => _reordenar(pedidoId),
                                 ),
                               );
                             },
@@ -547,6 +622,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String resumen,
     required double total,
     required String imagenUrl,
+    required bool reordenando,
+    required VoidCallback onReordenar,
   }) {
     Color estadoColor;
     switch (estado) {
@@ -641,7 +718,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             GestureDetector(
-              onTap: () {},
+              onTap: reordenando ? null : onReordenar,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 8),
@@ -655,10 +732,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.replay_rounded,
-                        size: 14, color: AppColors.textSecondary),
+                    reordenando
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.pierVerde),
+                          )
+                        : Icon(Icons.replay_rounded,
+                            size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
-                    Text('Reordenar',
+                    Text(reordenando ? 'Agregando…' : 'Reordenar',
                         style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
