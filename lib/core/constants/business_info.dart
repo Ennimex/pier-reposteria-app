@@ -41,6 +41,20 @@ class BusinessInfo {
   // Horario
   static const String horario = 'Lun–Sáb • 9:00 – 21:00 hrs';
 
+  // Horario estructurado para lógica de abierto/cerrado.
+  // (DateTime.weekday: lunes=1 … domingo=7). Abierto Lun–Sáb, 9:00–21:00.
+  static const int horaApertura = 9;
+  static const int horaCierre = 21;
+  static const List<int> diasAbiertos = [1, 2, 3, 4, 5, 6]; // Lun–Sáb
+
+  /// ¿El negocio está abierto ahora (o en la fecha dada)?
+  static bool estaAbierto([DateTime? ahora]) {
+    final now = ahora ?? DateTime.now();
+    if (!diasAbiertos.contains(now.weekday)) return false;
+    final minutos = now.hour * 60 + now.minute;
+    return minutos >= horaApertura * 60 && minutos < horaCierre * 60;
+  }
+
   /// Enlace directo a WhatsApp con un mensaje opcional.
   static String whatsappUrl([String mensaje = 'Hola, tengo una pregunta']) =>
       'https://wa.me/$whatsappNumero?text=${Uri.encodeComponent(mensaje)}';

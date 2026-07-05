@@ -56,23 +56,17 @@ class _ContactScreenState extends State<ContactScreen> {
     });
   }
 
-  // ✅ NUEVO: cargar contacto y horarios del backend
+  // ✅ Cargar contacto del backend. El horario vive dentro de 'contacto'
+  // (clave 'horarios'); no existe una seccion 'horarios' publica.
   Future<void> _cargarConfiguracion() async {
     final api = ApiService();
-    final results = await Future.wait([
-      api.get(ApiConstants.configuracionSeccion('contacto')),
-      api.get(ApiConstants.configuracionSeccion('horarios')),
-    ]);
+    final result =
+        await api.get(ApiConstants.configuracionSeccion('contacto'));
     if (!mounted) return;
 
-    final configContacto =
-        results[0]['success'] == true
-            ? Map<String, dynamic>.from(results[0]['config'] ?? {})
-            : <String, dynamic>{};
-    final configHorarios =
-        results[1]['success'] == true
-            ? Map<String, dynamic>.from(results[1]['config'] ?? {})
-            : <String, dynamic>{};
+    final configContacto = result['success'] == true
+        ? Map<String, dynamic>.from(result['config'] ?? {})
+        : <String, dynamic>{};
 
     setState(() {
       if (configContacto['telefono'] != null) {
@@ -84,7 +78,8 @@ class _ContactScreenState extends State<ContactScreen> {
       if (configContacto['whatsapp'] != null) {
         _whatsapp = configContacto['whatsapp'].toString();
       }
-      _horario = formatearHorario(configHorarios, fallback: _horario);
+      _horario =
+          formatearHorario(configContacto['horarios'], fallback: _horario);
     });
   }
 

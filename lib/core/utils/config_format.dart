@@ -7,19 +7,14 @@
 
 import 'dart:convert';
 
-/// Horario de `configuracion/horarios`. Acepta el mapa completo de la seccion
-/// y prioriza las claves conocidas; si el valor es un mapa de dias -> rango lo
-/// formatea como lineas "Dia: rango".
+/// Horario de negocio. El backend lo guarda como la clave `horarios` DENTRO de
+/// la seccion `contacto` (NO existe una seccion `horarios`): un array de
+/// {sucursal, horario, descripcion}. Acepta ese array (o su JSON serializado),
+/// texto plano, o un mapa dia->rango (compat). Devuelve texto legible.
 String formatearHorario(
-  Map<String, dynamic> configHorarios, {
+  dynamic raw, {
   String fallback = 'Lun–Sáb  9:00 AM – 9:00 PM',
 }) {
-  dynamic raw = configHorarios['horario'] ??
-      configHorarios['lunes_sabado'] ??
-      configHorarios['semana'];
-  // Si no hay clave conocida pero si hay datos, usar todo el mapa.
-  raw ??= configHorarios.isNotEmpty ? configHorarios : null;
-
   final texto = _horarioToTexto(raw);
   return texto.isNotEmpty ? texto : fallback;
 }
@@ -38,19 +33,32 @@ String _horarioToTexto(dynamic raw) {
     }
     return t;
   }
+  if (raw is List) {
+    // Formato del panel web: [{sucursal, horario, descripcion}, ...]
+    final lineas = <String>[];
+    for (final item in raw) {
+      if (item is Map) {
+        final h = item['horario']?.toString().trim() ?? '';
+        if (h.isEmpty) continue;
+        final s = item['sucursal']?.toString().trim() ?? '';
+        lineas.add(s.isNotEmpty ? '$s: $h' : h);
+      } else {
+        final s = item.toString().trim();
+        if (s.isNotEmpty) lineas.add(s);
+      }
+    }
+    return lineas.join('\n');
+  }
   if (raw is Map) {
+    // Compat: {horario: '...'} o mapa dia -> rango.
+    final directo = raw['horario']?.toString().trim();
+    if (directo != null && directo.isNotEmpty) return directo;
     final partes = <String>[];
     raw.forEach((k, v) {
       final valor = v?.toString().trim() ?? '';
       if (valor.isNotEmpty) partes.add('${_prettyClave(k.toString())}: $valor');
     });
     return partes.join('\n');
-  }
-  if (raw is List) {
-    return raw
-        .map((e) => e.toString().trim())
-        .where((s) => s.isNotEmpty)
-        .join('\n');
   }
   return raw.toString();
 }

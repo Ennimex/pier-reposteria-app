@@ -37,7 +37,6 @@ class _MoreScreenState extends State<MoreScreen> {
   bool _loadingStats  = true;
 
   Map<String, dynamic> _configContacto = {};
-  Map<String, dynamic> _configHorarios = {};
   bool _loadingConfig = true;
 
   String? _lastUserEmail;
@@ -74,20 +73,15 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   Future<void> _cargarConfiguracion() async {
-    final results = await Future.wait([
-      _api.get(ApiConstants.configuracionSeccion('contacto')),
-      _api.get(ApiConstants.configuracionSeccion('horarios')),
-    ]);
+    // El horario vive dentro de 'contacto' (clave 'horarios'); no hay seccion
+    // 'horarios' publica.
+    final result =
+        await _api.get(ApiConstants.configuracionSeccion('contacto'));
 
     if (!mounted) return;
     setState(() {
-      if (results[0]['success'] == true) {
-        _configContacto = Map<String, dynamic>.from(
-            results[0]['config'] ?? {});
-      }
-      if (results[1]['success'] == true) {
-        _configHorarios = Map<String, dynamic>.from(
-            results[1]['config'] ?? {});
+      if (result['success'] == true) {
+        _configContacto = Map<String, dynamic>.from(result['config'] ?? {});
       }
       _loadingConfig = false;
     });
@@ -409,8 +403,8 @@ class _MoreScreenState extends State<MoreScreen> {
         _configContacto['telefono']?.toString() ?? BusinessInfo.telefono;
     final emailContacto =
         _configContacto['email']?.toString() ?? BusinessInfo.email;
-    final horario =
-        formatearHorario(_configHorarios, fallback: BusinessInfo.horario);
+    final horario = formatearHorario(_configContacto['horarios'],
+        fallback: BusinessInfo.horario);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

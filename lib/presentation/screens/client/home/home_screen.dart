@@ -60,7 +60,6 @@ class _HomeScreenState extends State<HomeScreen>
   List<Map<String, dynamic>> _promoDestacado = []; // tipo == 'destacado'
 
   Map<String, dynamic> _configContacto = {};
-  Map<String, dynamic> _configHorarios = {};
 
   String? _lastUserEmail;
 
@@ -230,20 +229,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _cargarConfiguracion() async {
-    PierLog.api('GET configuracion/contacto + horarios');
-    final results = await Future.wait([
-      _api.get(ApiConstants.configuracionSeccion('contacto')),
-      _api.get(ApiConstants.configuracionSeccion('horarios')),
-    ]);
+    // El horario vive dentro de la seccion 'contacto' (clave 'horarios');
+    // no existe una seccion 'horarios' publica.
+    PierLog.api('GET configuracion/contacto');
+    final result =
+        await _api.get(ApiConstants.configuracionSeccion('contacto'));
     if (!mounted) return;
-    setState(() {
-      if (results[0]['success'] == true) {
-        _configContacto = Map<String, dynamic>.from(results[0]['config'] ?? {});
-      }
-      if (results[1]['success'] == true) {
-        _configHorarios = Map<String, dynamic>.from(results[1]['config'] ?? {});
-      }
-    });
+    if (result['success'] == true) {
+      setState(() {
+        _configContacto = Map<String, dynamic>.from(result['config'] ?? {});
+      });
+    }
     PierLog.info('✅ Configuración cargada');
   }
 
@@ -1783,8 +1779,8 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildSucursal() {
     final direccion = formatearDireccion(_configContacto['direccion'],
         fallback: BusinessInfo.direccion);
-    final horario =
-        formatearHorario(_configHorarios, fallback: BusinessInfo.horario);
+    final horario = formatearHorario(_configContacto['horarios'],
+        fallback: BusinessInfo.horario);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),

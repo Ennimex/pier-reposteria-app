@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/api_service.dart';
@@ -26,8 +25,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _guardando = false;
   bool _cambios = false;
-  bool _subiendoFoto = false;
-  String? _fotoUrlActual;
 
   @override
   void initState() {
@@ -41,9 +38,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextEditingController(text: user?['apellido']?.toString() ?? '');
     _telefonoCtrl =
         TextEditingController(text: user?['telefono']?.toString() ?? '');
-    // El backend guarda la foto como avatar_url
-    _fotoUrlActual = user?['avatar_url']?.toString() ??
-        user?['foto_url']?.toString();
 
     _nombreCtrl.addListener(_onChanged);
     _apellidoCtrl.addListener(_onChanged);
@@ -60,39 +54,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 80);
-    if (pickedFile == null) return;
-
-    setState(() => _subiendoFoto = true);
-    PierLog.api('POST ${ApiConstants.uploadImagen}');
-
-    final result = await _api.uploadImageAuth(
-      ApiConstants.uploadImagen,
-      pickedFile.path,
-      {'tipo': 'perfil'},
-    );
-
-    if (!mounted) return;
-    setState(() => _subiendoFoto = false);
-
-    if (result['success'] == true) {
-      setState(() {
-        _fotoUrlActual = result['imagen']['url']?.toString();
-        _cambios = true;
-      });
-      PierLog.info('✅ Foto subida: $_fotoUrlActual');
-    } else {
-      PierLog.error('Error subiendo foto: ${result['message']}');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(result['message'] ?? 'Error al subir foto'),
-        backgroundColor: AppColors.error,
-      ));
-    }
-  }
-
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _guardando = true);
@@ -104,7 +65,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       'telefono': _telefonoCtrl.text.trim().isEmpty
           ? null
           : _telefonoCtrl.text.trim(),
-      if (_fotoUrlActual != null) 'avatar_url': _fotoUrlActual,
     };
 
     final result = await _api.putAuth(
@@ -119,9 +79,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final updatedUser =
           result['user'] as Map<String, dynamic>?;
       if (updatedUser != null) auth.updateCurrentUser(updatedUser);
-      if (_fotoUrlActual != null) {
-        auth.updateCurrentUser({'avatar_url': _fotoUrlActual});
-      }
       setState(() => _cambios = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Row(children: [
@@ -200,9 +157,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   // Guardar — verde si hay cambios pendientes
                   GestureDetector(
-                    onTap: (_guardando || _subiendoFoto || !_cambios)
-                        ? null
-                        : _guardar,
+                    onTap: (_guardando || !_cambios) ? null : _guardar,
                     child: Text(
                       _guardando ? 'Guardando...' : 'Guardar',
                       style: TextStyle(
@@ -228,61 +183,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
 
-                      // ── AVATAR ────────────────────────────────
+                      // ── AVATAR (iniciales) ────────────────────
                       Center(
-                        child: GestureDetector(
-                          onTap:
-                              _subiendoFoto ? null : _pickImage,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 100, height: 100,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: AppColors.pierDorado,
-                                      width: 2),
-                                ),
-                                child: _subiendoFoto
-                                    ? const Center(
-                                        child:
-                                            CircularProgressIndicator(
-                                                color:
-                                                    AppColors.pierVerde))
-                                    : _fotoUrlActual != null &&
-                                            _fotoUrlActual!.isNotEmpty
-                                        ? ClipOval(
-                                            child: Image.network(
-                                              _fotoUrlActual!,
-                                              width: 100,
-                                              height: 100,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, e, __) =>
-                                                  _buildAvatarIniciales(
-                                                      iniciales),
-                                            ),
-                                          )
-                                        : _buildAvatarIniciales(
-                                            iniciales),
-                              ),
-                              Positioned(
-                                bottom: 0, right: -8,
-                                child: Container(
-                                  width: 34, height: 34,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.pierVerde,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                      LucideIcons.camera,
-                                      color: Colors.white,
-                                      size: 16),
-                                ),
-                              ),
-                            ],
+                        child: Container(
+                          width: 100, height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: AppColors.pierDorado, width: 2),
                           ),
+                          child: _buildAvatarIniciales(iniciales),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -372,9 +283,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         height: 54,
                         child: ElevatedButton.icon(
                           onPressed:
-                              (_guardando || _subiendoFoto || !_cambios)
-                                  ? null
-                                  : _guardar,
+                              (_guardando || !_cambios) ? null : _guardar,
                           icon: _guardando
                               ? const SizedBox(
                                   height: 18, width: 18,

@@ -183,6 +183,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _processPayment() async {
+    // Fuera de horario no se aceptan pedidos (defensa además del botón).
+    if (!BusinessInfo.estaAbierto()) {
+      _showSnack(
+          'Estamos fuera de servicio. Horario: ${BusinessInfo.horario}',
+          error: true);
+      return;
+    }
     // Validaciones según modalidad
     if (_esDomicilio) {
       if (_selectedDireccion == null) {
@@ -325,7 +332,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       appBar: AppBar(
-        title: const Text('Finalizar Pedido'),
+        // El titleTextStyle del tema global es blanco (AppBars verdes); esta
+        // AppBar es blanca, así que forzamos el color oscuro del título.
+        title: const Text('Finalizar Pedido',
+            style: TextStyle(color: AppColors.textPrimary)),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -335,6 +345,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // ── AVISO FUERA DE SERVICIO ───────────────────────────────
+            if (!BusinessInfo.estaAbierto()) _buildFueraDeServicio(),
 
             // ── RESUMEN ───────────────────────────────────────────────
             _buildSectionTitle('Resumen del pedido'),
@@ -598,7 +611,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _processPayment,
+                // Fuera de horario no se pueden crear pedidos.
+                onPressed: (_isLoading || !BusinessInfo.estaAbierto())
+                    ? null
+                    : _processPayment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.pierVerde,
                   disabledBackgroundColor:
@@ -614,7 +630,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2))
                     : Text(
-                        'Pagar  \$${totalConEnvio.toStringAsFixed(0)} MXN',
+                        BusinessInfo.estaAbierto()
+                            ? 'Pagar  \$${totalConEnvio.toStringAsFixed(0)} MXN'
+                            : 'Fuera de servicio',
                         style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
@@ -934,6 +952,55 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.pierVerdeOscuro)),
+      );
+
+  // Aviso cuando el pedido se hace fuera del horario de atención.
+  Widget _buildFueraDeServicio() => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(LucideIcons.clock,
+                  color: AppColors.error, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Fuera de servicio',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.error)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'En este momento estamos cerrados. Horario: '
+                    '${BusinessInfo.horario}. Puedes dejar tu pedido y lo '
+                    'prepararemos en horario de atención.',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       );
 
   BoxDecoration _cardDecoration() => BoxDecoration(
