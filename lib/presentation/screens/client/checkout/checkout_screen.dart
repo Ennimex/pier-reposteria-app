@@ -605,7 +605,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ],
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+
+            // ── NOTA: PEDIDOS ESPECIALES ──────────────────────────────
+            _buildNotaEspeciales(),
+            const SizedBox(height: 24),
 
             // ── BOTÓN PAGAR ───────────────────────────────────────────
             SizedBox(
@@ -952,6 +956,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.pierVerdeOscuro)),
+      );
+
+  // Nota: los pedidos especiales requieren anticipación + número de pedido.
+  Widget _buildNotaEspeciales() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.pierDorado.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border:
+              Border.all(color: AppColors.pierDorado.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(LucideIcons.info,
+                color: AppColors.pierDoradoOscuro, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: AppColors.pierDoradoOscuro),
+                  children: [
+                    const TextSpan(
+                        text: 'Nota importante: ',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    TextSpan(
+                        text:
+                            'Los pedidos especiales requieren realizarse con 3 días '
+                            'de anticipación. ${_esDomicilio ? 'Ten a la mano tu número de pedido al recibir.' : 'Presenta tu número de pedido al recoger.'}'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       );
 
   // Aviso cuando el pedido se hace fuera del horario de atención.
