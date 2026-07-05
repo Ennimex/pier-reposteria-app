@@ -3,6 +3,7 @@
 // "Perfil" del repartidor: datos, estado de servicio (disponibilidad),
 // métricas del día y cerrar sesión.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -190,9 +191,9 @@ class PerfilRepartidorScreen extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _infoRow(Icons.mail_outline, 'Correo electrónico', email),
+              _infoRow(LucideIcons.mail, 'Correo electrónico', email),
               const Divider(height: 1, indent: 68, endIndent: 20),
-              _infoRow(Icons.phone_outlined, 'Teléfono', telefono),
+              _infoRow(LucideIcons.phone, 'Teléfono', telefono),
             ],
           ),
         ),
@@ -226,7 +227,7 @@ class PerfilRepartidorScreen extends StatelessWidget {
           child: ElevatedButton.icon(
             onPressed: () => _logout(context),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            icon: const Icon(Icons.logout, size: 18),
+            icon: const Icon(LucideIcons.logOut, size: 18),
             label: const Text('Cerrar sesión'),
           ),
         ),

@@ -2,6 +2,7 @@
 //
 // "Historial": entregas finalizadas hoy (entregadas y fallidas) + total del día.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/entrega_model.dart';
@@ -79,7 +80,7 @@ class HistorialRepartidorScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history, size: 60, color: AppColors.textSecondary),
+                  Icon(LucideIcons.history, size: 60, color: AppColors.textSecondary),
                   SizedBox(height: 16),
                   Text(
                     'Aún no hay entregas finalizadas hoy',
@@ -153,7 +154,7 @@ class _HistorialItem extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.location_on_outlined,
+              const Icon(LucideIcons.mapPin,
                   size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 4),
               Expanded(
@@ -170,7 +171,7 @@ class _HistorialItem extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Icons.access_time,
+              const Icon(LucideIcons.clock,
                   size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 4),
               Text(

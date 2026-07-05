@@ -2,6 +2,7 @@
 //
 // "Mis entregas": disponibilidad + lista de entregas en curso.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/entrega_model.dart';
@@ -159,7 +160,7 @@ class _DisponibilidadCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                provider.disponible ? Icons.bolt : Icons.pause_circle_outline,
+                provider.disponible ? LucideIcons.zap : LucideIcons.circlePause,
                 size: 18,
                 color: AppColors.pierVerde,
               ),
@@ -243,7 +244,7 @@ class _EntregaCard extends StatelessWidget {
             const Divider(height: 28),
             Row(
               children: [
-                const Icon(Icons.access_time,
+                const Icon(LucideIcons.clock,
                     size: 18, color: AppColors.textSecondary),
                 const SizedBox(width: 6),
                 Expanded(
@@ -418,7 +419,7 @@ class _DisponibleCardState extends State<_DisponibleCard> {
           const SizedBox(height: 2),
           Row(
             children: [
-              const Icon(Icons.place_outlined,
+              const Icon(LucideIcons.mapPin,
                   size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 4),
               Expanded(
@@ -436,7 +437,7 @@ class _DisponibleCardState extends State<_DisponibleCard> {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.access_time,
+                const Icon(LucideIcons.clock,
                     size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
                 Expanded(
@@ -475,7 +476,7 @@ class _DisponibleCardState extends State<_DisponibleCard> {
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.check, size: 20),
+                  : const Icon(LucideIcons.check, size: 20),
               label: Text(_aceptando ? 'Tomando…' : 'Tomar entrega'),
             ),
           ),
@@ -504,7 +505,7 @@ class _EmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                disponible ? Icons.local_shipping_outlined : Icons.pause_circle,
+                disponible ? LucideIcons.truck : LucideIcons.circlePause,
                 size: 46,
                 color: AppColors.pierVerde.withValues(alpha: 0.5),
               ),

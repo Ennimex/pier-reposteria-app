@@ -1,5 +1,6 @@
 // lib/presentation/screens/public/legal_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
 
@@ -52,7 +53,7 @@ class _LegalScreenState extends State<LegalScreen>
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -113,7 +114,7 @@ class _LegalScreenState extends State<LegalScreen>
                 controller: _tabController,
                 children: [
                   _buildContent(
-                    icon: Icons.privacy_tip_outlined,
+                    icon: LucideIcons.shieldAlert,
                     title: 'Aviso de Privacidad',
                     sections: [
                       _LegalSection(
@@ -144,7 +145,7 @@ class _LegalScreenState extends State<LegalScreen>
                     ],
                   ),
                   _buildContent(
-                    icon: Icons.description_outlined,
+                    icon: LucideIcons.fileText,
                     title: 'Términos y Condiciones',
                     sections: [
                       _LegalSection(
@@ -170,7 +171,7 @@ class _LegalScreenState extends State<LegalScreen>
                     ],
                   ),
                   _buildContent(
-                    icon: Icons.assignment_return_outlined,
+                    icon: LucideIcons.undo2,
                     title: 'Política de Devoluciones',
                     sections: [
                       _LegalSection(
@@ -275,7 +276,7 @@ class _LegalScreenState extends State<LegalScreen>
                   color: AppColors.textSecondary.withValues(alpha: 0.15)),
             ),
             child: Row(children: [
-              Icon(Icons.email_outlined,
+              Icon(LucideIcons.mail,
                   color: AppColors.pierVerde, size: 18),
               const SizedBox(width: 10),
               Column(

@@ -2,6 +2,7 @@
 //
 // Shell del módulo Repartidor: bottom nav Entregas / Historial / Perfil.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/entregas_provider.dart';
@@ -55,18 +56,18 @@ class _RepartidorMainScreenState extends State<RepartidorMainScreen> {
         unselectedLabelStyle: const TextStyle(fontSize: 12),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.local_shipping_outlined),
-            activeIcon: Icon(Icons.local_shipping),
+            icon: Icon(LucideIcons.truck),
+            activeIcon: Icon(LucideIcons.truck),
             label: 'Entregas',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history_outlined),
-            activeIcon: Icon(Icons.history),
+            icon: Icon(LucideIcons.history),
+            activeIcon: Icon(LucideIcons.history),
             label: 'Historial',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
+            icon: Icon(LucideIcons.user),
+            activeIcon: Icon(LucideIcons.user),
             label: 'Perfil',
           ),
         ],

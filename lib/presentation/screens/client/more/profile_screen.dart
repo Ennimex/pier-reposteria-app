@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/more/profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
@@ -357,7 +358,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             height: 100,
                                             color: AppColors.pierArena,
                                             child: const Icon(
-                                                Icons.cake_outlined,
+                                                LucideIcons.cake,
                                                 color:
                                                     AppColors.pierVerde),
                                           ),
@@ -422,7 +423,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 builder: (_) =>
                                     const OrdersScreen()));
                       },
-                      child: Icon(Icons.history_rounded,
+                      child: Icon(LucideIcons.history,
                           color: AppColors.textSecondary, size: 22),
                     ),
                   ],
@@ -634,7 +635,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 strokeWidth: 2,
                                 color: AppColors.pierVerde),
                           )
-                        : Icon(Icons.replay_rounded,
+                        : Icon(LucideIcons.rotateCcw,
                             size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(reordenando ? 'Agregando…' : 'Reordenar',
@@ -658,7 +659,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: AppColors.pierArena,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Icon(Icons.image_outlined,
+        child: const Icon(LucideIcons.image,
             color: AppColors.textSecondary, size: 22),
       );
 

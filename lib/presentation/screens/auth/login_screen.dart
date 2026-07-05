@@ -1,5 +1,6 @@
 // lib/presentation/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
@@ -78,72 +79,73 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Form(
             key: _formKey,
-            child: Column(
+            child: AutofillGroup(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
 
-                // ── BACK + LOGO ──────────────────────────────────
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 110, height: 110,
+                // ── BACK (esquina superior izquierda) ────────────
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        context.go(AppRoutes.main);
+                      }
+                    },
+                    child: Container(
+                      width: 40, height: 40,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.pierVerde.withValues(alpha: 0.2),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8)
                         ],
                       ),
-                      child: ClipOval(
-                        child: Padding(
-                          padding: const EdgeInsets.all(15),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, _, _) => const Icon(
-                                Icons.cake,
-                                size: 50,
-                                color: AppColors.pierVerde),
-                          ),
+                      child: const Icon(LucideIcons.chevronLeft,
+                          size: 16, color: AppColors.textPrimary),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // ── LOGO ─────────────────────────────────────────
+                Center(
+                  child: Container(
+                    width: 110, height: 110,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.pierVerde.withValues(alpha: 0.2),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Padding(
+                        padding: const EdgeInsets.all(15),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => const Icon(
+                              LucideIcons.cake,
+                              size: 50,
+                              color: AppColors.pierVerde),
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          if (Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                          } else {
-                            context.go(AppRoutes.main);
-                          }
-                        },
-                        child: Container(
-                          width: 40, height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.06),
-                                  blurRadius: 8)
-                            ],
-                          ),
-                          child: const Icon(Icons.arrow_back_ios_new,
-                              size: 16, color: AppColors.textPrimary),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
                 const Text('Bienvenido',
                     style: TextStyle(
@@ -163,8 +165,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 _field(
                   controller: _emailController,
                   label: 'Email',
-                  icon: Icons.email_outlined,
+                  icon: LucideIcons.mail,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Ingresa tu email';
                     if (!v.contains('@')) return 'Email inválido';
@@ -177,13 +181,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 _field(
                   controller: _passwordController,
                   label: 'Contraseña',
-                  icon: Icons.lock_outline_rounded,
+                  icon: LucideIcons.lock,
                   obscureText: !_isPasswordVisible,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
+                  onFieldSubmitted: (_) => _handleLogin(),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _isPasswordVisible
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
+                          ? LucideIcons.eye
+                          : LucideIcons.eyeOff,
                       color: AppColors.textSecondary,
                       size: 20,
                     ),
@@ -274,10 +281,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         : Image.asset(
                             'assets/images/google_logo.png',
                             height: 22, width: 22,
-                            errorBuilder: (_, _, _) => const Icon(
-                                Icons.g_mobiledata,
-                                size: 28,
-                                color: AppColors.textPrimary),
+                            errorBuilder: (_, _, _) => Container(
+                              width: 22, height: 22,
+                              alignment: Alignment.center,
+                              child: const Text('G',
+                                  style: TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF4285F4))),
+                            ),
                           ),
                     label: const Text('Continuar con Google',
                         style: TextStyle(
@@ -317,6 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
               ],
             ),
+            ),
           ),
         ),
       ),
@@ -331,11 +344,17 @@ class _LoginScreenState extends State<LoginScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     String? Function(String?)? validator,
+    TextInputAction? textInputAction,
+    List<String>? autofillHints,
+    void Function(String)? onFieldSubmitted,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       obscureText: obscureText,
+      textInputAction: textInputAction,
+      autofillHints: autofillHints,
+      onFieldSubmitted: onFieldSubmitted,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.pierVerde, size: 20),

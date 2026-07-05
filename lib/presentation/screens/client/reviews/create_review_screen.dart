@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/reviews/create_review_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
@@ -138,7 +139,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                         color: AppColors.pierVerde,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check_rounded,
+                      child: const Icon(LucideIcons.check,
                           color: Colors.white, size: 30),
                     ),
                   ],
@@ -171,7 +172,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               .withValues(alpha: 0.2))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Icon(Icons.cake_outlined,
+                    child: Icon(LucideIcons.cake,
                         size: 20,
                         color: AppColors.textSecondary
                             .withValues(alpha: 0.4)),
@@ -253,7 +254,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -301,7 +302,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               errorBuilder: (_, __, ___) => Container(
                                 width: 90, height: 90,
                                 color: AppColors.pierArena,
-                                child: const Icon(Icons.cake_outlined,
+                                child: const Icon(LucideIcons.cake,
                                     color: AppColors.pierVerde, size: 36),
                               ),
                             ),
@@ -517,7 +518,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.info_outline_rounded,
+                          Icon(LucideIcons.info,
                               size: 16, color: AppColors.textSecondary),
                           const SizedBox(width: 8),
                           Expanded(
@@ -546,7 +547,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white))
-                            : const Icon(Icons.send_rounded,
+                            : const Icon(LucideIcons.send,
                                 color: Colors.white, size: 18),
                         label: Text(
                             _enviando

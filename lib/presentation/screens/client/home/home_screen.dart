@@ -1,6 +1,7 @@
 // lib/presentation/screens/client/home/home_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
@@ -21,15 +22,15 @@ import '../notifications/notifications_screen.dart';
 
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
-    case 'pasteles':  return Icons.cake_outlined;
-    case 'roscas':    return Icons.donut_large_outlined;
-    case 'pays':      return Icons.pie_chart_outline;
-    case 'postres':   return Icons.cookie_outlined;
+    case 'pasteles':  return LucideIcons.cake;
+    case 'roscas':    return LucideIcons.donut;
+    case 'pays':      return LucideIcons.chartPie;
+    case 'postres':   return LucideIcons.cookie;
     case 'cafetería':
-    case 'cafeteria': return Icons.coffee_outlined;
-    case 'bebidas':   return Icons.local_drink_outlined;
-    case 'panes':     return Icons.breakfast_dining_outlined;
-    default:          return Icons.fastfood_outlined;
+    case 'cafeteria': return LucideIcons.coffee;
+    case 'bebidas':   return LucideIcons.cupSoda;
+    case 'panes':     return LucideIcons.croissant;
+    default:          return LucideIcons.sandwich;
   }
 }
 
@@ -64,11 +65,11 @@ class _HomeScreenState extends State<HomeScreen>
   String? _lastUserEmail;
 
   final List<Map<String, dynamic>> _categoriasFallback = [
-    {'nombre': 'Pasteles',  'icon': Icons.cake_outlined},
-    {'nombre': 'Roscas',    'icon': Icons.donut_large_outlined},
-    {'nombre': 'Pays',      'icon': Icons.pie_chart_outline},
-    {'nombre': 'Postres',   'icon': Icons.cookie_outlined},
-    {'nombre': 'Cafetería', 'icon': Icons.coffee_outlined},
+    {'nombre': 'Pasteles',  'icon': LucideIcons.cake},
+    {'nombre': 'Roscas',    'icon': LucideIcons.donut},
+    {'nombre': 'Pays',      'icon': LucideIcons.chartPie},
+    {'nombre': 'Postres',   'icon': LucideIcons.cookie},
+    {'nombre': 'Cafetería', 'icon': LucideIcons.coffee},
   ];
 
   // Sin fallbacks — si no hay datos del backend no se muestra la sección
@@ -373,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen>
               SliverToBoxAdapter(
                 child: _buildProductSection(
                   title: 'Recién llegados',
-                  titleIcon: Icons.new_releases_rounded,
+                  titleIcon: LucideIcons.badgeCheck,
                   productos: productProvider.nuevos,
                 ),
               ),
@@ -452,8 +453,8 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       child: Icon(
                         count > 0
-                            ? Icons.notifications_rounded
-                            : Icons.notifications_outlined,
+                            ? LucideIcons.bell
+                            : LucideIcons.bell,
                         color: AppColors.textPrimary, size: 20,
                       ),
                     ),
@@ -493,7 +494,7 @@ class _HomeScreenState extends State<HomeScreen>
     Color color;
     switch (estado) {
       case 'en_preparacion':
-        icon = Icons.blender_outlined;
+        icon = LucideIcons.cookingPot;
         mensaje = 'Pedido #$numero en preparación';
         color = AppColors.estadoPreparacion;
         break;
@@ -503,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen>
         color = AppColors.pierVerde;
         break;
       default:
-        icon = Icons.hourglass_empty_rounded;
+        icon = LucideIcons.hourglass;
         mensaje = 'Pedido #$numero recibido, en cola';
         color = AppColors.estadoPendiente;
     }
@@ -540,7 +541,7 @@ class _HomeScreenState extends State<HomeScreen>
                     color: color,
                     height: 1.3)),
           ),
-          Icon(Icons.chevron_right_rounded, color: color, size: 20),
+          Icon(LucideIcons.chevronRight, color: color, size: 20),
         ]),
       ),
     );
@@ -565,7 +566,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           child: Row(
             children: [
-              Icon(Icons.search_rounded, color: AppColors.textSecondary.withValues(alpha: 0.5), size: 20),
+              Icon(LucideIcons.search, color: AppColors.textSecondary.withValues(alpha: 0.5), size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text('Busca tu pastel favorit...',
@@ -621,7 +622,7 @@ class _HomeScreenState extends State<HomeScreen>
                     Image.network(slide['image']!, fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           color: AppColors.pierVerdeOscuro,
-                          child: const Icon(Icons.cake_outlined,
+                          child: const Icon(LucideIcons.cake,
                               color: Colors.white, size: 60),
                         )),
                     Container(
@@ -763,7 +764,7 @@ class _HomeScreenState extends State<HomeScreen>
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.local_fire_department_rounded,
+                child: const Icon(LucideIcons.flame,
                     color: Colors.white, size: 18),
               ),
               const SizedBox(width: 8),
@@ -783,7 +784,7 @@ class _HomeScreenState extends State<HomeScreen>
               if (tiempo.isNotEmpty) ...[
                 const Spacer(),
                 Row(children: [
-                  const Icon(Icons.timer_outlined,
+                  const Icon(LucideIcons.timer,
                       color: Colors.white70, size: 13),
                   const SizedBox(width: 4),
                   Text(tiempo,
@@ -838,7 +839,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.card_giftcard_rounded,
+                    const Icon(LucideIcons.gift,
                         color: AppColors.pierDorado, size: 16),
                     const SizedBox(width: 8),
                     Text(codigo,
@@ -874,7 +875,7 @@ class _HomeScreenState extends State<HomeScreen>
                               fontWeight: FontWeight.bold,
                               color: AppColors.pierVerdeOscuro)),
                       SizedBox(width: 6),
-                      Icon(Icons.arrow_forward_rounded,
+                      Icon(LucideIcons.arrowRight,
                           color: AppColors.pierVerdeOscuro, size: 16),
                     ],
                   ),
@@ -904,7 +905,7 @@ class _HomeScreenState extends State<HomeScreen>
                 color: Colors.amber.shade50,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.bolt_rounded,
+              child: Icon(LucideIcons.zap,
                   color: Colors.amber.shade700, size: 18),
             ),
             const SizedBox(width: 8),
@@ -1023,7 +1024,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 if (tiempo.isNotEmpty) ...[
                                   const Spacer(),
                                   Row(children: [
-                                    const Icon(Icons.timer_outlined,
+                                    const Icon(LucideIcons.timer,
                                         color: Colors.white70, size: 11),
                                     const SizedBox(width: 2),
                                     Text(tiempo,
@@ -1057,7 +1058,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             color: Colors.white,
                                             fontWeight: FontWeight.w600)),
                                     const SizedBox(width: 2),
-                                    Icon(Icons.arrow_forward_ios_rounded,
+                                    Icon(LucideIcons.chevronRight,
                                         size: 9,
                                         color:
                                             Colors.white.withValues(alpha: 0.9)),
@@ -1104,7 +1105,7 @@ class _HomeScreenState extends State<HomeScreen>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(children: [
-                  Icon(Icons.auto_awesome_rounded,
+                  Icon(LucideIcons.sparkles,
                       size: 13, color: AppColors.estadoCancelado),
                   SizedBox(width: 4),
                   Text('Temporada',
@@ -1231,12 +1232,12 @@ class _HomeScreenState extends State<HomeScreen>
                       ? Image.network(imagenUrl, fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             color: accent.withValues(alpha: 0.12),
-                            child: Icon(Icons.cake_outlined,
+                            child: Icon(LucideIcons.cake,
                                 color: accent, size: 40),
                           ))
                       : Container(
                           color: accent.withValues(alpha: 0.12),
-                          child: Icon(Icons.cake_outlined,
+                          child: Icon(LucideIcons.cake,
                               color: accent, size: 40),
                         ),
                   Positioned(
@@ -1267,7 +1268,7 @@ class _HomeScreenState extends State<HomeScreen>
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.auto_awesome_rounded,
+                          Icon(LucideIcons.sparkles,
                               size: 8, color: Colors.white),
                           SizedBox(width: 3),
                           Text('Temporada',
@@ -1349,7 +1350,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         fontWeight: FontWeight.w700,
                                         color: accent)),
                                 const SizedBox(width: 2),
-                                Icon(Icons.arrow_forward_ios_rounded,
+                                Icon(LucideIcons.chevronRight,
                                     size: 8, color: accent),
                               ],
                             ),
@@ -1382,7 +1383,7 @@ class _HomeScreenState extends State<HomeScreen>
                     colors: [AppColors.pierDorado, AppColors.pierDoradoOscuro]),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.auto_awesome_rounded,
+              child: const Icon(LucideIcons.sparkles,
                   color: Colors.white, size: 16),
             ),
             const SizedBox(width: 8),
@@ -1462,12 +1463,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
                                     color: AppColors.pierArena,
-                                    child: const Icon(Icons.cake_outlined,
+                                    child: const Icon(LucideIcons.cake,
                                         color: AppColors.pierDorado, size: 36),
                                   ))
                               : Container(
                                   color: AppColors.pierArena,
-                                  child: const Icon(Icons.cake_outlined,
+                                  child: const Icon(LucideIcons.cake,
                                       color: AppColors.pierDorado, size: 36),
                                 ),
                           // Badge dorado
@@ -1487,7 +1488,7 @@ class _HomeScreenState extends State<HomeScreen>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.auto_awesome_rounded,
+                                  const Icon(LucideIcons.sparkles,
                                       size: 8, color: Colors.white),
                                   const SizedBox(width: 3),
                                   Text(badge,
@@ -1567,7 +1568,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   // Tiempo restante
                                   if (tiempo.isNotEmpty)
                                     Row(children: [
-                                      const Icon(Icons.timer_outlined,
+                                      const Icon(LucideIcons.timer,
                                           size: 12,
                                           color: AppColors.pierDorado),
                                       const SizedBox(width: 3),
@@ -1675,7 +1676,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     return _buildProductSection(
       title: 'Pide de nuevo',
-      titleIcon: Icons.replay_rounded,
+      titleIcon: LucideIcons.rotateCcw,
       productos: listaProductos,
     );
   }
@@ -1819,7 +1820,7 @@ class _HomeScreenState extends State<HomeScreen>
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.storefront_rounded,
+                      child: const Icon(LucideIcons.store,
                           color: Colors.white, size: 22),
                     ),
                     const SizedBox(width: 14),
@@ -1846,7 +1847,7 @@ class _HomeScreenState extends State<HomeScreen>
                         color: Colors.white.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.chevron_right_rounded,
+                      child: const Icon(LucideIcons.chevronRight,
                           color: Colors.white, size: 20),
                     ),
                   ]),
@@ -1863,7 +1864,7 @@ class _HomeScreenState extends State<HomeScreen>
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.access_time_rounded,
+                      child: const Icon(LucideIcons.clock,
                           color: Colors.white, size: 22),
                     ),
                     const SizedBox(width: 14),
@@ -1976,7 +1977,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 Image.network(p.imagenUrl, fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(
                                       color: AppColors.pierArena,
-                                      child: const Icon(Icons.cake_outlined,
+                                      child: const Icon(LucideIcons.cake,
                                           color: AppColors.pierVerde, size: 40),
                                     )),
                                 Positioned(
@@ -2047,7 +2048,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               .withValues(alpha: 0.15),
                                           blurRadius: 6)],
                                     ),
-                                    child: const Icon(Icons.add_rounded,
+                                    child: const Icon(LucideIcons.plus,
                                         color: Colors.white, size: 18),
                                   ),
                                 ),
@@ -2141,8 +2142,8 @@ class _HomeScreenState extends State<HomeScreen>
   // ── POR QUÉ ELEGIRNOS ─────────────────────────────────────────────
   Widget _buildWhyUs() {
     final features = [
-      {'icon': Icons.eco_outlined,             'title': 'Natural',   'desc': 'Sin conservadores'},
-      {'icon': Icons.handshake_outlined,       'title': 'Artesanal', 'desc': 'Hecho a mano'},
+      {'icon': LucideIcons.leaf,             'title': 'Natural',   'desc': 'Sin conservadores'},
+      {'icon': LucideIcons.handshake,       'title': 'Artesanal', 'desc': 'Hecho a mano'},
       {'icon': Icons.star_outline_rounded,     'title': 'Calidad',   'desc': 'Ingredientes Premium'},
       {'icon': Icons.favorite_outline_rounded, 'title': 'Amor',      'desc': 'Recetas de casa'},
     ];

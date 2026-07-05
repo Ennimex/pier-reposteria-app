@@ -1,5 +1,6 @@
 // lib/presentation/screens/splash/splash_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
@@ -108,7 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
                             errorBuilder: (_, _, _) => const Icon(
-                                Icons.cake,
+                                LucideIcons.cake,
                                 size: 60,
                                 color: AppColors.pierVerde),
                           ),

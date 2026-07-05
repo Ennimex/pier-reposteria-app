@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/checkout/checkout_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -418,7 +419,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(children: [
-                          Icon(Icons.local_offer_rounded,
+                          Icon(LucideIcons.tag,
                               size: 14, color: AppColors.pierVerde),
                           const SizedBox(width: 6),
                           Text('Descuentos aplicados',
@@ -447,7 +448,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(children: [
-                          const Icon(Icons.local_shipping_outlined,
+                          const Icon(LucideIcons.truck,
                               size: 16, color: AppColors.textSecondary),
                           const SizedBox(width: 6),
                           Text('Costo de envío',
@@ -501,7 +502,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: _modalidadCard(
                     seleccionada: !_esDomicilio,
-                    icon: Icons.store_rounded,
+                    icon: LucideIcons.store,
                     titulo: 'Recoger',
                     sub: 'En sucursal',
                     onTap: () => setState(() => _tipoEntrega = 'pickup'),
@@ -511,7 +512,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Expanded(
                   child: _modalidadCard(
                     seleccionada: _esDomicilio,
-                    icon: Icons.delivery_dining_rounded,
+                    icon: LucideIcons.bike,
                     titulo: 'Domicilio',
                     sub: 'Envío a tu casa',
                     onTap: () => setState(() => _tipoEntrega = 'domicilio'),
@@ -540,7 +541,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.credit_card,
+                    child: const Icon(LucideIcons.creditCard,
                         color: AppColors.pierVerde, size: 24),
                   ),
                   const SizedBox(width: 14),
@@ -559,7 +560,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ],
                     ),
                   ),
-                  Icon(Icons.lock_rounded,
+                  Icon(LucideIcons.lock,
                       color: AppColors.pierVerde, size: 20),
                 ],
               ),
@@ -575,7 +576,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
                 ),
                 child: Row(children: [
-                  Icon(Icons.error_outline,
+                  Icon(LucideIcons.circleAlert,
                       color: AppColors.error, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
@@ -622,7 +623,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.lock_rounded,
+                  Icon(LucideIcons.lock,
                       size: 13, color: AppColors.textSecondary.withValues(alpha: 0.5)),
                   const SizedBox(width: 4),
                   Text('Pago cifrado y seguro con Stripe',
@@ -644,7 +645,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Container(
           decoration: _cardDecoration(),
           child: ListTile(
-            leading: const Icon(Icons.store, color: AppColors.pierDorado),
+            leading: const Icon(LucideIcons.store, color: AppColors.pierDorado),
             title: const Text(BusinessInfo.sucursal,
                 style: TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(_direccionSucursal),
@@ -652,7 +653,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
                   color: AppColors.pierVerde, shape: BoxShape.circle),
-              child: const Icon(Icons.check, color: Colors.white, size: 16),
+              child: const Icon(LucideIcons.check, color: Colors.white, size: 16),
             ),
           ),
         ),
@@ -690,7 +691,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       color: AppColors.pierVerde.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.add_location_alt_outlined,
+                  const Icon(LucideIcons.mapPinPlus,
                       color: AppColors.pierVerde, size: 20),
                   const SizedBox(width: 10),
                   const Text('Agregar dirección',
@@ -733,8 +734,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               children: [
                 Icon(
                   sel
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
+                      ? LucideIcons.circleDot
+                      : LucideIcons.circle,
                   color: sel
                       ? AppColors.pierVerde
                       : AppColors.textSecondary.withValues(alpha: 0.5),
@@ -817,7 +818,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   decoration: _cardDecoration(),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today,
+                      const Icon(LucideIcons.calendar,
                           size: 20, color: AppColors.pierVerde),
                       const SizedBox(width: 10),
                       Text(
@@ -847,10 +848,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down,
+                  icon: const Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
                   hint: const Row(children: [
-                    Icon(Icons.access_time,
+                    Icon(LucideIcons.clock,
                         size: 20, color: AppColors.pierVerde),
                     SizedBox(width: 10),
                     Text('Hora'),
@@ -1061,9 +1062,9 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 18),
-            _field(_aliasCtrl, 'Alias (Casa, Trabajo…)', Icons.bookmark_outline),
+            _field(_aliasCtrl, 'Alias (Casa, Trabajo…)', LucideIcons.bookmark),
             const SizedBox(height: 12),
-            _field(_calleCtrl, 'Calle y número, interior', Icons.home_outlined),
+            _field(_calleCtrl, 'Calle y número, interior', LucideIcons.house),
             const SizedBox(height: 12),
 
             // Colonia (solo las que tienen cobertura)
@@ -1098,13 +1099,13 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     hint: const Row(children: [
-                      Icon(Icons.location_city_outlined,
+                      Icon(LucideIcons.building2,
                           size: 20, color: AppColors.pierVerde),
                       SizedBox(width: 10),
                       Text('Colonia'),
                     ]),
                     value: _colonia,
-                    icon: const Icon(Icons.arrow_drop_down,
+                    icon: const Icon(LucideIcons.chevronDown,
                         color: AppColors.pierVerde),
                     items: _colonias.map((c) {
                       final nombre = c['colonia']?.toString() ?? '';
@@ -1122,7 +1123,7 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
             if (_tarifaSel != null) ...[
               const SizedBox(height: 8),
               Row(children: [
-                const Icon(Icons.local_shipping_outlined,
+                const Icon(LucideIcons.truck,
                     size: 16, color: AppColors.pierVerde),
                 const SizedBox(width: 6),
                 Text('Envío: \$${_tarifaSel!.toStringAsFixed(0)} MXN',
@@ -1133,9 +1134,9 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
               ]),
             ],
             const SizedBox(height: 12),
-            _field(_refCtrl, 'Referencias (opcional)', Icons.info_outline),
+            _field(_refCtrl, 'Referencias (opcional)', LucideIcons.info),
             const SizedBox(height: 12),
-            _field(_telCtrl, 'Teléfono de contacto (opcional)', Icons.phone_outlined,
+            _field(_telCtrl, 'Teléfono de contacto (opcional)', LucideIcons.phone,
                 keyboard: TextInputType.phone),
             const SizedBox(height: 22),
             SizedBox(

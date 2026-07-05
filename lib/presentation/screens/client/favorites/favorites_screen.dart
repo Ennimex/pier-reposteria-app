@@ -1,7 +1,10 @@
 // lib/presentation/screens/client/favorites/favorites_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../widgets/skeletons.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../data/models/product_model.dart';
@@ -15,15 +18,15 @@ import '../products/product_detail_screen.dart';
 // Icono de fallback según nombre de categoría
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
-    case 'pasteles': return Icons.cake_outlined;
-    case 'roscas': return Icons.donut_large_outlined;
-    case 'pays': return Icons.pie_chart_outline;
-    case 'postres': return Icons.cookie_outlined;
+    case 'pasteles': return LucideIcons.cake;
+    case 'roscas': return LucideIcons.donut;
+    case 'pays': return LucideIcons.chartPie;
+    case 'postres': return LucideIcons.cookie;
     case 'cafetería':
-    case 'cafeteria': return Icons.coffee_outlined;
-    case 'bebidas': return Icons.local_drink_outlined;
-    case 'panes': return Icons.breakfast_dining_outlined;
-    default: return Icons.fastfood_outlined;
+    case 'cafeteria': return LucideIcons.coffee;
+    case 'bebidas': return LucideIcons.cupSoda;
+    case 'panes': return LucideIcons.croissant;
+    default: return LucideIcons.sandwich;
   }
 }
 
@@ -47,10 +50,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   // Fallback si el API no responde
   final List<Map<String, dynamic>> _categoriasFallback = [
-    {'nombre': 'Pasteles', 'icon': Icons.cake_outlined},
-    {'nombre': 'Roscas',   'icon': Icons.donut_large_outlined},
-    {'nombre': 'Pays',     'icon': Icons.pie_chart_outline},
-    {'nombre': 'Cafetería', 'icon': Icons.coffee_outlined},
+    {'nombre': 'Pasteles', 'icon': LucideIcons.cake},
+    {'nombre': 'Roscas',   'icon': LucideIcons.donut},
+    {'nombre': 'Pays',     'icon': LucideIcons.chartPie},
+    {'nombre': 'Cafetería', 'icon': LucideIcons.coffee},
   ];
 
   List<Product> get _filtered {
@@ -151,8 +154,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
         child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: AppColors.pierVerde))
+            ? GridView.count(
+                padding: const EdgeInsets.fromLTRB(16, 80, 16, 40),
+                crossAxisCount: 2,
+                childAspectRatio: 0.72,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                children: List.generate(
+                    4, (_) => const ProductSkeletonCard()),
+              )
             : CustomScrollView(
                 slivers: [
                   // ── HEADER ──────────────────────────────────────
@@ -175,7 +185,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                       offset: const Offset(0, 2))
                                 ],
                               ),
-                              child: const Icon(Icons.arrow_back_ios_new,
+                              child: const Icon(LucideIcons.chevronLeft,
                                   size: 16, color: AppColors.textPrimary),
                             ),
                           ),
@@ -215,11 +225,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             hintText: 'Buscar en favoritos...',
                             hintStyle: TextStyle(
                                 color: Colors.grey[400], fontSize: 14),
-                            prefixIcon: const Icon(Icons.search_rounded,
+                            prefixIcon: const Icon(LucideIcons.search,
                                 color: AppColors.pierVerde, size: 22),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.close_rounded,
+                                    icon: const Icon(LucideIcons.x,
                                         color: Colors.grey, size: 18),
                                     onPressed: () {
                                       _searchController.clear();
@@ -266,7 +276,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.search_off_rounded,
+                            Icon(LucideIcons.searchX,
                                 size: 56, color: Colors.grey[300]),
                             const SizedBox(height: 16),
                             Text('Sin resultados para "$_searchQuery"',
@@ -281,7 +291,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
                       sliver: SliverGrid(
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildCard(filtered[index], prov),
+                          (context, index) => _buildCard(filtered[index], prov)
+                              .animate()
+                              .fadeIn(
+                                duration: 350.ms,
+                                delay: (40 * (index % 6)).ms,
+                                curve: Curves.easeOut,
+                              )
+                              .slideY(begin: 0.08, end: 0, curve: Curves.easeOutCubic),
                           childCount: filtered.length,
                         ),
                         gridDelegate:
@@ -335,7 +352,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => Container(
                         color: AppColors.pierArena,
-                        child: const Icon(Icons.cake_outlined,
+                        child: const Icon(LucideIcons.cake,
                             color: AppColors.pierVerde, size: 36),
                       ),
                     ),
@@ -440,7 +457,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                               color: AppColors.pierVerde,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.add_rounded,
+                            child: const Icon(LucideIcons.plus,
                                 color: Colors.white, size: 22),
                           ),
                         ),
@@ -525,7 +542,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   context.read<NavigationProvider>().goCatalogo();
                 } catch (_) {}
               },
-              icon: const Icon(Icons.restaurant_menu_rounded,
+              icon: const Icon(LucideIcons.utensilsCrossed,
                   color: Colors.white, size: 18),
               label: const Text('Ver Menú',
                   style: TextStyle(

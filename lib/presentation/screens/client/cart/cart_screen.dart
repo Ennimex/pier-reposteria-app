@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/cart/cart_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/providers/cart_provider.dart';
@@ -83,7 +84,7 @@ class _CartScreenState extends State<CartScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                 child: Row(children: [
-                  const Icon(Icons.shopping_bag_outlined,
+                  const Icon(LucideIcons.shoppingBag,
                       size: 13, color: AppColors.pierVerde),
                   const SizedBox(width: 5),
                   Text(
@@ -108,7 +109,7 @@ class _CartScreenState extends State<CartScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.local_offer_rounded,
+                          Icon(LucideIcons.tag,
                               size: 11, color: AppColors.pierVerde),
                           const SizedBox(width: 4),
                           Text(
@@ -164,7 +165,7 @@ class _CartScreenState extends State<CartScreen> {
           color: AppColors.error,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(Icons.delete_outline_rounded,
+        child: const Icon(LucideIcons.trash2,
             color: Colors.white, size: 26),
       ),
       onDismissed: (_) => cart.removeItem(item.lineKey),
@@ -192,7 +193,7 @@ class _CartScreenState extends State<CartScreen> {
                 errorBuilder: (_, __, ___) => Container(
                   width: 76, height: 76,
                   color: AppColors.pierArena,
-                  child: const Icon(Icons.cake_outlined,
+                  child: const Icon(LucideIcons.cake,
                       color: AppColors.pierVerde, size: 30),
                 ),
               ),
@@ -273,8 +274,8 @@ class _CartScreenState extends State<CartScreen> {
                     children: [
                       _qtyBtn(
                         icon: item.quantity == 1
-                            ? Icons.delete_outline_rounded
-                            : Icons.remove_rounded,
+                            ? LucideIcons.trash2
+                            : LucideIcons.minus,
                         color: item.quantity == 1
                             ? AppColors.error
                             : AppColors.pierVerde,
@@ -290,7 +291,7 @@ class _CartScreenState extends State<CartScreen> {
                                 color: AppColors.textPrimary)),
                       ),
                       _qtyBtn(
-                        icon: Icons.add_rounded,
+                        icon: LucideIcons.plus,
                         color: AppColors.pierVerde,
                         onTap: () => cart.addItem(
                           Product(
@@ -378,7 +379,7 @@ class _CartScreenState extends State<CartScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(children: [
-                  Icon(Icons.local_offer_rounded,
+                  Icon(LucideIcons.tag,
                       size: 14, color: AppColors.pierVerde),
                   const SizedBox(width: 6),
                   Text('Descuentos',
@@ -440,7 +441,7 @@ class _CartScreenState extends State<CartScreen> {
                 MaterialPageRoute(
                     builder: (_) => const CheckoutScreen()),
               ),
-              icon: const Icon(Icons.payment_rounded,
+              icon: const Icon(LucideIcons.creditCard,
                   color: Colors.white, size: 20),
               label: const Text('Proceder al Pago',
                   style: TextStyle(
@@ -471,7 +472,7 @@ class _CartScreenState extends State<CartScreen> {
               color: AppColors.pierVerde.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.shopping_bag_outlined,
+            child: Icon(LucideIcons.shoppingBag,
                 size: 50,
                 color: AppColors.pierVerde.withValues(alpha: 0.5)),
           ),
@@ -492,7 +493,7 @@ class _CartScreenState extends State<CartScreen> {
           ElevatedButton.icon(
             onPressed: () =>
                 context.read<NavigationProvider>().goCatalogo(),
-            icon: const Icon(Icons.storefront_outlined,
+            icon: const Icon(LucideIcons.store,
                 color: Colors.white, size: 18),
             label: const Text('Ver Catálogo',
                 style: TextStyle(

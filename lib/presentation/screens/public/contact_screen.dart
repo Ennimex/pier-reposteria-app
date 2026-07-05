@@ -1,5 +1,6 @@
 // lib/presentation/screens/public/contact_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
@@ -181,7 +182,7 @@ class _ContactScreenState extends State<ContactScreen> {
                         color: AppColors.pierVerde,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check_rounded,
+                      child: const Icon(LucideIcons.check,
                           color: Colors.white, size: 30),
                     ),
                   ],
@@ -210,7 +211,7 @@ class _ContactScreenState extends State<ContactScreen> {
                             .withValues(alpha: 0.2))),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.storefront_outlined,
+                  child: Icon(LucideIcons.store,
                       size: 18,
                       color: AppColors.textSecondary
                           .withValues(alpha: 0.4)),
@@ -274,7 +275,7 @@ class _ContactScreenState extends State<ContactScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -314,7 +315,7 @@ class _ContactScreenState extends State<ContactScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(
-                                Icons.chat_bubble_outline_rounded,
+                                LucideIcons.messageCircle,
                                 color: AppColors.pierVerde, size: 20),
                             const SizedBox(width: 10),
                             Expanded(
@@ -387,7 +388,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                     horizontal: 16)),
                             initialValue: _tipoProducto,
                             icon: const Icon(
-                                Icons.keyboard_arrow_down_rounded,
+                                LucideIcons.chevronDown,
                                 color: AppColors.pierVerde),
                             items: _tiposProducto
                                 .map((t) => DropdownMenuItem(
@@ -460,7 +461,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: Colors.white))
-                              : const Icon(Icons.send_rounded,
+                              : const Icon(LucideIcons.send,
                                   color: Colors.white, size: 18),
                           label: Text(
                               _enviando ? 'Enviando...' : 'Enviar Mensaje',
@@ -494,12 +495,12 @@ class _ContactScreenState extends State<ContactScreen> {
                               color: AppColors.textPrimary)),
                       const SizedBox(height: 14),
                       _contactTile(
-                          Icons.phone_outlined, _telefono, 'Llámanos'),
+                          LucideIcons.phone, _telefono, 'Llámanos'),
                       const SizedBox(height: 10),
-                      _contactTile(Icons.email_outlined,
+                      _contactTile(LucideIcons.mail,
                           _emailContacto, 'Escríbenos'),
                       const SizedBox(height: 10),
-                      _contactTile(Icons.access_time_rounded,
+                      _contactTile(LucideIcons.clock,
                           _horario, 'Horario de atención'),
                       const SizedBox(height: 16),
 
@@ -509,7 +510,7 @@ class _ContactScreenState extends State<ContactScreen> {
                         height: 50,
                         child: ElevatedButton.icon(
                           onPressed: _abrirWhatsApp,
-                          icon: const Icon(Icons.message_rounded,
+                          icon: const Icon(LucideIcons.messageSquare,
                               color: Colors.white, size: 18),
                           label: const Text(
                             'Escríbenos por WhatsApp',

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
@@ -322,7 +323,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, _) => Container(
                         color: AppColors.pierArena,
-                        child: const Icon(Icons.image_outlined,
+                        child: const Icon(LucideIcons.image,
                             size: 60, color: AppColors.textSecondary),
                       ),
                     ),
@@ -333,7 +334,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _topBtn(Icons.arrow_back_rounded,
+                        _topBtn(LucideIcons.arrowLeft,
                             () => Navigator.pop(context)),
                         Row(children: [
                           _topBtn(
@@ -344,7 +345,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             color: _isFavorite ? Colors.red : null,
                           ),
                           const SizedBox(width: 10),
-                          _topBtn(Icons.share_rounded, _shareProduct),
+                          _topBtn(LucideIcons.share2, _shareProduct),
                         ]),
                       ],
                     ),
@@ -362,23 +363,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           if (tienePromo) ...[
                             if (porcentaje != null)
                               _detailBadge(Colors.red.shade500,
-                                  icon: Icons.local_offer_rounded,
+                                  icon: LucideIcons.tag,
                                   label: '-$porcentaje%'),
                             if (tipo == 'relampago')
                               _detailBadge(Colors.orange.shade600,
-                                  icon: Icons.bolt_rounded,
+                                  icon: LucideIcons.zap,
                                   label: 'Oferta Relámpago'),
                             if (tipo == 'temporada')
                               _detailBadge(Colors.orange.shade700,
-                                  icon: Icons.auto_awesome_rounded,
+                                  icon: LucideIcons.sparkles,
                                   label: nombreTemporada ?? 'De Temporada'),
                             if (tipo == 'nuevo')
                               _detailBadge(Colors.blue.shade500,
-                                  icon: Icons.fiber_new_rounded,
+                                  icon: LucideIcons.badgePlus,
                                   label: 'Nuevo'),
                             if (tipo == 'destacado' && badgeDestacado != null)
                               _detailBadge(Colors.purple.shade500,
-                                  icon: Icons.auto_awesome_rounded,
+                                  icon: LucideIcons.sparkles,
                                   label: badgeDestacado),
                           ],
                         ],
@@ -529,19 +530,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         children: [
                           if (tipo == 'relampago')
                             _detailBadge(Colors.orange.shade600,
-                                icon: Icons.bolt_rounded,
+                                icon: LucideIcons.zap,
                                 label: 'Oferta Relámpago'),
                           if (tipo == 'temporada')
                             _detailBadge(Colors.orange.shade700,
-                                icon: Icons.auto_awesome_rounded,
+                                icon: LucideIcons.sparkles,
                                 label: nombreTemporada ?? 'De Temporada'),
                           if (tipo == 'nuevo')
                             _detailBadge(Colors.blue.shade500,
-                                icon: Icons.fiber_new_rounded,
+                                icon: LucideIcons.badgePlus,
                                 label: 'Nuevo'),
                           if (tipo == 'destacado' && badgeDestacado != null)
                             _detailBadge(Colors.purple.shade500,
-                                icon: Icons.auto_awesome_rounded,
+                                icon: LucideIcons.sparkles,
                                 label: badgeDestacado),
                         ],
                       ),
@@ -703,7 +704,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                               borderRadius: BorderRadius.circular(50),
                             ),
                             child: Row(children: [
-                              _qtyBtn(Icons.remove_rounded, () {
+                              _qtyBtn(LucideIcons.minus, () {
                                 if (_quantity > 1)
                                   setState(() => _quantity--);
                               }),
@@ -715,7 +716,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold)),
                               ),
-                              _qtyBtn(Icons.add_rounded, () {
+                              _qtyBtn(LucideIcons.plus, () {
                                 if (_quantity < 10)
                                   setState(() => _quantity++);
                               }),
@@ -746,7 +747,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           const Icon(
-                                              Icons.shopping_cart_rounded,
+                                              LucideIcons.shoppingCart,
                                               color: Colors.white,
                                               size: 18),
                                           if (wide) ...[
@@ -822,7 +823,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     product: widget.product)),
                           ).then((_) => _cargarDetalle()),
                           child: const Row(children: [
-                            Icon(Icons.edit_rounded,
+                            Icon(LucideIcons.pencil,
                                 color: AppColors.pierVerde, size: 16),
                             SizedBox(width: 4),
                             Text('Escribir',
@@ -1010,7 +1011,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
                       color: AppColors.pierArena,
-                      child: const Icon(Icons.cake_outlined,
+                      child: const Icon(LucideIcons.cake,
                           color: AppColors.pierVerde, size: 40),
                     ),
                   ),
@@ -1055,23 +1056,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         if (tienePromo) ...[
                           if (porcentajeRel != null)
                             _detailBadge(Colors.red.shade500,
-                                icon: Icons.local_offer_rounded,
+                                icon: LucideIcons.tag,
                                 label: '-$porcentajeRel%', small: true),
                           if (tipoRel == 'relampago')
                             _detailBadge(Colors.orange.shade600,
-                                icon: Icons.bolt_rounded,
+                                icon: LucideIcons.zap,
                                 label: 'Flash', small: true),
                           if (tipoRel == 'temporada')
                             _detailBadge(Colors.orange.shade700,
-                                icon: Icons.auto_awesome_rounded,
+                                icon: LucideIcons.sparkles,
                                 label: 'Temporada', small: true),
                           if (tipoRel == 'destacado' && badgeDestacadoRel != null)
                             _detailBadge(Colors.purple.shade500,
-                                icon: Icons.auto_awesome_rounded,
+                                icon: LucideIcons.sparkles,
                                 label: badgeDestacadoRel, small: true),
                           if (tipoRel == 'nuevo')
                             _detailBadge(Colors.blue.shade500,
-                                icon: Icons.fiber_new_rounded,
+                                icon: LucideIcons.badgePlus,
                                 label: 'Nuevo', small: true),
                         ],
                       ],
@@ -1096,7 +1097,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   blurRadius: 6)],
                             ),
                             child: Icon(
-                              inCart ? Icons.check_rounded : Icons.add_rounded,
+                              inCart ? LucideIcons.check : LucideIcons.plus,
                               color: Colors.white, size: 18,
                             ),
                           ),
@@ -1389,8 +1390,8 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
                   children: [
                     Icon(
                       _hasLiked
-                          ? Icons.thumb_up_alt_rounded
-                          : Icons.thumb_up_off_alt_rounded,
+                          ? LucideIcons.thumbsUp
+                          : LucideIcons.thumbsUp,
                       color: _hasLiked
                           ? AppColors.pierVerde
                           : AppColors.textSecondary.withValues(alpha: 0.5),

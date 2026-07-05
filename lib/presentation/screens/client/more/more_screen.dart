@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/more/more_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -231,7 +232,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _buildDivider(),
               _buildTile(
-                icon: Icons.notifications_rounded,
+                icon: LucideIcons.bell,
                 iconColor: AppColors.pierVerde,
                 title: 'Notificaciones',
                 onTap: () => _goProtected(const NotificationsScreen()),
@@ -245,14 +246,14 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _buildDivider(),
               _buildTile(
-                icon: Icons.receipt_long_rounded,
+                icon: LucideIcons.receiptText,
                 iconColor: AppColors.pierVerde,
                 title: 'Mis Reembolsos',
                 onTap: () => _goProtected(const RefundsScreen()),
               ),
               _buildDivider(), // ✅ NUEVO
               _buildTile(     // ✅ NUEVO
-                icon: Icons.chat_bubble_outline_rounded,
+                icon: LucideIcons.messageCircle,
                 iconColor: AppColors.pierDoradoOscuro,
                 title: 'Quejas y Sugerencias',
                 onTap: () => _goProtected(QuejasScreen()),
@@ -278,7 +279,7 @@ class _MoreScreenState extends State<MoreScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _buildCard(children: [
               _buildTile(
-                icon: Icons.menu_book_rounded,
+                icon: LucideIcons.bookOpen,
                 iconColor: AppColors.pierVerde,
                 title: 'Nuestra Historia',
                 onTap: () => Navigator.push(context,
@@ -287,7 +288,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _buildDivider(),
               _buildTile(
-                icon: Icons.help_rounded,
+                icon: LucideIcons.circleHelp,
                 iconColor: AppColors.pierVerde,
                 title: 'Preguntas Frecuentes',
                 onTap: () => Navigator.push(context,
@@ -296,7 +297,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _buildDivider(),
               _buildTile(
-                icon: Icons.chat_bubble_rounded,
+                icon: LucideIcons.messageCircle,
                 iconColor: AppColors.pierVerde,
                 title: 'Contacto',
                 onTap: () => Navigator.push(context,
@@ -305,7 +306,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _buildDivider(),
               _buildTile(
-                icon: Icons.shield_rounded,
+                icon: LucideIcons.shield,
                 iconColor: AppColors.pierVerde,
                 title: 'Términos Legales y Privacidad',
                 onTap: () => Navigator.push(context,
@@ -323,10 +324,10 @@ class _MoreScreenState extends State<MoreScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(children: [
               Expanded(child: _buildBadgeCard(
-                  Icons.cookie_outlined, 'Artesanal', 'Hecho a mano')),
+                  LucideIcons.cookie, 'Artesanal', 'Hecho a mano')),
               const SizedBox(width: 12),
               Expanded(child: _buildBadgeCard(
-                  Icons.local_fire_department_outlined,
+                  LucideIcons.flame,
                   'Fresco', 'Horneado hoy')),
             ]),
           ),
@@ -355,7 +356,7 @@ class _MoreScreenState extends State<MoreScreen> {
                         color: AppColors.error.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.logout_rounded,
+                      child: const Icon(LucideIcons.logOut,
                           color: AppColors.error, size: 18),
                     ),
                     const SizedBox(width: 14),
@@ -376,11 +377,11 @@ class _MoreScreenState extends State<MoreScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _footerIcon(Icons.help_outline_rounded),
+                _footerIcon(LucideIcons.circleHelp),
                 const SizedBox(width: 20),
-                _footerIcon(Icons.privacy_tip_outlined),
+                _footerIcon(LucideIcons.shieldAlert),
                 const SizedBox(width: 20),
-                _footerIcon(Icons.info_outline_rounded),
+                _footerIcon(LucideIcons.info),
               ],
             ),
             const SizedBox(height: 10),
@@ -457,7 +458,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.location_on_rounded,
+                          child: const Icon(LucideIcons.mapPin,
                               color: Colors.white, size: 20),
                         ),
                         const SizedBox(width: 14),
@@ -495,7 +496,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.access_time_rounded,
+                          child: const Icon(LucideIcons.clock,
                               color: Colors.white, size: 20),
                         ),
                         const SizedBox(width: 14),
@@ -533,7 +534,7 @@ class _MoreScreenState extends State<MoreScreen> {
                               color: Colors.white.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.phone_rounded,
+                            child: const Icon(LucideIcons.phone,
                                 color: Colors.white, size: 20),
                           ),
                           const SizedBox(width: 14),
@@ -572,7 +573,7 @@ class _MoreScreenState extends State<MoreScreen> {
                               color: Colors.white.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.email_outlined,
+                            child: const Icon(LucideIcons.mail,
                                 color: Colors.white, size: 20),
                           ),
                           const SizedBox(width: 14),
@@ -619,7 +620,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.chat_bubble_outline_rounded,
+                                Icon(LucideIcons.messageCircle,
                                     color: Colors.white, size: 16),
                                 SizedBox(width: 8),
                                 Text('Enviar mensaje',
@@ -653,7 +654,7 @@ class _MoreScreenState extends State<MoreScreen> {
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(
               color: AppColors.pierVerdeOscuro,
-              child: const Icon(Icons.bakery_dining_outlined,
+              child: const Icon(LucideIcons.croissant,
                   color: Colors.white54, size: 60),
             ),
           ),
@@ -707,7 +708,7 @@ class _MoreScreenState extends State<MoreScreen> {
           height: 48,
           child: ElevatedButton.icon(
             onPressed: () => context.go(AppRoutes.login),
-            icon: const Icon(Icons.login_rounded,
+            icon: const Icon(LucideIcons.logIn,
                 color: Colors.white, size: 18),
             label: const Text('Iniciar Sesión',
                 style: TextStyle(
@@ -796,7 +797,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 border: Border.all(
                     color: Colors.white.withValues(alpha: 0.3)),
               ),
-              child: const Icon(Icons.chevron_right_rounded,
+              child: const Icon(LucideIcons.chevronRight,
                   color: Colors.white, size: 22),
             ),
           ),
@@ -863,7 +864,7 @@ class _MoreScreenState extends State<MoreScreen> {
               color: AppColors.pierDorado.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.workspace_premium_rounded,
+            child: const Icon(LucideIcons.award,
                 color: AppColors.pierDorado, size: 28),
           ),
         ]),
@@ -1002,7 +1003,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary)),
             ),
-            const Icon(Icons.chevron_right_rounded,
+            const Icon(LucideIcons.chevronRight,
                 color: AppColors.textSecondary, size: 20),
           ]),
         ),

@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/orders/order_detail_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/logger.dart';
@@ -64,7 +65,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -150,25 +151,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     _buildCard(
                       title: 'Información del pedido',
                       child: Column(children: [
-                        _infoRow(Icons.tag_rounded, 'Número',
+                        _infoRow(LucideIcons.tag, 'Número',
                             _order.numero),
                         _divider(),
-                        _infoRow(Icons.calendar_today_rounded,
+                        _infoRow(LucideIcons.calendar,
                             'Fecha',
                             _formatDateFull(_order.createdAt)),
                         if (_order.horarioRecogida != null) ...[
                           _divider(),
-                          _infoRow(Icons.access_time_rounded,
+                          _infoRow(LucideIcons.clock,
                               'Horario de recogida',
                               _order.horarioRecogida!),
                         ],
                         _divider(),
-                        _infoRow(Icons.storefront_rounded, 'Sucursal',
+                        _infoRow(LucideIcons.store, 'Sucursal',
                             'Principal — Huejutla de Reyes'),
                         if (_order.notas != null &&
                             _order.notas!.isNotEmpty) ...[
                           _divider(),
-                          _infoRow(Icons.note_outlined, 'Notas',
+                          _infoRow(LucideIcons.stickyNote, 'Notas',
                               _order.notas!),
                         ],
                       ]),
@@ -197,7 +198,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   borderRadius:
                                       BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.cake_outlined,
+                                child: const Icon(LucideIcons.cake,
                                     color: AppColors.pierVerde,
                                     size: 20),
                               ),
@@ -289,7 +290,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(esFallo ? Icons.error_outline : Icons.cancel_outlined,
+            Icon(esFallo ? LucideIcons.circleAlert : LucideIcons.circleX,
                 color: AppColors.error, size: 18),
             const SizedBox(width: 8),
             Text(esFallo ? 'No pudimos entregar el pedido' : 'Pedido cancelado',
@@ -305,15 +306,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final steps = _order.esDomicilio
         ? [
             (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
-            (OrderStatus.assigned,  'Asignado',   Icons.person_pin_circle_outlined),
-            (OrderStatus.onTheWay,  'En camino',  Icons.local_shipping_outlined),
-            (OrderStatus.delivered, 'Entregado',  Icons.done_all_rounded),
+            (OrderStatus.assigned,  'Asignado',   LucideIcons.userRound),
+            (OrderStatus.onTheWay,  'En camino',  LucideIcons.truck),
+            (OrderStatus.delivered, 'Entregado',  LucideIcons.checkCheck),
           ]
         : [
-            (OrderStatus.pending,   'Recibido',   Icons.inbox_rounded),
-            (OrderStatus.preparing, 'Preparando', Icons.blender_outlined),
+            (OrderStatus.pending,   'Recibido',   LucideIcons.inbox),
+            (OrderStatus.preparing, 'Preparando', LucideIcons.cookingPot),
             (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
-            (OrderStatus.completed, 'Entregado',  Icons.done_all_rounded),
+            (OrderStatus.completed, 'Entregado',  LucideIcons.checkCheck),
           ];
 
     final currentIdx =
@@ -510,15 +511,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   IconData _statusIcon(OrderStatus s) {
     switch (s) {
-      case OrderStatus.pending:   return Icons.inbox_rounded;
-      case OrderStatus.preparing: return Icons.blender_outlined;
+      case OrderStatus.pending:   return LucideIcons.inbox;
+      case OrderStatus.preparing: return LucideIcons.cookingPot;
       case OrderStatus.ready:     return Icons.check_circle_outline;
-      case OrderStatus.completed: return Icons.done_all_rounded;
-      case OrderStatus.cancelled: return Icons.cancel_outlined;
-      case OrderStatus.assigned:       return Icons.person_pin_circle_outlined;
-      case OrderStatus.onTheWay:       return Icons.local_shipping_outlined;
-      case OrderStatus.delivered:      return Icons.done_all_rounded;
-      case OrderStatus.deliveryFailed: return Icons.error_outline;
+      case OrderStatus.completed: return LucideIcons.checkCheck;
+      case OrderStatus.cancelled: return LucideIcons.circleX;
+      case OrderStatus.assigned:       return LucideIcons.userRound;
+      case OrderStatus.onTheWay:       return LucideIcons.truck;
+      case OrderStatus.delivered:      return LucideIcons.checkCheck;
+      case OrderStatus.deliveryFailed: return LucideIcons.circleAlert;
     }
   }
 

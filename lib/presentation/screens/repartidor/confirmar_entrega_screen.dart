@@ -4,6 +4,7 @@
 // en efectivo. Marca la entrega como "entregada".
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -115,7 +116,7 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
                 hintText: 'Ej. María Alejandra',
-                prefixIcon: Icon(Icons.person_outline,
+                prefixIcon: Icon(LucideIcons.user,
                     color: AppColors.textSecondary),
               ),
             ),
@@ -147,14 +148,14 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
               Row(
                 children: [
                   _sourceButton(
-                    icon: Icons.photo_camera,
+                    icon: LucideIcons.camera,
                     label: 'Cámara',
                     color: AppColors.pierVerde,
                     onTap: () => _pick(ImageSource.camera),
                   ),
                   const SizedBox(width: 14),
                   _sourceButton(
-                    icon: Icons.photo_library,
+                    icon: LucideIcons.images,
                     label: 'Galería',
                     color: AppColors.textSecondary,
                     onTap: () => _pick(ImageSource.gallery),
@@ -221,7 +222,7 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
                 color: Colors.black.withValues(alpha: 0.55),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close, color: Colors.white, size: 18),
+              child: const Icon(LucideIcons.x, color: Colors.white, size: 18),
             ),
           ),
         ),
@@ -285,7 +286,7 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              esEfectivo ? Icons.payments_outlined : Icons.credit_card,
+              esEfectivo ? LucideIcons.banknote : LucideIcons.creditCard,
               color: Colors.white,
               size: 22,
             ),

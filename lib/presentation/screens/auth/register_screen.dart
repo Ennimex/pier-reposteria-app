@@ -1,5 +1,6 @@
 // lib/presentation/screens/auth/register_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -121,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               blurRadius: 8)
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -147,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Image.asset(
                       'assets/images/logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Icon(Icons.cake,
+                      errorBuilder: (_, _, _) => const Icon(LucideIcons.cake,
                           size: 40, color: AppColors.pierVerde),
                     ),
                   ),
@@ -170,20 +171,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // ── CAMPOS ───────────────────────────────────────
                 _field(_nombreCtrl, 'Nombre',
-                    Icons.person_outline_rounded,
+                    LucideIcons.user,
                     validator: (v) =>
                         (v == null || v.length < 2)
                             ? 'Mínimo 2 caracteres'
                             : null),
                 const SizedBox(height: 12),
                 _field(_apellidoCtrl, 'Apellido',
-                    Icons.person_outline_rounded,
+                    LucideIcons.user,
                     validator: (v) =>
                         (v == null || v.length < 2)
                             ? 'Mínimo 2 caracteres'
                             : null),
                 const SizedBox(height: 12),
-                _field(_emailCtrl, 'Email', Icons.email_outlined,
+                _field(_emailCtrl, 'Email', LucideIcons.mail,
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) {
                       if (v == null || v.isEmpty) {
@@ -194,7 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     }),
                 const SizedBox(height: 12),
                 _field(_telefonoCtrl, 'Teléfono',
-                    Icons.phone_outlined,
+                    LucideIcons.phone,
                     keyboardType: TextInputType.phone,
                     validator: (v) =>
                         (v == null || v.length != 10)
@@ -202,13 +203,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             : null),
                 const SizedBox(height: 12),
                 _field(_passwordCtrl, 'Contraseña',
-                    Icons.lock_outline_rounded,
+                    LucideIcons.lock,
                     obscureText: !_isPasswordVisible,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                            ? LucideIcons.eye
+                            : LucideIcons.eyeOff,
                         color: AppColors.textSecondary, size: 20,
                       ),
                       onPressed: () => setState(
@@ -224,13 +225,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     }),
                 const SizedBox(height: 12),
                 _field(_confirmPasswordCtrl, 'Confirmar contraseña',
-                    Icons.lock_outline_rounded,
+                    LucideIcons.lock,
                     obscureText: !_isConfirmPasswordVisible,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isConfirmPasswordVisible
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                            ? LucideIcons.eye
+                            : LucideIcons.eyeOff,
                         color: AppColors.textSecondary, size: 20,
                       ),
                       onPressed: () => setState(() =>

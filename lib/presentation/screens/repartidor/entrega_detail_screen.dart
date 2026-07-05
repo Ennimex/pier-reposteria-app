@@ -1,20 +1,35 @@
 // lib/presentation/screens/repartidor/entrega_detail_screen.dart
 //
-// Detalle de una entrega: cliente, dirección y resumen de cobro, con las
-// acciones "Marcar entregado" y "Reportar problema".
+// Detalle de una entrega: cliente, dirección y resumen de cobro. Las acciones
+// respetan el flujo del backend: asignada -> "Salir en camino" (en_camino) ->
+// "Marcar entregado" (entregada). "Reportar" (fallida) está disponible en ambos.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/entrega_model.dart';
+import '../../../data/providers/entregas_provider.dart';
 import 'confirmar_entrega_screen.dart';
 import 'reportar_fallo_sheet.dart';
 import 'widgets/repartidor_ui.dart';
 
-class EntregaDetailScreen extends StatelessWidget {
+class EntregaDetailScreen extends StatefulWidget {
   final EntregaRepartidor entrega;
   const EntregaDetailScreen({super.key, required this.entrega});
 
-  bool get _puedeAccionar => entrega.isActiva;
+  @override
+  State<EntregaDetailScreen> createState() => _EntregaDetailScreenState();
+}
+
+class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
+  // Estado local: puede avanzar (asignada -> en_camino) sin salir de la pantalla.
+  late EstadoEntrega _estado = widget.entrega.estado;
+  bool _saliendo = false;
+
+  EntregaRepartidor get entrega => widget.entrega;
+  bool get _puedeAccionar =>
+      _estado == EstadoEntrega.asignada || _estado == EstadoEntrega.enCamino;
 
   Future<void> _llamar(BuildContext context) async {
     final tel = entrega.direccion.telefonoContacto ?? entrega.clienteTelefono;
@@ -36,14 +51,30 @@ class EntregaDetailScreen extends StatelessWidget {
     }
   }
 
-  void _snack(BuildContext context, String msg) {
+  void _snack(BuildContext context, String msg, {bool ok = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.error,
+        backgroundColor: ok ? AppColors.pierVerde : AppColors.error,
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  // asignada -> en_camino. Se queda en la pantalla y actualiza el botón.
+  Future<void> _salirEnCamino() async {
+    setState(() => _saliendo = true);
+    final res = await context
+        .read<EntregasProvider>()
+        .cambiarEstado(entrega.id, EstadoEntrega.enCamino);
+    if (!mounted) return;
+    setState(() => _saliendo = false);
+    if (res['success'] == true) {
+      setState(() => _estado = EstadoEntrega.enCamino);
+      _snack(context, 'Vas en camino. Confirma cuando entregues.', ok: true);
+    } else {
+      _snack(context, res['message']?.toString() ?? 'No se pudo actualizar');
+    }
   }
 
   Future<void> _marcarEntregado(BuildContext context) async {
@@ -98,8 +129,10 @@ class EntregaDetailScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => _reportarProblema(context),
-                        icon: const Icon(Icons.warning_amber_rounded, size: 18),
+                        onPressed: _saliendo
+                            ? null
+                            : () => _reportarProblema(context),
+                        icon: const Icon(LucideIcons.triangleAlert, size: 18),
                         label: const Text('Reportar'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
@@ -111,14 +144,37 @@ class EntregaDetailScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       flex: 2,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _marcarEntregado(context),
-                        icon: const Icon(Icons.check_circle_outline, size: 18),
-                        label: const Text('Marcar entregado'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
+                      child: _estado == EstadoEntrega.asignada
+                          ? ElevatedButton.icon(
+                              onPressed:
+                                  _saliendo ? null : () => _salirEnCamino(),
+                              icon: _saliendo
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(LucideIcons.truck,
+                                      size: 18),
+                              label: Text(
+                                  _saliendo ? 'Actualizando…' : 'Salir en camino'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.estadoEnCamino,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                            )
+                          : ElevatedButton.icon(
+                              onPressed: () => _marcarEntregado(context),
+                              icon: const Icon(Icons.check_circle_outline,
+                                  size: 18),
+                              label: const Text('Marcar entregado'),
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                            ),
                     ),
                   ],
                 ),
@@ -162,7 +218,7 @@ class EntregaDetailScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                EstadoEntregaChip(estado: entrega.estado),
+                EstadoEntregaChip(estado: _estado),
               ],
             ),
             const Divider(height: 28),
@@ -210,7 +266,7 @@ class EntregaDetailScreen extends StatelessWidget {
           children: [
             Row(
               children: const [
-                Icon(Icons.location_on, color: AppColors.pierVerde, size: 22),
+                Icon(LucideIcons.mapPin, color: AppColors.pierVerde, size: 22),
                 SizedBox(width: 8),
                 Text(
                   'Dirección de entrega',
@@ -281,7 +337,7 @@ class EntregaDetailScreen extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _llamar(context),
-                      icon: const Icon(Icons.phone, size: 18),
+                      icon: const Icon(LucideIcons.phone, size: 18),
                       label: const Text('Llamar'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
@@ -296,7 +352,7 @@ class EntregaDetailScreen extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _whatsapp(context),
-                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      icon: const Icon(LucideIcons.messageCircle, size: 18),
                       label: const Text('WhatsApp'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
@@ -387,8 +443,8 @@ class EntregaDetailScreen extends StatelessWidget {
               children: [
                 Icon(
                   entrega.esEfectivo
-                      ? Icons.payments_outlined
-                      : Icons.credit_card,
+                      ? LucideIcons.banknote
+                      : LucideIcons.creditCard,
                   size: 22,
                   color: entrega.esEfectivo
                       ? AppColors.pierDoradoOscuro

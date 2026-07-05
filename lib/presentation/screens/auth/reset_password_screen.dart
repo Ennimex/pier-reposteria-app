@@ -1,5 +1,6 @@
 // lib/presentation/screens/auth/reset_password_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -144,7 +145,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       color: AppColors.pierVerde,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check_rounded,
+                    child: const Icon(LucideIcons.check,
                         color: Colors.white, size: 30),
                   ),
                 ],
@@ -223,7 +224,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             offset: const Offset(0, 2))
                       ],
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new,
+                    child: const Icon(LucideIcons.chevronLeft,
                         size: 16, color: AppColors.textPrimary),
                   ),
                 ),
@@ -239,7 +240,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     color: AppColors.pierVerde.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.lock_reset_rounded,
+                  child: const Icon(LucideIcons.lock,
                       size: 44, color: AppColors.pierVerde),
                 ),
               ),
@@ -321,15 +322,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               _field(
                 controller: _passwordCtrl,
                 label: 'Nueva contraseña',
-                icon: Icons.lock_outline_rounded,
+                icon: LucideIcons.lock,
                 obscureText: !_isPasswordVisible,
                 // ✅ FIX: helper text sincronizado con backend
                 helperText: 'Mínimo 6 caracteres, 1 letra y 1 número',
                 suffixIcon: IconButton(
                   icon: Icon(
                     _isPasswordVisible
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+                        ? LucideIcons.eye
+                        : LucideIcons.eyeOff,
                     color: AppColors.textSecondary, size: 20,
                   ),
                   onPressed: () =>
@@ -342,13 +343,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               _field(
                 controller: _confirmPasswordCtrl,
                 label: 'Confirmar contraseña',
-                icon: Icons.lock_outline_rounded,
+                icon: LucideIcons.lock,
                 obscureText: !_isConfirmPasswordVisible,
                 suffixIcon: IconButton(
                   icon: Icon(
                     _isConfirmPasswordVisible
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+                        ? LucideIcons.eye
+                        : LucideIcons.eyeOff,
                     color: AppColors.textSecondary, size: 20,
                   ),
                   onPressed: () => setState(() =>

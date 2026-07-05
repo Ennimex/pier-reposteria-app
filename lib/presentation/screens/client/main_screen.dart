@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/main_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/cart_provider.dart';
@@ -109,7 +110,7 @@ class _MainScreenState extends State<MainScreen> {
                       title: 'Mis Pedidos',
                       message:
                           'Inicia sesión para hacer seguimiento a tus compras y ver tu historial.',
-                      icon: Icons.receipt_long,
+                      icon: LucideIcons.receiptText,
                     ),
                   ),
             // Tab 4 — Más
@@ -132,13 +133,13 @@ class _MainScreenState extends State<MainScreen> {
           unselectedLabelStyle: const TextStyle(fontSize: 12),
           items: [
             const BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
+              icon: Icon(LucideIcons.house),
+              activeIcon: Icon(LucideIcons.house),
               label: 'Inicio',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.storefront_outlined),
-              activeIcon: Icon(Icons.storefront),
+              icon: Icon(LucideIcons.store),
+              activeIcon: Icon(LucideIcons.store),
               label: 'Catálogo',
             ),
             BottomNavigationBarItem(
@@ -146,7 +147,7 @@ class _MainScreenState extends State<MainScreen> {
                 builder: (context, cart, _) => Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    const Icon(Icons.shopping_cart_outlined),
+                    const Icon(LucideIcons.shoppingCart),
                     if (cart.totalQuantity > 0)
                       Positioned(
                         right: -5, top: -5,
@@ -170,17 +171,17 @@ class _MainScreenState extends State<MainScreen> {
                   ],
                 ),
               ),
-              activeIcon: const Icon(Icons.shopping_cart),
+              activeIcon: const Icon(LucideIcons.shoppingCart),
               label: 'Carrito',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long),
+              icon: Icon(LucideIcons.receiptText),
+              activeIcon: Icon(LucideIcons.receiptText),
               label: 'Pedidos',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.menu),
-              activeIcon: Icon(Icons.menu_open),
+              icon: Icon(LucideIcons.menu),
+              activeIcon: Icon(LucideIcons.menu),
               label: 'Más',
             ),
           ],
@@ -270,7 +271,7 @@ class _LoginRequiredView extends StatelessWidget {
                       MaterialPageRoute(
                           builder: (_) => const LoginScreen()),
                     ),
-                    icon: const Icon(Icons.login_rounded,
+                    icon: const Icon(LucideIcons.logIn,
                         color: Colors.white, size: 18),
                     label: const Text('Iniciar Sesión',
                         style: TextStyle(

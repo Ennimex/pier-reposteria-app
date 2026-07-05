@@ -1,5 +1,6 @@
 // lib/presentation/screens/public/faq_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
 import 'contact_screen.dart';
@@ -108,7 +109,7 @@ class _FAQScreenState extends State<FAQScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -247,7 +248,7 @@ class _FAQScreenState extends State<FAQScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(children: [
-        const Icon(Icons.chat_bubble_outline_rounded,
+        const Icon(LucideIcons.messageCircle,
             color: Colors.white, size: 28),
         const SizedBox(width: 14),
         Expanded(

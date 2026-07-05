@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/more/edit_profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -183,7 +184,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -275,7 +276,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
-                                      Icons.camera_alt_rounded,
+                                      LucideIcons.camera,
                                       color: Colors.white,
                                       size: 16),
                                 ),
@@ -299,7 +300,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       _field(
                         controller: _nombreCtrl,
                         hint: 'Alejandro',
-                        icon: Icons.person_outline_rounded,
+                        icon: LucideIcons.user,
                         validator: (v) =>
                             (v == null || v.trim().isEmpty)
                                 ? 'Ingresa tu nombre'
@@ -313,7 +314,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       _field(
                         controller: _apellidoCtrl,
                         hint: 'Reyes',
-                        icon: Icons.person_outline_rounded,
+                        icon: LucideIcons.user,
                       ),
                       const SizedBox(height: 20),
 
@@ -323,7 +324,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       _field(
                         controller: _telefonoCtrl,
                         hint: '7711234567',
-                        icon: Icons.phone_android_outlined,
+                        icon: LucideIcons.smartphone,
                         keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 20),
@@ -342,7 +343,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   .withValues(alpha: 0.2)),
                         ),
                         child: Row(children: [
-                          Icon(Icons.email_outlined,
+                          Icon(LucideIcons.mail,
                               color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                           const SizedBox(width: 12),
                           Expanded(
@@ -351,7 +352,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     fontSize: 14,
                                     color: AppColors.textSecondary)),
                           ),
-                          Icon(Icons.lock_outline_rounded,
+                          Icon(LucideIcons.lock,
                               color: AppColors.textSecondary.withValues(alpha: 0.5), size: 16),
                         ]),
                       ),
@@ -380,7 +381,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: Colors.white))
-                              : const Icon(Icons.save_outlined,
+                              : const Icon(LucideIcons.save,
                                   color: Colors.white, size: 18),
                           label: Text(
                               _guardando
@@ -406,7 +407,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.workspace_premium_outlined,
+                            Icon(LucideIcons.award,
                                 color: AppColors.textSecondary, size: 14),
                             const SizedBox(width: 5),
                             Text('Cliente Distinguido Pier',

@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/checkout/order_success_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/business_info.dart';
 import 'package:go_router/go_router.dart';
@@ -49,7 +50,7 @@ class OrderSuccessScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       shape: BoxShape.circle),
-                  child: const Icon(Icons.check_rounded,
+                  child: const Icon(LucideIcons.check,
                       color: AppColors.pierVerde, size: 60),
                 ),
                 const SizedBox(height: 24),
@@ -81,18 +82,18 @@ class OrderSuccessScreen extends StatelessWidget {
                     children: [
                       esDomicilio
                           ? _buildRow(
-                              Icons.delivery_dining_rounded,
+                              LucideIcons.bike,
                               'Entrega a domicilio',
                               direccionResumen ?? 'A tu domicilio')
-                          : _buildRow(Icons.store, 'Sucursal',
+                          : _buildRow(LucideIcons.store, 'Sucursal',
                               '${BusinessInfo.sucursal} — ${BusinessInfo.ciudad}'),
                       const Divider(height: 24),
                       _buildRow(
-                          Icons.calendar_today,
+                          LucideIcons.calendar,
                           esDomicilio ? 'Fecha de entrega' : 'Fecha de recogida',
                           pickupDate),
                       const Divider(height: 24),
-                      _buildRow(Icons.access_time, 'Horario', pickupTime),
+                      _buildRow(LucideIcons.clock, 'Horario', pickupTime),
                       const Divider(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

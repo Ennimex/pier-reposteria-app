@@ -1,7 +1,10 @@
 // lib/presentation/screens/client/products/products_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../../core/constants/app_colors.dart';
+import '../../../widgets/skeletons.dart';
 import '../../../../../core/services/api_service.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/utils/logger.dart';
@@ -17,15 +20,15 @@ enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }
 
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
-    case 'pasteles': return Icons.cake_outlined;
-    case 'roscas': return Icons.donut_large_outlined;
-    case 'pays': return Icons.pie_chart_outline;
-    case 'postres': return Icons.cookie_outlined;
+    case 'pasteles': return LucideIcons.cake;
+    case 'roscas': return LucideIcons.donut;
+    case 'pays': return LucideIcons.chartPie;
+    case 'postres': return LucideIcons.cookie;
     case 'cafetería':
-    case 'cafeteria': return Icons.coffee_outlined;
-    case 'bebidas': return Icons.local_drink_outlined;
-    case 'panes': return Icons.breakfast_dining_outlined;
-    default: return Icons.fastfood_outlined;
+    case 'cafeteria': return LucideIcons.coffee;
+    case 'bebidas': return LucideIcons.cupSoda;
+    case 'panes': return LucideIcons.croissant;
+    default: return LucideIcons.sandwich;
   }
 }
 
@@ -61,18 +64,18 @@ class _ProductsScreenState extends State<ProductsScreen>
 
   List<Map<String, dynamic>> _categoriasApi = [];
   final List<Map<String, dynamic>> _categoriasFallback = [
-    {'name': 'Todos',     'icon': Icons.apps_rounded},
-    {'name': 'Pasteles',  'icon': Icons.cake_outlined},
-    {'name': 'Roscas',   'icon': Icons.donut_large_outlined},
-    {'name': 'Pays',     'icon': Icons.pie_chart_outline},
-    {'name': 'Postres',  'icon': Icons.cookie_outlined},
-    {'name': 'Cafetería','icon': Icons.coffee_outlined},
+    {'name': 'Todos',     'icon': LucideIcons.layoutGrid},
+    {'name': 'Pasteles',  'icon': LucideIcons.cake},
+    {'name': 'Roscas',   'icon': LucideIcons.donut},
+    {'name': 'Pays',     'icon': LucideIcons.chartPie},
+    {'name': 'Postres',  'icon': LucideIcons.cookie},
+    {'name': 'Cafetería','icon': LucideIcons.coffee},
   ];
 
   List<Map<String, dynamic>> get _categories {
     if (_categoriasApi.isEmpty) return _categoriasFallback;
     return [
-      {'name': 'Todos', 'icon': Icons.apps_rounded},
+      {'name': 'Todos', 'icon': LucideIcons.layoutGrid},
       ..._categoriasApi.map((c) => {
         'name': (c['nombre'] ?? c['name'] ?? '').toString(),
         'icon': _iconForCategoria((c['nombre'] ?? c['name'] ?? '').toString()),
@@ -483,10 +486,10 @@ class _ProductsScreenState extends State<ProductsScreen>
               const SizedBox(height: 16),
               ...[
                 ('Más populares',         SortOption.popular,   Icons.star_rounded),
-                ('Precio: Menor a Mayor', SortOption.priceAsc,  Icons.trending_up_rounded),
-                ('Precio: Mayor a Menor', SortOption.priceDesc, Icons.trending_down_rounded),
-                ('Nombre: A–Z',           SortOption.nameAsc,   Icons.sort_by_alpha_rounded),
-                ('Nombre: Z–A',           SortOption.nameDesc,  Icons.sort_by_alpha_rounded),
+                ('Precio: Menor a Mayor', SortOption.priceAsc,  LucideIcons.trendingUp),
+                ('Precio: Mayor a Menor', SortOption.priceDesc, LucideIcons.trendingDown),
+                ('Nombre: A–Z',           SortOption.nameAsc,   LucideIcons.arrowDownAZ),
+                ('Nombre: Z–A',           SortOption.nameDesc,  LucideIcons.arrowDownAZ),
               ].map((t) {
                 final sel = _sort == t.$2;
                 return GestureDetector(
@@ -608,7 +611,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                                 border: Border.all(color: AppColors.pierVerde.withValues(alpha: 0.2)),
                               ),
                               child: Row(children: [
-                                Icon(_isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                                Icon(_isGridView ? LucideIcons.grid2x2 : LucideIcons.list,
                                     color: AppColors.pierVerde, size: 16),
                                 const SizedBox(width: 5),
                                 Text(_isGridView ? 'Cuadrícula' : 'Lista',
@@ -633,7 +636,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.filter_alt_off_rounded, size: 14, color: Colors.red.shade400),
+                                Icon(LucideIcons.filterX, size: 14, color: Colors.red.shade400),
                                 const SizedBox(width: 6),
                                 Text('Quitar filtros',
                                     style: TextStyle(fontSize: 12, color: Colors.red.shade400, fontWeight: FontWeight.w600)),
@@ -644,8 +647,20 @@ class _ProductsScreenState extends State<ProductsScreen>
                       ),
                     ),
                   if (productProvider.isLoading)
-                    const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator(color: AppColors.pierVerde)),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      sliver: SliverGrid(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => const ProductSkeletonCard(),
+                          childCount: 6,
+                        ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: _isGridView ? 2 : 1,
+                          childAspectRatio: _isGridView ? 0.63 : 3.2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                      ),
                     )
                   else if (products.isEmpty)
                     SliverFillRemaining(child: _buildEmptyState())
@@ -654,7 +669,17 @@ class _ProductsScreenState extends State<ProductsScreen>
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                       sliver: SliverGrid(
                         delegate: SliverChildBuilderDelegate(
-                          (context, i) => _buildCard(products[i], productProvider),
+                          (context, i) => _buildCard(products[i], productProvider)
+                              // Entrada escalonada: cada tarjeta entra un pelín
+                              // después que la anterior (tope a 6 para no demorar
+                              // listas largas), con fade + leve deslizamiento.
+                              .animate()
+                              .fadeIn(
+                                duration: 350.ms,
+                                delay: (40 * (i % 6)).ms,
+                                curve: Curves.easeOut,
+                              )
+                              .slideY(begin: 0.08, end: 0, curve: Curves.easeOutCubic),
                           childCount: products.length,
                         ),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -710,7 +735,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 22),
+                      child: const Icon(LucideIcons.shoppingCart, color: Colors.white, size: 22),
                     ),
                     if (cartCount > 0)
                       Positioned(
@@ -747,10 +772,10 @@ class _ProductsScreenState extends State<ProductsScreen>
         decoration: InputDecoration(
           hintText: 'Busca tu antojo...',
           hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 15),
-          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 22),
+          prefixIcon: const Icon(LucideIcons.search, color: AppColors.textSecondary, size: 22),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 18),
+                  icon: const Icon(LucideIcons.x, color: AppColors.textSecondary, size: 18),
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
@@ -758,13 +783,13 @@ class _ProductsScreenState extends State<ProductsScreen>
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(icon: const Icon(Icons.sort_rounded, color: AppColors.textSecondary, size: 20),
+                    IconButton(icon: const Icon(LucideIcons.arrowUpDown, color: AppColors.textSecondary, size: 20),
                         onPressed: _showSortSheet, tooltip: 'Ordenar'),
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.tune_rounded,
+                          icon: Icon(LucideIcons.slidersHorizontal,
                               color: _filtroSabor != null || _filtroTamano != null || _filtroTipo != null
                                   ? AppColors.pierVerde : Colors.grey, size: 20),
                           onPressed: _showFilterSheet, tooltip: 'Filtrar'),
@@ -822,7 +847,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               Image.network(p.imagenUrl, fit: BoxFit.cover,
                   errorBuilder: (_, e, __) => Container(
                     color: AppColors.pierArena,
-                    child: const Icon(Icons.cake_outlined, color: AppColors.pierVerde, size: 40),
+                    child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 40),
                   )),
               // ✅ NUEVO: columna de badges por tipo (igual que el web)
               Positioned(
@@ -838,26 +863,26 @@ class _ProductsScreenState extends State<ProductsScreen>
                       // Descuento porcentaje
                       if (porcentaje != null)
                         _badge(Colors.red.shade500,
-                            icon: Icons.local_offer_rounded,
+                            icon: LucideIcons.tag,
                             label: '-$porcentaje%'),
                       // Tipo relámpago
                       if (tipo == 'relampago')
                         _badge(Colors.orange.shade600,
-                            icon: Icons.bolt_rounded, label: 'Flash'),
+                            icon: LucideIcons.zap, label: 'Flash'),
                       // Tipo temporada
                       if (tipo == 'temporada')
                         _badge(Colors.orange.shade700,
-                            icon: Icons.auto_awesome_rounded,
+                            icon: LucideIcons.sparkles,
                             label: 'Temporada'),
                       // Tipo destacado con badge
                       if (tipo == 'destacado' && badgeDestacado != null)
                         _badge(Colors.purple.shade500,
-                            icon: Icons.auto_awesome_rounded,
+                            icon: LucideIcons.sparkles,
                             label: badgeDestacado),
                       // Tipo nuevo
                       if (tipo == 'nuevo')
                         _badge(Colors.blue.shade500,
-                            icon: Icons.fiber_new_rounded, label: 'Nuevo'),
+                            icon: LucideIcons.badgePlus, label: 'Nuevo'),
                     ],
                   ],
                 ),
@@ -945,7 +970,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                             duration: const Duration(milliseconds: 200),
                             width: 34, height: 34,
                             decoration: BoxDecoration(color: AppColors.pierVerde, borderRadius: BorderRadius.circular(10)),
-                            child: Icon(inCart ? Icons.check_rounded : Icons.add_rounded, color: Colors.white, size: 20),
+                            child: Icon(inCart ? LucideIcons.check : LucideIcons.plus, color: Colors.white, size: 20),
                           ),
                         );
                         if (anim != null) btn = ScaleTransition(scale: anim, child: btn);
@@ -980,7 +1005,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               Image.network(p.imagenUrl, fit: BoxFit.cover,
                   errorBuilder: (_, e, __) => Container(
                     color: AppColors.pierArena,
-                    child: const Icon(Icons.cake_outlined, color: AppColors.pierVerde, size: 36),
+                    child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 36),
                   )),
               // ✅ Badges múltiples apilados igual que el web
               Positioned(
@@ -994,23 +1019,23 @@ class _ProductsScreenState extends State<ProductsScreen>
                     if (tienePromo) ...[
                       if (porcentaje != null)
                         _badge(Colors.red.shade500,
-                            icon: Icons.local_offer_rounded,
+                            icon: LucideIcons.tag,
                             label: '-$porcentaje%', small: true),
                       if (tipo == 'relampago')
                         _badge(Colors.orange.shade600,
-                            icon: Icons.bolt_rounded,
+                            icon: LucideIcons.zap,
                             label: 'Flash', small: true),
                       if (tipo == 'temporada')
                         _badge(Colors.orange.shade700,
-                            icon: Icons.auto_awesome_rounded,
+                            icon: LucideIcons.sparkles,
                             label: 'Temporada', small: true),
                       if (tipo == 'destacado' && badgeDestacado != null)
                         _badge(Colors.purple.shade500,
-                            icon: Icons.auto_awesome_rounded,
+                            icon: LucideIcons.sparkles,
                             label: badgeDestacado, small: true),
                       if (tipo == 'nuevo')
                         _badge(Colors.blue.shade500,
-                            icon: Icons.fiber_new_rounded,
+                            icon: LucideIcons.badgePlus,
                             label: 'Nuevo', small: true),
                     ],
                   ],
@@ -1089,7 +1114,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(color: AppColors.pierVerde, borderRadius: BorderRadius.circular(12)),
-                            child: Icon(inCart ? Icons.check_rounded : Icons.add_rounded, color: Colors.white, size: 20),
+                            child: Icon(inCart ? LucideIcons.check : LucideIcons.plus, color: Colors.white, size: 20),
                           ),
                         );
                         if (anim != null) btn = ScaleTransition(scale: anim, child: btn);
@@ -1141,8 +1166,11 @@ class _ProductsScreenState extends State<ProductsScreen>
           Container(
             width: 100, height: 100,
             decoration: BoxDecoration(color: AppColors.pierVerde.withValues(alpha: 0.08), shape: BoxShape.circle),
-            child: const Icon(Icons.search_off_rounded, size: 48, color: AppColors.pierVerde),
-          ),
+            child: const Icon(LucideIcons.searchX, size: 48, color: AppColors.pierVerde),
+          )
+              .animate()
+              .fadeIn(duration: 400.ms)
+              .scale(begin: const Offset(0.85, 0.85), curve: Curves.easeOutBack),
           const SizedBox(height: 20),
           const Text('Sin resultados',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
@@ -1152,7 +1180,7 @@ class _ProductsScreenState extends State<ProductsScreen>
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _clearFilters,
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            icon: const Icon(LucideIcons.refreshCw, color: Colors.white),
             label: const Text('Limpiar filtros', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.pierVerde,

@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/reviews/product_reviews_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/product_model.dart';
@@ -198,7 +199,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -251,7 +252,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.edit_rounded,
+                          Icon(LucideIcons.pencil,
                               color: Colors.white, size: 14),
                           SizedBox(width: 5),
                           Text('Escribir',
@@ -488,7 +489,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.sort_rounded,
+                    const Icon(LucideIcons.arrowUpDown,
                         size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 5),
                     Text(
@@ -503,7 +504,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                           fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(width: 3),
-                    const Icon(Icons.keyboard_arrow_down_rounded,
+                    const Icon(LucideIcons.chevronDown,
                         size: 14, color: AppColors.textSecondary),
                   ],
                 ),
@@ -569,11 +570,11 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
             const SizedBox(height: 12),
             ...[
               ('Más recientes', 'recientes',
-                  Icons.access_time_rounded),
+                  LucideIcons.clock),
               ('Mejor calificación', 'mejor',
-                  Icons.thumb_up_outlined),
+                  LucideIcons.thumbsUp),
               ('Peor calificación', 'peor',
-                  Icons.thumb_down_outlined),
+                  LucideIcons.thumbsDown),
             ].map((t) {
               final sel = _orden == t.$2;
               return GestureDetector(
@@ -716,7 +717,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
 
           if (verificada) ...[
             Row(children: [
-              const Icon(Icons.verified_rounded,
+              const Icon(LucideIcons.badgeCheck,
                   size: 14, color: AppColors.pierVerde),
               const SizedBox(width: 4),
               const Text('Compra verificada',
@@ -772,8 +773,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                     children: [
                       Icon(
                         _likedIds.contains(r['id'].toString())
-                            ? Icons.thumb_up_rounded
-                            : Icons.thumb_up_outlined,
+                            ? LucideIcons.thumbsUp
+                            : LucideIcons.thumbsUp,
                         size: 14,
                         color: _likedIds.contains(r['id'].toString())
                             ? AppColors.pierVerde
@@ -815,7 +816,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
               color: AppColors.pierVerde.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.rate_review_outlined,
+            child: Icon(LucideIcons.messageSquare,
                 size: 46,
                 color: AppColors.pierVerde.withValues(alpha: 0.5)),
           ),

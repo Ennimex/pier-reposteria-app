@@ -1,5 +1,6 @@
 // lib/presentation/screens/auth/verify_email_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -126,7 +127,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                             offset: const Offset(0, 2))
                       ],
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new,
+                    child: const Icon(LucideIcons.chevronLeft,
                         size: 16, color: AppColors.textPrimary),
                   ),
                 ),
@@ -143,7 +144,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.mark_email_unread_outlined,
+                    LucideIcons.mail,
                     size: 48,
                     color: AppColors.textSecondary.withValues(alpha: 0.7),
                   ),

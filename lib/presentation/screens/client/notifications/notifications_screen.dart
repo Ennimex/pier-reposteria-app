@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/notifications/notifications_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/logger.dart';
@@ -100,7 +101,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -209,12 +210,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     IconData icon;
     switch (tipo) {
-      case 'pedido':    icon = Icons.shopping_bag_outlined; break;
-      case 'promocion': icon = Icons.local_offer_outlined; break;
+      case 'pedido':    icon = LucideIcons.shoppingBag; break;
+      case 'promocion': icon = LucideIcons.tag; break;
       case 'resena':    icon = Icons.star_outline_rounded; break;
-      case 'reembolso': icon = Icons.replay_outlined; break;
-      case 'producto':  icon = Icons.cake_outlined; break;
-      default:          icon = Icons.notifications_outlined;
+      case 'reembolso': icon = LucideIcons.rotateCcw; break;
+      case 'producto':  icon = LucideIcons.cake; break;
+      default:          icon = LucideIcons.bell;
     }
 
     return GestureDetector(
@@ -332,7 +333,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 color: AppColors.pierVerde.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.notifications_off_outlined,
+              child: Icon(LucideIcons.bellOff,
                   size: 56,
                   color:
                       AppColors.pierVerde.withValues(alpha: 0.45)),
@@ -364,7 +365,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     context.read<NavigationProvider>().goCatalogo();
                   } catch (_) {}
                 },
-                icon: const Icon(Icons.cake_outlined,
+                icon: const Icon(LucideIcons.cake,
                     color: Colors.white, size: 18),
                 label: const Text('Explorar Menú',
                     style: TextStyle(

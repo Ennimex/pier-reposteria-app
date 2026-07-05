@@ -3,6 +3,7 @@
 // Hoja para reportar una entrega fallida. Marca la entrega como "fallida" con
 // un motivo obligatorio. Devuelve true por Navigator.pop si tuvo éxito.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/entrega_model.dart';
@@ -110,7 +111,7 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
               ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                icon: const Icon(LucideIcons.x, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -195,7 +196,7 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline,
+                Icon(LucideIcons.info,
                     size: 20, color: AppColors.error.withValues(alpha: 0.9)),
                 const SizedBox(width: 10),
                 Expanded(
@@ -225,7 +226,7 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Icon(Icons.report_problem_outlined, size: 18),
+                  : const Icon(LucideIcons.triangleAlert, size: 18),
               label: Text(_enviando ? 'Reportando…' : 'Reportar fallo'),
             ),
           ),

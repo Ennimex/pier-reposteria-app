@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/reviews/my_reviews_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/services/api_service.dart';
@@ -107,7 +108,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                               offset: const Offset(0, 2))
                         ],
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -187,12 +188,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       case 'rechazada':
         estadoColor = Colors.red.shade400;
         estadoLabel = 'Rechazada';
-        estadoIcon = Icons.cancel_rounded;
+        estadoIcon = LucideIcons.circleX;
         break;
       default:
         estadoColor = Colors.orange.shade400;
         estadoLabel = 'En revisión';
-        estadoIcon = Icons.hourglass_empty_rounded;
+        estadoIcon = LucideIcons.hourglass;
     }
 
     return Container(
@@ -266,7 +267,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   onTap: () => _editarResena(r),
                   child: const Padding(
                     padding: EdgeInsets.only(left: 4, top: 4, bottom: 4),
-                    child: Icon(Icons.edit_outlined,
+                    child: Icon(LucideIcons.pencil,
                         size: 18, color: AppColors.pierVerde),
                   ),
                 ),
@@ -370,7 +371,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline_rounded,
+                        Icon(LucideIcons.info,
                             size: 14, color: Colors.red.shade400),
                         const SizedBox(width: 6),
                         Expanded(
@@ -398,7 +399,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           color: AppColors.pierArena,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(Icons.cake_outlined,
+        child: const Icon(LucideIcons.cake,
             color: AppColors.pierVerde, size: 24),
       );
 
@@ -413,7 +414,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               color: AppColors.pierVerde.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.rate_review_outlined,
+            child: Icon(LucideIcons.messageSquare,
                 size: 46,
                 color: AppColors.pierVerde.withValues(alpha: 0.5)),
           ),

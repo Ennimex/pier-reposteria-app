@@ -5,6 +5,7 @@
 // Se les da la bienvenida con su identidad de rol y se les invita a abrir el
 // sitio web para tener una mejor perspectiva de su trabajo.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -37,7 +38,7 @@ class _RolInfo {
           panel: 'Panel de Gerencia',
           descripcion:
               'Supervisión de operaciones, usuarios y reportes del negocio.',
-          icono: Icons.insights_rounded,
+          icono: LucideIcons.chartLine,
           acento: Color(0xFF2A4060),
           acentoOscuro: Color(0xFF1A2744),
         );
@@ -46,7 +47,7 @@ class _RolInfo {
           panel: 'Panel de Dirección',
           descripcion:
               'Control general, configuración y estrategia de Pier Repostería.',
-          icono: Icons.workspace_premium_rounded,
+          icono: LucideIcons.award,
           acento: Color(0xFF5A3D7A),
           acentoOscuro: Color(0xFF2D1B4E),
         );
@@ -56,7 +57,7 @@ class _RolInfo {
           panel: 'Panel de Operación',
           descripcion:
               'Gestión de productos, pedidos, promociones y atención diaria.',
-          icono: Icons.storefront_rounded,
+          icono: LucideIcons.store,
           acento: AppColors.pierVerde,
           acentoOscuro: AppColors.pierVerdeOscuro,
         );
@@ -119,7 +120,7 @@ class PanelWebScreen extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     onPressed: () => _cerrarSesion(context),
-                    icon: const Icon(Icons.logout_rounded,
+                    icon: const Icon(LucideIcons.logOut,
                         size: 18, color: Colors.white),
                     label: const Text(
                       'Cerrar sesión',
@@ -178,7 +179,7 @@ class PanelWebScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      Icon(Icons.language_rounded,
+                      Icon(LucideIcons.globe,
                           size: 30, color: info.acento),
                       const SizedBox(height: 12),
                       const Text(
@@ -220,7 +221,7 @@ class PanelWebScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                    icon: const Icon(LucideIcons.externalLink, size: 20),
                     label: const Text(
                       'Abrir sitio web',
                       style: TextStyle(

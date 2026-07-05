@@ -1,11 +1,14 @@
 // lib/presentation/screens/client/orders/orders_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../data/models/order_model.dart';
 import '../../../../data/providers/navigation_provider.dart';
+import '../../../widgets/skeletons.dart';
 import 'order_detail_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -155,9 +158,12 @@ class _OrdersScreenState extends State<OrdersScreen>
             // ── CONTENIDO ────────────────────────────────────────
             Expanded(
               child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.pierVerde))
+                  ? ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                      itemCount: 5,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (_, _) => const OrderSkeletonCard(),
+                    )
                   : RefreshIndicator(
                       onRefresh: () => _cargarPedidos(silent: true),
                       color: AppColors.pierVerde,
@@ -168,13 +174,13 @@ class _OrdersScreenState extends State<OrdersScreen>
                             _activeOrders,
                             'No tienes pedidos activos',
                             'Cuando realices un pedido\naparecerá aquí.',
-                            Icons.receipt_long_rounded,
+                            LucideIcons.receiptText,
                           ),
                           _buildOrdersList(
                             _completedOrders,
                             'Sin historial aún',
                             'Tus pedidos completados\naparecerán aquí.',
-                            Icons.history_rounded,
+                            LucideIcons.history,
                           ),
                         ],
                       ),
@@ -233,7 +239,14 @@ class _OrdersScreenState extends State<OrdersScreen>
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       itemCount: orders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, i) => _buildOrderCard(orders[i]),
+      itemBuilder: (context, i) => _buildOrderCard(orders[i])
+          .animate()
+          .fadeIn(
+            duration: 350.ms,
+            delay: (50 * (i % 6)).ms,
+            curve: Curves.easeOut,
+          )
+          .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
     );
   }
 
@@ -268,7 +281,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.shopping_bag_outlined,
+                    child: const Icon(LucideIcons.shoppingBag,
                         color: AppColors.pierVerde, size: 20),
                   ),
                   const SizedBox(width: 12),
@@ -323,7 +336,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                           fontSize: 16,
                           color: AppColors.pierDoradoOscuro)),
                   const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right_rounded,
+                  const Icon(LucideIcons.chevronRight,
                       color: Colors.grey, size: 18),
                 ],
               ),

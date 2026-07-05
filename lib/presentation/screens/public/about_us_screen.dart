@@ -1,5 +1,6 @@
 // lib/presentation/screens/public/about_us_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
 
@@ -24,7 +25,7 @@ class AboutUsScreen extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => Container(
                       color: AppColors.pierVerdeOscuro,
-                      child: const Icon(Icons.storefront_outlined,
+                      child: const Icon(LucideIcons.store,
                           color: Colors.white54, size: 60),
                     ),
                   ),
@@ -52,7 +53,7 @@ class AboutUsScreen extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.9),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new,
+                        child: const Icon(LucideIcons.chevronLeft,
                             size: 16, color: AppColors.textPrimary),
                       ),
                     ),
@@ -112,14 +113,14 @@ class AboutUsScreen extends StatelessWidget {
 
                   // ── MISIÓN Y VISIÓN ──────────────────────────────
                   _buildInfoCard(
-                    icon: Icons.flag_outlined,
+                    icon: LucideIcons.flag,
                     title: 'Misión',
                     content:
                         'Crear momentos inolvidables a través de sabores auténticos y una calidad artesanal inigualable.',
                   ),
                   const SizedBox(height: 12),
                   _buildInfoCard(
-                    icon: Icons.visibility_outlined,
+                    icon: LucideIcons.eye,
                     title: 'Visión',
                     content:
                         'Ser la pastelería líder en la región, reconocida por nuestra innovación constante sin perder la esencia tradicional.',
@@ -135,8 +136,8 @@ class AboutUsScreen extends StatelessWidget {
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 16),
                   ...[
-                    ('Calidad Artesanal',        Icons.handshake_outlined),
-                    ('Ingredientes Frescos',     Icons.eco_outlined),
+                    ('Calidad Artesanal',        LucideIcons.handshake),
+                    ('Ingredientes Frescos',     LucideIcons.leaf),
                     ('Atención Personalizada',   Icons.favorite_outline_rounded),
                     ('Tradición e Innovación',   Icons.star_outline_rounded),
                   ].map((v) => _buildValueTile(v.$1, v.$2)),
@@ -266,7 +267,7 @@ class AboutUsScreen extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.storefront_rounded,
+          child: const Icon(LucideIcons.store,
               color: Colors.white, size: 22),
         ),
         const SizedBox(width: 14),

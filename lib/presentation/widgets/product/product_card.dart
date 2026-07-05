@@ -1,5 +1,6 @@
 //lib/presentation/widgets/product/product_card.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/product_model.dart';
@@ -50,7 +51,7 @@ class ProductCard extends StatelessWidget {
                       errorBuilder: (_, _, _) => Container(
                         color: Colors.grey[200],
                         child: const Center(
-                            child: Icon(Icons.cake,
+                            child: Icon(LucideIcons.cake,
                                 color: Colors.grey, size: 40)),
                       ),
                     ),
@@ -146,8 +147,8 @@ class ProductCard extends StatelessWidget {
                               ),
                               child: Icon(
                                 isInCart
-                                    ? Icons.check
-                                    : Icons.add_shopping_cart,
+                                    ? LucideIcons.check
+                                    : LucideIcons.shoppingCart,
                                 color: isInCart
                                     ? Colors.white
                                     : AppColors.pierVerde,

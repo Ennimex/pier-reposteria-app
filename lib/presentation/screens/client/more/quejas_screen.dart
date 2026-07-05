@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/quejas/quejas_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/api_service.dart';
@@ -70,8 +71,8 @@ extension EstadoQuejaExt on EstadoQueja {
   }
   IconData get icon {
     switch (this) {
-      case EstadoQueja.pendiente: return Icons.hourglass_empty_rounded;
-      case EstadoQueja.en_proceso: return Icons.autorenew_rounded;
+      case EstadoQueja.pendiente: return LucideIcons.hourglass;
+      case EstadoQueja.en_proceso: return LucideIcons.refreshCw;
       case EstadoQueja.resuelto: return Icons.check_circle_rounded;
     }
   }
@@ -197,7 +198,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                             color: Colors.white.withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.arrow_back_ios_new,
+                          child: const Icon(LucideIcons.chevronLeft,
                               size: 16, color: Colors.white),
                         ),
                       ),
@@ -232,7 +233,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.add_rounded,
+                              Icon(LucideIcons.plus,
                                   color: AppColors.pierVerdeOscuro,
                                   size: 16),
                               SizedBox(width: 5),
@@ -339,7 +340,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.chat_bubble_outline_rounded,
+                    child: const Icon(LucideIcons.messageCircle,
                         color: AppColors.pierVerde, size: 22),
                   ),
                   const SizedBox(width: 12),
@@ -381,8 +382,8 @@ class _QuejasScreenState extends State<QuejasScreen> {
                   ),
                   Icon(
                     expandida
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
+                        ? LucideIcons.chevronUp
+                        : LucideIcons.chevronDown,
                     color: AppColors.textSecondary.withValues(alpha: 0.5),
                     size: 22,
                   ),
@@ -437,7 +438,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                              Icons.receipt_long_outlined,
+                              LucideIcons.receiptText,
                               size: 14,
                               color: AppColors.pierVerde),
                           const SizedBox(width: 6),
@@ -559,7 +560,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                 color: AppColors.pierVerde.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.chat_bubble_outline_rounded,
+              child: Icon(LucideIcons.messageCircle,
                   size: 46,
                   color: AppColors.pierVerde.withValues(alpha: 0.5)),
             ),
@@ -579,7 +580,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
             const SizedBox(height: 28),
             ElevatedButton.icon(
               onPressed: _abrirFormulario,
-              icon: const Icon(Icons.add_rounded,
+              icon: const Icon(LucideIcons.plus,
                   color: Colors.white, size: 18),
               label: const Text('Crear primera queja',
                   style: TextStyle(
@@ -744,7 +745,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                       color: AppColors.textSecondary.withValues(alpha: 0.06),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close_rounded,
+                    child: const Icon(LucideIcons.x,
                         size: 18, color: AppColors.textPrimary),
                   ),
                 ),
@@ -784,7 +785,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                 child: DropdownButton<String>(
                   value: _pedidoSeleccionado,
                   isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down,
+                  icon: const Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14),
@@ -856,7 +857,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                         height: 18, width: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send_rounded,
+                    : const Icon(LucideIcons.send,
                         color: Colors.white, size: 18),
                 label: Text(
                     _enviando ? 'Enviando...' : 'Enviar queja',
@@ -917,7 +918,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
         child: DropdownButton<T>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down,
+          icon: const Icon(LucideIcons.chevronDown,
               color: AppColors.pierVerde),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           items: items

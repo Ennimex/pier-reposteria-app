@@ -1,5 +1,6 @@
 // lib/presentation/screens/auth/forgot_password_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
@@ -89,7 +90,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         )
                       ],
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new,
+                    child: const Icon(LucideIcons.chevronLeft,
                         size: 16, color: AppColors.textPrimary),
                   ),
                 ),
@@ -106,7 +107,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     color: AppColors.pierVerde.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.lock_outline_rounded,
+                  child: const Icon(LucideIcons.lock,
                       size: 44, color: AppColors.pierVerde),
                 ),
               ),
@@ -140,7 +141,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Correo electrónico',
-                  prefixIcon: const Icon(Icons.email_outlined,
+                  prefixIcon: const Icon(LucideIcons.mail,
                       color: AppColors.pierVerde, size: 20),
                   filled: true,
                   fillColor: Colors.white,

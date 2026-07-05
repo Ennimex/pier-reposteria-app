@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/refunds/refunds_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
@@ -166,7 +167,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                                 offset: const Offset(0, 2))
                           ],
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new,
+                        child: const Icon(LucideIcons.chevronLeft,
                             size: 16, color: AppColors.textPrimary),
                       ),
                     ),
@@ -194,7 +195,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                                 offset: const Offset(0, 2))
                           ],
                         ),
-                        child: const Icon(Icons.help_outline_rounded,
+                        child: const Icon(LucideIcons.circleHelp,
                             size: 18, color: AppColors.textSecondary),
                       ),
                   ],
@@ -218,7 +219,10 @@ class _RefundsScreenState extends State<RefundsScreen>
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  onTap: (_) => setState(() {}),
+                  // Sin setState: el header (título, ícono ?) y el FAB ya
+                  // reaccionan vía AnimatedBuilder, y el TabBar/TabBarView los
+                  // maneja el propio controller. Un setState aquí reconstruía
+                  // toda la pantalla durante la animación y causaba el tirón.
                   labelColor: Colors.white,
                   unselectedLabelColor: AppColors.textSecondary,
                   indicator: BoxDecoration(
@@ -263,7 +267,7 @@ class _RefundsScreenState extends State<RefundsScreen>
             ? FloatingActionButton.extended(
                 onPressed: () => _tabController.animateTo(1),
                 backgroundColor: AppColors.pierVerde,
-                icon: const Icon(Icons.add, color: Colors.white),
+                icon: const Icon(LucideIcons.plus, color: Colors.white),
                 label: const Text('Nueva Solicitud',
                     style: TextStyle(
                         color: Colors.white,
@@ -288,25 +292,26 @@ class _RefundsScreenState extends State<RefundsScreen>
     return RefreshIndicator(
       onRefresh: _cargarReembolsos,
       color: AppColors.pierVerde,
-      child: ListView(
+      child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-        children: [
-          // Título de sección
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text('Historial de solicitudes',
-                style: TextStyle(
-                    fontSize: 15,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500)),
-          ),
-          ..._reembolsos
-              .map((r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _buildReembolsoCard(r),
-                  ))
-              ,
-        ],
+        itemCount: _reembolsos.length + 1,
+        itemBuilder: (context, i) {
+          // Índice 0 = título de sección
+          if (i == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text('Historial de solicitudes',
+                  style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500)),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: _buildReembolsoCard(_reembolsos[i - 1]),
+          );
+        },
       ),
     );
   }
@@ -365,7 +370,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     color: AppColors.pierVerde.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.receipt_long_outlined,
+                  child: const Icon(LucideIcons.receiptText,
                       color: AppColors.pierVerde, size: 20),
                 ),
                 const SizedBox(width: 12),
@@ -521,7 +526,7 @@ class _RefundsScreenState extends State<RefundsScreen>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline_rounded,
+                  const Icon(LucideIcons.info,
                       color: AppColors.pierDoradoOscuro, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
@@ -556,7 +561,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                   ? Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(children: [
-                        Icon(Icons.info_outline,
+                        Icon(LucideIcons.info,
                             color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                         const SizedBox(width: 10),
                         Text('No tienes pedidos completados',
@@ -585,7 +590,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                         icon: const Padding(
                           padding: EdgeInsets.only(right: 14),
                           child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
+                              LucideIcons.chevronDown,
                               color: AppColors.pierVerde),
                         ),
                         items: _pedidosCompletados
@@ -634,7 +639,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                   hint: Text('Selecciona un motivo',
                       style: TextStyle(
                           color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                  icon: const Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
                   items: _motivos
                       .map((m) => DropdownMenuItem(
@@ -703,7 +708,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                         height: 18, width: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send_rounded,
+                    : const Icon(LucideIcons.send,
                         color: Colors.white, size: 18),
                 label: Text(
                     _enviando ? 'Enviando...' : 'Enviar Solicitud',
@@ -741,7 +746,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                 color: AppColors.pierVerde.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.receipt_long_outlined,
+              child: Icon(LucideIcons.receiptText,
                   size: 52,
                   color: AppColors.pierVerde.withValues(alpha: 0.45)),
             ),
