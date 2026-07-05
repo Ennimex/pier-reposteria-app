@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/constants/business_info.dart';
+import '../../../../core/utils/config_format.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../data/models/direccion_model.dart';
 import '../../../../data/providers/cart_provider.dart';
@@ -76,8 +77,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!mounted) return;
     if (result['success'] == true) {
       final config = result['config'] as Map<String, dynamic>? ?? {};
-      final dir = config['direccion']?.toString();
-      if (dir != null && dir.isNotEmpty) {
+      // El backend guarda la dirección como JSON (JSON.stringify); formatearla
+      // para no mostrar el objeto crudo en "Sucursal Principal".
+      final dir = formatearDireccion(config['direccion'],
+          fallback: BusinessInfo.direccion);
+      if (dir.isNotEmpty) {
         setState(() => _direccionSucursal = dir);
       }
     }
