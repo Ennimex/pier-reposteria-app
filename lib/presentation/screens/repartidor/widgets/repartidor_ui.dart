@@ -25,6 +25,22 @@ String formatHora(DateTime dt) {
   return '$h:$m $ampm';
 }
 
+/// Formatea el `horario_entrega` del backend (que puede llegar como timestamp
+/// ISO tipo "2026-07-05T09:00:00.000Z") a algo legible: "5 jul · 9:00 AM".
+/// Si no es una fecha parseable, devuelve el texto tal cual. Preserva la hora
+/// escrita (no convierte de zona horaria) para no desfasar el horario elegido.
+String formatHorarioEntrega(String? raw) {
+  final t = raw?.trim() ?? '';
+  if (t.isEmpty) return 'Sin horario';
+  final dt = DateTime.tryParse(t);
+  if (dt == null) return t;
+  const meses = [
+    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+  ];
+  return '${dt.day} ${meses[dt.month - 1]} · ${formatHora(dt)}';
+}
+
 /// Chip de estado de una entrega, con punto de color.
 class EstadoEntregaChip extends StatelessWidget {
   final EstadoEntrega estado;

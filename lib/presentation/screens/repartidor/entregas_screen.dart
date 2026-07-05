@@ -67,6 +67,29 @@ class EntregasScreen extends StatelessWidget {
                     children: [
                       _DisponibilidadCard(provider: provider),
                       const SizedBox(height: 20),
+
+                      // ── Pool de pedidos disponibles para tomar ──
+                      if (provider.disponibles.isNotEmpty) ...[
+                        _SectionTitle(
+                          'Disponibles',
+                          count: provider.disponibles.length,
+                        ),
+                        const SizedBox(height: 12),
+                        ...provider.disponibles.map(
+                          (p) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _DisponibleCard(pedido: p),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
+                      // ── Mis entregas en curso ──
+                      _SectionTitle(
+                        'En curso',
+                        count: provider.activas.length,
+                      ),
+                      const SizedBox(height: 12),
                       if (provider.activas.isEmpty)
                         _EmptyState(disponible: provider.disponible)
                       else
@@ -223,18 +246,22 @@ class _EntregaCard extends StatelessWidget {
                 const Icon(Icons.access_time,
                     size: 18, color: AppColors.textSecondary),
                 const SizedBox(width: 6),
-                Text(
-                  entrega.horarioEntrega ?? 'Sin horario',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
+                Expanded(
+                  child: Text(
+                    formatHorarioEntrega(entrega.horarioEntrega),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                if (entrega.metodoPago != null)
+                const SizedBox(width: 8),
+                if (entrega.metodoPago != null) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                        horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
@@ -251,7 +278,8 @@ class _EntregaCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                const SizedBox(width: 10),
+                  const SizedBox(width: 10),
+                ],
                 Text(
                   formatMoneyMxn(entrega.total),
                   style: const TextStyle(
@@ -264,6 +292,194 @@ class _EntregaCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final int count;
+  const _SectionTitle(this.title, {required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Playfair Display',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (count > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.pierVerde.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.pierVerde,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Tarjeta de un pedido del pool con botón para tomarlo.
+class _DisponibleCard extends StatefulWidget {
+  final PedidoDisponible pedido;
+  const _DisponibleCard({required this.pedido});
+
+  @override
+  State<_DisponibleCard> createState() => _DisponibleCardState();
+}
+
+class _DisponibleCardState extends State<_DisponibleCard> {
+  bool _aceptando = false;
+
+  Future<void> _aceptar() async {
+    final provider = context.read<EntregasProvider>();
+    setState(() => _aceptando = true);
+    final res = await provider.aceptar(widget.pedido.pedidoId);
+    if (!mounted) return;
+    setState(() => _aceptando = false);
+
+    final ok = res['success'] == true;
+    final msg = res['message']?.toString() ??
+        (ok ? 'Pedido tomado' : 'No se pudo tomar el pedido');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: ok ? AppColors.pierVerde : AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.pedido;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.pierVerde.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.pierVerde.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  p.numero,
+                  style: const TextStyle(
+                    fontFamily: 'Playfair Display',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                formatMoneyMxn(p.total),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.pierVerde,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            p.clienteNombreCompleto,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              const Icon(Icons.place_outlined,
+                  size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  p.direccion.colonia ?? 'Sin colonia',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (p.horarioEntrega != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.access_time,
+                    size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    formatHorarioEntrega(p.horarioEntrega),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _aceptando ? null : _aceptar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.pierVerde,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: _aceptando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check, size: 20),
+              label: Text(_aceptando ? 'Tomando…' : 'Tomar entrega'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -306,8 +522,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               disponible
-                  ? 'Cuando te asignen una entrega\naparecerá aquí.'
-                  : 'Actívate arriba para recibir\nnuevas entregas.',
+                  ? 'Toma un pedido de "Disponibles"\ny aparecerá aquí.'
+                  : 'Actívate arriba para tomar\nnuevas entregas.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,

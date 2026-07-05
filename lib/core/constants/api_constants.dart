@@ -78,8 +78,19 @@ class ApiConstants {
   // ── CONTACTO ──────────────────────────────────────────────────────
   static const String enviarContacto = '/contacto';
 
+  // ── DIRECCIONES DE ENTREGA (cliente) ──────────────────────────────
+  static const String direcciones          = '/direcciones';
+  static String direccionById(String id)   => '/direcciones/$id';
+
+  // ── ZONAS DE ENVÍO (público) ──────────────────────────────────────
+  static const String zonasColonias        = '/zonas-envio/colonias';
+  static String cotizarEnvio(String colonia) =>
+      '/zonas-envio/cotizar?colonia=${Uri.encodeQueryComponent(colonia)}';
+
   // ── ENTREGAS (repartidor) ─────────────────────────────────────────
   static const String misEntregas          = '/entregas/mis-entregas';
+  static const String entregasDisponibles  = '/entregas/disponibles';
+  static const String entregasAceptar      = '/entregas/aceptar';
   static const String disponibilidad       = '/entregas/disponibilidad';
   static String entregaEstado(String id)   => '/entregas/$id/estado';
 

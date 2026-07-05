@@ -11,11 +11,13 @@ class EntregasProvider with ChangeNotifier {
   final ApiService _api = ApiService();
 
   List<EntregaRepartidor> _entregas = [];
+  List<PedidoDisponible> _disponibles = [];
   bool _disponible = false;
   bool _isLoading = false;
   String? _error;
 
   List<EntregaRepartidor> get entregas => _entregas;
+  List<PedidoDisponible> get disponibles => _disponibles;
   bool get disponible => _disponible;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -50,6 +52,7 @@ class EntregasProvider with ChangeNotifier {
     final results = await Future.wait([
       _api.getAuth(ApiConstants.misEntregas),
       _api.getAuth(ApiConstants.disponibilidad),
+      _api.getAuth(ApiConstants.entregasDisponibles),
     ]);
 
     final entregasRes = results[0];
@@ -67,8 +70,29 @@ class EntregasProvider with ChangeNotifier {
       _disponible = dispRes['disponible'] == true;
     }
 
+    final poolRes = results[2];
+    if (poolRes['success'] == true) {
+      final data = poolRes['pedidos'] ?? [];
+      _disponibles = (data as List)
+          .map((j) => PedidoDisponible.fromJson(j as Map<String, dynamic>))
+          .toList();
+    }
+
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Toma un pedido del pool. Devuelve el mapa de respuesta del backend
+  /// ({success, message, ...}). En éxito recarga para moverlo a "activas".
+  Future<Map<String, dynamic>> aceptar(String pedidoId) async {
+    final res = await _api.postAuth(
+      ApiConstants.entregasAceptar,
+      {'pedido_id': pedidoId},
+    );
+    if (res['success'] == true) {
+      await cargar(silent: true);
+    }
+    return res;
   }
 
   /// Cambia mi disponibilidad. Optimista con reversión si falla.
@@ -134,6 +158,7 @@ class EntregasProvider with ChangeNotifier {
 
   void clear() {
     _entregas = [];
+    _disponibles = [];
     _disponible = false;
     _error = null;
     notifyListeners();

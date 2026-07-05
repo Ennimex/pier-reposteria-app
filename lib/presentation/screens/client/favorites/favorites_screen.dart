@@ -50,7 +50,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     {'nombre': 'Pasteles', 'icon': Icons.cake_outlined},
     {'nombre': 'Roscas',   'icon': Icons.donut_large_outlined},
     {'nombre': 'Pays',     'icon': Icons.pie_chart_outline},
-    {'nombre': 'Café',     'icon': Icons.coffee_outlined},
+    {'nombre': 'Cafetería', 'icon': Icons.coffee_outlined},
   ];
 
   List<Product> get _filtered {

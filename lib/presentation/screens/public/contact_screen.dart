@@ -1,7 +1,9 @@
 // lib/presentation/screens/public/contact_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/business_info.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/config_format.dart';
@@ -24,11 +26,13 @@ class _ContactScreenState extends State<ContactScreen> {
   String _tipoProducto = 'Información general';
   bool _enviando = false;
 
-  // ✅ NUEVO: datos de contacto cargados del backend con fallbacks
-  String _telefono = '771 123 4567';
-  String _emailContacto = 'hola@pier.com';
-  String _horario = 'Lun–Sáb • 9:00 – 21:00 hrs';
-  String _whatsapp = '';
+  // Datos de contacto: fuente única en BusinessInfo (el backend no expone
+  // contacto/horarios). El fetch de config queda como defensa por si algún día
+  // el panel los publica.
+  String _telefono = BusinessInfo.telefono;
+  String _emailContacto = BusinessInfo.email;
+  String _horario = BusinessInfo.horario;
+  String _whatsapp = BusinessInfo.whatsappNumero;
 
   final List<String> _tiposProducto = [
     'Información general', 'Pasteles', 'Roscas', 'Pays',
@@ -81,6 +85,21 @@ class _ContactScreenState extends State<ContactScreen> {
       }
       _horario = formatearHorario(configHorarios, fallback: _horario);
     });
+  }
+
+  Future<void> _abrirWhatsApp() async {
+    final digits = _whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
+    final numero = digits.isNotEmpty ? digits : BusinessInfo.whatsappNumero;
+    final uri = Uri.parse(
+        'https://wa.me/$numero?text=${Uri.encodeComponent('Hola, tengo una pregunta')}');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('No se pudo abrir WhatsApp'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   @override
@@ -484,19 +503,17 @@ class _ContactScreenState extends State<ContactScreen> {
                           _horario, 'Horario de atención'),
                       const SizedBox(height: 16),
 
-                      // WhatsApp — solo visible si el backend lo tiene
+                      // WhatsApp
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton.icon(
-                          onPressed: () {},
+                          onPressed: _abrirWhatsApp,
                           icon: const Icon(Icons.message_rounded,
                               color: Colors.white, size: 18),
-                          label: Text(
-                            _whatsapp.isNotEmpty
-                                ? 'WhatsApp: $_whatsapp'
-                                : 'Escríbenos por WhatsApp',
-                            style: const TextStyle(
+                          label: const Text(
+                            'Escríbenos por WhatsApp',
+                            style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold),
                           ),

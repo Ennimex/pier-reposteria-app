@@ -20,6 +20,12 @@ class AuthProvider with ChangeNotifier {
   String? get rol => _currentUser?['rol']?.toString();
   bool get isRepartidor => rol == 'repartidor';
 
+  // Roles internos: operan desde el panel web, no tienen experiencia en la app.
+  bool get isEmpleado => rol == 'empleado';
+  bool get isGerencia => rol == 'gerencia';
+  bool get isDireccion => rol == 'direccion_general';
+  bool get isRolInterno => isEmpleado || isGerencia || isDireccion;
+
   // Verificar sesión al iniciar app
   Future<void> checkSession() async {
     _isAuthenticated = await _authService.isAuthenticated();

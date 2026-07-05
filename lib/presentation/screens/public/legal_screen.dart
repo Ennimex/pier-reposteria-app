@@ -1,6 +1,7 @@
 // lib/presentation/screens/public/legal_screen.dart
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/business_info.dart';
 
 class LegalScreen extends StatefulWidget {
   const LegalScreen({super.key});
@@ -118,7 +119,7 @@ class _LegalScreenState extends State<LegalScreen>
                       _LegalSection(
                         title: 'Responsable del Tratamiento',
                         content:
-                            'Pastelería Pier, con domicilio en Calle Allende, Col. Tahuizán, Huejutla de Reyes, Hgo., C.P. 43000.\nEmail: pierreposteria@gmail.com',
+                            '${BusinessInfo.marca}, con domicilio en ${BusinessInfo.direccionCompleta}.\nEmail: ${BusinessInfo.email}',
                       ),
                       _LegalSection(
                         title: 'Datos que Recopilamos',
@@ -133,7 +134,7 @@ class _LegalScreenState extends State<LegalScreen>
                       _LegalSection(
                         title: 'Derechos ARCO',
                         content:
-                            'Puede ejercer sus derechos de Acceso, Rectificación, Cancelación u Oposición enviando un correo a pierreposteria@gmail.com.\nTiempo de respuesta: Máximo 20 días hábiles.',
+                            'Puede ejercer sus derechos de Acceso, Rectificación, Cancelación u Oposición enviando un correo a ${BusinessInfo.email}.\nTiempo de respuesta: Máximo 20 días hábiles.',
                       ),
                       _LegalSection(
                         title: 'Conservación',
@@ -152,9 +153,9 @@ class _LegalScreenState extends State<LegalScreen>
                             'Todos los precios incluyen impuestos. La transacción se confirma una vez procesado el pago.',
                       ),
                       _LegalSection(
-                        title: 'Política de NO Envíos',
+                        title: 'Entregas y Envíos',
                         content:
-                            'Pier NO ofrece servicio de envíos a domicilio. Todos los pedidos deben recogerse en la sucursal de Huejutla de Reyes.',
+                            'Puedes recoger tu pedido en la sucursal de ${BusinessInfo.ciudad} o solicitar envío a domicilio en las colonias con cobertura. El costo de envío se calcula según la colonia y se muestra antes de pagar.',
                       ),
                       _LegalSection(
                         title: 'Cancelaciones',
@@ -286,7 +287,7 @@ class _LegalScreenState extends State<LegalScreen>
                           fontSize: 13,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 2),
-                  const Text('pierreposteria@gmail.com',
+                  const Text(BusinessInfo.email,
                       style: TextStyle(
                           color: AppColors.pierVerde,
                           fontSize: 12)),

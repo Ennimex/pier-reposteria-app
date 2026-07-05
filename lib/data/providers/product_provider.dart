@@ -49,22 +49,28 @@ class ProductProvider with ChangeNotifier {
   Map<String, dynamic>? promocionDeProducto(String productoId) =>
       _promociones[productoId];
 
-  // ✅ NUEVO: precio con descuento para un producto
+  // Precio con descuento para un tamaño dado.
+  // IMPORTANTE: el backend SOLO cobra descuentos por porcentaje
+  // (descuento_porcentaje) y los redondea a entero. `precio_oferta` (precio
+  // fijo) NO se cobra, así que la app tampoco lo muestra como descuento para
+  // que el precio mostrado == precio cobrado. El porcentaje se aplica sobre el
+  // precio del tamaño (chico/grande) y se redondea igual que el backend.
   double precioConDescuento(String productoId, double precioBase) {
-    final promo = _promociones[productoId];
-    if (promo == null) return precioBase;
-    final porcentaje =
-        double.tryParse(promo['descuento_porcentaje']?.toString() ?? '0') ?? 0;
-    final precioOferta =
-        double.tryParse(promo['precio_oferta']?.toString() ?? '0') ?? 0;
-    if (porcentaje > 0) return precioBase * (1 - porcentaje / 100);
-    if (precioOferta > 0) return precioOferta;
-    return precioBase;
+    final porcentaje = _porcentajeDe(productoId);
+    if (porcentaje <= 0) return precioBase;
+    return (precioBase * (1 - porcentaje / 100)).roundToDouble();
   }
 
-  // ✅ NUEVO: ¿tiene descuento activo?
-  bool tieneDescuento(String productoId) =>
-      _promociones.containsKey(productoId);
+  // ¿Tiene un descuento efectivo (por porcentaje) que el backend sí cobra?
+  bool tieneDescuento(String productoId) => _porcentajeDe(productoId) > 0;
+
+  double _porcentajeDe(String productoId) {
+    final promo = _promociones[productoId];
+    if (promo == null) return 0;
+    return double.tryParse(
+            promo['descuento_porcentaje']?.toString() ?? '0') ??
+        0;
+  }
 
   Future<void> cargarProductos() async {
     if (_productos.isNotEmpty) return;

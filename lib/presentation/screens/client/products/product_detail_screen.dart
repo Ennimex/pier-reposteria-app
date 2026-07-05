@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
+import '../../../../../core/constants/business_info.dart';
 import '../../../../../data/models/product_model.dart';
 import '../../../../../data/providers/cart_provider.dart';
 import '../../../../../data/providers/auth_provider.dart';
@@ -236,7 +237,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     setState(() => _isSharing = true);
     PierLog.info('Compartiendo: ${widget.product.nombre}');
     final title =
-        '¡Mira este delicioso producto!\n\n${widget.product.nombre} por solo \$${widget.product.precio.toStringAsFixed(2)}\n\nEncuéntralo en Pier Pastelería.';
+        '¡Mira este delicioso producto!\n\n${widget.product.nombre} por solo \$${widget.product.precio.toStringAsFixed(2)}\n\nEncuéntralo en ${BusinessInfo.marca}.';
     try {
       if (widget.product.imagenUrl.isNotEmpty) {
         final response = await http
@@ -659,86 +660,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         }),
                       ),
                     ],
-
-                    const SizedBox(height: 24),
-
-                    // ✅ NUEVO: Info rápida — tiempo de preparación + pickup (igual que web)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: AppColors.textSecondary.withValues(alpha: 0.12)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Row(children: [
-                              Container(
-                                width: 36, height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.pierVerde
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Icons.access_time_rounded,
-                                    color: AppColors.pierVerde, size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Preparación',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.textSecondary)),
-                                  const Text('24–48 horas',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary)),
-                                ],
-                              ),
-                            ]),
-                          ),
-                          Container(
-                              width: 1, height: 36,
-                              color: AppColors.textSecondary.withValues(alpha: 0.15)),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Row(children: [
-                              Container(
-                                width: 36, height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.pierVerde
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                    Icons.storefront_rounded,
-                                    color: AppColors.pierVerde, size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Recoger en',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.textSecondary)),
-                                  const Text('Sucursal Principal',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary)),
-                                ],
-                              ),
-                            ]),
-                          ),
-                        ],
-                      ),
-                    ),
 
                     const SizedBox(height: 24),
                     Container(
@@ -1251,7 +1172,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           color: Colors.amber, size: 12),
                       const SizedBox(width: 3),
                       Text(
-                        p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
+                        p.rating > 0 ? p.rating.toStringAsFixed(1) : '—',
                         style: TextStyle(
                             fontSize: 10,
                             color: AppColors.textSecondary,

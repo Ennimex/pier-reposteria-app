@@ -22,6 +22,9 @@ import '../presentation/screens/client/main_screen.dart';
 // Shell repartidor
 import '../presentation/screens/repartidor/repartidor_main_screen.dart';
 
+// Roles internos (empleado / gerencia / dirección) → panel web
+import '../presentation/screens/roles/panel_web_screen.dart';
+
 // Públicas
 import '../presentation/screens/public/about_us_screen.dart';
 import '../presentation/screens/public/contact_screen.dart';
@@ -49,6 +52,7 @@ class AppRoutes {
   static const String verificarEmail      = '/verificar-email';
   static const String main                = '/main';
   static const String repartidor          = '/repartidor';
+  static const String panelWeb            = '/panel-web';
   static const String nosotros            = '/nosotros';
   static const String contacto            = '/contacto';
   static const String faq                 = '/faq';
@@ -67,8 +71,15 @@ class AppRoutes {
   static const String editarPerfil        = '/cliente/perfil/editar';
 
   /// Ruta de inicio según el rol del usuario autenticado.
-  static String homeForRole(String? rol) =>
-      rol == 'repartidor' ? repartidor : main;
+  /// Los roles internos (empleado/gerencia/dirección) no operan en la app:
+  /// se les manda al aviso de panel web. El resto es cliente.
+  static String homeForRole(String? rol) {
+    if (rol == 'repartidor') return repartidor;
+    if (rol == 'empleado' || rol == 'gerencia' || rol == 'direccion_general') {
+      return panelWeb;
+    }
+    return main;
+  }
 
   static GoRouter router(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -92,7 +103,8 @@ class AppRoutes {
 
         final isProtected = protectedRoutes.contains(loc) ||
             loc.startsWith('/cliente/pedido') ||
-            loc == repartidor;
+            loc == repartidor ||
+            loc == panelWeb;
 
         if (isProtected && !isAuth) return login;
 
@@ -100,6 +112,12 @@ class AppRoutes {
         // (p. ej. desde el splash), lo mandamos a su panel de entregas.
         if (isAuth && authProvider.isRepartidor && loc == main) {
           return repartidor;
+        }
+
+        // Los roles internos no tienen vistas en la app: si aterrizan en el
+        // shell de cliente, se les muestra el aviso de panel web.
+        if (isAuth && authProvider.isRolInterno && loc == main) {
+          return panelWeb;
         }
 
         // FIX: verificarEmail removido de esta lista para permitir que
@@ -128,6 +146,7 @@ class AppRoutes {
 
         GoRoute(path: main,        builder: (c, s) => const MainScreen()),
         GoRoute(path: repartidor,  builder: (c, s) => const RepartidorMainScreen()),
+        GoRoute(path: panelWeb,    builder: (c, s) => const PanelWebScreen()),
         GoRoute(path: nosotros, builder: (c, s) => const AboutUsScreen()),
         GoRoute(path: contacto, builder: (c, s) => const ContactScreen()),
         GoRoute(path: faq,      builder: (c, s) => const FAQScreen()),

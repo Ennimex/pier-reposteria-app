@@ -16,17 +16,11 @@ class OrderProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  List<Order> get activeOrders => _orders
-      .where((o) =>
-          o.status != OrderStatus.completed &&
-          o.status != OrderStatus.cancelled)
-      .toList();
+  List<Order> get activeOrders =>
+      _orders.where((o) => !o.esFinalizado).toList();
 
-  List<Order> get completedOrders => _orders
-      .where((o) =>
-          o.status == OrderStatus.completed ||
-          o.status == OrderStatus.cancelled)
-      .toList();
+  List<Order> get completedOrders =>
+      _orders.where((o) => o.esFinalizado).toList();
 
   Future<void> cargarPedidos() async {
     PierLog.info('📦 Descargando historial de pedidos...');

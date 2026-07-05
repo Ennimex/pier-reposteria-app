@@ -146,37 +146,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ));
   }
 
-  void _showLogoutDialog(AuthProvider auth) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cerrar sesión'),
-        content:
-            const Text('¿Estás seguro que deseas cerrar tu sesión?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Cancelar',
-                style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              Navigator.of(context).pop();
-              await auth.logout();
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error, elevation: 0),
-            child: const Text('Salir',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   String _formatFechaPedido(dynamic fecha) {
     if (fecha == null) return '';
     try {
@@ -534,81 +503,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
 
-            // ── CERRAR SESIÓN ──────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding:
-                    const EdgeInsets.fromLTRB(20, 16, 20, 40),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                          color:
-                              Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3))
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(children: [
-                        Container(
-                          width: 44, height: 44,
-                          decoration: BoxDecoration(
-                            color: AppColors.error
-                                .withValues(alpha: 0.08),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.logout_rounded,
-                              color: AppColors.error, size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            const Text('¿Deseas salir?',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: AppColors.textPrimary)),
-                            Text(
-                                'Cerrar sesión de tu cuenta actual',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary)),
-                          ],
-                        ),
-                      ]),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: OutlinedButton(
-                          onPressed: () =>
-                              _showLogoutDialog(auth),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                                color: AppColors.textSecondary
-                                    .withValues(alpha: 0.3)),
-                            shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Cerrar Sesión',
-                              style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),

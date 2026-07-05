@@ -95,6 +95,55 @@ class DireccionEntrega {
       (colonia == null || colonia!.isEmpty);
 }
 
+/// Pedido a domicilio listo y sin repartidor, del pool que el repartidor puede
+/// tomar. Fuente: GET /api/entregas/disponibles (routes/entregasRoutes.js).
+class PedidoDisponible {
+  final String pedidoId;
+  final String numero;
+  final double total;
+  final double costoEnvio;
+  final String? notas;
+  final String? horarioEntrega;
+  final DireccionEntrega direccion;
+  final String clienteNombre;
+  final String clienteApellido;
+
+  const PedidoDisponible({
+    required this.pedidoId,
+    required this.numero,
+    required this.total,
+    required this.costoEnvio,
+    this.notas,
+    this.horarioEntrega,
+    required this.direccion,
+    required this.clienteNombre,
+    required this.clienteApellido,
+  });
+
+  factory PedidoDisponible.fromJson(Map<String, dynamic> json) {
+    double d(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0.0;
+    String? str(dynamic v) {
+      final s = v?.toString().trim();
+      return (s == null || s.isEmpty) ? null : s;
+    }
+
+    return PedidoDisponible(
+      pedidoId: json['pedido_id']?.toString() ?? '',
+      numero: json['numero']?.toString() ?? '',
+      total: d(json['total']),
+      costoEnvio: d(json['costo_envio']),
+      notas: str(json['notas']),
+      horarioEntrega: str(json['horario_entrega']),
+      direccion: DireccionEntrega.parse(json['direccion_entrega']),
+      clienteNombre: json['cliente_nombre']?.toString() ?? '',
+      clienteApellido: json['cliente_apellido']?.toString() ?? '',
+    );
+  }
+
+  String get clienteNombreCompleto =>
+      '$clienteNombre $clienteApellido'.trim();
+}
+
 class EntregaRepartidor {
   final String id;
   final String pedidoId;

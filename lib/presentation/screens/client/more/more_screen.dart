@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/config_format.dart';
+import '../../../../core/constants/business_info.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../routes/app_routes.dart';
 import '../../public/about_us_screen.dart';
@@ -401,10 +402,14 @@ class _MoreScreenState extends State<MoreScreen> {
 
   // ── ENCUÉNTRANOS ─────────────────────────────────────────────────
   Widget _buildEncuentranos() {
-    final direccion = formatearDireccion(_configContacto['direccion']);
-    final telefono = _configContacto['telefono']?.toString() ?? '';
-    final emailContacto = _configContacto['email']?.toString() ?? '';
-    final horario = formatearHorario(_configHorarios);
+    final direccion = formatearDireccion(_configContacto['direccion'],
+        fallback: BusinessInfo.direccion);
+    final telefono =
+        _configContacto['telefono']?.toString() ?? BusinessInfo.telefono;
+    final emailContacto =
+        _configContacto['email']?.toString() ?? BusinessInfo.email;
+    final horario =
+        formatearHorario(_configHorarios, fallback: BusinessInfo.horario);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -460,7 +465,7 @@ class _MoreScreenState extends State<MoreScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Sucursal Principal',
+                              const Text(BusinessInfo.sucursal,
                                   style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w800,

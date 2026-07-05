@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/config_format.dart';
+import '../../../../core/constants/business_info.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../data/providers/product_provider.dart';
@@ -925,10 +926,20 @@ class _HomeScreenState extends State<HomeScreen>
               final titulo = promo['titulo_banner']?.toString() ??
                   promo['producto_nombre']?.toString() ??
                   'Oferta especial';
-              final precioOferta = promo['precio_oferta']?.toString();
+              // El backend solo cobra el % (precio_oferta no se cobra); el
+              // "Desde" se calcula sobre el precio real con el % de descuento.
+              final precioBaseBanner =
+                  double.tryParse(promo['precio_chico']?.toString() ?? '0') ?? 0;
+              final porcentajeBanner = double.tryParse(
+                      promo['descuento_porcentaje']?.toString() ?? '0') ??
+                  0;
+              final precioDesde = porcentajeBanner > 0
+                  ? (precioBaseBanner * (1 - porcentajeBanner / 100))
+                      .roundToDouble()
+                  : precioBaseBanner;
               final subtitulo = promo['subtitulo_banner']?.toString() ??
-                  (precioOferta != null
-                      ? 'Desde \$${double.tryParse(precioOferta)?.toStringAsFixed(0) ?? ''} MXN'
+                  (precioDesde > 0
+                      ? 'Desde \$${precioDesde.toStringAsFixed(0)} MXN'
                       : '');
               final tiempo = _tiempoRestante(promo['fecha_fin']?.toString());
               final gradientColor =
@@ -1132,11 +1143,10 @@ class _HomeScreenState extends State<HomeScreen>
                 final porcentaje = double.tryParse(
                         promo['descuento_porcentaje']?.toString() ?? '0') ??
                     0;
+                // El backend solo cobra el % (precio_oferta no se cobra).
                 final precioFinal = porcentaje > 0
-                    ? (precioBruto * (1 - porcentaje / 100))
-                    : (double.tryParse(
-                            promo['precio_oferta']?.toString() ?? '0') ??
-                        precioBruto);
+                    ? (precioBruto * (1 - porcentaje / 100)).roundToDouble()
+                    : precioBruto;
                 final precioStr =
                     precioFinal > 0 ? '\$${precioFinal.toStringAsFixed(0)}' : '';
                 final tiempo =
@@ -1392,9 +1402,6 @@ class _HomeScreenState extends State<HomeScreen>
             final nombre =
                 promo['producto_nombre']?.toString() ?? 'Producto';
             final badge = promo['badge_destacado']?.toString() ?? 'Destacado';
-            final precioOferta =
-                double.tryParse(promo['precio_oferta']?.toString() ?? '0') ??
-                    0;
             final precioOriginal =
                 double.tryParse(promo['precio_original']?.toString() ??
                         promo['precio_chico']?.toString() ?? '0') ??
@@ -1402,6 +1409,10 @@ class _HomeScreenState extends State<HomeScreen>
             final porcentaje =
                 double.tryParse(promo['descuento_porcentaje']?.toString() ?? '0') ??
                     0;
+            // El backend solo cobra el % (precio_oferta no se cobra).
+            final precioFinalDest = porcentaje > 0
+                ? (precioOriginal * (1 - porcentaje / 100)).roundToDouble()
+                : precioOriginal;
             final fechaFin = promo['fecha_fin']?.toString();
             final tiempo = _tiempoRestante(fechaFin);
 
@@ -1532,16 +1543,16 @@ class _HomeScreenState extends State<HomeScreen>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // Precio final
+                                      // Precio final (solo % que el backend cobra)
                                       Text(
-                                        '\$${precioOferta > 0 ? precioOferta.toStringAsFixed(0) : precioOriginal.toStringAsFixed(0)}',
+                                        '\$${precioFinalDest.toStringAsFixed(0)}',
                                         style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w900,
                                             color: AppColors.pierDorado),
                                       ),
                                       // Precio tachado
-                                      if (precioOferta > 0 &&
+                                      if (porcentaje > 0 &&
                                           precioOriginal > 0)
                                         Text(
                                           '\$${precioOriginal.toStringAsFixed(0)}',
@@ -1769,8 +1780,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── SUCURSAL ──────────────────────────────────────────────────────
   Widget _buildSucursal() {
-    final direccion = formatearDireccion(_configContacto['direccion']);
-    final horario = formatearHorario(_configHorarios);
+    final direccion = formatearDireccion(_configContacto['direccion'],
+        fallback: BusinessInfo.direccion);
+    final horario =
+        formatearHorario(_configHorarios, fallback: BusinessInfo.horario);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
@@ -1814,7 +1827,7 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Sucursal Principal',
+                          const Text(BusinessInfo.sucursal,
                               style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
@@ -2094,7 +2107,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     Text(
                                       p.rating > 0
                                           ? p.rating.toStringAsFixed(1)
-                                          : '5.0',
+                                          : '—',
                                       style: TextStyle(
                                           fontSize: 10,
                                           color: AppColors.textSecondary,

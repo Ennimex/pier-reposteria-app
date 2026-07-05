@@ -932,7 +932,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     Row(children: [
                       const Icon(Icons.star_rounded, color: Colors.amber, size: 13),
                       const SizedBox(width: 3),
-                      Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
+                      Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '—',
                           style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                     ]),
                     Consumer<CartProvider>(
@@ -1074,7 +1074,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                         Row(children: [
                           const Icon(Icons.star_rounded, color: Colors.amber, size: 12),
                           const SizedBox(width: 3),
-                          Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '5.0',
+                          Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '—',
                               style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                         ]),
                       ],

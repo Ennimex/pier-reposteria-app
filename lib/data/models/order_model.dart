@@ -2,7 +2,18 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
-enum OrderStatus { pending, preparing, ready, completed, cancelled }
+enum OrderStatus {
+  pending,
+  preparing,
+  ready,
+  completed,
+  cancelled,
+  // Estados del flujo a domicilio (backend: asignado/en_camino/entregado/entrega_fallida)
+  assigned,
+  onTheWay,
+  delivered,
+  deliveryFailed,
+}
 
 class OrderItem {
   final String nombre;
@@ -40,6 +51,7 @@ class Order {
   final String? notas;
   final String? horarioRecogida;
   final String? metodoPago;
+  final String? tipoEntrega; // 'pickup' | 'domicilio'
   final OrderStatus status;
   final DateTime createdAt;
 
@@ -51,9 +63,19 @@ class Order {
     this.notas,
     this.horarioRecogida,
     this.metodoPago,
+    this.tipoEntrega,
     this.status = OrderStatus.pending,
     required this.createdAt,
   });
+
+  bool get esDomicilio => tipoEntrega == 'domicilio';
+
+  /// Estados terminales: el pedido ya no está en curso (va a "Historial").
+  bool get esFinalizado =>
+      status == OrderStatus.completed ||
+      status == OrderStatus.cancelled ||
+      status == OrderStatus.delivered ||
+      status == OrderStatus.deliveryFailed;
 
   factory Order.fromJson(Map<String, dynamic> json) {
     final itemsRaw = json['items'] ?? [];
@@ -71,6 +93,7 @@ class Order {
       // El backend devuelve horario_recogida
       horarioRecogida: json['horario_recogida'],
       metodoPago: json['metodo_pago'],
+      tipoEntrega: json['tipo_entrega'],
       status: _parseStatus(json['estado'] ?? 'pendiente'),
       // El backend devuelve created_at
       createdAt: json['created_at'] != null
@@ -97,6 +120,15 @@ class Order {
       case 'cancelled':
       case 'cancelado':
         return OrderStatus.cancelled;
+      // Flujo a domicilio
+      case 'asignado':
+        return OrderStatus.assigned;
+      case 'en_camino':
+        return OrderStatus.onTheWay;
+      case 'entregado':
+        return OrderStatus.delivered;
+      case 'entrega_fallida':
+        return OrderStatus.deliveryFailed;
       default:
         return OrderStatus.pending;
     }
@@ -106,9 +138,13 @@ class Order {
     switch (status) {
       case OrderStatus.pending:    return 'Pendiente';
       case OrderStatus.preparing:  return 'En preparación';
-      case OrderStatus.ready:      return 'Listo para recoger';
+      case OrderStatus.ready:      return esDomicilio ? 'Listo para envío' : 'Listo para recoger';
       case OrderStatus.completed:  return 'Completado';
       case OrderStatus.cancelled:  return 'Cancelado';
+      case OrderStatus.assigned:       return 'Repartidor asignado';
+      case OrderStatus.onTheWay:       return 'En camino';
+      case OrderStatus.delivered:      return 'Entregado';
+      case OrderStatus.deliveryFailed: return 'Entrega fallida';
     }
   }
 
@@ -119,6 +155,10 @@ class Order {
       case OrderStatus.ready:      return AppColors.estadoListo;
       case OrderStatus.completed:  return AppColors.estadoCompletado;
       case OrderStatus.cancelled:  return AppColors.estadoCancelado;
+      case OrderStatus.assigned:       return AppColors.estadoAsignada;
+      case OrderStatus.onTheWay:       return AppColors.estadoEnCamino;
+      case OrderStatus.delivered:      return AppColors.estadoEntregada;
+      case OrderStatus.deliveryFailed: return AppColors.estadoFallida;
     }
   }
 }

@@ -1,6 +1,7 @@
 // lib/presentation/screens/client/checkout/order_success_screen.dart
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/business_info.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
@@ -9,6 +10,8 @@ class OrderSuccessScreen extends StatelessWidget {
   final String pickupDate;
   final String pickupTime;
   final double total;
+  final bool esDomicilio;
+  final String? direccionResumen;
 
   const OrderSuccessScreen({
     super.key,
@@ -16,6 +19,8 @@ class OrderSuccessScreen extends StatelessWidget {
     required this.pickupDate,
     required this.pickupTime,
     required this.total,
+    this.esDomicilio = false,
+    this.direccionResumen,
   });
 
   void _goHome(BuildContext context) {
@@ -74,10 +79,17 @@ class OrderSuccessScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      _buildRow(Icons.store, 'Sucursal',
-                          'Principal — Huejutla de Reyes'),
+                      esDomicilio
+                          ? _buildRow(
+                              Icons.delivery_dining_rounded,
+                              'Entrega a domicilio',
+                              direccionResumen ?? 'A tu domicilio')
+                          : _buildRow(Icons.store, 'Sucursal',
+                              '${BusinessInfo.sucursal} — ${BusinessInfo.ciudad}'),
                       const Divider(height: 24),
-                      _buildRow(Icons.calendar_today, 'Fecha de recogida',
+                      _buildRow(
+                          Icons.calendar_today,
+                          esDomicilio ? 'Fecha de entrega' : 'Fecha de recogida',
                           pickupDate),
                       const Divider(height: 24),
                       _buildRow(Icons.access_time, 'Horario', pickupTime),

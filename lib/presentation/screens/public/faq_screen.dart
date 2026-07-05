@@ -1,6 +1,7 @@
 // lib/presentation/screens/public/faq_screen.dart
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/business_info.dart';
 import 'contact_screen.dart';
 
 class FAQScreen extends StatefulWidget {
@@ -22,7 +23,7 @@ class _FAQScreenState extends State<FAQScreen> {
       'categoria': 'Pedidos',
       'question': '¿Ofrecen servicio de entrega a domicilio?',
       'answer':
-          'Actualmente NO ofrecemos servicio de envíos a domicilio. Todos los pedidos deben recogerse directamente en nuestra sucursal en Huejutla de Reyes.',
+          'Sí. Al finalizar tu pedido puedes elegir recoger en nuestra sucursal de ${BusinessInfo.ciudad} o envío a domicilio en las colonias con cobertura. El costo de envío se calcula automáticamente según tu colonia.',
     },
     {
       'categoria': 'Pedidos',
@@ -70,7 +71,7 @@ class _FAQScreenState extends State<FAQScreen> {
       'categoria': 'Ubicación',
       'question': '¿Dónde están ubicados?',
       'answer':
-          'Calle Allende, Colonia Tahuizán, Huejutla de Reyes, Hidalgo, C.P. 43000. Abierto Lunes a Sábado de 9:00 a 21:00 hrs.',
+          '${BusinessInfo.direccionCompleta}. Abierto ${BusinessInfo.horario}.',
     },
   ];
 

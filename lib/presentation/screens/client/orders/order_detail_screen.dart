@@ -275,34 +275,46 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // ── TIMELINE ─────────────────────────────────────────────────────
   Widget _buildTimeline() {
-    if (_order.status == OrderStatus.cancelled) {
+    if (_order.status == OrderStatus.cancelled ||
+        _order.status == OrderStatus.deliveryFailed) {
+      final esFallo = _order.status == OrderStatus.deliveryFailed;
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.06),
+          color: AppColors.error.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border:
-              Border.all(color: Colors.red.withValues(alpha: 0.2)),
+              Border.all(color: AppColors.error.withValues(alpha: 0.2)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.cancel_outlined, color: Colors.red, size: 18),
-            SizedBox(width: 8),
-            Text('Pedido cancelado',
-                style: TextStyle(
-                    color: Colors.red, fontWeight: FontWeight.bold)),
+            Icon(esFallo ? Icons.error_outline : Icons.cancel_outlined,
+                color: AppColors.error, size: 18),
+            const SizedBox(width: 8),
+            Text(esFallo ? 'No pudimos entregar el pedido' : 'Pedido cancelado',
+                style: const TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.bold)),
           ],
         ),
       );
     }
 
-    final steps = [
-      (OrderStatus.pending,   'Recibido',   Icons.inbox_rounded),
-      (OrderStatus.preparing, 'Preparando', Icons.blender_outlined),
-      (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
-      (OrderStatus.completed, 'Entregado',  Icons.done_all_rounded),
-    ];
+    // El flujo a domicilio nace en "Listo" (el stock ya se descontó al pagar)
+    // y sigue con el reparto; el pickup mantiene su flujo de mostrador.
+    final steps = _order.esDomicilio
+        ? [
+            (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
+            (OrderStatus.assigned,  'Asignado',   Icons.person_pin_circle_outlined),
+            (OrderStatus.onTheWay,  'En camino',  Icons.local_shipping_outlined),
+            (OrderStatus.delivered, 'Entregado',  Icons.done_all_rounded),
+          ]
+        : [
+            (OrderStatus.pending,   'Recibido',   Icons.inbox_rounded),
+            (OrderStatus.preparing, 'Preparando', Icons.blender_outlined),
+            (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
+            (OrderStatus.completed, 'Entregado',  Icons.done_all_rounded),
+          ];
 
     final currentIdx =
         steps.indexWhere((s) => s.$1 == _order.status);
@@ -462,6 +474,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case OrderStatus.ready:      label = 'Listo'; break;
       case OrderStatus.completed:  label = 'Completado'; break;
       case OrderStatus.cancelled:  label = 'Cancelado'; break;
+      case OrderStatus.assigned:       label = 'Asignado'; break;
+      case OrderStatus.onTheWay:       label = 'En camino'; break;
+      case OrderStatus.delivered:      label = 'Entregado'; break;
+      case OrderStatus.deliveryFailed: label = 'Entrega fallida'; break;
     }
     return Container(
       padding:
@@ -499,6 +515,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case OrderStatus.ready:     return Icons.check_circle_outline;
       case OrderStatus.completed: return Icons.done_all_rounded;
       case OrderStatus.cancelled: return Icons.cancel_outlined;
+      case OrderStatus.assigned:       return Icons.person_pin_circle_outlined;
+      case OrderStatus.onTheWay:       return Icons.local_shipping_outlined;
+      case OrderStatus.delivered:      return Icons.done_all_rounded;
+      case OrderStatus.deliveryFailed: return Icons.error_outline;
     }
   }
 
@@ -511,12 +531,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return 'Estamos preparando tu pedido con mucho cariño';
       case OrderStatus.ready:
         // ✅ FIX: sin emoji
-        return 'Tu pedido está listo. Pasa a recogerlo';
+        return _order.esDomicilio
+            ? 'Tu pedido está listo y en espera de un repartidor'
+            : 'Tu pedido está listo. Pasa a recogerlo';
       case OrderStatus.completed:
         // ✅ FIX: sin emoji
         return 'Pedido entregado. Gracias por tu compra';
       case OrderStatus.cancelled:
         return 'Este pedido fue cancelado';
+      case OrderStatus.assigned:
+        return 'Un repartidor tomó tu pedido y saldrá pronto';
+      case OrderStatus.onTheWay:
+        return 'Tu pedido va en camino a tu domicilio';
+      case OrderStatus.delivered:
+        return 'Pedido entregado. Gracias por tu compra';
+      case OrderStatus.deliveryFailed:
+        return 'No pudimos entregar tu pedido. Nos pondremos en contacto contigo';
     }
   }
 }

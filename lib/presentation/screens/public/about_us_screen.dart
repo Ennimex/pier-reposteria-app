@@ -1,6 +1,7 @@
 // lib/presentation/screens/public/about_us_screen.dart
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/business_info.dart';
 
 class AboutUsScreen extends StatelessWidget {
   const AboutUsScreen({super.key});
@@ -273,17 +274,17 @@ class AboutUsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Sucursal Principal',
+              Text(BusinessInfo.sucursal,
                   style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 15)),
               SizedBox(height: 3),
-              Text('Calle Allende, Col. Tahuizán\nHuejutla de Reyes, Hgo.',
+              Text('${BusinessInfo.calle}\n${BusinessInfo.ciudad}',
                   style: TextStyle(
                       color: Colors.white70, fontSize: 12, height: 1.4)),
               SizedBox(height: 4),
-              Text('Lun–Sáb • 9:00 – 21:00 hrs',
+              Text(BusinessInfo.horario,
                   style: TextStyle(
                       color: Colors.white60, fontSize: 11)),
             ],

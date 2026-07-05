@@ -68,16 +68,8 @@ class _OrdersScreenState extends State<OrdersScreen>
           .map((json) => Order.fromJson(json as Map<String, dynamic>))
           .toList();
       setState(() {
-        _activeOrders = all
-            .where((o) =>
-                o.status != OrderStatus.completed &&
-                o.status != OrderStatus.cancelled)
-            .toList();
-        _completedOrders = all
-            .where((o) =>
-                o.status == OrderStatus.completed ||
-                o.status == OrderStatus.cancelled)
-            .toList();
+        _activeOrders = all.where((o) => !o.esFinalizado).toList();
+        _completedOrders = all.where((o) => o.esFinalizado).toList();
       });
     }
     if (!silent) setState(() => _isLoading = false);
@@ -365,6 +357,22 @@ class _OrdersScreenState extends State<OrdersScreen>
       case OrderStatus.cancelled:
         color = AppColors.estadoCancelado;
         label = 'Cancelado';
+        break;
+      case OrderStatus.assigned:
+        color = AppColors.estadoAsignada;
+        label = 'Asignado';
+        break;
+      case OrderStatus.onTheWay:
+        color = AppColors.estadoEnCamino;
+        label = 'En camino';
+        break;
+      case OrderStatus.delivered:
+        color = AppColors.estadoEntregada;
+        label = 'Entregado';
+        break;
+      case OrderStatus.deliveryFailed:
+        color = AppColors.estadoFallida;
+        label = 'Entrega fallida';
         break;
     }
     return Container(
