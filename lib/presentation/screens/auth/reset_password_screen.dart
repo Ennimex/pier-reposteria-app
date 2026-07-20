@@ -30,7 +30,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _isConfirmPasswordVisible = false;
 
   bool _isLoading   = false;
-  bool _codigoListo = false;
 
   @override
   void initState() {
@@ -58,7 +57,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } else if (value.isEmpty && index > 0) {
       _focusNodes[index - 1].requestFocus();
     }
-    setState(() => _codigoListo = _codigo.length == 6);
+    // Repinta el relleno/borde de las cajas del código al teclear.
+    setState(() {});
   }
 
   Future<void> _handleReset() async {
@@ -102,7 +102,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } else {
       for (final c in _codeControllers) { c.clear(); }
       _focusNodes[0].requestFocus();
-      setState(() => _codigoListo = false);
+      setState(() {});
       _showSnack(result['message'] ?? 'Código inválido o expirado', AppColors.error);
     }
   }

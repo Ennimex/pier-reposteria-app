@@ -1,4 +1,5 @@
 // lib/core/theme/app_theme.dart
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import 'app_dimensions.dart';
@@ -28,6 +29,16 @@ class AppTheme {
 
     return base.copyWith(
       textTheme: AppTextStyles.textTheme(base.textTheme),
+
+      // Transición de rutas: slide desde la derecha con parallax (estilo
+      // Cupertino) para TODOS los Navigator.push; en iOS además habilita
+      // el gesto de regresar deslizando desde el borde.
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: const CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: const CupertinoPageTransitionsBuilder(),
+        },
+      ),
 
       // AppBar — verde Pier, título Playfair (sin cambios respecto al actual)
       appBarTheme: const AppBarTheme(

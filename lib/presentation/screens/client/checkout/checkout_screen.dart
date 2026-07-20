@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/checkout/checkout_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +31,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String? _selectedTime;
   bool _isLoading = false;
   String? _errorMsg;
+
+  // Pago YA cobrado en Stripe cuya confirmación al backend falló: al volver
+  // a presionar "Pagar" se reintenta SOLO la confirmación (nunca se vuelve a
+  // cobrar). Evita el doble cobro si la red falla justo tras pagar.
+  String? _pendingIntentId;
+  double? _pendingTotal;
 
   // Domicilio
   List<DireccionCliente> _direcciones = [];
@@ -107,26 +114,69 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (mounted) setState(() => _loadingDirecciones = false);
   }
 
-  Future<void> _abrirAgregarDireccion() async {
-    final nueva = await showModalBottomSheet<DireccionCliente>(
+  Future<void> _abrirAgregarDireccion([DireccionCliente? editar]) async {
+    final guardada = await showModalBottomSheet<DireccionCliente>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => const _AgregarDireccionSheet(),
+      builder: (_) => _AgregarDireccionSheet(editar: editar),
     );
-    if (nueva != null && mounted) {
+    if (guardada != null && mounted) {
       await _cargarDirecciones();
       if (mounted) {
         setState(() {
           _selectedDireccion = _direcciones.firstWhere(
-            (d) => d.id == nueva.id,
-            orElse: () => nueva,
+            (d) => d.id == guardada.id,
+            orElse: () => guardada,
           );
         });
       }
+    }
+  }
+
+  Future<void> _eliminarDireccion(DireccionCliente d) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar dirección'),
+        content: Text('¿Eliminar "${d.alias}"? Esta acción no se puede deshacer.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Cancelar',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error, elevation: 0),
+            child:
+                const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+
+    final result = await _api.deleteAuth(ApiConstants.direccionById(d.id));
+    if (!mounted) return;
+    if (result['success'] == true) {
+      if (_selectedDireccion?.id == d.id) {
+        // La preselección de _cargarDirecciones elegirá otra con cobertura.
+        setState(() => _selectedDireccion = null);
+      }
+      await _cargarDirecciones();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text(result['message']?.toString() ?? 'No se pudo eliminar'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
     }
   }
 
@@ -182,6 +232,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     ));
   }
 
+  /// Aviso previo al cobro de un pedido programado "por confirmar": incluye
+  /// productos sin existencias hoy y el personal debe aprobar la fecha.
+  /// Devuelve true si el usuario decide continuar con el pago.
+  Future<bool> _avisarPedidoPorConfirmar(List<String> faltantes) async {
+    final continuar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(LucideIcons.clock, color: AppColors.pierDoradoOscuro),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text('Pedido sujeto a confirmación',
+                  style: TextStyle(fontSize: 17)),
+            ),
+          ],
+        ),
+        content: Text(
+          'Tu pedido es para otra fecha y hoy no hay existencias de: '
+          '${faltantes.join(', ')}.\n\n'
+          'Nuestro personal confirmará si podrá prepararlo para ese día. '
+          'Si no fuera posible, tu pago se reembolsa completo.',
+          style: const TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: AppColors.pierVerde),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Continuar y pagar'),
+          ),
+        ],
+      ),
+    );
+    return continuar == true;
+  }
+
   Future<void> _processPayment() async {
     // Fuera de horario no se aceptan pedidos (defensa además del botón).
     if (!BusinessInfo.estaAbierto()) {
@@ -214,56 +308,93 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     setState(() { _isLoading = true; _errorMsg = null; });
 
+    // Horario elegido (se usa en crear-intent y en confirmar). Mandarlo en
+    // crear-intent es clave: con fecha de recogida FUTURA el backend permite
+    // pagar productos sin stock hoy (pedido "por confirmar").
+    final horario =
+        '${DateFormat('yyyy-MM-dd').format(_selectedDate!)} ${_selectedTime!.split(' - ').first}';
+
     try {
-      // ── PASO 1: Crear Payment Intent (el backend calcula total + envío) ──
-      final intentBody = <String, dynamic>{};
-      if (_esDomicilio) {
-        intentBody['tipo_entrega'] = 'domicilio';
-        intentBody['direccion_id'] = _selectedDireccion!.id;
-      }
-      final intentResult =
-          await _api.postAuth(ApiConstants.crearPaymentIntent, intentBody);
-      if (!mounted) return;
+      String paymentIntentId;
+      double totalBackend;
 
-      if (intentResult['success'] != true) {
-        setState(() =>
-            _errorMsg = intentResult['message'] ?? 'Error al iniciar pago');
-        _showSnack(_errorMsg!, error: true);
-        return;
-      }
+      if (_pendingIntentId != null) {
+        // Ya hay un cobro hecho pendiente de confirmar: saltar directo a la
+        // confirmación (no crear otro intent ni volver a abrir el sheet).
+        paymentIntentId = _pendingIntentId!;
+        totalBackend = _pendingTotal ?? cartTotalConEnvio();
+      } else {
+        // ── PASO 1: Crear Payment Intent (el backend calcula total + envío) ──
+        final intentBody = <String, dynamic>{};
+        if (_esDomicilio) {
+          intentBody['tipo_entrega'] = 'domicilio';
+          intentBody['direccion_id'] = _selectedDireccion!.id;
+        } else {
+          intentBody['horario_recogida'] = horario;
+        }
+        final intentResult =
+            await _api.postAuth(ApiConstants.crearPaymentIntent, intentBody);
+        if (!mounted) return;
 
-      final clientSecret = intentResult['clientSecret'] as String;
-      final publishableKey = intentResult['publishableKey'] as String;
-      // Total autoritativo del backend (incluye envío)
-      final totalBackend =
-          double.tryParse(intentResult['total']?.toString() ?? '') ??
-              (cartTotalConEnvio());
+        if (intentResult['success'] != true) {
+          setState(() =>
+              _errorMsg = intentResult['message'] ?? 'Error al iniciar pago');
+          _showSnack(_errorMsg!, error: true);
+          return;
+        }
 
-      // ── PASO 2: Inicializar Stripe ────────────────────────────────
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.applySettings();
+        final clientSecret = intentResult['clientSecret']?.toString();
+        final publishableKey = intentResult['publishableKey']?.toString();
+        if (clientSecret == null || clientSecret.isEmpty ||
+            publishableKey == null || publishableKey.isEmpty) {
+          setState(() => _errorMsg =
+              'Respuesta de pago incompleta. Intenta de nuevo.');
+          _showSnack(_errorMsg!, error: true);
+          return;
+        }
+        // Total autoritativo del backend (incluye envío)
+        totalBackend =
+            double.tryParse(intentResult['total']?.toString() ?? '') ??
+                (cartTotalConEnvio());
 
-      // ── PASO 3: Sheet de pago ─────────────────────────────────────
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: 'Pier Repostería',
-          style: ThemeMode.light,
-          appearance: PaymentSheetAppearance(
-            colors: PaymentSheetAppearanceColors(
-              primary: AppColors.pierVerde,
+        // Pedido programado con productos sin stock hoy: el backend lo acepta
+        // pero queda sujeto a aprobación del personal. Avisar ANTES de cobrar.
+        if (intentResult['por_confirmar'] == true) {
+          final faltantes =
+              (intentResult['productos_por_confirmar'] as List? ?? [])
+                  .map((e) => e.toString())
+                  .toList();
+          final continuar = await _avisarPedidoPorConfirmar(faltantes);
+          if (!mounted || !continuar) return;
+        }
+
+        // ── PASO 2: Inicializar Stripe ────────────────────────────────
+        Stripe.publishableKey = publishableKey;
+        await Stripe.instance.applySettings();
+
+        // ── PASO 3: Sheet de pago ─────────────────────────────────────
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: clientSecret,
+            merchantDisplayName: 'Pier Repostería',
+            style: ThemeMode.light,
+            appearance: PaymentSheetAppearance(
+              colors: PaymentSheetAppearanceColors(
+                primary: AppColors.pierVerde,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      await Stripe.instance.presentPaymentSheet();
+        await Stripe.instance.presentPaymentSheet();
 
-      // ── PASO 4: Confirmar pedido en el backend ────────────────────
-      final paymentIntentId = clientSecret.split('_secret_').first;
-      final horario =
-          '${DateFormat('yyyy-MM-dd').format(_selectedDate!)} ${_selectedTime!.split(' - ').first}';
+        // El cobro YA ocurrió: recordarlo por si la confirmación falla.
+        paymentIntentId = clientSecret.split('_secret_').first;
+        _pendingIntentId = paymentIntentId;
+        _pendingTotal = totalBackend;
+      }
 
+      // ── PASO 4: Confirmar pedido en el backend (con reintentos) ────
       final confirmBody = <String, dynamic>{
         'payment_intent_id': paymentIntentId,
         'notas': '',
@@ -274,12 +405,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         confirmBody['horario_recogida'] = horario;
       }
 
-      final confirmResult =
-          await _api.postAuth(ApiConstants.confirmarPago, confirmBody);
+      // El backend limpia el carrito en la misma transacción que crea el
+      // pedido, así que reintentar la confirmación NO puede duplicarlo.
+      Map<String, dynamic> confirmResult = const {};
+      for (var intento = 1; intento <= 3; intento++) {
+        confirmResult =
+            await _api.postAuth(ApiConstants.confirmarPago, confirmBody);
+        if (confirmResult['success'] == true) break;
+        if (intento < 3) {
+          await Future.delayed(Duration(seconds: 2 * intento));
+        }
+      }
 
       if (!mounted) return;
 
       if (confirmResult['success'] == true) {
+        _pendingIntentId = null;
+        _pendingTotal = null;
         final cart = Provider.of<CartProvider>(context, listen: false);
         final pedido =
             confirmResult['pedido'] as Map<String, dynamic>;
@@ -297,13 +439,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               total: totalBackend,
               esDomicilio: _esDomicilio,
               direccionResumen: _selectedDireccion?.lineaResumen,
+              porConfirmar: pedido['por_confirmar'] == true,
             ),
           ),
         );
       } else {
-        _showSnack(
-            confirmResult['message'] ?? 'Error al confirmar pedido',
-            error: true);
+        // Si Stripe reporta que el pago NO se completó, liberar el pendiente
+        // para que el siguiente intento empiece desde cero (nuevo cobro).
+        final statusPago = confirmResult['status']?.toString();
+        if (statusPago != null && statusPago != 'succeeded') {
+          _pendingIntentId = null;
+          _pendingTotal = null;
+          setState(() => _errorMsg =
+              confirmResult['message']?.toString() ??
+                  'El pago no se completó. Intenta de nuevo.');
+        } else {
+          // El cobro sí ocurrió pero no pudimos registrar el pedido.
+          setState(() => _errorMsg =
+              'Tu pago fue procesado, pero no pudimos registrar el pedido '
+              '(${confirmResult['message'] ?? 'sin conexión'}). NO pagues de '
+              'nuevo: presiona "Pagar" otra vez y solo reintentaremos el registro.');
+        }
+        _showSnack(_errorMsg!, error: true);
       }
     } on StripeException catch (e) {
       if (!mounted) return;
@@ -671,7 +828,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Container(
           decoration: _cardDecoration(),
           child: ListTile(
-            leading: const Icon(LucideIcons.store, color: AppColors.pierDorado),
+            // Pin de ubicación animado (Lottie local, paleta Pier)
+            leading: Lottie.asset(
+              'assets/lottie/store_location.json',
+              width: 44,
+              height: 44,
+              fit: BoxFit.contain,
+            ),
             title: const Text(BusinessInfo.sucursal,
                 style: TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(_direccionSucursal),
@@ -822,10 +985,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ],
                   ),
                 ),
+                _direccionAccion(LucideIcons.pencil,
+                    () => _abrirAgregarDireccion(d)),
+                const SizedBox(width: 4),
+                _direccionAccion(LucideIcons.trash2,
+                    () => _eliminarDireccion(d),
+                    color: AppColors.error),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _direccionAccion(IconData icon, VoidCallback onTap, {Color? color}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Icon(icon,
+            size: 17, color: color ?? AppColors.textSecondary),
       ),
     );
   }
@@ -1059,12 +1240,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// Hoja para agregar una dirección de entrega. La colonia se elige de la
-// lista con cobertura (GET /zonas-envio/colonias) para garantizar tarifa.
-// Devuelve la DireccionCliente creada por Navigator.pop.
+// Hoja para agregar o editar una dirección de entrega. La colonia se elige
+// de la lista con cobertura (GET /zonas-envio/colonias) para garantizar
+// tarifa. Con [editar] precarga los campos y hace PUT /direcciones/:id.
+// Devuelve la DireccionCliente creada/actualizada por Navigator.pop.
 // ══════════════════════════════════════════════════════════════════════
 class _AgregarDireccionSheet extends StatefulWidget {
-  const _AgregarDireccionSheet();
+  final DireccionCliente? editar;
+  const _AgregarDireccionSheet({this.editar});
 
   @override
   State<_AgregarDireccionSheet> createState() => _AgregarDireccionSheetState();
@@ -1082,9 +1265,18 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
   bool _loadingColonias = true;
   bool _guardando = false;
 
+  bool get _esEdicion => widget.editar != null;
+
   @override
   void initState() {
     super.initState();
+    final e = widget.editar;
+    if (e != null) {
+      _aliasCtrl.text = e.alias;
+      _calleCtrl.text = e.calleNumero;
+      _refCtrl.text = e.referencias ?? '';
+      _telCtrl.text = e.telefonoContacto ?? '';
+    }
     _cargarColonias();
   }
 
@@ -1103,6 +1295,12 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
     if (result['success'] == true) {
       setState(() {
         _colonias = List<Map<String, dynamic>>.from(result['colonias'] ?? []);
+        // En edición: preseleccionar la colonia actual si sigue con cobertura.
+        final coloniaActual = widget.editar?.colonia;
+        if (coloniaActual != null &&
+            _colonias.any((c) => c['colonia'] == coloniaActual)) {
+          _colonia = coloniaActual;
+        }
       });
     }
     setState(() => _loadingColonias = false);
@@ -1124,20 +1322,26 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
   }
 
   Future<void> _guardar() async {
+    // En edición la colonia puede quedar sin tocar (el backend conserva la
+    // actual via COALESCE); al crear sí es obligatoria.
     if (_aliasCtrl.text.trim().isEmpty ||
         _calleCtrl.text.trim().isEmpty ||
-        _colonia == null) {
+        (_colonia == null && !_esEdicion)) {
       _snack('Completa alias, calle y número, y colonia');
       return;
     }
     setState(() => _guardando = true);
-    final result = await _api.postAuth(ApiConstants.direcciones, {
+    final body = {
       'alias': _aliasCtrl.text.trim(),
       'calle_numero': _calleCtrl.text.trim(),
-      'colonia': _colonia,
+      if (_colonia != null) 'colonia': _colonia,
       'referencias': _refCtrl.text.trim(),
       'telefono_contacto': _telCtrl.text.trim(),
-    });
+    };
+    final result = _esEdicion
+        ? await _api.putAuth(
+            ApiConstants.direccionById(widget.editar!.id), body)
+        : await _api.postAuth(ApiConstants.direcciones, body);
     if (!mounted) return;
     setState(() => _guardando = false);
     if (result['success'] == true && result['direccion'] != null) {
@@ -1169,8 +1373,8 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            const Text('Nueva dirección',
-                style: TextStyle(
+            Text(_esEdicion ? 'Editar dirección' : 'Nueva dirección',
+                style: const TextStyle(
                     fontFamily: 'Playfair Display',
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -1265,8 +1469,11 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
                         width: 20, height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text('Guardar dirección',
-                        style: TextStyle(
+                    : Text(
+                        _esEdicion
+                            ? 'Guardar cambios'
+                            : 'Guardar dirección',
+                        style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,
                             fontWeight: FontWeight.bold)),

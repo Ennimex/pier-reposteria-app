@@ -131,6 +131,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
+    if (p.agotado) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text('${p.nombre} está agotado'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
+        ));
+      return;
+    }
     final cart = Provider.of<CartProvider>(context, listen: false);
     cart.addItem(p);
     ScaffoldMessenger.of(context)
@@ -347,16 +361,45 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(20)),
-                    child: Image.network(
-                      p.imagenUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: AppColors.pierArena,
-                        child: const Icon(LucideIcons.cake,
-                            color: AppColors.pierVerde, size: 36),
+                    child: Hero(
+                      tag: 'producto-img-${p.id}',
+                      child: Image.network(
+                        p.imagenUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          color: AppColors.pierArena,
+                          child: const Icon(LucideIcons.cake,
+                              color: AppColors.pierVerde, size: 36),
+                        ),
                       ),
                     ),
                   ),
+                  if (p.agotado)
+                    Positioned(
+                      top: 10, left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.textSecondary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(LucideIcons.ban,
+                                color: Colors.white, size: 9),
+                            SizedBox(width: 3),
+                            Text('Agotado',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.2)),
+                          ],
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 10, right: 10,
                     child: GestureDetector(
@@ -454,10 +497,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           child: Container(
                             width: 36, height: 36,
                             decoration: BoxDecoration(
-                              color: AppColors.pierVerde,
+                              color: p.agotado
+                                  ? AppColors.textSecondary
+                                      .withValues(alpha: 0.35)
+                                  : AppColors.pierVerde,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(LucideIcons.plus,
+                            child: Icon(
+                                p.agotado
+                                    ? LucideIcons.ban
+                                    : LucideIcons.plus,
                                 color: Colors.white, size: 22),
                           ),
                         ),

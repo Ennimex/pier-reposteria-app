@@ -17,6 +17,7 @@ class ApiConstants {
   static const String resetPassword        = '/auth/reset-password';
   static const String googleAuth           = '/auth/google';
   static const String googleMobile         = '/auth/google/mobile';
+  static const String alexaGenerarCodigo   = '/auth/alexa/generar-codigo';
 
   // ── CATEGORÍAS ────────────────────────────────────────────────────
   static const String categorias = '/categorias';
@@ -93,6 +94,8 @@ class ApiConstants {
   static const String entregasAceptar      = '/entregas/aceptar';
   static const String disponibilidad       = '/entregas/disponibilidad';
   static String entregaEstado(String id)   => '/entregas/$id/estado';
+  // Aviso "llegué al domicilio": notifica al cliente sin cambiar estado
+  static String entregaLlegue(String id)   => '/entregas/$id/llegue';
 
   // ── UPLOAD ────────────────────────────────────────────────────────
   static const String uploadImagen        = '/upload/imagen';

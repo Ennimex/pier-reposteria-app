@@ -1,9 +1,10 @@
 // lib/presentation/screens/client/checkout/order_success_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/business_info.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
 class OrderSuccessScreen extends StatelessWidget {
@@ -13,6 +14,9 @@ class OrderSuccessScreen extends StatelessWidget {
   final double total;
   final bool esDomicilio;
   final String? direccionResumen;
+  // Pedido programado con productos sin stock hoy: el personal confirmará
+  // la disponibilidad para la fecha elegida.
+  final bool porConfirmar;
 
   const OrderSuccessScreen({
     super.key,
@@ -22,11 +26,16 @@ class OrderSuccessScreen extends StatelessWidget {
     required this.total,
     this.esDomicilio = false,
     this.direccionResumen,
+    this.porConfirmar = false,
   });
 
   void _goHome(BuildContext context) {
+    // Esta pantalla vive apilada en el navigator interno del tab Carrito:
+    // hay que vaciar esa pila (si no, el tab se queda mostrando el éxito y
+    // habría que dar doble tap al tab para limpiarlo) y luego cambiar a Inicio.
+    final nav = Navigator.of(context);
     context.read<NavigationProvider>().setSelectedIndex(0);
-    context.go('/main');
+    nav.popUntil((r) => r.isFirst);
   }
 
   @override
@@ -45,27 +54,65 @@ class OrderSuccessScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // ── ÍCONO ────────────────────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                      color: AppColors.pierVerde.withValues(alpha: 0.1),
-                      shape: BoxShape.circle),
-                  child: const Icon(LucideIcons.check,
-                      color: AppColors.pierVerde, size: 60),
+                // Celebración: check Lottie (una sola reproducción) y el
+                // resto de la pantalla lo sigue en cascada.
+                Lottie.asset(
+                  'assets/lottie/success_check.json',
+                  width: 170,
+                  height: 170,
+                  fit: BoxFit.contain,
+                  repeat: false,
                 ),
                 const SizedBox(height: 24),
                 const Text('¡Pedido Confirmado!',
-                    style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.pierVerdeOscuro)),
+                        style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.pierVerdeOscuro))
+                    .animate()
+                    .fadeIn(delay: 200.ms, duration: 350.ms)
+                    .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
                 const SizedBox(height: 8),
                 Text(
-                  'Tu pedido #$orderId ha sido registrado.\nTe notificaremos cuando esté listo.',
+                  porConfirmar
+                      ? 'Tu pedido #$orderId ha sido registrado.\nEstamos confirmando la disponibilidad para tu fecha.'
+                      : 'Tu pedido #$orderId ha sido registrado.\nTe notificaremos cuando esté listo.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       fontSize: 15, color: AppColors.textSecondary),
-                ),
+                ).animate().fadeIn(delay: 330.ms, duration: 350.ms),
+
+                if (porConfirmar) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.pierDorado.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color:
+                              AppColors.pierDorado.withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(LucideIcons.clock,
+                            size: 18, color: AppColors.pierDoradoOscuro),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Como tu pedido es para otra fecha, te avisaremos '
+                            'muy pronto si podemos prepararlo. Si no fuera '
+                            'posible, tu pago se reembolsa completo.',
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.35,
+                                color: AppColors.textPrimary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 400.ms, duration: 350.ms),
+                ],
 
                 const SizedBox(height: 40),
 
@@ -114,7 +161,10 @@ class OrderSuccessScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 450.ms, duration: 400.ms)
+                    .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
 
                 const Spacer(),
 
@@ -132,7 +182,7 @@ class OrderSuccessScreen extends StatelessWidget {
                     child: const Text('Volver al Inicio',
                         style: TextStyle(fontSize: 16, color: Colors.white)),
                   ),
-                ),
+                ).animate().fadeIn(delay: 650.ms, duration: 400.ms),
               ],
             ),
           ),
@@ -143,18 +193,24 @@ class OrderSuccessScreen extends StatelessWidget {
 
   Widget _buildRow(IconData icon, String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 18, color: AppColors.pierVerde),
         const SizedBox(width: 10),
         Text(label,
             style: const TextStyle(
                 color: AppColors.textSecondary, fontSize: 13)),
-        const Spacer(),
-        Text(value,
-            style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: AppColors.textPrimary)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(value,
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary)),
+        ),
       ],
     );
   }

@@ -20,6 +20,10 @@ pluginManagement {
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.11.1" apply false
+    // La APP ya no aplica KGP (Built-in Kotlin de Flutter 3.44+), pero este
+    // pin con "apply false" sigue siendo necesario: stripe_android todavia
+    // aplica KGP y sin el pin resuelve Kotlin 2.0.0 (incompatible con el SDK
+    // de Stripe compilado con 2.2). Quitar cuando flutter_stripe migre.
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 

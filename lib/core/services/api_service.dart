@@ -128,7 +128,10 @@ class ApiService {
         return data;
       }
       PierLog.error('Fallo en $endpoint: ${data['message']}');
+      // Se preserva el resto del cuerpo (p.ej. 'status' en pagos) para que
+      // el caller pueda distinguir tipos de fallo.
       return {
+        ...data,
         'success': false,
         'message': data['message'] ?? 'Error del servidor',
       };

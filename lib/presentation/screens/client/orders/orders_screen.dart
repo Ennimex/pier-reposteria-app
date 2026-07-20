@@ -303,7 +303,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                     ),
                   ),
                   // Chip de estado
-                  _buildStatusChip(order.status),
+                  _buildStatusChip(order),
                 ],
               ),
             ),
@@ -347,13 +347,14 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
-  Widget _buildStatusChip(OrderStatus status) {
+  Widget _buildStatusChip(Order order) {
+    final status = order.status;
     Color color;
     String label;
     switch (status) {
       case OrderStatus.pending:
         color = AppColors.estadoPendiente;
-        label = 'Pendiente';
+        label = order.porConfirmar ? 'Por confirmar' : 'Pendiente';
         break;
       case OrderStatus.preparing:
         color = AppColors.estadoPreparacion;

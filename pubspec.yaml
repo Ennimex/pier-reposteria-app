@@ -41,8 +41,8 @@ dependencies:
 
   # Íconos
   cupertino_icons: ^1.0.8
-  share_plus: ^12.0.2
-  flutter_stripe: ^11.1.0
+  share_plus: ^13.2.0   # 13.2.0+ = Built-in Kotlin (aviso KGP de Flutter 3.44)
+  flutter_stripe: ^13.1.0
 
   # Animaciones (entradas escalonadas, micro-interacciones)
   flutter_animate: ^4.5.0
@@ -50,6 +50,8 @@ dependencies:
   shimmer: ^3.0.0
   # Íconos Lucide (mismo set que el frontend web)
   lucide_icons_flutter: ^3.1.14
+  # Animaciones Lottie (empty states / éxito; assets locales recoloreados)
+  lottie: ^3.1.2
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +63,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/lottie/
 
   fonts:
     - family: Playfair Display

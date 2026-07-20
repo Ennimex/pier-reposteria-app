@@ -1,5 +1,7 @@
 // lib/presentation/screens/client/orders/order_detail_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -145,6 +147,44 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
                     // ── TIMELINE ──────────────────────────────────
                     _buildTimeline(),
+
+                    // Repartidor en camino (solo domicilio + en_camino)
+                    if (_order.esDomicilio &&
+                        _order.status == OrderStatus.onTheWay) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3))
+                          ],
+                        ),
+                        child: Row(children: [
+                          Lottie.asset(
+                            'assets/lottie/delivery.json',
+                            width: 90,
+                            height: 90,
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                                '¡Tu pedido va en camino!\nEl repartidor está por llegar.',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary)),
+                          ),
+                        ]),
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     // ── INFO DEL PEDIDO ───────────────────────────
@@ -301,8 +341,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
     }
 
-    // El flujo a domicilio nace en "Listo" (el stock ya se descontó al pagar)
-    // y sigue con el reparto; el pickup mantiene su flujo de mostrador.
+    // Todo pedido pagado nace "Listo" (la repostería ya está hecha); ya no
+    // existe "en preparación". "Pendiente" quedó solo para los programados
+    // por confirmar, así que el primer paso del pickup refleja eso.
     final steps = _order.esDomicilio
         ? [
             (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
@@ -311,14 +352,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             (OrderStatus.delivered, 'Entregado',  LucideIcons.checkCheck),
           ]
         : [
-            (OrderStatus.pending,   'Recibido',   LucideIcons.inbox),
-            (OrderStatus.preparing, 'Preparando', LucideIcons.cookingPot),
+            (
+              OrderStatus.pending,
+              _order.porConfirmar ? 'Por confirmar' : 'Recibido',
+              LucideIcons.inbox
+            ),
             (OrderStatus.ready,     'Listo',      Icons.check_circle_outline),
             (OrderStatus.completed, 'Entregado',  LucideIcons.checkCheck),
           ];
 
-    final currentIdx =
-        steps.indexWhere((s) => s.$1 == _order.status);
+    // Compat: un pedido viejo aún "en preparación" se ubica tras Recibido.
+    var currentIdx = steps.indexWhere((s) => s.$1 == _order.status);
+    if (currentIdx == -1 && _order.status == OrderStatus.preparing) {
+      currentIdx = 0;
+    }
 
     return Container(
       padding:
@@ -340,55 +387,84 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           final done = idx <= currentIdx;
           final current = idx == currentIdx;
 
+          // Secuencia: círculo idx entra a idx*300ms; la línea hacia el
+          // siguiente crece a idx*300+150ms. Solo se anima lo completado
+          // (verde); lo pendiente queda estático.
+          Widget circulo = Container(
+            width: 30, height: 30,
+            decoration: BoxDecoration(
+              color: done
+                  ? AppColors.pierVerde
+                  : Colors.grey[200],
+              shape: BoxShape.circle,
+              border: current
+                  ? Border.all(
+                      color: AppColors.pierVerde, width: 2.5)
+                  : null,
+            ),
+            child: done
+                ? Icon(step.$3, size: 14, color: Colors.white)
+                : null,
+          );
+          if (done) {
+            circulo = circulo.animate().scale(
+                begin: Offset.zero,
+                end: const Offset(1, 1),
+                delay: (idx * 300).ms,
+                duration: 300.ms,
+                curve: Curves.easeOutBack);
+          }
+
+          Widget segmento(bool verde, {required int delayMs}) {
+            Widget linea = Container(
+              height: 2,
+              color: verde ? AppColors.pierVerde : Colors.grey[200],
+            );
+            if (verde) {
+              linea = linea.animate().scaleX(
+                  begin: 0,
+                  end: 1,
+                  alignment: Alignment.centerLeft,
+                  delay: delayMs.ms,
+                  duration: 200.ms,
+                  curve: Curves.easeOut);
+            }
+            return linea;
+          }
+
+          Widget etiqueta = Text(step.$2,
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: current
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color: done
+                      ? AppColors.pierVerde
+                      : Colors.grey[400]),
+              textAlign: TextAlign.center);
+          if (done) {
+            etiqueta = etiqueta
+                .animate()
+                .fadeIn(delay: (idx * 300 + 120).ms, duration: 250.ms);
+          }
+
           return Expanded(
             child: Column(children: [
               Row(children: [
                 if (idx > 0)
                   Expanded(
-                    child: Container(
-                      height: 2,
-                      color: idx <= currentIdx
-                          ? AppColors.pierVerde
-                          : Colors.grey[200],
-                    ),
+                    child: segmento(idx <= currentIdx,
+                        delayMs: (idx - 1) * 300 + 150),
                   ),
-                Container(
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(
-                    color: done
-                        ? AppColors.pierVerde
-                        : Colors.grey[200],
-                    shape: BoxShape.circle,
-                    border: current
-                        ? Border.all(
-                            color: AppColors.pierVerde, width: 2.5)
-                        : null,
-                  ),
-                  child: done
-                      ? Icon(step.$3, size: 14, color: Colors.white)
-                      : null,
-                ),
+                circulo,
                 if (idx < steps.length - 1)
                   Expanded(
-                    child: Container(
-                      height: 2,
-                      color: idx < currentIdx
-                          ? AppColors.pierVerde
-                          : Colors.grey[200],
-                    ),
+                    child: segmento(idx < currentIdx,
+                        delayMs: idx * 300 + 150),
                   ),
               ]),
               const SizedBox(height: 6),
-              Text(step.$2,
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: current
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: done
-                          ? AppColors.pierVerde
-                          : Colors.grey[400]),
-                  textAlign: TextAlign.center),
+              etiqueta,
             ]),
           );
         }).toList(),
@@ -470,7 +546,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final color = _order.statusColor;
     String label;
     switch (status) {
-      case OrderStatus.pending:    label = 'Pendiente'; break;
+      case OrderStatus.pending:
+        label = _order.porConfirmar ? 'Por confirmar' : 'Pendiente';
+        break;
       case OrderStatus.preparing:  label = 'Preparando'; break;
       case OrderStatus.ready:      label = 'Listo'; break;
       case OrderStatus.completed:  label = 'Completado'; break;
@@ -526,7 +604,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   String _statusMessage(OrderStatus s) {
     switch (s) {
       case OrderStatus.pending:
-        return 'Tu pedido fue recibido y está en cola';
+        return _order.porConfirmar
+            ? 'Tu pedido es para otra fecha: estamos confirmando la '
+                'disponibilidad de tus productos. Te avisamos muy pronto'
+            : 'Tu pedido fue recibido y está en cola';
       case OrderStatus.preparing:
         // ✅ FIX: sin emoji — texto limpio
         return 'Estamos preparando tu pedido con mucho cariño';

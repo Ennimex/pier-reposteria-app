@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/entregas_provider.dart';
+import '../../widgets/animated_indexed_stack.dart';
 import 'entregas_screen.dart';
 import 'historial_repartidor_screen.dart';
 import 'perfil_repartidor_screen.dart';
@@ -34,7 +35,7 @@ class _RepartidorMainScreenState extends State<RepartidorMainScreen> {
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
         bottom: false,
-        child: IndexedStack(
+        child: AnimatedIndexedStack(
           index: _index,
           children: const [
             EntregasScreen(),

@@ -1,6 +1,7 @@
 // lib/presentation/screens/client/home/home_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -310,31 +311,35 @@ class _HomeScreenState extends State<HomeScreen>
         color: AppColors.pierVerde,
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _buildHeader(auth)),
+            SliverToBoxAdapter(child: _entrada(0, _buildHeader(auth))),
 
             if (_pedidoActivo != null)
-              SliverToBoxAdapter(child: _buildBannerPedidoActivo()),
+              SliverToBoxAdapter(
+                  child: _entrada(1, _buildBannerPedidoActivo())),
 
-            SliverToBoxAdapter(child: _buildSearchBar()),
-            SliverToBoxAdapter(child: _buildHeroCarousel()),
+            SliverToBoxAdapter(child: _entrada(1, _buildSearchBar())),
+            SliverToBoxAdapter(child: _entrada(2, _buildHeroCarousel())),
 
             // ✅ NUEVO: banner de tipo 'banner'
             if (_promoBanner != null)
-              SliverToBoxAdapter(child: _buildPromoBanner()),
+              SliverToBoxAdapter(child: _entrada(3, _buildPromoBanner())),
 
             // Relámpago — solo si hay datos del backend
             if (_promoRelampago.isNotEmpty)
-              SliverToBoxAdapter(child: _buildOfertasRelampago()),
+              SliverToBoxAdapter(
+                  child: _entrada(3, _buildOfertasRelampago())),
 
             // Temporada — solo si hay datos del backend
             if (_promoTemporada.isNotEmpty)
-              SliverToBoxAdapter(child: _buildOfertasTemporada()),
+              SliverToBoxAdapter(
+                  child: _entrada(3, _buildOfertasTemporada())),
 
             // ✅ NUEVO: destacado — filtrado por tipo == 'destacado'
             if (_promoDestacado.isNotEmpty)
-              SliverToBoxAdapter(child: _buildPromoDestacado()),
+              SliverToBoxAdapter(
+                  child: _entrada(3, _buildPromoDestacado())),
 
-            SliverToBoxAdapter(child: _buildCategories()),
+            SliverToBoxAdapter(child: _entrada(3, _buildCategories())),
 
             // Destacados (productos populares) — arriba de "Pide de nuevo" para mayor visibilidad
             if (productProvider.isLoading)
@@ -385,6 +390,21 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  // Entrada en cascada de las secciones superiores del home: fade + slide
+  // sutil escalonado por orden. Solo anima la primera vez que la sección
+  // se monta (los rebuilds por setState no la repiten).
+  Widget _entrada(int orden, Widget child) {
+    return child
+        .animate()
+        .fadeIn(delay: (70 * orden).ms, duration: 350.ms)
+        .slideY(
+            begin: 0.05,
+            end: 0,
+            delay: (70 * orden).ms,
+            duration: 350.ms,
+            curve: Curves.easeOutCubic);
   }
 
   // ── HEADER ────────────────────────────────────────────────────────
@@ -496,12 +516,19 @@ class _HomeScreenState extends State<HomeScreen>
         break;
       case 'listo':
         icon = Icons.check_circle_outline_rounded;
-        mensaje = 'Pedido #$numero listo para recoger';
+        mensaje = _pedidoActivo!['tipo_entrega'] == 'domicilio'
+            ? 'Pedido #$numero listo, buscando repartidor'
+            : 'Pedido #$numero listo para recoger';
         color = AppColors.pierVerde;
         break;
       default:
+        // 'pendiente' ahora es exclusivo de los pedidos programados que el
+        // personal debe confirmar (backend: por_confirmar).
+        final porConfirmar = _pedidoActivo!['por_confirmar'] == true;
         icon = LucideIcons.hourglass;
-        mensaje = 'Pedido #$numero recibido, en cola';
+        mensaje = porConfirmar
+            ? 'Pedido #$numero: confirmando disponibilidad'
+            : 'Pedido #$numero recibido, en cola';
         color = AppColors.estadoPendiente;
     }
     return GestureDetector(

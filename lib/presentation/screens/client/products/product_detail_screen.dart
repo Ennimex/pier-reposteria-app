@@ -48,10 +48,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   final Map<String, AnimationController> _relatedCartControllers = {};
   final Map<String, Animation<double>> _relatedCartAnims = {};
 
-  final List<Map<String, String>> _sizes = [
-    {'label': 'Chico',  'sub': '4–6 pers.'},
-    {'label': 'Grande', 'sub': '10–12 pers.'},
-  ];
+  // Solo etiquetas: el backend no tiene campo de porciones/personas,
+  // asi que no se inventa ese dato aqui.
+  final List<String> _sizes = ['Chico', 'Grande'];
 
   double get _precioBase =>
       _selectedSize == 0
@@ -184,6 +183,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
+    if (widget.product.agotado) return; // boton deshabilitado, doble guard
     // Tamaño elegido: el selector solo aparece si hay precio grande, así que
     // sin selector _selectedSize queda en 0 (chico).
     final tamano = _selectedSize == 1 ? 'grande' : 'chico';
@@ -247,13 +247,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         final tempDir = Directory.systemTemp;
         final file = File('${tempDir.path}/producto_compartido.jpg');
         await file.writeAsBytes(response.bodyBytes);
-        await Share.shareXFiles([XFile(file.path)], text: title);
+        await SharePlus.instance.share(
+            ShareParams(files: [XFile(file.path)], text: title));
       } else {
-        await Share.share(title);
+        await SharePlus.instance.share(ShareParams(text: title));
       }
     } catch (e) {
       PierLog.error('Fallo compartir imagen: $e');
-      await Share.share(title);
+      await SharePlus.instance.share(ShareParams(text: title));
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
@@ -314,17 +315,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  PageView.builder(
-                    itemCount: _images.length,
-                    onPageChanged: (i) =>
-                        setState(() => _currentImageIndex = i),
-                    itemBuilder: (context, i) => Image.network(
-                      _images[i],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, _) => Container(
-                        color: AppColors.pierArena,
-                        child: const Icon(LucideIcons.image,
-                            size: 60, color: AppColors.textSecondary),
+                  // Hero: la imagen "vuela" desde la tarjeta del catálogo /
+                  // favoritos (mismo tag producto-img-<id>).
+                  Hero(
+                    tag: 'producto-img-${widget.product.id}',
+                    child: PageView.builder(
+                      itemCount: _images.length,
+                      onPageChanged: (i) =>
+                          setState(() => _currentImageIndex = i),
+                      itemBuilder: (context, i) => Image.network(
+                        _images[i],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, _) => Container(
+                          color: AppColors.pierArena,
+                          child: const Icon(LucideIcons.image,
+                              size: 60, color: AppColors.textSecondary),
+                        ),
                       ),
                     ),
                   ),
@@ -337,12 +343,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         _topBtn(LucideIcons.arrowLeft,
                             () => Navigator.pop(context)),
                         Row(children: [
-                          _topBtn(
-                            _isFavorite
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            _toggleFavorito,
-                            color: _isFavorite ? Colors.red : null,
+                          TweenAnimationBuilder<double>(
+                            key: ValueKey(_isFavorite),
+                            // Pop solo al marcar favorito
+                            tween: Tween(
+                                begin: _isFavorite ? 1.35 : 1.0, end: 1.0),
+                            duration: const Duration(milliseconds: 450),
+                            curve: Curves.elasticOut,
+                            builder: (_, scale, child) =>
+                                Transform.scale(scale: scale, child: child),
+                            child: _topBtn(
+                              _isFavorite
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              _toggleFavorito,
+                              color: _isFavorite ? Colors.red : null,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           _topBtn(LucideIcons.share2, _shareProduct),
@@ -608,21 +624,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   crossAxisAlignment:
                                       CrossAxisAlignment.start,
                                   children: [
-                                    Text(_sizes[i]['label']!,
+                                    Text(_sizes[i],
                                         style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
                                             color: sel
                                                 ? Colors.white
                                                 : AppColors.textPrimary)),
-                                    const SizedBox(height: 3),
-                                    Text(_sizes[i]['sub']!,
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: sel
-                                                ? Colors.white
-                                                    .withValues(alpha: 0.75)
-                                                : AppColors.textSecondary)),
                                     const SizedBox(height: 6),
                                     // ✅ NUEVO: precio por tamaño con tachado si hay descuento
                                     if (tienePromo) ...[
@@ -729,9 +737,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                               child: SizedBox(
                                 height: 52,
                                 child: ElevatedButton(
-                                  onPressed: _addToCart,
+                                  onPressed: widget.product.agotado
+                                      ? null
+                                      : _addToCart,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.pierVerde,
+                                    disabledBackgroundColor: AppColors
+                                        .textSecondary
+                                        .withValues(alpha: 0.35),
                                     padding: EdgeInsets.zero,
                                     shape: RoundedRectangleBorder(
                                         borderRadius:
@@ -741,19 +754,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   child: LayoutBuilder(
                                     builder: (context, constraints) {
                                       final wide = constraints.maxWidth > 80;
+                                      final agotado =
+                                          widget.product.agotado;
                                       return Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(
-                                              LucideIcons.shoppingCart,
+                                          Icon(
+                                              agotado
+                                                  ? LucideIcons.ban
+                                                  : LucideIcons.shoppingCart,
                                               color: Colors.white,
                                               size: 18),
                                           if (wide) ...[
                                             const SizedBox(width: 6),
-                                            const Text('Añadir',
-                                                style: TextStyle(
+                                            Text(
+                                                agotado
+                                                    ? 'Agotado'
+                                                    : 'Añadir',
+                                                style: const TextStyle(
                                                     fontSize: 15,
                                                     fontWeight:
                                                         FontWeight.bold,

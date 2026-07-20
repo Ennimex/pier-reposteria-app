@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/cart/cart_screen.dart
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -466,17 +467,14 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 110, height: 110,
-            decoration: BoxDecoration(
-              color: AppColors.pierVerde.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(LucideIcons.shoppingBag,
-                size: 50,
-                color: AppColors.pierVerde.withValues(alpha: 0.5)),
+          // Animación Lottie (asset local recoloreado a la paleta Pier)
+          Lottie.asset(
+            'assets/lottie/empty_cart.json',
+            width: 200,
+            height: 200,
+            fit: BoxFit.contain,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
           const Text('Tu carrito está vacío',
               style: TextStyle(
                   fontFamily: 'Playfair Display',

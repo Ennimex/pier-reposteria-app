@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/cart_provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/navigation_provider.dart';
+import '../../widgets/animated_indexed_stack.dart';
 import 'package:flutter/services.dart';
 
 import 'home/home_screen.dart';
@@ -78,7 +79,7 @@ class _MainScreenState extends State<MainScreen> {
         }
       },
       child: Scaffold(
-        body: IndexedStack(
+        body: AnimatedIndexedStack(
           index: selectedIndex,
           children: [
             // Tab 0 — Inicio
@@ -151,20 +152,29 @@ class _MainScreenState extends State<MainScreen> {
                     if (cart.totalQuantity > 0)
                       Positioned(
                         right: -5, top: -5,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle),
-                          constraints: const BoxConstraints(
-                              minWidth: 16, minHeight: 16),
-                          child: Text(
-                            '${cart.totalQuantity}',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
+                        // Rebote al cambiar la cantidad (la key reinicia el tween)
+                        child: TweenAnimationBuilder<double>(
+                          key: ValueKey(cart.totalQuantity),
+                          tween: Tween(begin: 1.5, end: 1.0),
+                          duration: const Duration(milliseconds: 450),
+                          curve: Curves.elasticOut,
+                          builder: (_, scale, child) =>
+                              Transform.scale(scale: scale, child: child),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle),
+                            constraints: const BoxConstraints(
+                                minWidth: 16, minHeight: 16),
+                            child: Text(
+                              '${cart.totalQuantity}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         ),
                       ),

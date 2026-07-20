@@ -2,7 +2,10 @@
 //
 // Detalle de una entrega: cliente, dirección y resumen de cobro. Las acciones
 // respetan el flujo del backend: asignada -> "Salir en camino" (en_camino) ->
-// "Marcar entregado" (entregada). "Reportar" (fallida) está disponible en ambos.
+// "Marcar entregado" (entregada). El backend también permite entregar DIRECTO
+// desde asignada (repartidor que ya está en la zona), y estando en camino se
+// puede "Avisar que llegué" (notifica al cliente sin cambiar estado).
+// "Reportar" (fallida) está disponible en ambos estados.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +29,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
   // Estado local: puede avanzar (asignada -> en_camino) sin salir de la pantalla.
   late EstadoEntrega _estado = widget.entrega.estado;
   bool _saliendo = false;
+  bool _avisandoLlegada = false;
 
   EntregaRepartidor get entrega => widget.entrega;
   bool get _puedeAccionar =>
@@ -48,6 +52,18 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
         context.mounted) {
       _snack(context, 'No se pudo abrir WhatsApp');
+    }
+  }
+
+  Future<void> _comoLlegar(BuildContext context) async {
+    // Coordenadas exactas si la dirección las tiene (migración 004);
+    // si no, búsqueda por texto de la dirección.
+    final destino = Uri.encodeComponent(entrega.direccion.destinoMaps);
+    final uri = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=$destino&travelmode=driving');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        context.mounted) {
+      _snack(context, 'No se pudo abrir el mapa');
     }
   }
 
@@ -74,6 +90,21 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
       _snack(context, 'Vas en camino. Confirma cuando entregues.', ok: true);
     } else {
       _snack(context, res['message']?.toString() ?? 'No se pudo actualizar');
+    }
+  }
+
+  // Aviso al cliente "tu repartidor llegó" (solo en_camino, no cambia estado).
+  Future<void> _avisarLlegada() async {
+    setState(() => _avisandoLlegada = true);
+    final res =
+        await context.read<EntregasProvider>().avisarLlegada(entrega.id);
+    if (!mounted) return;
+    setState(() => _avisandoLlegada = false);
+    if (res['success'] == true) {
+      _snack(context, res['message']?.toString() ?? 'Cliente avisado',
+          ok: true);
+    } else {
+      _snack(context, res['message']?.toString() ?? 'No se pudo avisar');
     }
   }
 
@@ -125,57 +156,107 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _saliendo
-                            ? null
-                            : () => _reportarProblema(context),
-                        icon: const Icon(LucideIcons.triangleAlert, size: 18),
-                        label: const Text('Reportar'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side: const BorderSide(color: AppColors.error),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                    // En camino: avisar al cliente que ya llegaste (el backend
+                    // manda push + email, sin cambiar el estado).
+                    if (_estado == EstadoEntrega.enCamino) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _avisandoLlegada ? null : () => _avisarLlegada(),
+                          icon: _avisandoLlegada
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(LucideIcons.bellRing, size: 18),
+                          label: Text(_avisandoLlegada
+                              ? 'Avisando…'
+                              : 'Llegué al domicilio (avisar al cliente)'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.estadoEnCamino,
+                            side: const BorderSide(
+                                color: AppColors.estadoEnCamino),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: _estado == EstadoEntrega.asignada
-                          ? ElevatedButton.icon(
-                              onPressed:
-                                  _saliendo ? null : () => _salirEnCamino(),
-                              icon: _saliendo
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white),
-                                    )
-                                  : const Icon(LucideIcons.truck,
-                                      size: 18),
-                              label: Text(
-                                  _saliendo ? 'Actualizando…' : 'Salir en camino'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.estadoEnCamino,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                            )
-                          : ElevatedButton.icon(
-                              onPressed: () => _marcarEntregado(context),
-                              icon: const Icon(Icons.check_circle_outline,
-                                  size: 18),
-                              label: const Text('Marcar entregado'),
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                              ),
+                      const SizedBox(height: 8),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _saliendo
+                                ? null
+                                : () => _reportarProblema(context),
+                            icon:
+                                const Icon(LucideIcons.triangleAlert, size: 18),
+                            label: const Text('Reportar'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                              side: const BorderSide(color: AppColors.error),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: _estado == EstadoEntrega.asignada
+                              ? ElevatedButton.icon(
+                                  onPressed:
+                                      _saliendo ? null : () => _salirEnCamino(),
+                                  icon: _saliendo
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white),
+                                        )
+                                      : const Icon(LucideIcons.truck,
+                                          size: 18),
+                                  label: Text(_saliendo
+                                      ? 'Actualizando…'
+                                      : 'Salir en camino'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.estadoEnCamino,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                  ),
+                                )
+                              : ElevatedButton.icon(
+                                  onPressed: () => _marcarEntregado(context),
+                                  icon: const Icon(Icons.check_circle_outline,
+                                      size: 18),
+                                  label: const Text('Marcar entregado'),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                  ),
+                                ),
+                        ),
+                      ],
                     ),
+                    // Asignada: el backend permite entregar directo (repartidor
+                    // que acepta estando ya en la zona) sin "salir en camino".
+                    if (_estado == EstadoEntrega.asignada)
+                      TextButton.icon(
+                        onPressed:
+                            _saliendo ? null : () => _marcarEntregado(context),
+                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        label: const Text(
+                            '¿Ya estás en el domicilio? Marcar entregado'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.pierVerde,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -330,8 +411,33 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
                   ),
                 ),
             ],
-            if (tieneTelefono) ...[
+            if (!entrega.direccion.isEmpty) ...[
               const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _comoLlegar(context),
+                  icon: const Icon(LucideIcons.navigation,
+                      color: Colors.white, size: 18),
+                  label: Text(
+                      entrega.direccion.tieneCoordenadas
+                          ? 'Cómo llegar (GPS)'
+                          : 'Cómo llegar',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.estadoEnCamino,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+            if (tieneTelefono) ...[
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(

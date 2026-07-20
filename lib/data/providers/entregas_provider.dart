@@ -131,6 +131,12 @@ class EntregasProvider with ChangeNotifier {
     return null;
   }
 
+  /// Aviso "llegué al domicilio": el backend notifica al cliente (push +
+  /// email) SIN cambiar el estado. Solo válido estando en camino.
+  Future<Map<String, dynamic>> avisarLlegada(String entregaId) {
+    return _api.postAuth(ApiConstants.entregaLlegue(entregaId), {});
+  }
+
   /// Transición de estado de una entrega. Devuelve el mapa de respuesta del
   /// backend ({success, message, ...}). Al terminar recarga la lista.
   Future<Map<String, dynamic>> cambiarEstado(

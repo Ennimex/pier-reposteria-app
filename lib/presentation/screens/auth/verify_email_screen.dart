@@ -17,10 +17,11 @@ class VerifyEmailScreen extends StatefulWidget {
 }
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
-  final List<TextEditingController> _controllers =
-      List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-      List.generate(6, (_) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool _isLoading = false;
   bool _isResending = false;
@@ -36,13 +37,16 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   @override
   void dispose() {
-    for (final c in _controllers) { c.dispose(); }
-    for (final f in _focusNodes) { f.dispose(); }
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
-  String get _codigo =>
-      _controllers.map((c) => c.text).join();
+  String get _codigo => _controllers.map((c) => c.text).join();
 
   Future<void> _handleVerify() async {
     if (_codigo.length < 6) {
@@ -57,19 +61,21 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     if (success) {
       context.go(AppRoutes.main);
     } else {
-      for (final c in _controllers) { c.clear(); }
+      for (final c in _controllers) {
+        c.clear();
+      }
       _focusNodes[0].requestFocus();
       _showSnack(
-          auth.errorMessage ?? 'Código inválido o expirado',
-          AppColors.error);
+        auth.errorMessage ?? 'Código inválido o expirado',
+        AppColors.error,
+      );
     }
   }
 
   Future<void> _handleResend() async {
     setState(() => _isResending = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final result =
-        await auth.resendVerificationCode(widget.email);
+    final result = await auth.resendVerificationCode(widget.email);
     if (!mounted) return;
     setState(() => _isResending = false);
     _showSnack(
@@ -88,201 +94,253 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.pierArena,
+      // Única pantalla de auth que era Column fija: con el teclado numérico
+      // abierto (aquí siempre lo está) desbordaba y Flutter pintaba las
+      // franjas de "BOTTOM OVERFLOWED". Ahora scrollea cuando falta espacio
+      // y conserva el centrado (Spacers) cuando sobra.
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 20),
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 20),
 
-              // ── BOTÓN BACK ───────────────────────────────────
-              Align(
-                alignment: Alignment.centerLeft,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2))
-                      ],
-                    ),
-                    child: const Icon(LucideIcons.chevronLeft,
-                        size: 16, color: AppColors.textPrimary),
-                  ),
-                ),
-              ),
-
-              const Spacer(),
-
-              // ── ÍCONO EMAIL ──────────────────────────────────
-              Center(
-                child: Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.textSecondary.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    LucideIcons.mail,
-                    size: 48,
-                    color: AppColors.textSecondary.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              // ── TÍTULO ───────────────────────────────────────
-              const Text('Verifica tu correo',
-                  style: TextStyle(
-                      fontFamily: 'Playfair Display',
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 10),
-              Text(
-                'Ingresa el código de 6 dígitos que enviamos a',
-                style: const TextStyle(
-                    fontSize: 14, color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(widget.email,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.pierVerde),
-                  textAlign: TextAlign.center),
-
-              const SizedBox(height: 40),
-
-              // ── CAMPOS CÓDIGO ────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (i) {
-                  final isFocused = _focusNodes[i].hasFocus;
-                  final hasValue =
-                      _controllers[i].text.isNotEmpty;
-
-                  return SizedBox(
-                    width: 50, height: 58,
-                    child: TextFormField(
-                      controller: _controllers[i],
-                      focusNode: _focusNodes[i],
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      maxLength: 1,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
-                      style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        contentPadding: EdgeInsets.zero,
-                        filled: true,
-                        fillColor: isFocused || hasValue
-                            ? Colors.white
-                            : AppColors.textSecondary.withValues(alpha: 0.15),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                              color: hasValue
-                                  ? AppColors.pierVerde
-                                      .withValues(alpha: 0.4)
-                                  : Colors.transparent),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                              color: AppColors.pierVerde,
-                              width: 2),
+                    // ── BOTÓN BACK ───────────────────────────────────
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            LucideIcons.chevronLeft,
+                            size: 16,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
-                      onChanged: (v) => _onDigitChanged(v, i),
                     ),
-                  );
-                }),
-              ),
 
-              const SizedBox(height: 32),
+                    const Spacer(),
 
-              // ── BOTÓN VERIFICAR ──────────────────────────────
-              SizedBox(
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleVerify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.pierVerde,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20, width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Text('Verificar',
-                          style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold)),
+                    // ── ÍCONO EMAIL ──────────────────────────────────
+                    Center(
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.12,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.mail,
+                          size: 48,
+                          color: AppColors.textSecondary.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ── TÍTULO ───────────────────────────────────────
+                    const Text(
+                      'Verifica tu correo',
+                      style: TextStyle(
+                        fontFamily: 'Playfair Display',
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Ingresa el código de 6 dígitos que enviamos a',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.email,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.pierVerde,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // ── CAMPOS CÓDIGO ────────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(6, (i) {
+                        final isFocused = _focusNodes[i].hasFocus;
+                        final hasValue = _controllers[i].text.isNotEmpty;
+
+                        return SizedBox(
+                          width: 50,
+                          height: 58,
+                          child: TextFormField(
+                            controller: _controllers[i],
+                            focusNode: _focusNodes[i],
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            maxLength: 1,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              contentPadding: EdgeInsets.zero,
+                              filled: true,
+                              fillColor: isFocused || hasValue
+                                  ? Colors.white
+                                  : AppColors.textSecondary.withValues(
+                                      alpha: 0.15,
+                                    ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: hasValue
+                                      ? AppColors.pierVerde.withValues(
+                                          alpha: 0.4,
+                                        )
+                                      : Colors.transparent,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(
+                                  color: AppColors.pierVerde,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            onChanged: (v) => _onDigitChanged(v, i),
+                          ),
+                        );
+                      }),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // ── BOTÓN VERIFICAR ──────────────────────────────
+                    SizedBox(
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleVerify,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.pierVerde,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Verificar',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── REENVIAR ─────────────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '¿No recibiste el código?  ',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _isResending ? null : _handleResend,
+                          child: _isResending
+                              ? const SizedBox(
+                                  height: 14,
+                                  width: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.pierVerde,
+                                  ),
+                                )
+                              : const Text(
+                                  'Reenviar',
+                                  style: TextStyle(
+                                    color: AppColors.pierVerde,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+
+                    const Spacer(),
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              // ── REENVIAR ─────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('¿No recibiste el código?  ',
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
-                  GestureDetector(
-                    onTap: _isResending ? null : _handleResend,
-                    child: _isResending
-                        ? const SizedBox(
-                            height: 14, width: 14,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.pierVerde))
-                        : const Text('Reenviar',
-                            style: TextStyle(
-                                color: AppColors.pierVerde,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-
-              const Spacer(),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
         ),
       ),

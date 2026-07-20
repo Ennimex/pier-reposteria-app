@@ -50,6 +50,9 @@ class DireccionEntrega {
   final String? colonia;
   final String? referencias;
   final String? telefonoContacto;
+  // Coordenadas GPS (migración 004; null si la dirección no las tiene)
+  final double? lat;
+  final double? lng;
 
   const DireccionEntrega({
     this.alias,
@@ -57,6 +60,8 @@ class DireccionEntrega {
     this.colonia,
     this.referencias,
     this.telefonoContacto,
+    this.lat,
+    this.lng,
   });
 
   /// Acepta un Map, un String JSON (posiblemente doble-serializado) o null.
@@ -81,18 +86,32 @@ class DireccionEntrega {
       return (str == null || str.isEmpty) ? null : str;
     }
 
+    double? numOrNull(String k) => double.tryParse(value[k]?.toString() ?? '');
+
     return DireccionEntrega(
       alias: s('alias'),
       calleNumero: s('calle_numero') ?? s('calleNumero'),
       colonia: s('colonia'),
       referencias: s('referencias'),
       telefonoContacto: s('telefono_contacto') ?? s('telefonoContacto'),
+      lat: numOrNull('lat'),
+      lng: numOrNull('lng'),
     );
   }
 
   bool get isEmpty =>
       (calleNumero == null || calleNumero!.isEmpty) &&
       (colonia == null || colonia!.isEmpty);
+
+  bool get tieneCoordenadas => lat != null && lng != null;
+
+  /// Destino para Google Maps: coordenadas exactas si existen; si no, la
+  /// dirección en texto como búsqueda.
+  String get destinoMaps => tieneCoordenadas
+      ? '$lat,$lng'
+      : [calleNumero, colonia, 'Huejutla de Reyes']
+          .where((s) => s != null && s.isNotEmpty)
+          .join(', ');
 }
 
 /// Pedido a domicilio listo y sin repartidor, del pool que el repartidor puede

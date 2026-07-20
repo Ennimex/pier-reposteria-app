@@ -20,6 +20,7 @@ import '../refunds/refunds_screen.dart';
 import '../reviews/my_reviews_screen.dart';
 import '../more/profile_screen.dart';
 import 'quejas_screen.dart'; // ✅ NUEVO
+import 'vincular_alexa_screen.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -251,6 +252,13 @@ class _MoreScreenState extends State<MoreScreen> {
                 iconColor: AppColors.pierDoradoOscuro,
                 title: 'Quejas y Sugerencias',
                 onTap: () => _goProtected(QuejasScreen()),
+              ),
+              _buildDivider(),
+              _buildTile(
+                icon: LucideIcons.mic,
+                iconColor: AppColors.pierVerde,
+                title: 'Vincular con Alexa',
+                onTap: () => _goProtected(const VincularAlexaScreen()),
                 last: true,
               ),
             ]),

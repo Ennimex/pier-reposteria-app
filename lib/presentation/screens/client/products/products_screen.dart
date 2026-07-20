@@ -62,6 +62,20 @@ class _ProductsScreenState extends State<ProductsScreen>
   String? _filtroTipo;
   bool _filtrosLoaded = false;
 
+  // Opciones específicas de la categoría elegida (GET /categoria-opciones/:id).
+  // Vacías = se usa el set global de /filtros como fallback.
+  List<String> _saboresCategoria = [];
+  List<String> _tiposCategoria = [];
+
+  List<String> get _saboresActivos =>
+      (_category != 'Todos' && _saboresCategoria.isNotEmpty)
+          ? _saboresCategoria
+          : _sabores;
+  List<String> get _tiposActivos =>
+      (_category != 'Todos' && _tiposCategoria.isNotEmpty)
+          ? _tiposCategoria
+          : _tipos;
+
   List<Map<String, dynamic>> _categoriasApi = [];
   final List<Map<String, dynamic>> _categoriasFallback = [
     {'name': 'Todos',     'icon': LucideIcons.layoutGrid},
@@ -113,9 +127,56 @@ class _ProductsScreenState extends State<ProductsScreen>
       if (lista.isNotEmpty) {
         PierLog.info('✅ Categorías cargadas: ${lista.length}');
         setState(() => _categoriasApi = lista);
+        // Con los ids ya disponibles, cargar opciones si se entró con
+        // una categoría preseleccionada (p.ej. desde el home).
+        if (_category != 'Todos') _cargarOpcionesCategoria();
       }
     } else {
       PierLog.error('Error al cargar categorías: ${result['message']}');
+    }
+  }
+
+  /// Sabores/tipos específicos de la categoría seleccionada. Si la categoría
+  /// no tiene opciones definidas (o falla la llamada), se queda el set global.
+  Future<void> _cargarOpcionesCategoria() async {
+    final solicitada = _category;
+    if (solicitada == 'Todos') {
+      setState(() {
+        _saboresCategoria = [];
+        _tiposCategoria = [];
+      });
+      return;
+    }
+    final match = _categoriasApi.where((c) =>
+        (c['nombre'] ?? c['name'])?.toString() == solicitada);
+    final id = match.isEmpty ? null : match.first['id']?.toString();
+    if (id == null) return;
+
+    PierLog.api('GET ${ApiConstants.categoriaOpciones(id)}');
+    final result = await _api.get(ApiConstants.categoriaOpciones(id));
+    // Si el usuario ya cambió de categoría, descartar esta respuesta.
+    if (!mounted || _category != solicitada) return;
+
+    if (result['success'] == true) {
+      String nombreDe(dynamic o) =>
+          (o is Map ? o['nombre'] : o)?.toString() ?? '';
+      final sabores = List.from(result['sabores'] ?? [])
+          .map(nombreDe).where((s) => s.isNotEmpty).toList();
+      final tipos = List.from(result['tipos'] ?? [])
+          .map(nombreDe).where((s) => s.isNotEmpty).toList();
+      setState(() {
+        _saboresCategoria = sabores;
+        _tiposCategoria = tipos;
+        // Filtros activos que ya no existen en esta categoría se limpian.
+        if (_filtroSabor != null && !_saboresActivos.contains(_filtroSabor)) {
+          _filtroSabor = null;
+        }
+        if (_filtroTipo != null && !_tiposActivos.contains(_filtroTipo)) {
+          _filtroTipo = null;
+        }
+      });
+      PierLog.info(
+          '✅ Opciones de "$solicitada" — sabores:${sabores.length} tipos:${tipos.length}');
     }
   }
 
@@ -232,6 +293,8 @@ class _ProductsScreenState extends State<ProductsScreen>
       _filtroSabor = null;
       _filtroTamano = null;
       _filtroTipo = null;
+      _saboresCategoria = [];
+      _tiposCategoria = [];
     });
   }
 
@@ -240,6 +303,19 @@ class _ProductsScreenState extends State<ProductsScreen>
     if (!auth.isAuthenticated) {
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+    if (p.agotado) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text('${p.nombre} está agotado'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
       return;
     }
     PierLog.info('🛒 Agregando al carrito desde catálogo: ${p.nombre}');
@@ -345,13 +421,13 @@ class _ProductsScreenState extends State<ProductsScreen>
                 ),
                 const SizedBox(height: 20),
 
-                if (_sabores.isNotEmpty) ...[
+                if (_saboresActivos.isNotEmpty) ...[
                   const Text('Sabor',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8, runSpacing: 8,
-                    children: _sabores.where((s) => s != 'Todos').map((s) {
+                    children: _saboresActivos.where((s) => s != 'Todos').map((s) {
                       final sel = _filtroSabor == s;
                       return GestureDetector(
                         onTap: () {
@@ -405,13 +481,13 @@ class _ProductsScreenState extends State<ProductsScreen>
                   const SizedBox(height: 20),
                 ],
 
-                if (_tipos.isNotEmpty) ...[
+                if (_tiposActivos.isNotEmpty) ...[
                   const Text('Tipo',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8, runSpacing: 8,
-                    children: _tipos.where((t) => t != 'Todos').map((t) {
+                    children: _tiposActivos.where((t) => t != 'Todos').map((t) {
                       final sel = _filtroTipo == t;
                       return GestureDetector(
                         onTap: () {
@@ -554,7 +630,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                   final cat = _categories[i];
                   final sel = _category == cat['name'];
                   return GestureDetector(
-                    onTap: () => setState(() => _category = cat['name'] as String),
+                    onTap: () {
+                      setState(() => _category = cat['name'] as String);
+                      _cargarOpcionesCategoria();
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -844,17 +923,24 @@ class _ProductsScreenState extends State<ProductsScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, e, __) => Container(
-                    color: AppColors.pierArena,
-                    child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 40),
-                  )),
+              Hero(
+                tag: 'producto-img-${p.id}',
+                child: Image.network(p.imagenUrl, fit: BoxFit.cover,
+                    errorBuilder: (_, e, __) => Container(
+                      color: AppColors.pierArena,
+                      child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 40),
+                    )),
+              ),
               // ✅ NUEVO: columna de badges por tipo (igual que el web)
               Positioned(
                 top: 8, left: 8,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Agotado (stock_online = 0) — el backend rechaza agregarlo
+                    if (p.agotado)
+                      _badge(AppColors.textSecondary,
+                          icon: LucideIcons.ban, label: 'Agotado'),
                     // Popular — solo si no hay promo
                     if (p.popular && !tienePromo)
                       _badge(AppColors.pierDorado,
@@ -900,10 +986,21 @@ class _ProductsScreenState extends State<ProductsScreen>
                       shape: BoxShape.circle,
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8)],
                     ),
-                    child: Icon(
-                      _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: _favoritos.contains(p.id) ? Colors.white : AppColors.textSecondary,
-                      size: 16,
+                    child: TweenAnimationBuilder<double>(
+                      key: ValueKey(_favoritos.contains(p.id)),
+                      // Pop solo al marcar (al desmarcar entra sin rebote)
+                      tween: Tween(
+                          begin: _favoritos.contains(p.id) ? 1.6 : 1.0,
+                          end: 1.0),
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.elasticOut,
+                      builder: (_, scale, child) =>
+                          Transform.scale(scale: scale, child: child),
+                      child: Icon(
+                        _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: _favoritos.contains(p.id) ? Colors.white : AppColors.textSecondary,
+                        size: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -969,8 +1066,16 @@ class _ProductsScreenState extends State<ProductsScreen>
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             width: 34, height: 34,
-                            decoration: BoxDecoration(color: AppColors.pierVerde, borderRadius: BorderRadius.circular(10)),
-                            child: Icon(inCart ? LucideIcons.check : LucideIcons.plus, color: Colors.white, size: 20),
+                            decoration: BoxDecoration(
+                                color: p.agotado
+                                    ? AppColors.textSecondary.withValues(alpha: 0.35)
+                                    : AppColors.pierVerde,
+                                borderRadius: BorderRadius.circular(10)),
+                            child: Icon(
+                                p.agotado
+                                    ? LucideIcons.ban
+                                    : inCart ? LucideIcons.check : LucideIcons.plus,
+                                color: Colors.white, size: 20),
                           ),
                         );
                         if (anim != null) btn = ScaleTransition(scale: anim, child: btn);
@@ -1002,17 +1107,23 @@ class _ProductsScreenState extends State<ProductsScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(p.imagenUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, e, __) => Container(
-                    color: AppColors.pierArena,
-                    child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 36),
-                  )),
+              Hero(
+                tag: 'producto-img-${p.id}',
+                child: Image.network(p.imagenUrl, fit: BoxFit.cover,
+                    errorBuilder: (_, e, __) => Container(
+                      color: AppColors.pierArena,
+                      child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 36),
+                    )),
+              ),
               // ✅ Badges múltiples apilados igual que el web
               Positioned(
                 top: 6, left: 6,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (p.agotado)
+                      _badge(AppColors.textSecondary,
+                          icon: LucideIcons.ban, label: 'Agotado', small: true),
                     if (p.popular)
                       _badge(AppColors.pierDorado,
                           icon: Icons.star_rounded, label: 'Popular', small: true),
@@ -1053,10 +1164,20 @@ class _ProductsScreenState extends State<ProductsScreen>
                       shape: BoxShape.circle,
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6)],
                     ),
-                    child: Icon(
-                      _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: _favoritos.contains(p.id) ? Colors.white : AppColors.textSecondary,
-                      size: 14,
+                    child: TweenAnimationBuilder<double>(
+                      key: ValueKey(_favoritos.contains(p.id)),
+                      tween: Tween(
+                          begin: _favoritos.contains(p.id) ? 1.6 : 1.0,
+                          end: 1.0),
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.elasticOut,
+                      builder: (_, scale, child) =>
+                          Transform.scale(scale: scale, child: child),
+                      child: Icon(
+                        _favoritos.contains(p.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: _favoritos.contains(p.id) ? Colors.white : AppColors.textSecondary,
+                        size: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -1113,8 +1234,16 @@ class _ProductsScreenState extends State<ProductsScreen>
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(color: AppColors.pierVerde, borderRadius: BorderRadius.circular(12)),
-                            child: Icon(inCart ? LucideIcons.check : LucideIcons.plus, color: Colors.white, size: 20),
+                            decoration: BoxDecoration(
+                                color: p.agotado
+                                    ? AppColors.textSecondary.withValues(alpha: 0.35)
+                                    : AppColors.pierVerde,
+                                borderRadius: BorderRadius.circular(12)),
+                            child: Icon(
+                                p.agotado
+                                    ? LucideIcons.ban
+                                    : inCart ? LucideIcons.check : LucideIcons.plus,
+                                color: Colors.white, size: 20),
                           ),
                         );
                         if (anim != null) btn = ScaleTransition(scale: anim, child: btn);

@@ -16,7 +16,9 @@ class Product {
   final String? tipo;
   final bool popular;
   final bool esNuevo;
-  final int stockOnline;
+  // null = el endpoint no devolvio stock_online (p.ej. relacionados,
+  // pide-de-nuevo) -> se asume disponible. 0 = agotado (regla del backend).
+  final int? stockOnline;
   final bool disponible;
   final double rating;
   final int totalResenas;
@@ -36,7 +38,7 @@ class Product {
     this.tipo,
     this.popular = false,
     this.esNuevo = false,
-    this.stockOnline = 0,
+    this.stockOnline,
     this.disponible = true,
     this.rating = 0.0,
     this.totalResenas = 0,
@@ -87,12 +89,18 @@ class Product {
       tipo: json['tipo'],
       popular: json['popular'] == true || json['popular'] == 1,
       esNuevo: json['es_nuevo'] == true || json['es_nuevo'] == 1,
-      stockOnline: int.tryParse(json['stock_online']?.toString() ?? '0') ?? 0,
+      stockOnline: json['stock_online'] != null
+          ? int.tryParse(json['stock_online'].toString())
+          : null,
       disponible: json['activo'] == true || json['activo'] == 1,
       rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
       totalResenas: int.tryParse(json['reviews']?.toString() ?? '0') ?? 0,
     );
   }
+
+  /// stock_online = 0 significa agotado (el backend rechaza agregarlo al
+  /// carrito). null = desconocido, se trata como disponible.
+  bool get agotado => stockOnline == 0;
 
   // Getters de compatibilidad con código existente
   String get name => nombre;

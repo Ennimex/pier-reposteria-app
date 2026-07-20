@@ -53,6 +53,10 @@ class Order {
   final String? metodoPago;
   final String? tipoEntrega; // 'pickup' | 'domicilio'
   final OrderStatus status;
+  // Pedido programado con productos sin stock hoy: el personal debe
+  // aprobarlo o rechazarlo (backend: tblpedidos.por_confirmar). Con el
+  // flujo nuevo, todo pedido 'pendiente' nace con esta bandera.
+  final bool porConfirmar;
   final DateTime createdAt;
 
   Order({
@@ -65,6 +69,7 @@ class Order {
     this.metodoPago,
     this.tipoEntrega,
     this.status = OrderStatus.pending,
+    this.porConfirmar = false,
     required this.createdAt,
   });
 
@@ -95,6 +100,9 @@ class Order {
       metodoPago: json['metodo_pago'],
       tipoEntrega: json['tipo_entrega'],
       status: _parseStatus(json['estado'] ?? 'pendiente'),
+      porConfirmar: json['por_confirmar'] == true ||
+          json['por_confirmar']?.toString() == 'true' ||
+          json['por_confirmar']?.toString() == 't',
       // El backend devuelve created_at
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
@@ -136,7 +144,7 @@ class Order {
 
   String get statusText {
     switch (status) {
-      case OrderStatus.pending:    return 'Pendiente';
+      case OrderStatus.pending:    return porConfirmar ? 'Por confirmar' : 'Pendiente';
       case OrderStatus.preparing:  return 'En preparación';
       case OrderStatus.ready:      return esDomicilio ? 'Listo para envío' : 'Listo para recoger';
       case OrderStatus.completed:  return 'Completado';
