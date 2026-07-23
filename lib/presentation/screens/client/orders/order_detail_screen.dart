@@ -20,6 +20,7 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   late Order _order;
   bool _refreshing = false;
+  bool _cancelando = false;
 
   @override
   void initState() {
@@ -39,6 +40,58 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       if (fresh != null) _order = fresh;
       _refreshing = false;
     });
+  }
+
+  // ── CANCELAR PEDIDO ──────────────────────────────────────────────
+  Future<void> _confirmarCancelacion() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('¿Cancelar pedido?',
+            style: TextStyle(
+                fontFamily: 'Playfair Display',
+                fontWeight: FontWeight.bold)),
+        content: const Text(
+            'Se cancelará tu pedido y generaremos tu solicitud de '
+            'reembolso; te avisaremos cuando se procese.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Conservar pedido',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sí, cancelar',
+                style: TextStyle(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    await _cancelarPedido();
+  }
+
+  Future<void> _cancelarPedido() async {
+    setState(() => _cancelando = true);
+    final res =
+        await context.read<OrderProvider>().cancelarPedido(_order.id);
+    if (!mounted) return;
+    setState(() {
+      final fresh = res['order'];
+      if (fresh is Order) _order = fresh;
+      _cancelando = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(res['message'] as String),
+      backgroundColor:
+          res['ok'] == true ? AppColors.pierVerde : AppColors.error,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   @override
@@ -303,6 +356,53 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ],
                       ),
                     ),
+
+                    // ── CANCELAR PEDIDO ───────────────────────────
+                    // Solo mientras nadie haya tomado el pedido
+                    // (pendiente/listo, regla del backend).
+                    if (_order.esCancelablePorCliente) ...[
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _cancelando ? null : _confirmarCancelacion,
+                          icon: _cancelando
+                              ? const SizedBox(
+                                  width: 16, height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.error))
+                              : const Icon(LucideIcons.circleX,
+                                  size: 18, color: AppColors.error),
+                          label: Text(
+                              _cancelando
+                                  ? 'Cancelando…'
+                                  : 'Cancelar pedido',
+                              style: const TextStyle(
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                                color: AppColors.error
+                                    .withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Text(
+                            'Disponible mientras tu pedido no haya sido tomado',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500])),
+                      ),
+                    ],
                   ],
                   ),
                 ),

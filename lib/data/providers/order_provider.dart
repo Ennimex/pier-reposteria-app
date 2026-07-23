@@ -80,4 +80,38 @@ class OrderProvider extends ChangeNotifier {
     PierLog.error('Error detalle pedido $id: ${result['message']}');
     return null;
   }
+
+  /// Cancela un pedido propio (PUT /pedidos/:id/cancelar). El backend solo lo
+  /// permite en 'pendiente' o 'listo' y mientras ningún repartidor lo haya
+  /// tomado; repone el stock y genera la solicitud de reembolso automática
+  /// (aparece sola en Reembolsos).
+  ///
+  /// Si el servidor responde error, se re-consulta el detalle antes de darlo
+  /// por fallido: el backend puede fallar DESPUÉS de aplicar la cancelación
+  /// (p. ej. al enviar el correo de confirmación) y el pedido SÍ quedó
+  /// cancelado.
+  Future<Map<String, dynamic>> cancelarPedido(String id) async {
+    final result =
+        await _api.putAuth(ApiConstants.pedidoCancelar(id), {});
+    final okServidor = result['success'] == true;
+
+    // Sincroniza lista y detalle con el estado real (éxito o no).
+    final fresh = await fetchOrderDetail(id);
+    final cancelado =
+        okServidor || fresh?.status == OrderStatus.cancelled;
+
+    final String message;
+    if (okServidor) {
+      message = result['message'] ??
+          'Pedido cancelado; tu reembolso ya está en proceso';
+    } else if (cancelado) {
+      // El backend falló tras el COMMIT (correo): la cancelación sí aplicó.
+      message = 'Pedido cancelado; tu reembolso ya está en proceso';
+    } else {
+      message = result['message'] ?? 'No se pudo cancelar el pedido';
+      PierLog.error('Error al cancelar pedido $id: $message');
+    }
+
+    return {'ok': cancelado, 'order': fresh, 'message': message};
+  }
 }

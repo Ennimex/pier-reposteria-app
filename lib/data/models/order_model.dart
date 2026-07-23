@@ -82,6 +82,12 @@ class Order {
       status == OrderStatus.delivered ||
       status == OrderStatus.deliveryFailed;
 
+  /// El cliente puede cancelar su pedido mientras nadie lo haya tomado.
+  /// Espejo de la regla del backend (PUT /pedidos/:id/cancelar): solo
+  /// 'pendiente' o 'listo'; al pasar a 'asignado' ya no aplica.
+  bool get esCancelablePorCliente =>
+      status == OrderStatus.pending || status == OrderStatus.ready;
+
   factory Order.fromJson(Map<String, dynamic> json) {
     final itemsRaw = json['items'] ?? [];
     final items = (itemsRaw as List)

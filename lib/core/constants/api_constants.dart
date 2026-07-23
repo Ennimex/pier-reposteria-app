@@ -34,6 +34,9 @@ class ApiConstants {
   static const String misPedidos         = '/pedidos/mis-pedidos';
   static const String productosComprados = '/pedidos/productos-comprados';
   static String pedidoById(String id)    => '/pedidos/$id';
+  // Cancelación por el propio cliente: solo estados pendiente/listo,
+  // mientras ningún repartidor haya tomado el pedido
+  static String pedidoCancelar(String id) => '/pedidos/$id/cancelar';
 
   // ── PAGOS (Stripe) ────────────────────────────────────────────────
   static const String crearPaymentIntent = '/pagos/crear-intent';
