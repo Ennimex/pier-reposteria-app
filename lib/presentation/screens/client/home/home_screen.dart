@@ -1,5 +1,6 @@
 // lib/presentation/screens/client/home/home_screen.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -20,6 +21,7 @@ import '../orders/order_detail_screen.dart';
 import '../../../../data/models/order_model.dart';
 import '../../public/contact_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
@@ -101,13 +103,21 @@ class _HomeScreenState extends State<HomeScreen>
     },
   ];
 
+  // Slides administrados desde Dirección → Personalización (mismas claves que
+  // la web: titulo, subtitulo, cta, imagen, activo, orden). null = sin config,
+  // se usan los _heroSlides de arriba como fallback.
+  List<Map<String, String>>? _slidesConfigurados;
+
+  List<Map<String, String>> get _slidesDisplay =>
+      _slidesConfigurados ?? _heroSlides;
+
   @override
   void initState() {
     super.initState();
     PierLog.nav('→ HomeScreen');
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
-      final next = (_currentPage + 1) % _heroSlides.length;
+      final next = (_currentPage + 1) % _slidesDisplay.length;
       setState(() => _currentPage = next);
       if (_pageController.hasClients) {
         _pageController.animateToPage(next,
@@ -231,17 +241,101 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _cargarConfiguracion() async {
     // El horario vive dentro de la seccion 'contacto' (clave 'horarios');
-    // no existe una seccion 'horarios' publica.
-    PierLog.api('GET configuracion/contacto');
-    final result =
-        await _api.get(ApiConstants.configuracionSeccion('contacto'));
+    // no existe una seccion 'horarios' publica. Los slides del hero viven en
+    // 'personalizacion' (clave 'slides') y el hero de respaldo en 'inicio'
+    // (clave 'hero') — mismas fuentes que la web (Inicio.tsx).
+    PierLog.api('GET configuracion/contacto + personalizacion + inicio');
+    final results = await Future.wait([
+      _api.get(ApiConstants.configuracionSeccion('contacto')),
+      _api.get(ApiConstants.configuracionSeccion('personalizacion')),
+      _api.get(ApiConstants.configuracionSeccion('inicio')),
+    ]);
     if (!mounted) return;
-    if (result['success'] == true) {
+    if (results[0]['success'] == true) {
       setState(() {
-        _configContacto = Map<String, dynamic>.from(result['config'] ?? {});
+        _configContacto =
+            Map<String, dynamic>.from(results[0]['config'] ?? {});
       });
     }
+    _aplicarSlidesConfigurados(
+        results[1]['success'] == true ? results[1]['config'] : null,
+        results[2]['success'] == true ? results[2]['config'] : null);
     PierLog.info('✅ Configuración cargada');
+  }
+
+  // Espejo de la web (Inicio.tsx): los slides activos del panel de
+  // Personalización mandan, ordenados por `orden` — sus textos siempre; la
+  // imagen solo si es URL real (http...), si no se conserva la foto del slide
+  // local de la misma posición. Sin slides configurados, el 'hero' de la
+  // sección 'inicio' puede personalizar los textos del primer slide. Cualquier
+  // error de formato conserva el fallback hardcodeado.
+  void _aplicarSlidesConfigurados(dynamic personalizacion, dynamic inicio) {
+    List<Map<String, String>>? slides;
+    try {
+      final raw = (personalizacion is Map) ? personalizacion['slides'] : null;
+      final decoded = raw is String ? jsonDecode(raw) : raw;
+      if (decoded is List) {
+        final activos = decoded
+            .whereType<Map>()
+            .where((s) => s['activo'] == true)
+            .toList()
+          ..sort((a, b) =>
+              (num.tryParse(a['orden']?.toString() ?? '0') ?? 0)
+                  .compareTo(num.tryParse(b['orden']?.toString() ?? '0') ?? 0));
+        if (activos.isNotEmpty) {
+          slides = [];
+          for (var i = 0; i < activos.length; i++) {
+            final s = activos[i];
+            final imagen = s['imagen']?.toString() ?? '';
+            final cta = s['cta']?.toString() ?? '';
+            slides.add({
+              'tag': '',
+              'title': s['titulo']?.toString() ?? '',
+              'subtitle': s['subtitulo']?.toString() ?? '',
+              'cta': cta.isNotEmpty ? cta : 'Ver Productos',
+              'route': 'catalog',
+              'image': imagen.startsWith('http')
+                  ? imagen
+                  : _heroSlides[i % _heroSlides.length]['image']!,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      PierLog.error('Slides configurados con formato inválido: $e');
+      slides = null;
+    }
+
+    // Sin slides del panel: el hero de 'inicio' personaliza el primer slide
+    if (slides == null) {
+      try {
+        final rawHero = (inicio is Map) ? inicio['hero'] : null;
+        final hero = rawHero is String ? jsonDecode(rawHero) : rawHero;
+        final titulo = (hero is Map) ? hero['titulo']?.toString() ?? '' : '';
+        if (titulo.isNotEmpty) {
+          slides = _heroSlides
+              .map((s) => Map<String, String>.from(s))
+              .toList();
+          slides[0]['title'] = titulo;
+          final subtitulo = hero['subtitulo']?.toString() ?? '';
+          if (subtitulo.isNotEmpty) slides[0]['subtitle'] = subtitulo;
+        }
+      } catch (_) {/* conservar fallback */}
+    }
+
+    final resueltos = slides;
+    if (resueltos != null) {
+      setState(() {
+        _slidesConfigurados = resueltos;
+        // Si la lista se acorta con el carrusel avanzado, evitar quedar
+        // fuera de rango.
+        if (_currentPage >= resueltos.length) {
+          _currentPage = 0;
+          if (_pageController.hasClients) _pageController.jumpToPage(0);
+        }
+      });
+      PierLog.info('✅ Slides del hero configurados: ${resueltos.length}');
+    }
   }
 
   Future<void> _cargarDatosUsuario() async {
@@ -291,6 +385,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final auth = Provider.of<AuthProvider>(context);
     final productProvider = Provider.of<ProductProvider>(context);
 
@@ -343,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen>
 
             // Destacados (productos populares) — arriba de "Pide de nuevo" para mayor visibilidad
             if (productProvider.isLoading)
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.all(40),
                   child: Center(child: CircularProgressIndicator(
@@ -635,10 +731,10 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             PageView.builder(
               controller: _pageController,
-              itemCount: _heroSlides.length,
+              itemCount: _slidesDisplay.length,
               onPageChanged: (i) => setState(() => _currentPage = i),
               itemBuilder: (context, i) {
-                final slide = _heroSlides[i];
+                final slide = _slidesDisplay[i];
                 return Stack(
                   fit: StackFit.expand,
                   children: [
@@ -666,22 +762,28 @@ class _HomeScreenState extends State<HomeScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.pierDorado,
-                              borderRadius: BorderRadius.circular(20),
+                          // Los slides del panel no traen tag: sin badge
+                          if ((slide['tag'] ?? '').isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.pierDorado,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(slide['tag']!,
+                                  style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: 1)),
                             ),
-                            child: Text(slide['tag']!,
-                                style: const TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                    letterSpacing: 1)),
-                          ),
-                          const SizedBox(height: 8),
+                            const SizedBox(height: 8),
+                          ],
+                          // maxLines: los textos del panel pueden ser largos
                           Text(slide['title']!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
@@ -690,6 +792,8 @@ class _HomeScreenState extends State<HomeScreen>
                                   letterSpacing: -0.3)),
                           const SizedBox(height: 5),
                           Text(slide['subtitle']!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.white.withValues(alpha: 0.85))),
@@ -728,7 +832,7 @@ class _HomeScreenState extends State<HomeScreen>
             Positioned(
               bottom: 12, right: 16,
               child: Row(
-                children: List.generate(_heroSlides.length, (i) {
+                children: List.generate(_slidesDisplay.length, (i) {
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     margin: const EdgeInsets.only(left: 4),
@@ -765,7 +869,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [AppColors.pierVerdeOscuro, AppColors.pierVerde],
@@ -862,7 +966,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(LucideIcons.gift,
+                    Icon(LucideIcons.gift,
                         color: AppColors.pierDorado, size: 16),
                     const SizedBox(width: 8),
                     Text(codigo,
@@ -889,7 +993,7 @@ class _HomeScreenState extends State<HomeScreen>
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(50),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('Ver productos',
@@ -1107,7 +1211,7 @@ class _HomeScreenState extends State<HomeScreen>
   // ── OFERTAS DE TEMPORADA (tipo == 'temporada') ────────────────────
   // Solo se llama cuando _promoTemporada.isNotEmpty
   Widget _buildOfertasTemporada() {
-    const accentColors = [
+    final accentColors = [
       AppColors.pierVerde, AppColors.pierDorado,
       AppColors.estadoCancelado, AppColors.pierDoradoOscuro,
     ];
@@ -1402,7 +1506,7 @@ class _HomeScreenState extends State<HomeScreen>
             Container(
               width: 28, height: 28,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                     colors: [AppColors.pierDorado, AppColors.pierDoradoOscuro]),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1486,12 +1590,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
                                     color: AppColors.pierArena,
-                                    child: const Icon(LucideIcons.cake,
+                                    child: Icon(LucideIcons.cake,
                                         color: AppColors.pierDorado, size: 36),
                                   ))
                               : Container(
                                   color: AppColors.pierArena,
-                                  child: const Icon(LucideIcons.cake,
+                                  child: Icon(LucideIcons.cake,
                                       color: AppColors.pierDorado, size: 36),
                                 ),
                           // Badge dorado
@@ -1501,7 +1605,7 @@ class _HomeScreenState extends State<HomeScreen>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
+                                gradient: LinearGradient(
                                     colors: [
                                       AppColors.pierDorado,
                                       AppColors.pierDoradoOscuro
@@ -1570,7 +1674,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       // Precio final (solo % que el backend cobra)
                                       Text(
                                         '\$${precioFinalDest.toStringAsFixed(0)}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w900,
                                             color: AppColors.pierDorado),
@@ -1591,12 +1695,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   // Tiempo restante
                                   if (tiempo.isNotEmpty)
                                     Row(children: [
-                                      const Icon(LucideIcons.timer,
+                                      Icon(LucideIcons.timer,
                                           size: 12,
                                           color: AppColors.pierDorado),
                                       const SizedBox(width: 3),
                                       Text(tiempo,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 11,
                                               color: AppColors.pierDorado,
                                               fontWeight: FontWeight.w600)),
@@ -1623,6 +1727,15 @@ class _HomeScreenState extends State<HomeScreen>
     final cats = _categoriasApi.isNotEmpty ? _categoriasApi : _categoriasFallback;
     final display = cats.take(5).toList();
 
+    // Conteo por categoría (mismo dato que muestra la web) calculado del
+    // catálogo ya cargado; sin productos aún no se pinta el badge.
+    final conteos = <String, int>{};
+    for (final p in context.read<ProductProvider>().productos) {
+      if (p.disponible) {
+        conteos[p.categoria] = (conteos[p.categoria] ?? 0) + 1;
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
@@ -1642,23 +1755,50 @@ class _HomeScreenState extends State<HomeScreen>
               final IconData icon = cat['icon'] != null
                   ? cat['icon'] as IconData
                   : _iconForCategoria(nombre);
+              final total = conteos[nombre] ?? 0;
               return GestureDetector(
-                onTap: () =>
-                    context.read<NavigationProvider>().goCatalogo(),
+                // Abre el catálogo YA filtrado por la categoría tocada
+                onTap: () => context
+                    .read<NavigationProvider>()
+                    .goCatalogo(categoria: nombre),
                 child: Column(
                   children: [
-                    Container(
-                      width: 56, height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.07),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4))],
-                      ),
-                      child: Icon(icon,
-                          color: AppColors.pierVerde, size: 26),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 56, height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.07),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4))],
+                          ),
+                          child: Icon(icon,
+                              color: AppColors.pierVerde, size: 26),
+                        ),
+                        if (total > 0)
+                          Positioned(
+                            top: -2, right: -4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.pierVerde,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: Colors.white, width: 1.5),
+                              ),
+                              child: Text('$total',
+                                  style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white)),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(nombre,
@@ -1711,7 +1851,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(children: [
+          Row(children: [
             Icon(Icons.star_rounded, color: AppColors.pierDorado, size: 20),
             SizedBox(width: 6),
             Text('Lo que dicen nuestros clientes',
@@ -1753,7 +1893,7 @@ class _HomeScreenState extends State<HomeScreen>
                       backgroundColor:
                           AppColors.pierDorado.withValues(alpha: 0.15),
                       child: Text(iniciales,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.pierDoradoOscuro,
                               fontWeight: FontWeight.bold,
                               fontSize: 13)),
@@ -1803,11 +1943,167 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ── SUCURSAL ──────────────────────────────────────────────────────
+  // Sucursales reales desde config 'contacto' (clave 'horarios': array de
+  // {sucursal, horario, descripcion}) — igual que la web (Inicio.tsx), que
+  // pinta una tarjeta por sucursal cuando hay al menos 2. Con menos de 2 se
+  // conserva la tarjeta única de siempre (fallback BusinessInfo).
+  List<Map<String, dynamic>> _sucursalesDeConfig() {
+    dynamic raw = _configContacto['horarios'];
+    try {
+      if (raw is String && raw.trim().startsWith('[')) raw = jsonDecode(raw);
+    } catch (_) {
+      return const [];
+    }
+    if (raw is! List) return const [];
+    final lista = raw
+        .whereType<Map>()
+        .where((s) => (s['sucursal']?.toString() ?? '').isNotEmpty)
+        .map((s) => Map<String, dynamic>.from(s))
+        .toList();
+    return lista.length >= 2 ? lista.take(2).toList() : const [];
+  }
+
+  // Tarjeta por sucursal (Repostería / Cafetería), espejo de las SucursalCard
+  // de la web: nombre + descripción + dirección + horario propios. La 1a
+  // conserva el verde de siempre; la 2a va en dorado oscuro para
+  // diferenciarlas (como hace la web con sus dos colores).
+  Widget _sucursalCard(Map<String, dynamic> s, int index, String direccion) {
+    final nombre = s['sucursal']?.toString() ?? '';
+    final descripcion = s['descripcion']?.toString() ?? '';
+    final horario = s['horario']?.toString() ?? '';
+    final lower = nombre.toLowerCase();
+    final esCafe = lower.contains('café') || lower.contains('cafe');
+    final color =
+        index == 0 ? AppColors.pierVerdeOscuro : AppColors.pierDoradoOscuro;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const ContactScreen())),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(
+              color: color.withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                    esCafe ? LucideIcons.coffee : LucideIcons.cake,
+                    color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nombre,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14)),
+                    if (descripcion.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(descripcion,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              fontSize: 12)),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(LucideIcons.chevronRight,
+                    color: Colors.white, size: 20),
+              ),
+            ]),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Divider(
+                  color: Colors.white.withValues(alpha: 0.15), height: 1),
+            ),
+            Row(children: [
+              Icon(LucideIcons.mapPin,
+                  color: Colors.white.withValues(alpha: 0.75), size: 15),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(direccion,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: 12)),
+              ),
+            ]),
+            if (horario.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(children: [
+                Icon(LucideIcons.clock,
+                    color: Colors.white.withValues(alpha: 0.75), size: 15),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(horario,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12)),
+                ),
+              ]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSucursal() {
     final direccion = formatearDireccion(_configContacto['direccion'],
         fallback: BusinessInfo.direccion);
     final horario = formatearHorario(_configContacto['horarios'],
         fallback: BusinessInfo.horario);
+    final sucursales = _sucursalesDeConfig();
+
+    if (sucursales.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Encuéntranos',
+                style: TextStyle(
+                    fontFamily: 'Playfair Display',
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 12),
+            for (int i = 0; i < sucursales.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _sucursalCard(sucursales[i], i, direccion),
+            ],
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
@@ -1951,7 +2247,7 @@ class _HomeScreenState extends State<HomeScreen>
                 GestureDetector(
                   onTap: () =>
                       context.read<NavigationProvider>().goCatalogo(),
-                  child: const Text('Ver más',
+                  child: Text('Ver más',
                       style: TextStyle(
                           fontSize: 13,
                           color: AppColors.pierVerde,
@@ -2000,7 +2296,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 Image.network(p.imagenUrl, fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(
                                       color: AppColors.pierArena,
-                                      child: const Icon(LucideIcons.cake,
+                                      child: Icon(LucideIcons.cake,
                                           color: AppColors.pierVerde, size: 40),
                                     )),
                                 Positioned(
@@ -2101,7 +2397,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               BorderRadius.circular(6),
                                         ),
                                         child: Text(p.categoria,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                                 fontSize: 9,
                                                 color: AppColors.pierVerde,
                                                 fontWeight: FontWeight.w700)),

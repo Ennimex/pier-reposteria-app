@@ -1,8 +1,10 @@
 // lib/presentation/screens/public/faq_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
+import '../../../data/providers/tema_provider.dart';
 import 'contact_screen.dart';
 
 class FAQScreen extends StatefulWidget {
@@ -85,6 +87,8 @@ class _FAQScreenState extends State<FAQScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -280,7 +284,7 @@ class _FAQScreenState extends State<FAQScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text('Contactar',
+            child: Text('Contactar',
                 style: TextStyle(
                     color: AppColors.pierVerde,
                     fontSize: 12,

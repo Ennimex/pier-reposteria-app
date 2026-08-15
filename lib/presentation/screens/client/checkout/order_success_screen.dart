@@ -7,6 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/business_info.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
+import '../../../../data/providers/tema_provider.dart';
 class OrderSuccessScreen extends StatelessWidget {
   final String orderId;
   final String pickupDate;
@@ -40,6 +41,8 @@ class OrderSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -64,7 +67,7 @@ class OrderSuccessScreen extends StatelessWidget {
                   repeat: false,
                 ),
                 const SizedBox(height: 24),
-                const Text('¡Pedido Confirmado!',
+                Text('¡Pedido Confirmado!',
                         style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
@@ -93,7 +96,7 @@ class OrderSuccessScreen extends StatelessWidget {
                           color:
                               AppColors.pierDorado.withValues(alpha: 0.4)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Icon(LucideIcons.clock,
                             size: 18, color: AppColors.pierDoradoOscuro),
@@ -152,7 +155,7 @@ class OrderSuccessScreen extends StatelessWidget {
                                   color: AppColors.textPrimary)),
                           Text(
                             '\$${total.toStringAsFixed(0)} MXN',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 18,
                                 color: AppColors.pierVerde),

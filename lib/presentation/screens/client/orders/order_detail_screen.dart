@@ -8,6 +8,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/models/order_model.dart';
 import '../../../../data/providers/order_provider.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final Order order;
@@ -96,6 +97,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -291,7 +294,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   borderRadius:
                                       BorderRadius.circular(10),
                                 ),
-                                child: const Icon(LucideIcons.cake,
+                                child: Icon(LucideIcons.cake,
                                     color: AppColors.pierVerde,
                                     size: 20),
                               ),
@@ -321,7 +324,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               ),
                               Text(
                                 '\$${item.subtotal.toStringAsFixed(0)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
                                     color:
@@ -348,7 +351,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   color: AppColors.textPrimary)),
                           Text(
                             '\$${_order.total.toStringAsFixed(0)} MXN',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
                                 color: AppColors.pierVerde),

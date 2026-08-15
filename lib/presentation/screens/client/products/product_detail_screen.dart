@@ -18,6 +18,7 @@ import '../../../../../core/utils/logger.dart';
 import '../../auth/login_screen.dart';
 import '../reviews/create_review_screen.dart';
 import '../reviews/product_reviews_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -43,6 +44,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   bool _loadingResenas = true;
   Map<String, dynamic>? _detalleProducto;
   bool _isSharing = false;
+
+  // Recomendaciones del backend (co-compra); si no llegan, la sección no se pinta
+  List<Product> _recomendaciones = [];
 
   // Animaciones para el botón de carrito en las cards de relacionados
   final Map<String, AnimationController> _relatedCartControllers = {};
@@ -72,6 +76,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
     _cargarDetalle();
     _cargarEstadoFavorito();
+    _cargarRecomendaciones();
+    // Catálogo/promos: no-op si ya están cargados; las cards de recomendados/
+    // relacionados los usan para precio con descuento y datos completos.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ProductProvider>(context, listen: false).cargarProductos();
+      }
+    });
   }
 
   @override
@@ -173,6 +185,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     } else {
       PierLog.error('No se pudo cargar detalle de ${widget.product.id}');
       setState(() => _loadingResenas = false);
+    }
+  }
+
+  // GET /recomendaciones/:id — el payload es reducido (id, nombre, precios,
+  // imagen_url, stock_online, categoria, afinidad); al pintar se resuelve cada
+  // id contra el catálogo del provider para recuperar descripción/rating.
+  // La afinidad no se muestra (métrica interna del backend).
+  Future<void> _cargarRecomendaciones() async {
+    PierLog.api('GET ${ApiConstants.recomendaciones(widget.product.id)}');
+    final result =
+        await _api.get(ApiConstants.recomendaciones(widget.product.id));
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final data =
+          List<Map<String, dynamic>>.from(result['recomendaciones'] ?? []);
+      final items = data
+          .map((json) => Product.fromJson(json))
+          .where((p) => p.id.isNotEmpty && p.id != widget.product.id)
+          .toList();
+      PierLog.info('✅ ${items.length} recomendaciones cargadas');
+      setState(() => _recomendaciones = items);
+    } else {
+      PierLog.debug('Sin recomendaciones: ${result['message']}');
     }
   }
 
@@ -278,6 +313,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     // listen: true — reacciona a cambios de promociones y productos
     final provider = Provider.of<ProductProvider>(context);
     final tienePromo = provider.tieneDescuento(widget.product.id);
@@ -431,7 +468,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           // ── CONTENIDO ──────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.pierArena,
                 borderRadius:
                     BorderRadius.vertical(top: Radius.circular(24)),
@@ -453,7 +490,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           ),
                           child: Text(
                             widget.product.categoria.toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 10,
                                 color: AppColors.pierVerde,
                                 fontWeight: FontWeight.w800,
@@ -487,7 +524,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(widget.product.sabor!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 10,
                                     color: AppColors.pierDoradoOscuro,
                                     fontWeight: FontWeight.w700)),
@@ -816,7 +853,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                       .withValues(alpha: 0.2)),
                             ),
                             child: Text(ing,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.pierVerde,
                                     fontWeight: FontWeight.w600)),
@@ -842,7 +879,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 builder: (_) => CreateReviewScreen(
                                     product: widget.product)),
                           ).then((_) => _cargarDetalle()),
-                          child: const Row(children: [
+                          child: Row(children: [
                             Icon(LucideIcons.pencil,
                                 color: AppColors.pierVerde, size: 16),
                             SizedBox(width: 4),
@@ -857,7 +894,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                     const SizedBox(height: 20),
                     _loadingResenas
-                        ? const Center(
+                        ? Center(
                             child: CircularProgressIndicator(
                                 color: AppColors.pierVerde))
                         : _resenas.isEmpty
@@ -928,60 +965,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         ),
                       ),
 
-                    // ── TAMBIÉN TE PUEDE GUSTAR ────────────────────────
-                    // ✅ FIX: Consumer + mismo estilo de card que el catálogo
-                    Consumer<ProductProvider>(
-                      builder: (context, prov, _) {
-                        final relacionados = prov.productos
-                            .where((p) =>
-                                p.categoria == widget.product.categoria &&
-                                p.id != widget.product.id &&
-                                p.disponible)
-                            .take(6)
-                            .toList();
-
-                        if (relacionados.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 36),
-                            const Text('También te puede gustar',
-                                style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary)),
-                            const SizedBox(height: 14),
-                            SizedBox(
-                              // ✅ Misma altura que en home_screen y products_screen
-                              height: 310,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: relacionados.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 12),
-                                itemBuilder: (context, i) {
-                                  final p = relacionados[i];
-                                  return GestureDetector(
-                                    // push (no pushReplacement): así el botón
-                                    // atrás regresa al producto de origen.
-                                    onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (_) =>
-                                                ProductDetailScreen(
-                                                    product: p))),
-                                    child: _buildRelatedCard(p, prov),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+                    // ── OTROS CLIENTES TAMBIÉN PIDIERON ────────────────
+                    // Recomendaciones del backend por co-compra (sustituyó a
+                    // la antigua "También te puede gustar" de misma categoría)
+                    _buildRecomendaciones(),
 
                     const SizedBox(height: 40),
                   ],
@@ -991,6 +978,55 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // ✅ NUEVO: sección "Otros clientes también pidieron" (recomendaciones del
+  // backend; su fallback ya garantiza activos y con stock). Reusa la card de
+  // relacionados; cada id se resuelve contra el catálogo si ya está cargado.
+  Widget _buildRecomendaciones() {
+    if (_recomendaciones.isEmpty) return const SizedBox.shrink();
+    return Consumer<ProductProvider>(
+      builder: (context, prov, _) {
+        final items = _recomendaciones.map((r) {
+          final delCatalogo = prov.productos.where((p) => p.id == r.id);
+          return delCatalogo.isNotEmpty ? delCatalogo.first : r;
+        }).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 36),
+            const Text('Otros clientes también pidieron',
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 14),
+            SizedBox(
+              // Misma altura que relacionados (y que home/products)
+              height: 310,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, i) {
+                  final p = items[i];
+                  return GestureDetector(
+                    // push (no pushReplacement): el botón atrás regresa
+                    // al producto de origen, igual que en relacionados.
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                ProductDetailScreen(product: p))),
+                    child: _buildRelatedCard(p, prov),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1031,7 +1067,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
                       color: AppColors.pierArena,
-                      child: const Icon(LucideIcons.cake,
+                      child: Icon(LucideIcons.cake,
                           color: AppColors.pierVerde, size: 40),
                     ),
                   ),
@@ -1153,7 +1189,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(p.categoria,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 9,
                                   color: AppColors.pierVerde,
                                   fontWeight: FontWeight.w700)),
@@ -1364,7 +1400,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
                       : widget.name.isNotEmpty
                           ? widget.name[0]
                           : '?',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppColors.pierDoradoOscuro,
                       fontWeight: FontWeight.bold,
                       fontSize: 13),

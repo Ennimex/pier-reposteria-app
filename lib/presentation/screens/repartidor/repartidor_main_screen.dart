@@ -10,6 +10,7 @@ import '../../widgets/animated_indexed_stack.dart';
 import 'entregas_screen.dart';
 import 'historial_repartidor_screen.dart';
 import 'perfil_repartidor_screen.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class RepartidorMainScreen extends StatefulWidget {
   const RepartidorMainScreen({super.key});
@@ -31,12 +32,16 @@ class _RepartidorMainScreenState extends State<RepartidorMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
         bottom: false,
         child: AnimatedIndexedStack(
           index: _index,
+          // Deslizar entre pestañas (fling); equivale a tocar la pestaña
+          onSwipeToIndex: (i) => setState(() => _index = i),
           children: const [
             EntregasScreen(),
             HistorialRepartidorScreen(),

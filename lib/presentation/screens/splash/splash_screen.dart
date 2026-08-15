@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -66,6 +67,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -108,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen>
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (_, _, _) => const Icon(
+                            errorBuilder: (_, _, _) => Icon(
                                 LucideIcons.cake,
                                 size: 60,
                                 color: AppColors.pierVerde),
@@ -135,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Dulces momentos',
                       style: TextStyle(
                         fontSize: 20,

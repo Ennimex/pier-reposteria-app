@@ -8,6 +8,7 @@ import '../../../../data/providers/cart_provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
 import '../../../../data/models/product_model.dart';
 import '../checkout/checkout_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -30,11 +31,13 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final cart = Provider.of<CartProvider>(context);
     final cartItems = cart.items.values.toList();
 
     if (_loading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.pierArena,
         body: Center(
             child: CircularProgressIndicator(color: AppColors.pierVerde)),
@@ -85,7 +88,7 @@ class _CartScreenState extends State<CartScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                 child: Row(children: [
-                  const Icon(LucideIcons.shoppingBag,
+                  Icon(LucideIcons.shoppingBag,
                       size: 13, color: AppColors.pierVerde),
                   const SizedBox(width: 5),
                   Text(
@@ -194,7 +197,7 @@ class _CartScreenState extends State<CartScreen> {
                 errorBuilder: (_, __, ___) => Container(
                   width: 76, height: 76,
                   color: AppColors.pierArena,
-                  child: const Icon(LucideIcons.cake,
+                  child: Icon(LucideIcons.cake,
                       color: AppColors.pierVerde, size: 30),
                 ),
               ),
@@ -228,7 +231,7 @@ class _CartScreenState extends State<CartScreen> {
                     children: [
                       Text(
                         '\$${item.precio.toStringAsFixed(0)} c/u',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12,
                             color: AppColors.pierVerde,
                             fontWeight: FontWeight.w600),
@@ -320,7 +323,7 @@ class _CartScreenState extends State<CartScreen> {
               children: [
                 Text(
                   '\$${item.subtotal.toStringAsFixed(0)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                       color: AppColors.pierDoradoOscuro),
@@ -414,7 +417,7 @@ class _CartScreenState extends State<CartScreen> {
                       color: AppColors.textPrimary)),
               Text(
                 '\$${cart.totalAmount.toStringAsFixed(0)} MXN',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: AppColors.pierVerde),

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/entrega_model.dart';
 import '../../../data/providers/entregas_provider.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class ReportarFalloSheet extends StatefulWidget {
   final EntregaRepartidor entrega;
@@ -78,6 +79,8 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
@@ -234,7 +237,7 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
           Center(
             child: TextButton(
               onPressed: _enviando ? null : () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 'Cancelar',
                 style: TextStyle(
                   color: AppColors.pierVerde,

@@ -7,9 +7,12 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../data/models/order_model.dart';
+import '../../../../data/providers/auth_provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
 import '../../../widgets/skeletons.dart';
+import '../../auth/login_screen.dart';
 import 'order_detail_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -62,6 +65,17 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   Future<void> _cargarPedidos({bool silent = false}) async {
+    // Sin sesión no hay pedidos que mostrar: limpiar lo del usuario
+    // anterior (la pestaña vive en el IndexedStack y conserva estado;
+    // sin esto el historial viejo seguía visible como invitado).
+    if (!context.read<AuthProvider>().isAuthenticated) {
+      setState(() {
+        _activeOrders = [];
+        _completedOrders = [];
+        _isLoading = false;
+      });
+      return;
+    }
     if (!silent) setState(() => _isLoading = true);
     final result = await _api.getAuth(ApiConstants.misPedidos);
     if (!mounted) return;
@@ -80,6 +94,8 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -169,20 +185,37 @@ class _OrdersScreenState extends State<OrdersScreen>
                       color: AppColors.pierVerde,
                       child: TabBarView(
                         controller: _tabController,
-                        children: [
-                          _buildOrdersList(
-                            _activeOrders,
-                            'No tienes pedidos activos',
-                            'Cuando realices un pedido\naparecerá aquí.',
-                            LucideIcons.receiptText,
-                          ),
-                          _buildOrdersList(
-                            _completedOrders,
-                            'Sin historial aún',
-                            'Tus pedidos completados\naparecerán aquí.',
-                            LucideIcons.history,
-                          ),
-                        ],
+                        children: context.watch<AuthProvider>().isAuthenticated
+                            ? [
+                                _buildOrdersList(
+                                  _activeOrders,
+                                  'No tienes pedidos activos',
+                                  'Cuando realices un pedido\naparecerá aquí.',
+                                  LucideIcons.receiptText,
+                                ),
+                                _buildOrdersList(
+                                  _completedOrders,
+                                  'Sin historial aún',
+                                  'Tus pedidos completados\naparecerán aquí.',
+                                  LucideIcons.history,
+                                ),
+                              ]
+                            : [
+                                _buildOrdersList(
+                                  const [],
+                                  'Inicia sesión',
+                                  'Inicia sesión para ver\ntus pedidos.',
+                                  LucideIcons.logIn,
+                                  conLogin: true,
+                                ),
+                                _buildOrdersList(
+                                  const [],
+                                  'Inicia sesión',
+                                  'Inicia sesión para ver\ntu historial.',
+                                  LucideIcons.logIn,
+                                  conLogin: true,
+                                ),
+                              ],
                       ),
                     ),
             ),
@@ -193,7 +226,7 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   Widget _buildOrdersList(List<Order> orders, String title,
-      String subtitle, IconData icon) {
+      String subtitle, IconData icon, {bool conLogin = false}) {
     if (orders.isEmpty) {
       return LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
@@ -226,6 +259,29 @@ class _OrdersScreenState extends State<OrdersScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 14, color: Colors.grey[500])),
+            if (conLogin) ...[
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const LoginScreen())),
+                icon: const Icon(LucideIcons.logIn,
+                    size: 18, color: Colors.white),
+                label: const Text('Iniciar sesión',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.pierVerde,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 28, vertical: 13),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30)),
+                ),
+              ),
+            ],
                 ],
               ),
             ),
@@ -281,7 +337,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(LucideIcons.shoppingBag,
+                    child: Icon(LucideIcons.shoppingBag,
                         color: AppColors.pierVerde, size: 20),
                   ),
                   const SizedBox(width: 12),
@@ -331,7 +387,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                   ),
                   const SizedBox(width: 12),
                   Text('\$${order.total.toStringAsFixed(0)} MXN',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 16,
                           color: AppColors.pierDoradoOscuro)),

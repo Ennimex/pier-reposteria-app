@@ -12,6 +12,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class VincularAlexaScreen extends StatefulWidget {
   const VincularAlexaScreen({super.key});
@@ -90,6 +92,8 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       appBar: AppBar(title: const Text('Vincular con Alexa')),
@@ -267,7 +271,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(codigo,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 10,
@@ -304,7 +308,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
               const TextSpan(text: 'Expira en '),
               TextSpan(
                   text: _formatoTiempo(_segundos),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerdeOscuro)),
               const TextSpan(text: ' · un solo uso'),

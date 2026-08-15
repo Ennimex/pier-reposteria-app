@@ -99,7 +99,7 @@ class ProductCard extends StatelessWidget {
                     children: [
                       Text(
                         '\$${product.precio.toStringAsFixed(0)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.pierVerde,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

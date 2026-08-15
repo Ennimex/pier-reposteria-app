@@ -51,6 +51,15 @@ class OrderProvider extends ChangeNotifier {
     await cargarPedidos();
   }
 
+  /// Limpia el estado en memoria al cerrar sesión: los pedidos son del
+  /// usuario anterior y no deben seguir visibles como invitado ni
+  /// aparecer al entrar con otra cuenta.
+  void limpiar() {
+    _orders = [];
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Order? getOrderById(String id) {
     try {
       return _orders.firstWhere((o) => o.id == id);

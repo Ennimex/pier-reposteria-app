@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../public/legal_screen.dart';
 import '../../../routes/app_routes.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -95,6 +96,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -148,7 +151,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Image.asset(
                       'assets/images/logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Icon(LucideIcons.cake,
+                      errorBuilder: (_, _, _) => Icon(LucideIcons.cake,
                           size: 40, color: AppColors.pierVerde),
                     ),
                   ),
@@ -268,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const TextSpan(text: 'Acepto los '),
                             TextSpan(
                               text: 'Términos y Condiciones',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: AppColors.pierVerde,
                                   fontWeight: FontWeight.bold),
                               recognizer: _termsRecognizer,
@@ -276,7 +279,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const TextSpan(text: ' y el '),
                             TextSpan(
                               text: 'Aviso de Privacidad',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: AppColors.pierVerde,
                                   fontWeight: FontWeight.bold),
                               recognizer: _privacyRecognizer,
@@ -348,7 +351,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
+            borderSide: BorderSide(
                 color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

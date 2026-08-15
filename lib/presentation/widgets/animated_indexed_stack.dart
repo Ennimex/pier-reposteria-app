@@ -14,11 +14,19 @@ class AnimatedIndexedStack extends StatefulWidget {
   final List<Widget> children;
   final Duration duration;
 
+  /// Si se define, deslizar horizontalmente (fling) pide cambiar de pestaña:
+  /// hacia la izquierda = índice siguiente, hacia la derecha = anterior (ya
+  /// acotado a los límites; el padre solo actualiza su índice). Los scrolls
+  /// horizontales internos (carruseles, listas de productos) ganan el gesto
+  /// donde existan, igual que en cualquier app.
+  final ValueChanged<int>? onSwipeToIndex;
+
   const AnimatedIndexedStack({
     super.key,
     required this.index,
     required this.children,
     this.duration = const Duration(milliseconds: 260),
+    this.onSwipeToIndex,
   });
 
   @override
@@ -67,9 +75,17 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
     super.dispose();
   }
 
+  void _onDragEnd(DragEndDetails d) {
+    final vx = d.primaryVelocity ?? 0;
+    if (vx.abs() < 300) return; // umbral: solo flings claros, no roces
+    final destino = vx < 0 ? widget.index + 1 : widget.index - 1;
+    if (destino < 0 || destino >= widget.children.length) return;
+    widget.onSwipeToIndex!(destino);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
+    final contenido = FadeTransition(
       opacity: _fade,
       child: SlideTransition(
         position: _slide,
@@ -78,6 +94,11 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
           children: widget.children,
         ),
       ),
+    );
+    if (widget.onSwipeToIndex == null) return contenido;
+    return GestureDetector(
+      onHorizontalDragEnd: _onDragEnd,
+      child: contenido,
     );
   }
 }

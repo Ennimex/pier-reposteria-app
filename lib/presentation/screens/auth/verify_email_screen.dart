@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../routes/app_routes.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   final String email;
@@ -107,6 +108,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       // Única pantalla de auth que era Column fija: con el teclado numérico
@@ -198,7 +201,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     const SizedBox(height: 4),
                     Text(
                       widget.email,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: AppColors.pierVerde,
@@ -253,7 +256,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
+                                borderSide: BorderSide(
                                   color: AppColors.pierVerde,
                                   width: 2,
                                 ),
@@ -315,7 +318,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                         GestureDetector(
                           onTap: _isResending ? null : _handleResend,
                           child: _isResending
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 14,
                                   width: 14,
                                   child: CircularProgressIndicator(
@@ -323,7 +326,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                                     color: AppColors.pierVerde,
                                   ),
                                 )
-                              : const Text(
+                              : Text(
                                   'Reenviar',
                                   style: TextStyle(
                                     color: AppColors.pierVerde,

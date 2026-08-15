@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/navigation_provider.dart';
 import '../../../../data/providers/notification_provider.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -34,7 +35,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     PierLog.api('PUT /notificaciones/leer-todas');
     await context.read<NotificationProvider>().marcarTodasLeidas();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Todas marcadas como leídas'),
       backgroundColor: AppColors.pierVerde,
       behavior: SnackBarBehavior.floating,
@@ -71,6 +72,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final notifProvider = context.watch<NotificationProvider>();
     final notificaciones = notifProvider.notificaciones;
     final noLeidas = notifProvider.noLeidas;
@@ -154,7 +157,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             // ── LISTA ─────────────────────────────────────────────
             Expanded(
               child: _isRefreshing
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
                   : notificaciones.isEmpty
@@ -308,7 +311,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               Container(
                 width: 8, height: 8,
                 margin: const EdgeInsets.only(top: 4),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.pierVerde,
                   shape: BoxShape.circle,
                 ),

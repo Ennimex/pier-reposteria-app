@@ -10,6 +10,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/logger.dart';
 import '../../auth/login_screen.dart';
 import 'create_review_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class ProductReviewsScreen extends StatefulWidget {
   final Product product;
@@ -172,6 +173,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final filtradas = _filtradas;
 
@@ -272,7 +275,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
 
             Expanded(
               child: _isLoading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
                   : RefreshIndicator(
@@ -426,7 +429,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                           backgroundColor: AppColors.textSecondary
                               .withValues(alpha: 0.1),
                           valueColor:
-                              const AlwaysStoppedAnimation<Color>(
+                              AlwaysStoppedAnimation<Color>(
                                   AppColors.pierDorado),
                           minHeight: 8,
                         ),
@@ -614,7 +617,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                                     ? AppColors.pierVerde
                                     : AppColors.textPrimary))),
                     if (sel)
-                      const Icon(Icons.check_circle_rounded,
+                      Icon(Icons.check_circle_rounded,
                           color: AppColors.pierVerde, size: 18),
                   ]),
                 ),
@@ -658,7 +661,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
             children: [
               Container(
                 width: 46, height: 46,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.pierArena,
                   shape: BoxShape.circle,
                 ),
@@ -669,7 +672,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                         : nombre.isNotEmpty
                             ? nombre[0]
                             : '?',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppColors.pierDoradoOscuro,
                         fontWeight: FontWeight.bold,
                         fontSize: 15),
@@ -700,11 +703,11 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.star_rounded,
+                  Icon(Icons.star_rounded,
                       color: AppColors.pierDorado, size: 13),
                   const SizedBox(width: 4),
                   Text(rating.toStringAsFixed(1),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: AppColors.pierDoradoOscuro)),
@@ -717,10 +720,10 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
 
           if (verificada) ...[
             Row(children: [
-              const Icon(LucideIcons.badgeCheck,
+              Icon(LucideIcons.badgeCheck,
                   size: 14, color: AppColors.pierVerde),
               const SizedBox(width: 4),
-              const Text('Compra verificada',
+              Text('Compra verificada',
                   style: TextStyle(
                       fontSize: 12,
                       color: AppColors.pierVerde,

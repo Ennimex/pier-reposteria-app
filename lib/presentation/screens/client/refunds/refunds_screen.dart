@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import 'package:provider/provider.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class RefundsScreen extends StatefulWidget {
   const RefundsScreen({super.key});
@@ -139,6 +141,8 @@ class _RefundsScreenState extends State<RefundsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -283,7 +287,7 @@ class _RefundsScreenState extends State<RefundsScreen>
   // ── TAB 1: MIS SOLICITUDES ──────────────────────────────────────
   Widget _buildMisSolicitudes() {
     if (_loadingReembolsos) {
-      return const Center(
+      return Center(
           child: CircularProgressIndicator(color: AppColors.pierVerde));
     }
     if (_reembolsos.isEmpty) {
@@ -370,7 +374,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     color: AppColors.pierVerde.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(LucideIcons.receiptText,
+                  child: Icon(LucideIcons.receiptText,
                       color: AppColors.pierVerde, size: 20),
                 ),
                 const SizedBox(width: 12),
@@ -448,7 +452,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                             fontWeight: FontWeight.w500)),
                     const SizedBox(height: 4),
                     Text('\$${monto.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: AppColors.pierVerde)),
@@ -475,11 +479,11 @@ class _RefundsScreenState extends State<RefundsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      const Text('✦ ',
+                      Text('✦ ',
                           style: TextStyle(
                               color: AppColors.pierDorado,
                               fontSize: 12)),
-                      const Text('Respuesta de Pier',
+                      Text('Respuesta de Pier',
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -526,7 +530,7 @@ class _RefundsScreenState extends State<RefundsScreen>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(LucideIcons.info,
+                  Icon(LucideIcons.info,
                       color: AppColors.pierDoradoOscuro, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
@@ -587,7 +591,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                                 fontSize: 14),
                           ),
                         ),
-                        icon: const Padding(
+                        icon: Padding(
                           padding: EdgeInsets.only(right: 14),
                           child: Icon(
                               LucideIcons.chevronDown,
@@ -639,7 +643,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                   hint: Text('Selecciona un motivo',
                       style: TextStyle(
                           color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
-                  icon: const Icon(LucideIcons.chevronDown,
+                  icon: Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
                   items: _motivos
                       .map((m) => DropdownMenuItem(
@@ -680,7 +684,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                         color: AppColors.textSecondary.withValues(alpha: 0.2))),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
+                    borderSide: BorderSide(
                         color: AppColors.pierVerde, width: 1.5)),
                 errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),

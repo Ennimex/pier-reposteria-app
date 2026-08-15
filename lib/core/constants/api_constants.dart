@@ -28,6 +28,10 @@ class ApiConstants {
   static const String filtros             = '/filtros';
   static String productoById(String id)         => '/productos/$id';
   static String categoriaOpciones(String catId) => '/categoria-opciones/$catId';
+  // Recomendaciones (público): top 3 afines por co-compra; si hay poco
+  // historial el backend cae a más vendidos de otras categorías (afinidad null)
+  static String recomendaciones(String productoId) =>
+      '/recomendaciones/$productoId';
 
   // ── PEDIDOS ───────────────────────────────────────────────────────
   static const String crearPedido        = '/pedidos';

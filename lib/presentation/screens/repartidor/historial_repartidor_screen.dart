@@ -9,12 +9,15 @@ import '../../../data/models/entrega_model.dart';
 import '../../../data/providers/entregas_provider.dart';
 import 'entrega_detail_screen.dart';
 import 'widgets/repartidor_ui.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class HistorialRepartidorScreen extends StatelessWidget {
   const HistorialRepartidorScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final provider = context.watch<EntregasProvider>();
     final historial = provider.historial;
 
@@ -46,7 +49,7 @@ class HistorialRepartidorScreen extends StatelessWidget {
         const Divider(height: 1),
         Expanded(
           child: provider.isLoading
-              ? const Center(
+              ? Center(
                   child: CircularProgressIndicator(color: AppColors.pierVerde))
               : RefreshIndicator(
                   color: AppColors.pierVerde,

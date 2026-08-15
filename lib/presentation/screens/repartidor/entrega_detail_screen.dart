@@ -16,6 +16,7 @@ import '../../../data/providers/entregas_provider.dart';
 import 'confirmar_entrega_screen.dart';
 import 'reportar_fallo_sheet.dart';
 import 'widgets/repartidor_ui.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class EntregaDetailScreen extends StatefulWidget {
   final EntregaRepartidor entrega;
@@ -133,6 +134,8 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final tieneTelefono =
         (entrega.direccion.telefonoContacto ?? entrega.clienteTelefono) != null;
 
@@ -346,7 +349,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
+              children: [
                 Icon(LucideIcons.mapPin, color: AppColors.pierVerde, size: 22),
                 SizedBox(width: 8),
                 Text(

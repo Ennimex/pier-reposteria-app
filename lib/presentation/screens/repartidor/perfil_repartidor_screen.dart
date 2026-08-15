@@ -11,6 +11,7 @@ import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/entregas_provider.dart';
 import '../../../routes/app_routes.dart';
 import 'widgets/repartidor_ui.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class PerfilRepartidorScreen extends StatelessWidget {
   const PerfilRepartidorScreen({super.key});
@@ -51,6 +52,8 @@ class PerfilRepartidorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final auth = context.watch<AuthProvider>();
     final provider = context.watch<EntregasProvider>();
     final user = auth.currentUser ?? {};
@@ -265,7 +268,7 @@ class PerfilRepartidorScreen extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.pierVerde,

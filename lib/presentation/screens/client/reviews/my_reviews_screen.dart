@@ -6,6 +6,8 @@ import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/logger.dart';
+import 'package:provider/provider.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class MyReviewsScreen extends StatefulWidget {
   const MyReviewsScreen({super.key});
@@ -84,6 +86,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -129,7 +133,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text('${_resenas.length}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13,
                               color: AppColors.pierVerde,
                               fontWeight: FontWeight.bold)),
@@ -142,7 +146,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
             Expanded(
               child: _isLoading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
                   : _resenas.isEmpty
@@ -265,7 +269,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 ),
                 GestureDetector(
                   onTap: () => _editarResena(r),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.only(left: 4, top: 4, bottom: 4),
                     child: Icon(LucideIcons.pencil,
                         size: 18, color: AppColors.pierVerde),
@@ -334,11 +338,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          const Text('✦ ',
+                          Text('✦ ',
                               style: TextStyle(
                                   color: AppColors.pierDorado,
                                   fontSize: 12)),
-                          const Text('Respuesta de Pier',
+                          Text('Respuesta de Pier',
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -399,7 +403,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           color: AppColors.pierArena,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(LucideIcons.cake,
+        child: Icon(LucideIcons.cake,
             color: AppColors.pierVerde, size: 24),
       );
 

@@ -9,6 +9,7 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/config_format.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
@@ -173,7 +174,7 @@ class _ContactScreenState extends State<ContactScreen> {
                     ),
                     Container(
                       width: 56, height: 56,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.pierVerde,
                         shape: BoxShape.circle,
                       ),
@@ -244,6 +245,8 @@ class _ContactScreenState extends State<ContactScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final isAuth = Provider.of<AuthProvider>(context).isAuthenticated;
 
     return Scaffold(
@@ -309,7 +312,7 @@ class _ContactScreenState extends State<ContactScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
+                            Icon(
                                 LucideIcons.messageCircle,
                                 color: AppColors.pierVerde, size: 20),
                             const SizedBox(width: 10),
@@ -382,7 +385,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                 contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16)),
                             initialValue: _tipoProducto,
-                            icon: const Icon(
+                            icon: Icon(
                                 LucideIcons.chevronDown,
                                 color: AppColors.pierVerde),
                             items: _tiposProducto
@@ -421,7 +424,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                       .withValues(alpha: 0.2))),
                           focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
+                              borderSide: BorderSide(
                                   color: AppColors.pierVerde,
                                   width: 1.5)),
                           errorBorder: OutlineInputBorder(
@@ -562,7 +565,7 @@ class _ContactScreenState extends State<ContactScreen> {
                 color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
+            borderSide: BorderSide(
                 color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

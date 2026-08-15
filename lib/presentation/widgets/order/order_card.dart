@@ -76,7 +76,7 @@ class OrderCard extends StatelessWidget {
                       color: AppColors.pierArena,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(LucideIcons.shoppingBag,
+                    child: Icon(LucideIcons.shoppingBag,
                         color: AppColors.pierVerde, size: 22),
                   ),
                   const SizedBox(width: 14),
@@ -100,7 +100,7 @@ class OrderCard extends StatelessWidget {
                         Text(
                           '$totalItems ${totalItems == 1 ? 'producto' : 'productos'}  •  '
                           '\$${order.total.toStringAsFixed(0)} MXN',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                               color: AppColors.pierDoradoOscuro),

@@ -13,6 +13,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../routes/app_routes.dart';
+import '../../../data/providers/tema_provider.dart';
 
 /// Datos de presentación de cada rol interno (título, acento, icono).
 class _RolInfo {
@@ -53,7 +54,7 @@ class _RolInfo {
         );
       case 'empleado':
       default:
-        return const _RolInfo(
+        return _RolInfo(
           panel: 'Panel de Operación',
           descripcion:
               'Gestión de productos, pedidos, promociones y atención diaria.',
@@ -96,6 +97,8 @@ class PanelWebScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final auth = context.watch<AuthProvider>();
     final info = _RolInfo.from(auth.rol);
     final nombre = _primerNombre(auth.currentUser);

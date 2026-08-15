@@ -15,6 +15,7 @@ import '../../../../../data/providers/navigation_provider.dart';
 import '../../../../../data/models/product_model.dart';
 import '../../auth/login_screen.dart';
 import 'product_detail_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }
 
@@ -97,6 +98,13 @@ class _ProductsScreenState extends State<ProductsScreen>
     ];
   }
 
+  // Escucha de sesión: al cerrar sesión se limpian los corazones y al
+  // iniciar (o cambiar de cuenta) se recargan. La pestaña vive en el
+  // IndexedStack, por eso no basta con cargar en initState.
+  AuthProvider? _authRef;
+  String? _lastAuthEmail;
+  NavigationProvider? _navRef;
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +119,48 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
+    if (!identical(auth, _authRef)) {
+      _authRef?.removeListener(_onAuthChanged);
+      _authRef = auth;
+      _lastAuthEmail = auth.currentUser?['email']?.toString();
+      _authRef!.addListener(_onAuthChanged);
+    }
+    final nav = context.read<NavigationProvider>();
+    if (!identical(nav, _navRef)) {
+      _navRef?.removeListener(_onNavChanged);
+      _navRef = nav;
+      _navRef!.addListener(_onNavChanged);
+    }
+  }
+
+  // Categoría pedida desde el home (chips de Categorías): al entrar a la
+  // pestaña del catálogo con una pendiente, se aplica igual que si se
+  // hubiera tocado su chip.
+  void _onNavChanged() {
+    if (!mounted) return;
+    if (_navRef?.selectedIndex != 1) return;
+    final cat = _navRef?.consumirCategoriaPendiente();
+    if (cat == null || cat == _category) return;
+    setState(() => _category = cat);
+    _cargarOpcionesCategoria();
+  }
+
+  void _onAuthChanged() {
+    if (!mounted) return;
+    final email = _authRef?.currentUser?['email']?.toString();
+    if (email != _lastAuthEmail) {
+      _lastAuthEmail = email;
+      _cargarFavoritosIds();
+    }
+  }
+
+  @override
   void dispose() {
+    _authRef?.removeListener(_onAuthChanged);
+    _navRef?.removeListener(_onNavChanged);
     _searchController.dispose();
     for (final c in _cartControllers.values) { c.dispose(); }
     super.dispose();
@@ -200,7 +249,13 @@ class _ProductsScreenState extends State<ProductsScreen>
 
   Future<void> _cargarFavoritosIds() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) return;
+    if (!auth.isAuthenticated) {
+      // Sin sesión: limpiar los corazones del usuario anterior (la
+      // pestaña vive en el IndexedStack y conservaba el set viejo,
+      // mostrando productos como "favoritos" siendo invitado).
+      if (_favoritos.isNotEmpty) setState(() => _favoritos.clear());
+      return;
+    }
     PierLog.api('GET ${ApiConstants.favoritosIds}');
     final result = await _api.getAuth(ApiConstants.favoritosIds);
     if (!mounted) return;
@@ -512,7 +567,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                 ],
 
                 if (!_filtrosLoaded)
-                  const Center(
+                  Center(
                     child: Padding(
                       padding: EdgeInsets.all(20),
                       child: CircularProgressIndicator(color: AppColors.pierVerde),
@@ -594,7 +649,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                       Expanded(child: Text(t.$1,
                           style: TextStyle(fontWeight: sel ? FontWeight.bold : FontWeight.normal,
                               color: sel ? AppColors.pierVerde : AppColors.textPrimary, fontSize: 15))),
-                      if (sel) const Icon(Icons.check_circle_rounded, color: AppColors.pierVerde, size: 20),
+                      if (sel) Icon(Icons.check_circle_rounded, color: AppColors.pierVerde, size: 20),
                     ]),
                   ),
                 );
@@ -608,6 +663,8 @@ class _ProductsScreenState extends State<ProductsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final productProvider = Provider.of<ProductProvider>(context);
     final products = _filtered(productProvider.productos);
     final cartCount = context.watch<CartProvider>().totalQuantity;
@@ -694,7 +751,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                                     color: AppColors.pierVerde, size: 16),
                                 const SizedBox(width: 5),
                                 Text(_isGridView ? 'Cuadrícula' : 'Lista',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.pierVerde,
+                                    style: TextStyle(fontSize: 12, color: AppColors.pierVerde,
                                         fontWeight: FontWeight.w600)),
                               ]),
                             ),
@@ -821,7 +878,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                         right: -6, top: -6,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(color: AppColors.pierDorado, shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: AppColors.pierDorado, shape: BoxShape.circle),
                           child: Text('$cartCount',
                               style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
@@ -875,7 +932,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                         if (_filtroSabor != null || _filtroTamano != null || _filtroTipo != null)
                           Positioned(right: 8, top: 8,
                               child: Container(width: 8, height: 8,
-                                  decoration: const BoxDecoration(color: AppColors.pierVerde, shape: BoxShape.circle))),
+                                  decoration: BoxDecoration(color: AppColors.pierVerde, shape: BoxShape.circle))),
                       ],
                     ),
                   ],
@@ -928,7 +985,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                 child: Image.network(p.imagenUrl, fit: BoxFit.cover,
                     errorBuilder: (_, e, __) => Container(
                       color: AppColors.pierArena,
-                      child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 40),
+                      child: Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 40),
                     )),
               ),
               // ✅ NUEVO: columna de badges por tipo (igual que el web)
@@ -1039,7 +1096,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(p.categoria,
-                        style: const TextStyle(fontSize: 9, color: AppColors.pierVerde, fontWeight: FontWeight.w700)),
+                        style: TextStyle(fontSize: 9, color: AppColors.pierVerde, fontWeight: FontWeight.w700)),
                   ),
                 const SizedBox(height: 3),
                 Text(p.nombre,
@@ -1112,7 +1169,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                 child: Image.network(p.imagenUrl, fit: BoxFit.cover,
                     errorBuilder: (_, e, __) => Container(
                       color: AppColors.pierArena,
-                      child: const Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 36),
+                      child: Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 36),
                     )),
               ),
               // ✅ Badges múltiples apilados igual que el web
@@ -1295,7 +1352,7 @@ class _ProductsScreenState extends State<ProductsScreen>
           Container(
             width: 100, height: 100,
             decoration: BoxDecoration(color: AppColors.pierVerde.withValues(alpha: 0.08), shape: BoxShape.circle),
-            child: const Icon(LucideIcons.searchX, size: 48, color: AppColors.pierVerde),
+            child: Icon(LucideIcons.searchX, size: 48, color: AppColors.pierVerde),
           )
               .animate()
               .fadeIn(duration: 400.ms)

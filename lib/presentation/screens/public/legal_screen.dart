@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
+import 'package:provider/provider.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class LegalScreen extends StatefulWidget {
   const LegalScreen({super.key});
@@ -29,6 +31,8 @@ class _LegalScreenState extends State<LegalScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -223,7 +227,7 @@ class _LegalScreenState extends State<LegalScreen>
               Icon(icon, color: AppColors.pierVerde, size: 22),
               const SizedBox(width: 12),
               Text(title,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerdeOscuro)),
@@ -288,7 +292,7 @@ class _LegalScreenState extends State<LegalScreen>
                           fontSize: 13,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 2),
-                  const Text(BusinessInfo.email,
+                  Text(BusinessInfo.email,
                       style: TextStyle(
                           color: AppColors.pierVerde,
                           fontSize: 12)),

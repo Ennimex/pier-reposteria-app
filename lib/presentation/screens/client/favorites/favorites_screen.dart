@@ -14,6 +14,7 @@ import '../../../../data/providers/product_provider.dart';
 import '../../../../data/providers/navigation_provider.dart';
 import '../../auth/login_screen.dart';
 import '../products/product_detail_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 // Icono de fallback según nombre de categoría
 IconData _iconForCategoria(String nombre) {
@@ -161,6 +162,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final filtered = _filtered;
     final prov = context.watch<ProductProvider>();
 
@@ -239,7 +242,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             hintText: 'Buscar en favoritos...',
                             hintStyle: TextStyle(
                                 color: Colors.grey[400], fontSize: 14),
-                            prefixIcon: const Icon(LucideIcons.search,
+                            prefixIcon: Icon(LucideIcons.search,
                                 color: AppColors.pierVerde, size: 22),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
@@ -265,7 +268,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                         child: Row(children: [
-                          const Icon(Icons.favorite,
+                          Icon(Icons.favorite,
                               size: 13, color: AppColors.pierVerde),
                           const SizedBox(width: 6),
                           Text(
@@ -368,7 +371,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => Container(
                           color: AppColors.pierArena,
-                          child: const Icon(LucideIcons.cake,
+                          child: Icon(LucideIcons.cake,
                               color: AppColors.pierVerde, size: 36),
                         ),
                       ),
@@ -439,7 +442,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(p.categoria,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 10,
                               color: AppColors.pierVerde,
                               fontWeight: FontWeight.w600)),

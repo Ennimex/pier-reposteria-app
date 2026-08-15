@@ -13,6 +13,7 @@ import '../../../../core/services/api_service.dart';
 import '../../../../data/models/direccion_model.dart';
 import '../../../../data/providers/cart_provider.dart';
 import 'order_success_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -193,7 +194,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         locale: const Locale('es', ''),
         builder: (ctx, child) => Theme(
           data: Theme.of(ctx).copyWith(
-            colorScheme: const ColorScheme.light(
+            colorScheme: ColorScheme.light(
               primary: AppColors.pierVerde,
               onPrimary: Colors.white,
               onSurface: AppColors.textPrimary,
@@ -241,7 +242,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       builder: (dialogContext) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(LucideIcons.clock, color: AppColors.pierDoradoOscuro),
             SizedBox(width: 10),
@@ -483,18 +484,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final cart = Provider.of<CartProvider>(context);
     final totalConEnvio = cart.totalAmount + _costoEnvio;
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       appBar: AppBar(
-        // El titleTextStyle del tema global es blanco (AppBars verdes); esta
-        // AppBar es blanca, así que forzamos el color oscuro del título.
+        // El titleTextStyle y el iconTheme del tema global son blancos
+        // (AppBars verdes); esta AppBar es blanca, así que forzamos el color
+        // oscuro en título Y iconos (el iconTheme del tema gana sobre
+        // foregroundColor -> sin esto la flecha de regresar queda invisible).
         title: const Text('Finalizar Pedido',
             style: TextStyle(color: AppColors.textPrimary)),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -524,7 +530,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   borderRadius:
                                       BorderRadius.circular(8)),
                               child: Text('${item.quantity}x',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.pierVerde)),
                             ),
@@ -545,7 +551,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     Row(children: [
                                       Text(
                                         '\$${item.precio.toStringAsFixed(0)} c/u',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontSize: 12,
                                             color: AppColors.pierVerde,
                                             fontWeight: FontWeight.w600),
@@ -658,7 +664,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               fontWeight: FontWeight.bold,
                               fontSize: 16)),
                       Text('\$${totalConEnvio.toStringAsFixed(0)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.pierVerde,
                               fontWeight: FontWeight.bold,
                               fontSize: 20)),
@@ -715,7 +721,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(LucideIcons.creditCard,
+                    child: Icon(LucideIcons.creditCard,
                         color: AppColors.pierVerde, size: 24),
                   ),
                   const SizedBox(width: 14),
@@ -840,7 +846,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             subtitle: Text(_direccionSucursal),
             trailing: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                   color: AppColors.pierVerde, shape: BoxShape.circle),
               child: const Icon(LucideIcons.check, color: Colors.white, size: 16),
             ),
@@ -858,7 +864,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Container(
             height: 90,
             decoration: _cardDecoration(),
-            child: const Center(
+            child: Center(
                 child: CircularProgressIndicator(
                     color: AppColors.pierVerde, strokeWidth: 2)),
           )
@@ -880,10 +886,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       color: AppColors.pierVerde.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
-                  const Icon(LucideIcons.mapPinPlus,
+                  Icon(LucideIcons.mapPinPlus,
                       color: AppColors.pierVerde, size: 20),
                   const SizedBox(width: 10),
-                  const Text('Agregar dirección',
+                  Text('Agregar dirección',
                       style: TextStyle(
                           color: AppColors.pierVerde,
                           fontWeight: FontWeight.w600)),
@@ -961,7 +967,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             )
                           else
                             Text('\$${d.tarifa!.toStringAsFixed(0)} envío',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.pierVerde,
                                     fontWeight: FontWeight.w600)),
@@ -1025,7 +1031,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   decoration: _cardDecoration(),
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.calendar,
+                      Icon(LucideIcons.calendar,
                           size: 20, color: AppColors.pierVerde),
                       const SizedBox(width: 10),
                       Text(
@@ -1055,9 +1061,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  icon: const Icon(LucideIcons.chevronDown,
+                  icon: Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
-                  hint: const Row(children: [
+                  hint: Row(children: [
                     Icon(LucideIcons.clock,
                         size: 20, color: AppColors.pierVerde),
                     SizedBox(width: 10),
@@ -1133,7 +1139,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildSectionTitle(String title) => Padding(
         padding: const EdgeInsets.only(bottom: 12, left: 4),
         child: Text(title,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.pierVerdeOscuro)),
@@ -1152,13 +1158,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(LucideIcons.info,
+            Icon(LucideIcons.info,
                 color: AppColors.pierDoradoOscuro, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       height: 1.4,
                       color: AppColors.pierDoradoOscuro),
@@ -1387,7 +1393,7 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
 
             // Colonia (solo las que tienen cobertura)
             if (_loadingColonias)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Center(
                     child: CircularProgressIndicator(
@@ -1416,14 +1422,14 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
-                    hint: const Row(children: [
+                    hint: Row(children: [
                       Icon(LucideIcons.building2,
                           size: 20, color: AppColors.pierVerde),
                       SizedBox(width: 10),
                       Text('Colonia'),
                     ]),
                     value: _colonia,
-                    icon: const Icon(LucideIcons.chevronDown,
+                    icon: Icon(LucideIcons.chevronDown,
                         color: AppColors.pierVerde),
                     items: _colonias.map((c) {
                       final nombre = c['colonia']?.toString() ?? '';
@@ -1441,11 +1447,11 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
             if (_tarifaSel != null) ...[
               const SizedBox(height: 8),
               Row(children: [
-                const Icon(LucideIcons.truck,
+                Icon(LucideIcons.truck,
                     size: 16, color: AppColors.pierVerde),
                 const SizedBox(width: 6),
                 Text('Envío: \$${_tarifaSel!.toStringAsFixed(0)} MXN',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         color: AppColors.pierVerde,
                         fontWeight: FontWeight.w600)),
@@ -1510,7 +1516,7 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.pierVerde, width: 1.5),
+          borderSide: BorderSide(color: AppColors.pierVerde, width: 1.5),
         ),
       ),
     );

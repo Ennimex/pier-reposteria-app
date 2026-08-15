@@ -8,6 +8,7 @@ import '../../../data/providers/auth_provider.dart';
 import '../../../routes/app_routes.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -72,6 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -135,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Image.asset(
                           'assets/images/logo.png',
                           fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const Icon(
+                          errorBuilder: (_, _, _) => Icon(
                               LucideIcons.cake,
                               size: 50,
                               color: AppColors.pierVerde),
@@ -213,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         MaterialPageRoute(
                             builder: (_) =>
                                 ForgotPasswordScreen())),
-                    child: const Text('¿Olvidaste tu contraseña?',
+                    child: Text('¿Olvidaste tu contraseña?',
                         style: TextStyle(
                             color: AppColors.pierDorado,
                             fontSize: 13)),
@@ -319,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           context,
                           MaterialPageRoute(
                               builder: (_) => const RegisterScreen())),
-                      child: const Text('Regístrate',
+                      child: Text('Regístrate',
                           style: TextStyle(
                               color: AppColors.pierVerde,
                               fontWeight: FontWeight.bold)),
@@ -371,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen> {
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: AppColors.pierVerde, width: 1.5)),
+                BorderSide(color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.error)),

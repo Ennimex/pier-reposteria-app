@@ -7,6 +7,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/providers/auth_provider.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -108,6 +109,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final user = Provider.of<AuthProvider>(context).currentUser;
     final email = user?['email']?.toString() ?? '';
     final nombre = _nombreCtrl.text;
@@ -365,7 +368,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 color: AppColors.textSecondary.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
+            borderSide: BorderSide(
                 color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

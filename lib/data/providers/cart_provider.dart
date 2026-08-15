@@ -239,4 +239,14 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
     await _api.deleteAuth(ApiConstants.carrito);
   }
+
+  // ── Limpiar solo en memoria (logout) ─────────────────────────────
+  // A diferencia de clearCart, NO borra el carrito del backend: ahí debe
+  // persistir para cuando el usuario vuelva a iniciar sesión. Solo se
+  // deja de mostrar en el dispositivo.
+  void limpiarLocal() {
+    _items = {};
+    _synced = false;
+    notifyListeners();
+  }
 }

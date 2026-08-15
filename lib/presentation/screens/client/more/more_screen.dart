@@ -9,6 +9,9 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/config_format.dart';
 import '../../../../core/constants/business_info.dart';
 import '../../../../data/providers/auth_provider.dart';
+import '../../../../data/providers/cart_provider.dart';
+import '../../../../data/providers/notification_provider.dart';
+import '../../../../data/providers/order_provider.dart';
 import '../../../../routes/app_routes.dart';
 import '../../public/about_us_screen.dart';
 import '../../public/faq_screen.dart';
@@ -21,6 +24,7 @@ import '../reviews/my_reviews_screen.dart';
 import '../more/profile_screen.dart';
 import 'quejas_screen.dart'; // ✅ NUEVO
 import 'vincular_alexa_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -140,7 +144,17 @@ class _MoreScreenState extends State<MoreScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
+              // Limpiar el estado en memoria del usuario que se va:
+              // las pestañas viven en el IndexedStack y sin esto
+              // seguirían mostrando sus pedidos/carrito/notificaciones
+              // como invitado (o al entrar con otra cuenta).
+              final orders = context.read<OrderProvider>();
+              final cart = context.read<CartProvider>();
+              final notifs = context.read<NotificationProvider>();
               await auth.logout();
+              orders.limpiar();
+              cart.limpiarLocal(); // solo local: el backend lo conserva
+              notifs.stopPolling(); // detiene polling y limpia lista/badge
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error, elevation: 0),
@@ -154,6 +168,8 @@ class _MoreScreenState extends State<MoreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final auth     = Provider.of<AuthProvider>(context);
     final isAuth   = auth.isAuthenticated;
     final user     = auth.currentUser;
@@ -178,9 +194,13 @@ class _MoreScreenState extends State<MoreScreen> {
               isAuth, nombre, email, iniciales, fotoUrl, auth),
           const SizedBox(height: 20),
 
-          // ── STATS / REWARDS BANNER ───────────────────────────────
-          if (isAuth) _buildStatsRow() else _buildRewardsBanner(),
-          const SizedBox(height: 24),
+          // ── STATS (solo con sesión) ──────────────────────────────
+          // El banner "Pier Rewards" para invitados se quitó (2026-07-25):
+          // prometía un programa de puntos/sorteos que no existe en backend.
+          if (isAuth) ...[
+            _buildStatsRow(),
+            const SizedBox(height: 24),
+          ],
 
           // ── ENCUÉNTRANOS ─────────────────────────────────────────
           _buildEncuentranos(),
@@ -206,7 +226,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       color: AppColors.pierVerde.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Acceso requerido',
+                    child: Text('Acceso requerido',
                         style: TextStyle(
                             fontSize: 11,
                             color: AppColors.pierVerde,
@@ -433,7 +453,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: CircularProgressIndicator(
                         color: AppColors.pierVerde, strokeWidth: 2),
                   ),
@@ -751,7 +771,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       errorBuilder: (_, __, ___) => Center(
                         child: Text(
                             iniciales.isNotEmpty ? iniciales : 'U',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.pierDoradoOscuro)),
@@ -761,7 +781,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 : Center(
                     child: Text(
                         iniciales.isNotEmpty ? iniciales : 'U',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: AppColors.pierDoradoOscuro)),
@@ -808,72 +828,6 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  Widget _buildRewardsBanner() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.pierArena,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: AppColors.pierDorado.withValues(alpha: 0.3)),
-        ),
-        child: Row(children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Únete a Pier Rewards',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.pierDoradoOscuro,
-                        fontFamily: 'Playfair Display')),
-                const SizedBox(height: 6),
-                Text(
-                    '¡Tus compras tienen premio! Regístrate para participar en nuestros sorteos exclusivos.',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.brown[400],
-                        height: 1.4)),
-                const SizedBox(height: 14),
-                GestureDetector(
-                  onTap: () => context.go(AppRoutes.login),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: AppColors.textSecondary.withValues(alpha: 0.3)),
-                    ),
-                    child: const Text('Iniciar sesión',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.pierDorado.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.award,
-                color: AppColors.pierDorado, size: 28),
-          ),
-        ]),
-      ),
-    );
-  }
-
   Widget _buildStatsRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -903,12 +857,12 @@ class _MoreScreenState extends State<MoreScreen> {
         ),
         child: Column(children: [
           _loadingStats
-              ? const SizedBox(
+              ? SizedBox(
                   height: 20, width: 20,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: AppColors.pierVerde))
               : Text(value,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerde)),

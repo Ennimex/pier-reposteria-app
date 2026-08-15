@@ -15,6 +15,7 @@ import 'cart/cart_screen.dart';
 import 'orders/orders_screen.dart';
 import 'more/more_screen.dart';
 import '../auth/login_screen.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -60,6 +61,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final navProvider = context.watch<NavigationProvider>();
     final selectedIndex = navProvider.selectedIndex;
     final isAuthenticated =
@@ -81,6 +84,9 @@ class _MainScreenState extends State<MainScreen> {
       child: Scaffold(
         body: AnimatedIndexedStack(
           index: selectedIndex,
+          // Deslizar entre pestañas (fling); equivale a tocar la pestaña
+          onSwipeToIndex: (i) =>
+              context.read<NavigationProvider>().setSelectedIndex(i),
           children: [
             // Tab 0 — Inicio
             _NestedNavigator(

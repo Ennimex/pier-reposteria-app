@@ -41,13 +41,13 @@ class AppTheme {
       ),
 
       // AppBar — verde Pier, título Playfair (sin cambios respecto al actual)
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.pierVerde,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.white),
-        titleTextStyle: TextStyle(
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
           fontFamily: 'Playfair Display',
           fontSize: 22,
           fontWeight: FontWeight.bold,
@@ -69,7 +69,7 @@ class AppTheme {
         backgroundColor: AppColors.pierVerde.withValues(alpha: 0.08),
         selectedColor: AppColors.pierVerde,
         side: BorderSide.none,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.pierVerde,
@@ -112,7 +112,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-          borderSide: const BorderSide(color: AppColors.pierVerde, width: 1.5),
+          borderSide: BorderSide(color: AppColors.pierVerde, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
@@ -139,7 +139,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.pierVerde,
-          side: const BorderSide(color: AppColors.pierVerde),
+          side: BorderSide(color: AppColors.pierVerde),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           padding: const EdgeInsets.symmetric(
             horizontal: AppDimensions.space32,

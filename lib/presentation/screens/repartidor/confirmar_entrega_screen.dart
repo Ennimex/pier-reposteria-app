@@ -11,6 +11,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/models/entrega_model.dart';
 import '../../../data/providers/entregas_provider.dart';
 import 'widgets/repartidor_ui.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class ConfirmarEntregaScreen extends StatefulWidget {
   final EntregaRepartidor entrega;
@@ -94,6 +95,8 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final e = widget.entrega;
     return Scaffold(
       backgroundColor: Colors.white,
@@ -184,7 +187,7 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
             Center(
               child: TextButton(
                 onPressed: _enviando ? null : () => Navigator.pop(context),
-                child: const Text(
+                child: Text(
                   'Regresar',
                   style: TextStyle(
                     color: AppColors.pierVerde,

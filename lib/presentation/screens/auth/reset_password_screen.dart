@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../routes/app_routes.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String email;
@@ -141,7 +142,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ),
                   Container(
                     width: 56, height: 56,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.pierVerde,
                       shape: BoxShape.circle,
                     ),
@@ -197,6 +198,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -240,7 +243,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     color: AppColors.pierVerde.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(LucideIcons.lock,
+                  child: Icon(LucideIcons.lock,
                       size: 44, color: AppColors.pierVerde),
                 ),
               ),
@@ -263,7 +266,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               ),
               const SizedBox(height: 4),
               Text(widget.email,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerde),
@@ -306,7 +309,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                               color: AppColors.pierVerde, width: 2),
                         ),
                       ),
@@ -416,7 +419,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: AppColors.pierVerde, width: 1.5)),
+                BorderSide(color: AppColors.pierVerde, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.error)),

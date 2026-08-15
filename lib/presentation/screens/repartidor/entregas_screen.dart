@@ -10,6 +10,7 @@ import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/entregas_provider.dart';
 import 'entrega_detail_screen.dart';
 import 'widgets/repartidor_ui.dart';
+import '../../../data/providers/tema_provider.dart';
 
 class EntregasScreen extends StatelessWidget {
   const EntregasScreen({super.key});
@@ -24,6 +25,8 @@ class EntregasScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final user = context.watch<AuthProvider>().currentUser;
     final provider = context.watch<EntregasProvider>();
 
@@ -57,7 +60,7 @@ class EntregasScreen extends StatelessWidget {
 
         Expanded(
           child: provider.isLoading
-              ? const Center(
+              ? Center(
                   child: CircularProgressIndicator(color: AppColors.pierVerde))
               : RefreshIndicator(
                   color: AppColors.pierVerde,
@@ -283,7 +286,7 @@ class _EntregaCard extends StatelessWidget {
                 ],
                 Text(
                   formatMoneyMxn(entrega.total),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.pierVerde,
@@ -326,7 +329,7 @@ class _SectionTitle extends StatelessWidget {
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: AppColors.pierVerde,
@@ -399,7 +402,7 @@ class _DisponibleCardState extends State<_DisponibleCard> {
               ),
               Text(
                 formatMoneyMxn(p.total),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.pierVerde,

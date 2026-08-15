@@ -14,6 +14,7 @@ import '../favorites/favorites_screen.dart';
 import '../orders/orders_screen.dart';
 import '../products/product_detail_screen.dart';
 import 'edit_profile_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -168,6 +169,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.currentUser;
     final nombre = user?['nombre']?.toString() ?? '';
@@ -225,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Container(
                             width: 52, height: 52,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.pierVerde,
                               shape: BoxShape.circle,
                             ),
@@ -245,7 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             bottom: 0, right: 0,
                             child: Container(
                               width: 16, height: 16,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: AppColors.pierVerde,
                                 shape: BoxShape.circle,
                               ),
@@ -283,7 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 builder: (_) =>
                                     const FavoritesScreen()));
                       },
-                      child: const Text('Ver todo',
+                      child: Text('Ver todo',
                           style: TextStyle(
                               fontSize: 13,
                               color: AppColors.pierVerde,
@@ -297,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             SliverToBoxAdapter(
               child: _loadingFavoritos
-                  ? const Center(
+                  ? Center(
                       child: Padding(
                       padding: EdgeInsets.all(20),
                       child: CircularProgressIndicator(
@@ -357,7 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             width: 120,
                                             height: 100,
                                             color: AppColors.pierArena,
-                                            child: const Icon(
+                                            child: Icon(
                                                 LucideIcons.cake,
                                                 color:
                                                     AppColors.pierVerde),
@@ -378,7 +381,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       Row(children: [
                                         Text(
                                             '\$${p.precio.toStringAsFixed(0)}',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                                 fontSize: 12,
                                                 color:
                                                     AppColors.pierVerde,
@@ -433,7 +436,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
             _loadingPedidos
-                ? const SliverToBoxAdapter(
+                ? SliverToBoxAdapter(
                     child: Center(
                         child: Padding(
                     padding: EdgeInsets.all(20),
@@ -605,7 +608,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
                   Text('\$${total.toStringAsFixed(0)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: AppColors.pierVerde)),
@@ -628,7 +631,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     reordenando
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 14,
                             height: 14,
                             child: CircularProgressIndicator(

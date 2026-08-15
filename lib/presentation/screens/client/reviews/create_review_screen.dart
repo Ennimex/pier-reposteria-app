@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import 'my_reviews_screen.dart';
+import '../../../../data/providers/tema_provider.dart';
 
 class CreateReviewScreen extends StatefulWidget {
   final Product product;
@@ -135,7 +136,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                     ),
                     Container(
                       width: 56, height: 56,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.pierVerde,
                         shape: BoxShape.circle,
                       ),
@@ -214,7 +215,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                     navigator.push(MaterialPageRoute(
                         builder: (_) => const MyReviewsScreen()));
                   },
-                  child: const Text('Ver mi reseña',
+                  child: Text('Ver mi reseña',
                       style: TextStyle(
                           fontSize: 14,
                           color: AppColors.pierDoradoOscuro,
@@ -230,6 +231,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
+    context.watch<TemaProvider>();
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -302,7 +305,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               errorBuilder: (_, __, ___) => Container(
                                 width: 90, height: 90,
                                 color: AppColors.pierArena,
-                                child: const Icon(LucideIcons.cake,
+                                child: Icon(LucideIcons.cake,
                                     color: AppColors.pierVerde, size: 36),
                               ),
                             ),
@@ -321,7 +324,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(widget.product.categoria,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 10,
                                           color: AppColors.pierVerde,
                                           fontWeight: FontWeight.w700)),
@@ -455,7 +458,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                     .withValues(alpha: 0.2))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
+                            borderSide: BorderSide(
                                 color: AppColors.pierVerde, width: 1.5)),
                         contentPadding: const EdgeInsets.all(14),
                       ),
@@ -489,7 +492,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                     .withValues(alpha: 0.2))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
+                            borderSide: BorderSide(
                                 color: AppColors.pierVerde, width: 1.5)),
                         contentPadding: const EdgeInsets.all(14),
                         suffixText:
