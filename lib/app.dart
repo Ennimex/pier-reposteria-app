@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'core/theme/app_theme.dart';
-import 'data/providers/tema_provider.dart';
-import 'routes/app_routes.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_theme.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 

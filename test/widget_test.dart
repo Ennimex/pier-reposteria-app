@@ -12,9 +12,9 @@ import 'package:pier_pasteleria/app.dart';
 import 'package:provider/provider.dart';
 
 // Import your providers here
-import 'package:pier_pasteleria/data/providers/cart_provider.dart';
-import 'package:pier_pasteleria/data/providers/order_provider.dart';
-import 'package:pier_pasteleria/data/providers/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
