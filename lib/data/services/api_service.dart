@@ -5,8 +5,12 @@ import 'package:http_parser/http_parser.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/services/storage_service.dart';
+import 'package:pier_pasteleria/data/services/api_client.dart';
 
-class ApiService {
+// Implementa el contrato ApiClient (data/services/api_client.dart): los
+// repositorios dependen de la interfaz, y en pruebas se sustituye por
+// FakeApiClient sin tocar la red.
+class ApiService implements ApiClient {
   final StorageService _storage = StorageService();
 
   // Headers base sin auth
@@ -24,6 +28,7 @@ class ApiService {
   }
 
   // GET sin autenticación
+  @override
   Future<Map<String, dynamic>> get(String endpoint) async {
     PierLog.api('GET $endpoint');
     try {
@@ -39,6 +44,7 @@ class ApiService {
   }
 
   // GET con autenticación
+  @override
   Future<Map<String, dynamic>> getAuth(String endpoint) async {
     PierLog.api('GET-Auth $endpoint');
     try {
@@ -54,6 +60,7 @@ class ApiService {
   }
 
   // POST sin autenticación
+  @override
   Future<Map<String, dynamic>> post(
       String endpoint, Map<String, dynamic> body) async {
     PierLog.api('POST $endpoint');
@@ -71,6 +78,7 @@ class ApiService {
   }
 
   // POST con autenticación
+  @override
   Future<Map<String, dynamic>> postAuth(
       String endpoint, Map<String, dynamic> body) async {
     PierLog.api('POST-Auth $endpoint');
@@ -88,6 +96,7 @@ class ApiService {
   }
 
   // PUT con autenticación
+  @override
   Future<Map<String, dynamic>> putAuth(
       String endpoint, Map<String, dynamic> body) async {
     PierLog.api('PUT-Auth $endpoint');
@@ -105,6 +114,7 @@ class ApiService {
   }
 
   // DELETE con autenticación
+  @override
   Future<Map<String, dynamic>> deleteAuth(String endpoint) async {
     PierLog.api('DELETE-Auth $endpoint');
     try {
@@ -145,6 +155,7 @@ class ApiService {
   }
 
   // MULTIPART con autenticación
+  @override
   Future<Map<String, dynamic>> uploadImageAuth(String endpoint, String filePath, Map<String, String> fields) async {
     PierLog.api('UPLOAD-Auth $endpoint');
     try {
