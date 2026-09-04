@@ -104,6 +104,12 @@ class ApiConstants {
   // Aviso "llegué al domicilio": notifica al cliente sin cambiar estado
   static String entregaLlegue(String id)   => '/entregas/$id/llegue';
 
+  // ── DEMANDA NO ATENDIDA (público, registro silencioso) ────────────
+  // Espejo de src/utils/demandaNoAtendida.ts de la web. Alimentan el reporte
+  // "qué buscó la gente y no tuvimos" del panel de Dirección.
+  static const String busquedas     = '/busquedas';      // {texto, num_resultados}
+  static const String clicsAgotados = '/clics-agotados'; // {producto_id}
+
   // ── UPLOAD ────────────────────────────────────────────────────────
   static const String uploadImagen        = '/upload/imagen';
   static const String updateProfileData   = '/usuarios/perfil/actualizar'; // PUT

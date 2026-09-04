@@ -4,6 +4,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/utils/config_format.dart';
 import '../../../data/providers/tema_provider.dart';
 import 'contact_screen.dart';
 
@@ -16,12 +19,27 @@ class FAQScreen extends StatefulWidget {
 
 class _FAQScreenState extends State<FAQScreen> {
   String _categoriaSeleccionada = 'Todas';
+  final ApiService _api = ApiService();
 
-  final List<String> _categorias = [
-    'Todas', 'Pedidos', 'Pagos', 'Devoluciones', 'Seguridad', 'Ubicación'
-  ];
+  /// 'Todas' + categorías presentes en las preguntas. Las conocidas van en
+  /// su orden de siempre; las que capture el panel se agregan al final.
+  List<String> get _categorias {
+    const conocidas = ['Pedidos', 'Pagos', 'Devoluciones', 'Seguridad', 'Ubicación'];
+    final presentes = _faqs
+        .map((f) => f['categoria'] ?? '')
+        .where((c) => c.isNotEmpty)
+        .toSet();
+    return [
+      'Todas',
+      ...conocidas.where(presentes.contains),
+      ...presentes.where((c) => !conocidas.contains(c)),
+    ];
+  }
 
-  final List<Map<String, String>> _faqs = const [
+  // Preguntas por defecto de la app. Si Dirección captura preguntas en el
+  // panel (configuracion/faq, clave `preguntas`, misma fuente que FAQ.tsx de
+  // la web), se reemplazan por esas.
+  static final List<Map<String, String>> _faqsDefault = [
     {
       'categoria': 'Pedidos',
       'question': '¿Ofrecen servicio de entrega a domicilio?',
@@ -77,6 +95,46 @@ class _FAQScreenState extends State<FAQScreen> {
           '${BusinessInfo.direccionCompleta}. Abierto ${BusinessInfo.horario}.',
     },
   ];
+
+  List<Map<String, String>> _faqs = _faqsDefault;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarFaqs();
+  }
+
+  /// Espejo de FAQ.tsx: GET /configuracion/faq → config.preguntas
+  /// [{categoria, pregunta, respuesta}]. Sin datos o con error se conservan
+  /// las preguntas por defecto.
+  Future<void> _cargarFaqs() async {
+    final r = await _api.get(ApiConstants.configuracionSeccion('faq'));
+    if (!mounted || r['success'] != true) return;
+    final cfg = r['config'];
+    if (cfg is! Map) return;
+    final preguntas = parseConfigValor(cfg['preguntas']);
+    if (preguntas is! List) return;
+    final lista = <Map<String, String>>[];
+    for (final item in preguntas) {
+      if (item is! Map) continue;
+      final q = (item['pregunta'] ?? '').toString().trim();
+      final a = (item['respuesta'] ?? '').toString().trim();
+      if (q.isEmpty || a.isEmpty) continue;
+      final cat = (item['categoria'] ?? '').toString().trim();
+      lista.add({
+        'categoria': cat.isEmpty ? 'General' : cat,
+        'question': q,
+        'answer': a,
+      });
+    }
+    if (lista.isEmpty) return;
+    setState(() {
+      _faqs = lista;
+      if (!_categorias.contains(_categoriaSeleccionada)) {
+        _categoriaSeleccionada = 'Todas';
+      }
+    });
+  }
 
   List<Map<String, String>> get _filtradas {
     if (_categoriaSeleccionada == 'Todas') return _faqs;

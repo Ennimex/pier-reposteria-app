@@ -1,4 +1,5 @@
 // lib/presentation/screens/client/products/products_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import '../../../widgets/skeletons.dart';
 import '../../../../../core/services/api_service.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/utils/logger.dart';
+import '../../../../../core/services/demanda_service.dart';
 import '../../../../../data/providers/auth_provider.dart';
 import '../../../../../data/providers/cart_provider.dart';
 import '../../../../../data/providers/product_provider.dart';
@@ -49,6 +51,7 @@ class _ProductsScreenState extends State<ProductsScreen>
   SortOption _sort = SortOption.popular;
   String _category = 'Todos';
   String _searchQuery = '';
+  Timer? _busquedaTimer; // registro diferido de la búsqueda (demanda no atendida)
   bool _isGridView = true;
 
   final Map<String, AnimationController> _cartControllers = {};
@@ -161,6 +164,7 @@ class _ProductsScreenState extends State<ProductsScreen>
   void dispose() {
     _authRef?.removeListener(_onAuthChanged);
     _navRef?.removeListener(_onNavChanged);
+    _busquedaTimer?.cancel();
     _searchController.dispose();
     for (final c in _cartControllers.values) { c.dispose(); }
     super.dispose();
@@ -331,7 +335,13 @@ class _ProductsScreenState extends State<ProductsScreen>
           return 0;
         });
     }
-    return list;
+    // Lo agotado siempre al final: se sigue viendo, pero sin estorbar (mismo
+    // criterio que la web). Partición estable: conserva el orden elegido
+    // dentro de cada grupo.
+    return [
+      ...list.where((p) => !p.agotado),
+      ...list.where((p) => p.agotado),
+    ];
   }
 
   bool get _hasFilters =>
@@ -353,24 +363,53 @@ class _ProductsScreenState extends State<ProductsScreen>
     });
   }
 
+  /// "Avísame": registra el interés en un producto agotado (demanda no
+  /// atendida) y lo confirma al cliente. Espejo del botón Avísame de la web.
+  /// No requiere sesión.
+  void _avisarme(Product p) {
+    DemandaService.registrarClicAgotado(p.id);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(LucideIcons.bellRing, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(
+                  'Anotamos tu interés en "${p.nombre}". Te avisaremos cuando vuelva.')),
+        ]),
+        backgroundColor: AppColors.pierDoradoOscuro,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ));
+  }
+
+  /// Registra lo que la gente busca (con cuántos resultados obtuvo) 1.2 s
+  /// después de la última tecla, igual que la web. Nunca bloquea la búsqueda.
+  void _programarRegistroBusqueda() {
+    _busquedaTimer?.cancel();
+    final termino = _searchQuery.trim();
+    if (termino.length < 2) return;
+    _busquedaTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted || _searchQuery.trim() != termino) return;
+      final prov = Provider.of<ProductProvider>(context, listen: false);
+      DemandaService.registrarBusqueda(
+          termino, _filtered(prov.productos).length);
+    });
+  }
+
   void _addToCart(Product p, CartProvider cart) {
+    // Agotado: el botón es "Avísame" (registra interés; sin sesión, como web)
+    if (p.agotado) {
+      _avisarme(p);
+      return;
+    }
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => const LoginScreen()));
-      return;
-    }
-    if (p.agotado) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text('${p.nombre} está agotado'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
       return;
     }
     PierLog.info('🛒 Agregando al carrito desde catálogo: ${p.nombre}');
@@ -904,7 +943,10 @@ class _ProductsScreenState extends State<ProductsScreen>
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: (v) => setState(() => _searchQuery = v),
+        onChanged: (v) {
+          setState(() => _searchQuery = v);
+          _programarRegistroBusqueda();
+        },
         decoration: InputDecoration(
           hintText: 'Busca tu antojo...',
           hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 15),
@@ -913,6 +955,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               ? IconButton(
                   icon: const Icon(LucideIcons.x, color: AppColors.textSecondary, size: 18),
                   onPressed: () {
+                    _busquedaTimer?.cancel();
                     _searchController.clear();
                     setState(() => _searchQuery = '');
                   })
@@ -1125,12 +1168,12 @@ class _ProductsScreenState extends State<ProductsScreen>
                             width: 34, height: 34,
                             decoration: BoxDecoration(
                                 color: p.agotado
-                                    ? AppColors.textSecondary.withValues(alpha: 0.35)
+                                    ? AppColors.pierDorado
                                     : AppColors.pierVerde,
                                 borderRadius: BorderRadius.circular(10)),
                             child: Icon(
                                 p.agotado
-                                    ? LucideIcons.ban
+                                    ? LucideIcons.bellRing
                                     : inCart ? LucideIcons.check : LucideIcons.plus,
                                 color: Colors.white, size: 20),
                           ),
@@ -1293,14 +1336,25 @@ class _ProductsScreenState extends State<ProductsScreen>
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(
                                 color: p.agotado
-                                    ? AppColors.textSecondary.withValues(alpha: 0.35)
+                                    ? AppColors.pierDorado
                                     : AppColors.pierVerde,
                                 borderRadius: BorderRadius.circular(12)),
-                            child: Icon(
-                                p.agotado
-                                    ? LucideIcons.ban
-                                    : inCart ? LucideIcons.check : LucideIcons.plus,
-                                color: Colors.white, size: 20),
+                            child: p.agotado
+                                ? const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(LucideIcons.bellRing,
+                                          color: Colors.white, size: 18),
+                                      SizedBox(width: 6),
+                                      Text('Avísame',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold)),
+                                    ])
+                                : Icon(
+                                    inCart ? LucideIcons.check : LucideIcons.plus,
+                                    color: Colors.white, size: 20),
                           ),
                         );
                         if (anim != null) btn = ScaleTransition(scale: anim, child: btn);

@@ -117,3 +117,33 @@ String _prettyClave(String clave) {
   if (s.isEmpty) return s;
   return s[0].toUpperCase() + s.substring(1);
 }
+
+/// Normaliza un valor crudo de `configuracion/*`: si llega como JSON
+/// serializado (string que empieza con '{' o '[') lo decodifica; si ya es
+/// Map/List/num/bool lo devuelve tal cual. Un string que no es JSON se
+/// devuelve recortado. Nunca lanza.
+dynamic parseConfigValor(dynamic raw) {
+  if (raw == null) return null;
+  if (raw is String) {
+    final t = raw.trim();
+    if (t.isEmpty) return null;
+    if (t.startsWith('{') || t.startsWith('[') || t.startsWith('"')) {
+      try {
+        return jsonDecode(t);
+      } catch (_) {
+        return t;
+      }
+    }
+    return t;
+  }
+  return raw;
+}
+
+/// Texto NO vacío de un valor de configuración, o null si no hay texto.
+/// Útil para "valor del panel ?? texto por defecto de la app".
+String? configTexto(dynamic raw) {
+  final v = parseConfigValor(raw);
+  if (v == null) return null;
+  final t = v.toString().trim();
+  return t.isEmpty ? null : t;
+}

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/utils/config_format.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/tema_provider.dart';
 
@@ -16,11 +19,76 @@ class LegalScreen extends StatefulWidget {
 class _LegalScreenState extends State<LegalScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ApiService _api = ApiService();
+
+  // Textos del panel (configuracion/legales, misma fuente que Legales.tsx).
+  // null = usar las secciones por defecto de la app.
+  String? _privacidad;
+  String? _terminos;
+  String? _reembolsos;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _cargarLegales();
+  }
+
+  /// GET /configuracion/legales → privacidad, terminos, reembolsos (texto
+  /// plano con saltos de línea). Vacío o error → textos por defecto.
+  Future<void> _cargarLegales() async {
+    final r = await _api.get(ApiConstants.configuracionSeccion('legales'));
+    if (!mounted || r['success'] != true) return;
+    final cfg = r['config'];
+    if (cfg is! Map) return;
+    setState(() {
+      _privacidad = configTexto(cfg['privacidad']);
+      _terminos = configTexto(cfg['terminos']);
+      _reembolsos = configTexto(cfg['reembolsos']);
+    });
+  }
+
+  /// Convierte el texto del panel en tarjetas: bloques separados por línea en
+  /// blanco (o una tarjeta por línea si no hay bloques). Si un bloque tiene
+  /// varias líneas y la primera es corta y no termina en punto ni es viñeta,
+  /// esa línea es el título de la tarjeta. Si el texto viene como un solo
+  /// párrafo sin saltos (así está capturado hoy en el panel), se reparte una
+  /// tarjeta por oración para no pintar un bloque corrido.
+  static List<_LegalSection> _seccionesDesde(String texto) {
+    final normal = texto.replaceAll('\r\n', '\n').trim();
+    if (!normal.contains('\n')) {
+      // Corte tras . ! ? seguido de espacio y mayúscula (no parte "C.P. 43000"
+      // ni decimales). Probado con los 3 textos reales del panel: 5/7/5 tarjetas.
+      final oraciones = normal
+          .split(RegExp(r'(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])'))
+          .map((o) => o.trim())
+          .where((o) => o.isNotEmpty)
+          .toList();
+      return oraciones.map((o) => _LegalSection(content: o)).toList();
+    }
+    var bloques = normal.split(RegExp(r'\n\s*\n'));
+    if (bloques.length == 1) bloques = normal.split('\n');
+    final out = <_LegalSection>[];
+    for (final b in bloques) {
+      final lineas = b
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+      if (lineas.isEmpty) continue;
+      final primera = lineas.first;
+      final esTitulo = lineas.length > 1 &&
+          primera.length <= 60 &&
+          !primera.endsWith('.') &&
+          !primera.startsWith('-') &&
+          !primera.startsWith('•');
+      out.add(esTitulo
+          ? _LegalSection(
+              title: primera.replaceFirst(RegExp(r':\$'), ''),
+              content: lineas.sublist(1).join('\n'))
+          : _LegalSection(content: lineas.join('\n')));
+    }
+    return out;
   }
 
   @override
@@ -120,7 +188,9 @@ class _LegalScreenState extends State<LegalScreen>
                   _buildContent(
                     icon: LucideIcons.shieldAlert,
                     title: 'Aviso de Privacidad',
-                    sections: [
+                    sections: _privacidad != null
+                        ? _seccionesDesde(_privacidad!)
+                        : [
                       _LegalSection(
                         title: 'Responsable del Tratamiento',
                         content:
@@ -151,7 +221,9 @@ class _LegalScreenState extends State<LegalScreen>
                   _buildContent(
                     icon: LucideIcons.fileText,
                     title: 'Términos y Condiciones',
-                    sections: [
+                    sections: _terminos != null
+                        ? _seccionesDesde(_terminos!)
+                        : [
                       _LegalSection(
                         title: 'Proceso de Compra',
                         content:
@@ -177,7 +249,9 @@ class _LegalScreenState extends State<LegalScreen>
                   _buildContent(
                     icon: LucideIcons.undo2,
                     title: 'Política de Devoluciones',
-                    sections: [
+                    sections: _reembolsos != null
+                        ? _seccionesDesde(_reembolsos!)
+                        : [
                       _LegalSection(
                         title: 'Condiciones de Devolución',
                         content:
@@ -254,12 +328,14 @@ class _LegalScreenState extends State<LegalScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(s.title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: AppColors.textPrimary)),
-                      const SizedBox(height: 8),
+                      if (s.title.isNotEmpty) ...[
+                        Text(s.title,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: AppColors.textPrimary)),
+                        const SizedBox(height: 8),
+                      ],
                       Text(s.content,
                           style: const TextStyle(
                               fontSize: 13,
@@ -309,5 +385,5 @@ class _LegalScreenState extends State<LegalScreen>
 class _LegalSection {
   final String title;
   final String content;
-  const _LegalSection({required this.title, required this.content});
+  const _LegalSection({this.title = '', required this.content});
 }

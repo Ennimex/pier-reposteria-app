@@ -15,6 +15,7 @@ import '../../../../../data/providers/product_provider.dart';
 import '../../../../../core/services/api_service.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/utils/logger.dart';
+import '../../../../../core/services/demanda_service.dart';
 import '../../auth/login_screen.dart';
 import '../reviews/create_review_screen.dart';
 import '../reviews/product_reviews_screen.dart';
@@ -211,6 +212,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
   }
 
+  /// "Avísame" para producto agotado: registra el interés (demanda no
+  /// atendida) y lo confirma. No requiere sesión, igual que en la web.
+  void _avisarme() {
+    DemandaService.registrarClicAgotado(widget.product.id);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(LucideIcons.bellRing, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(
+                  'Anotamos tu interés en "${widget.product.nombre}". Te avisaremos cuando vuelva.')),
+        ]),
+        backgroundColor: AppColors.pierDoradoOscuro,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ));
+  }
+
   void _addToCart() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
@@ -218,7 +241,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
-    if (widget.product.agotado) return; // boton deshabilitado, doble guard
+    if (widget.product.agotado) return; // el botón ya es "Avísame"; doble guard
     // Tamaño elegido: el selector solo aparece si hay precio grande, así que
     // sin selector _selectedSize queda en 0 (chico).
     final tamano = _selectedSize == 1 ? 'grande' : 'chico';
@@ -774,11 +797,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                               child: SizedBox(
                                 height: 52,
                                 child: ElevatedButton(
+                                  // Agotado → "Avísame" (registra interés)
                                   onPressed: widget.product.agotado
-                                      ? null
+                                      ? _avisarme
                                       : _addToCart,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.pierVerde,
+                                    backgroundColor: widget.product.agotado
+                                        ? AppColors.pierDorado
+                                        : AppColors.pierVerde,
                                     disabledBackgroundColor: AppColors
                                         .textSecondary
                                         .withValues(alpha: 0.35),
@@ -800,7 +826,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                         children: [
                                           Icon(
                                               agotado
-                                                  ? LucideIcons.ban
+                                                  ? LucideIcons.bellRing
                                                   : LucideIcons.shoppingCart,
                                               color: Colors.white,
                                               size: 18),
@@ -808,7 +834,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                             const SizedBox(width: 6),
                                             Text(
                                                 agotado
-                                                    ? 'Agotado'
+                                                    ? 'Avísame'
                                                     : 'Añadir',
                                                 style: const TextStyle(
                                                     fontSize: 15,

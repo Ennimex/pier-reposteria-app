@@ -3,11 +3,128 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/business_info.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/utils/config_format.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/tema_provider.dart';
 
-class AboutUsScreen extends StatelessWidget {
+class AboutUsScreen extends StatefulWidget {
   const AboutUsScreen({super.key});
+
+  @override
+  State<AboutUsScreen> createState() => _AboutUsScreenState();
+}
+
+class _AboutUsScreenState extends State<AboutUsScreen> {
+  final ApiService _api = ApiService();
+
+  // Textos por defecto de la app. Si Dirección los captura en el panel
+  // (configuracion/nosotros, misma fuente que Nosotros.tsx) se reemplazan.
+  String _historiaTitulo = 'Nuestra Historia';
+  String _historia =
+      'Pier Repostería nació en el corazón de Huejutla de Reyes como un pequeño sueño familiar. Lo que comenzó en una cocina casera, horneando con recetas de la abuela, hoy es un referente de sabor y tradición en la Huasteca Hidalguense.';
+  String _mision =
+      'Crear momentos inolvidables a través de sabores auténticos y una calidad artesanal inigualable.';
+  String _vision =
+      'Ser la pastelería líder en la región, reconocida por nuestra innovación constante sin perder la esencia tradicional.';
+  List<(String, IconData)> _valores = const [
+    ('Calidad Artesanal',        LucideIcons.handshake),
+    ('Ingredientes Frescos',     LucideIcons.leaf),
+    ('Atención Personalizada',   Icons.favorite_outline_rounded),
+    ('Tradición e Innovación',   Icons.star_outline_rounded),
+  ];
+  List<(String, String)> _stats = const [
+    ('100%', 'Artesanal'),
+    ('+ 5 años', 'Experiencia'),
+    ('❤️', 'Con amor'),
+  ];
+
+  // Iconos que rotan para los valores capturados en el panel (como los
+  // VALUE_ICONS de la web: corazón, premio, comunidad, chispa)
+  static const List<IconData> _iconosValores = [
+    Icons.favorite_outline_rounded,
+    LucideIcons.award,
+    LucideIcons.users,
+    LucideIcons.sparkles,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarConfig();
+  }
+
+  /// GET /configuracion/nosotros → historia{titulo, contenido, fundacion},
+  /// mision, valores[], estadisticas[{numero, label}]; `vision` se lee si
+  /// existe. timeline/equipo de la web no se muestran en la app. Cualquier
+  /// campo ausente o vacío conserva el texto por defecto.
+  Future<void> _cargarConfig() async {
+    final r = await _api.get(ApiConstants.configuracionSeccion('nosotros'));
+    if (!mounted || r['success'] != true) return;
+    final cfg = r['config'];
+    if (cfg is! Map) return;
+
+    final historia = parseConfigValor(cfg['historia']);
+    String? titulo, contenido, fundacion;
+    if (historia is Map) {
+      titulo = configTexto(historia['titulo']);
+      contenido = configTexto(historia['contenido']);
+      fundacion = configTexto(historia['fundacion']);
+    } else {
+      contenido = configTexto(historia);
+    }
+    final mision = configTexto(cfg['mision']);
+    final vision = configTexto(cfg['vision']);
+
+    final valoresRaw = parseConfigValor(cfg['valores']);
+    List<(String, IconData)>? valores;
+    if (valoresRaw is List) {
+      final v = <(String, IconData)>[];
+      for (final x in valoresRaw) {
+        final t = x.toString().trim();
+        if (t.isNotEmpty) {
+          v.add((t, _iconosValores[v.length % _iconosValores.length]));
+        }
+      }
+      if (v.isNotEmpty) valores = v;
+    }
+
+    final statsRaw = parseConfigValor(cfg['estadisticas']);
+    List<(String, String)>? stats;
+    if (statsRaw is List) {
+      final lista = <(String, String)>[];
+      for (final x in statsRaw) {
+        if (x is! Map) continue;
+        final n = configTexto(x['numero']);
+        final l = configTexto(x['label']);
+        if (n != null && l != null) lista.add((n, l));
+      }
+      if (lista.isNotEmpty) stats = lista.take(4).toList();
+    }
+    // Sin estadísticas capturadas pero con año de fundación: los años de
+    // experiencia se calculan (la web muestra "Desde <fundacion>")
+    if (stats == null && fundacion != null) {
+      final anio = int.tryParse(fundacion);
+      final actual = DateTime.now().year;
+      if (anio != null && anio > 1900 && anio < actual) {
+        stats = [
+          ('100%', 'Artesanal'),
+          ('+ ${actual - anio} años', 'Experiencia'),
+          ('❤️', 'Con amor'),
+        ];
+      }
+    }
+
+    setState(() {
+      if (titulo != null) _historiaTitulo = titulo;
+      if (contenido != null) _historia = contenido;
+      if (mision != null) _mision = mision;
+      if (vision != null) _vision = vision;
+      if (valores != null) _valores = valores;
+      if (stats != null) _stats = stats;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,8 +200,10 @@ class AboutUsScreen extends StatelessWidget {
                                   letterSpacing: 1)),
                         ),
                         const SizedBox(height: 8),
-                        const Text('Nuestra Historia',
-                            style: TextStyle(
+                        Text(_historiaTitulo,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
                                 fontFamily: 'Playfair Display',
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
@@ -106,9 +225,9 @@ class AboutUsScreen extends StatelessWidget {
                 children: [
 
                   // ── HISTORIA ────────────────────────────────────
-                  const Text(
-                    'Pier Repostería nació en el corazón de Huejutla de Reyes como un pequeño sueño familiar. Lo que comenzó en una cocina casera, horneando con recetas de la abuela, hoy es un referente de sabor y tradición en la Huasteca Hidalguense.',
-                    style: TextStyle(
+                  Text(
+                    _historia,
+                    style: const TextStyle(
                         fontSize: 15,
                         color: AppColors.textSecondary,
                         height: 1.6),
@@ -119,15 +238,13 @@ class AboutUsScreen extends StatelessWidget {
                   _buildInfoCard(
                     icon: LucideIcons.flag,
                     title: 'Misión',
-                    content:
-                        'Crear momentos inolvidables a través de sabores auténticos y una calidad artesanal inigualable.',
+                    content: _mision,
                   ),
                   const SizedBox(height: 12),
                   _buildInfoCard(
                     icon: LucideIcons.eye,
                     title: 'Visión',
-                    content:
-                        'Ser la pastelería líder en la región, reconocida por nuestra innovación constante sin perder la esencia tradicional.',
+                    content: _vision,
                   ),
                   const SizedBox(height: 28),
 
@@ -139,12 +256,7 @@ class AboutUsScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 16),
-                  ...[
-                    ('Calidad Artesanal',        LucideIcons.handshake),
-                    ('Ingredientes Frescos',     LucideIcons.leaf),
-                    ('Atención Personalizada',   Icons.favorite_outline_rounded),
-                    ('Tradición e Innovación',   Icons.star_outline_rounded),
-                  ].map((v) => _buildValueTile(v.$1, v.$2)),
+                  ..._valores.map((v) => _buildValueTile(v.$1, v.$2)),
 
                   const SizedBox(height: 28),
 
@@ -162,11 +274,10 @@ class AboutUsScreen extends StatelessWidget {
 
                   // ── STATS ─────────────────────────────────────────
                   Row(children: [
-                    _buildStat('100%', 'Artesanal'),
-                    const SizedBox(width: 12),
-                    _buildStat('+ 5 años', 'Experiencia'),
-                    const SizedBox(width: 12),
-                    _buildStat('❤️', 'Con amor'),
+                    for (var i = 0; i < _stats.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 12),
+                      _buildStat(_stats[i].$1, _stats[i].$2),
+                    ],
                   ]),
                 ],
               ),

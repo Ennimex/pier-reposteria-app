@@ -7,6 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../widgets/skeletons.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/services/demanda_service.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/providers/cart_provider.dart';
 import '../../../../data/providers/auth_provider.dart';
@@ -125,25 +126,38 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
+  /// "Avísame": registra el interés en un producto agotado (demanda no
+  /// atendida) y lo confirma. Espejo del botón Avísame de la web.
+  void _avisarme(Product p) {
+    DemandaService.registrarClicAgotado(p.id);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(LucideIcons.bellRing, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(
+                  'Anotamos tu interés en "${p.nombre}". Te avisaremos cuando vuelva.')),
+        ]),
+        backgroundColor: AppColors.pierDoradoOscuro,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ));
+  }
+
   void _addToCart(Product p) {
+    // Agotado: el botón es "Avísame" (registra interés)
+    if (p.agotado) {
+      _avisarme(p);
+      return;
+    }
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => const LoginScreen()));
-      return;
-    }
-    if (p.agotado) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text('${p.nombre} está agotado'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 2),
-        ));
       return;
     }
     final cart = Provider.of<CartProvider>(context, listen: false);
@@ -501,14 +515,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             width: 36, height: 36,
                             decoration: BoxDecoration(
                               color: p.agotado
-                                  ? AppColors.textSecondary
-                                      .withValues(alpha: 0.35)
+                                  ? AppColors.pierDorado
                                   : AppColors.pierVerde,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
                                 p.agotado
-                                    ? LucideIcons.ban
+                                    ? LucideIcons.bellRing
                                     : LucideIcons.plus,
                                 color: Colors.white, size: 22),
                           ),
