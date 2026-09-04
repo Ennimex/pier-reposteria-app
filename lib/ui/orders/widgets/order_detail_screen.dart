@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/orders/order_detail_screen.dart
+// lib/ui/orders/widgets/order_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lottie/lottie.dart';

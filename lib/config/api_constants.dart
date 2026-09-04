@@ -1,4 +1,4 @@
-// lib/core/constants/api_constants.dart
+// lib/config/api_constants.dart
 
 class ApiConstants {
   static const String _prodUrl = 'https://pier-reposteria-backend.onrender.com/api';

@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/products/products_screen.dart
+// lib/ui/products/widgets/products_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/services/demanda_service.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
@@ -46,7 +46,8 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen>
     with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  final ApiService _api = ApiService();
+  final _productosRepo = ProductosRepository();
+  final _favoritosRepo = FavoritosRepository();
 
   SortOption _sort = SortOption.popular;
   String _category = 'Todos';
@@ -171,8 +172,7 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   Future<void> _cargarCategorias() async {
-    PierLog.api('GET ${ApiConstants.categorias}');
-    final result = await _api.get(ApiConstants.categorias);
+    final result = await _productosRepo.categorias();
     if (!mounted) return;
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(
@@ -205,8 +205,7 @@ class _ProductsScreenState extends State<ProductsScreen>
     final id = match.isEmpty ? null : match.first['id']?.toString();
     if (id == null) return;
 
-    PierLog.api('GET ${ApiConstants.categoriaOpciones(id)}');
-    final result = await _api.get(ApiConstants.categoriaOpciones(id));
+    final result = await _productosRepo.opcionesDeCategoria(id);
     // Si el usuario ya cambió de categoría, descartar esta respuesta.
     if (!mounted || _category != solicitada) return;
 
@@ -234,8 +233,7 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   Future<void> _cargarFiltros() async {
-    PierLog.api('GET ${ApiConstants.filtros}');
-    final result = await _api.get(ApiConstants.filtros);
+    final result = await _productosRepo.filtros();
     if (!mounted) return;
     if (result['success'] == true) {
       final filtros = result['filtros'] as Map<String, dynamic>? ?? {};
@@ -260,8 +258,7 @@ class _ProductsScreenState extends State<ProductsScreen>
       if (_favoritos.isNotEmpty) setState(() => _favoritos.clear());
       return;
     }
-    PierLog.api('GET ${ApiConstants.favoritosIds}');
-    final result = await _api.getAuth(ApiConstants.favoritosIds);
+    final result = await _favoritosRepo.ids();
     if (!mounted) return;
     if (result['success'] == true) {
       final ids = List<String>.from(
@@ -442,12 +439,9 @@ class _ProductsScreenState extends State<ProductsScreen>
     setState(() {
       if (yaEsFav) { _favoritos.remove(id); } else { _favoritos.add(id); }
     });
-    PierLog.api(yaEsFav
-        ? 'DELETE ${ApiConstants.favoritoById(id)}'
-        : 'POST /favoritos/$id');
     final result = yaEsFav
-        ? await _api.deleteAuth(ApiConstants.favoritoById(id))
-        : await _api.postAuth('/favoritos/$id', {});
+        ? await _favoritosRepo.quitar(id)
+        : await _favoritosRepo.agregar(id);
     if (!mounted) return;
     if (result['success'] != true) {
       PierLog.error('Error al ${yaEsFav ? 'quitar' : 'agregar'} favorito $id');

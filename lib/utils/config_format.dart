@@ -1,4 +1,4 @@
-// lib/core/utils/config_format.dart
+// lib/utils/config_format.dart
 //
 // Helpers para mostrar valores de `configuracion/*` del backend. El backend
 // guarda cada valor como JSON (JSON.stringify), por lo que un campo puede

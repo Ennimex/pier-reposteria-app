@@ -1,4 +1,4 @@
-// lib/presentation/screens/auth/register_screen.dart
+// lib/ui/auth/widgets/register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/gestures.dart';

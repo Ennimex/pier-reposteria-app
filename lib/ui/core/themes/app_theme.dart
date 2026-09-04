@@ -1,4 +1,4 @@
-// lib/core/theme/app_theme.dart
+// lib/ui/core/themes/app_theme.dart
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';

@@ -1,12 +1,14 @@
-// lib/data/providers/product_provider.dart
+// lib/ui/core/state/product_provider.dart
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 
 class ProductProvider with ChangeNotifier {
-  final ApiService _api = ApiService();
+  final ProductosRepository _repo;
+
+  ProductProvider({ProductosRepository? repo})
+      : _repo = repo ?? ProductosRepository();
 
   List<Product> _productos = [];
   bool _isLoading = false;
@@ -80,10 +82,9 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     // Cargar productos y promociones en paralelo
-    PierLog.api('GET ${ApiConstants.productos} + GET ${ApiConstants.promocionesActivas}');
     final results = await Future.wait([
-      _api.get(ApiConstants.productos),
-      _api.get(ApiConstants.promocionesActivas),
+      _repo.listar(),
+      _repo.promocionesActivas(),
     ]);
 
     _isLoading = false;
@@ -127,10 +128,8 @@ class ProductProvider with ChangeNotifier {
     await cargarProductos();
   }
 
-  // ✅ FIX: usando ApiConstants.productoById
   Future<Map<String, dynamic>?> cargarDetalle(String id) async {
-    PierLog.api('GET ${ApiConstants.productoById(id)}');
-    final result = await _api.get(ApiConstants.productoById(id));
+    final result = await _repo.detalle(id);
     if (result['success'] == true) {
       PierLog.info('✅ Detalle del producto $id cargado');
       return result;

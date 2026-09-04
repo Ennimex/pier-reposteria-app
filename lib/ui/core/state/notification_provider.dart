@@ -1,12 +1,14 @@
-// lib/data/providers/notification_provider.dart
+// lib/ui/core/state/notification_provider.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/notificaciones_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 
 class NotificationProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  final NotificacionesRepository _repo;
+
+  NotificationProvider({NotificacionesRepository? repo})
+      : _repo = repo ?? NotificacionesRepository();
 
   List<Map<String, dynamic>> _notificaciones = [];
   int _noLeidas = 0;
@@ -42,8 +44,7 @@ class NotificationProvider extends ChangeNotifier {
 
   // ── Carga de notificaciones ───────────────────────────────────────
   Future<void> _fetchNotificaciones() async {
-    PierLog.api('GET ${ApiConstants.notificaciones}');
-    final result = await _api.getAuth(ApiConstants.notificaciones);
+    final result = await _repo.listar();
 
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(
@@ -79,15 +80,12 @@ class NotificationProvider extends ChangeNotifier {
         _notificaciones.indexWhere((n) => n['id'].toString() == id);
     if (idx == -1 || _notificaciones[idx]['leida'] == true) return;
 
-    PierLog.api('PUT ${ApiConstants.marcarNotificacionLeida(id)}');
-
     // Optimistic update
     _notificaciones[idx]['leida'] = true;
     if (_noLeidas > 0) _noLeidas--;
     notifyListeners();
 
-    final result =
-        await _api.putAuth(ApiConstants.marcarNotificacionLeida(id), {});
+    final result = await _repo.marcarLeida(id);
 
     if (result['success'] != true) {
       PierLog.error('Error al marcar notificación $id como leída');
@@ -102,16 +100,13 @@ class NotificationProvider extends ChangeNotifier {
 
   // ── Marcar todas como leídas ──────────────────────────────────────
   Future<void> marcarTodasLeidas() async {
-    PierLog.api('PUT ${ApiConstants.notificacionesLeerTodas}');
-
     for (final n in _notificaciones) {
       n['leida'] = true;
     }
     _noLeidas = 0;
     notifyListeners();
 
-    final result =
-        await _api.putAuth(ApiConstants.notificacionesLeerTodas, {});
+    final result = await _repo.marcarTodasLeidas();
 
     if (result['success'] != true) {
       PierLog.error(

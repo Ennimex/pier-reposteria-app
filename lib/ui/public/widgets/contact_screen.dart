@@ -1,12 +1,12 @@
-// lib/presentation/screens/public/contact_screen.dart
+// lib/ui/public/widgets/contact_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
@@ -24,6 +24,8 @@ class _ContactScreenState extends State<ContactScreen> {
   final _emailCtrl   = TextEditingController();
   final _telefonoCtrl = TextEditingController();
   final _mensajeCtrl = TextEditingController();
+  final _configRepo = ConfiguracionRepository();
+  final _cuentaRepo = CuentaRepository();
 
   String _tipoProducto = 'Información general';
   bool _enviando = false;
@@ -60,9 +62,7 @@ class _ContactScreenState extends State<ContactScreen> {
   // ✅ Cargar contacto del backend. El horario vive dentro de 'contacto'
   // (clave 'horarios'); no existe una seccion 'horarios' publica.
   Future<void> _cargarConfiguracion() async {
-    final api = ApiService();
-    final result =
-        await api.get(ApiConstants.configuracionSeccion('contacto'));
+    final result = await _configRepo.seccion('contacto');
     if (!mounted) return;
 
     final configContacto = result['success'] == true
@@ -124,10 +124,8 @@ class _ContactScreenState extends State<ContactScreen> {
 
     final isAuth =
         Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-    final api = ApiService();
-    final result = isAuth
-        ? await api.postAuth(ApiConstants.enviarContacto, body)
-        : await api.post(ApiConstants.enviarContacto, body);
+    final result =
+        await _cuentaRepo.enviarContacto(body, conSesion: isAuth);
 
     if (!mounted) return;
     setState(() => _enviando = false);

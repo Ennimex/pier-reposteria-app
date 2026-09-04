@@ -1,4 +1,4 @@
-// lib/presentation/screens/auth/verify_email_screen.dart
+// lib/ui/auth/widgets/verify_email_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';

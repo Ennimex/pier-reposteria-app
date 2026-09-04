@@ -1,4 +1,4 @@
-// lib/data/models/direccion_model.dart
+// lib/domain/models/direccion_model.dart
 //
 // Dirección de entrega del cliente (libreta reutilizable). Fuente:
 // GET /api/direcciones — incluye la zona/tarifa si la colonia tiene cobertura.

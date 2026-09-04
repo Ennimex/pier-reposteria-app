@@ -1,4 +1,4 @@
-// lib/core/theme/tema_catalogo.dart
+// lib/ui/core/themes/tema_catalogo.dart
 //
 // Catálogo de temas de temporada — espejo EXACTO de la web
 // (pier-reposteria/src/temas/catalogo.ts): mismos ids, paletas y rangos de

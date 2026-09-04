@@ -1,10 +1,9 @@
-// lib/presentation/screens/client/more/edit_profile_screen.dart
+// lib/ui/more/widgets/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
@@ -17,7 +16,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final ApiService _api = ApiService();
+  final _cuentaRepo = CuentaRepository();
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nombreCtrl;
@@ -58,7 +57,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _guardando = true);
-    PierLog.api('PUT ${ApiConstants.updateProfileData}');
 
     final body = <String, dynamic>{
       'nombre': _nombreCtrl.text.trim(),
@@ -68,8 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           : _telefonoCtrl.text.trim(),
     };
 
-    final result = await _api.putAuth(
-        ApiConstants.updateProfileData, body);
+    final result = await _cuentaRepo.actualizarPerfil(body);
 
     if (!mounted) return;
     setState(() => _guardando = false);

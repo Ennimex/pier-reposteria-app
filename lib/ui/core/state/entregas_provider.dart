@@ -1,14 +1,16 @@
-// lib/data/providers/entregas_provider.dart
+// lib/ui/core/state/entregas_provider.dart
 //
 // Estado del módulo Repartidor. Consume /api/entregas (mis-entregas,
 // disponibilidad, :id/estado) y /api/upload/imagen para la evidencia.
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/entregas_repository.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 
 class EntregasProvider with ChangeNotifier {
-  final ApiService _api = ApiService();
+  final EntregasRepository _repo;
+
+  EntregasProvider({EntregasRepository? repo})
+      : _repo = repo ?? EntregasRepository();
 
   List<EntregaRepartidor> _entregas = [];
   List<PedidoDisponible> _disponibles = [];
@@ -50,9 +52,9 @@ class EntregasProvider with ChangeNotifier {
     _error = null;
 
     final results = await Future.wait([
-      _api.getAuth(ApiConstants.misEntregas),
-      _api.getAuth(ApiConstants.disponibilidad),
-      _api.getAuth(ApiConstants.entregasDisponibles),
+      _repo.misEntregas(),
+      _repo.disponibilidad(),
+      _repo.disponibles(),
     ]);
 
     final entregasRes = results[0];
@@ -85,10 +87,7 @@ class EntregasProvider with ChangeNotifier {
   /// Toma un pedido del pool. Devuelve el mapa de respuesta del backend
   /// ({success, message, ...}). En éxito recarga para moverlo a "activas".
   Future<Map<String, dynamic>> aceptar(String pedidoId) async {
-    final res = await _api.postAuth(
-      ApiConstants.entregasAceptar,
-      {'pedido_id': pedidoId},
-    );
+    final res = await _repo.aceptar(pedidoId);
     if (res['success'] == true) {
       await cargar(silent: true);
     }
@@ -101,10 +100,7 @@ class EntregasProvider with ChangeNotifier {
     _disponible = value;
     notifyListeners();
 
-    final res = await _api.putAuth(
-      ApiConstants.disponibilidad,
-      {'disponible': value},
-    );
+    final res = await _repo.cambiarDisponibilidad(value);
 
     if (res['success'] == true) {
       _disponible = res['disponible'] == true;
@@ -120,11 +116,7 @@ class EntregasProvider with ChangeNotifier {
 
   /// Sube una foto de evidencia y devuelve su URL (o null si falla).
   Future<String?> subirEvidencia(String filePath) async {
-    final res = await _api.uploadImageAuth(
-      ApiConstants.uploadImagen,
-      filePath,
-      {'tipo': 'entrega'},
-    );
+    final res = await _repo.subirEvidencia(filePath);
     if (res['success'] == true && res['imagen'] is Map) {
       return (res['imagen'] as Map)['url']?.toString();
     }
@@ -134,7 +126,7 @@ class EntregasProvider with ChangeNotifier {
   /// Aviso "llegué al domicilio": el backend notifica al cliente (push +
   /// email) SIN cambiar el estado. Solo válido estando en camino.
   Future<Map<String, dynamic>> avisarLlegada(String entregaId) {
-    return _api.postAuth(ApiConstants.entregaLlegue(entregaId), {});
+    return _repo.avisarLlegada(entregaId);
   }
 
   /// Transición de estado de una entrega. Devuelve el mapa de respuesta del
@@ -151,10 +143,7 @@ class EntregasProvider with ChangeNotifier {
     if (recibioNombre != null) body['recibio_nombre'] = recibioNombre;
     if (motivoFallo != null) body['motivo_fallo'] = motivoFallo;
 
-    final res = await _api.putAuth(
-      ApiConstants.entregaEstado(entregaId),
-      body,
-    );
+    final res = await _repo.cambiarEstado(entregaId, body);
 
     if (res['success'] == true) {
       await cargar(silent: true);

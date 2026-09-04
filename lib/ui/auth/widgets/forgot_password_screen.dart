@@ -1,4 +1,4 @@
-// lib/presentation/screens/auth/forgot_password_screen.dart
+// lib/ui/auth/widgets/forgot_password_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';

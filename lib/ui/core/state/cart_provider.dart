@@ -1,8 +1,7 @@
-// lib/data/providers/cart_provider.dart
+// lib/ui/core/state/cart_provider.dart
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 
 class CartItem {
@@ -65,7 +64,10 @@ class CartItem {
 }
 
 class CartProvider with ChangeNotifier {
-  final ApiService _api = ApiService();
+  final CarritoRepository _repo;
+
+  CartProvider({CarritoRepository? repo})
+      : _repo = repo ?? CarritoRepository();
   Map<String, CartItem> _items = {};
   bool _synced = false;
 
@@ -95,7 +97,7 @@ class CartProvider with ChangeNotifier {
 
   // ── Cargar carrito desde el backend ──────────────────────────────
   Future<void> cargarDesdeBackend() async {
-    final result = await _api.getAuth(ApiConstants.carrito);
+    final result = await _repo.obtener();
     if (result['success'] != true) return;
 
     final carrito = result['carrito'] as Map<String, dynamic>?;
@@ -165,11 +167,11 @@ class CartProvider with ChangeNotifier {
     }
     notifyListeners();
 
-    final result = await _api.postAuth(ApiConstants.carrito, {
-      'producto_id': int.tryParse(product.id) ?? product.id,
-      'cantidad': quantity,
-      'tamano': tamano,
-    });
+    final result = await _repo.agregar(
+      productoId: int.tryParse(product.id) ?? product.id,
+      cantidad: quantity,
+      tamano: tamano,
+    );
 
     if (result['success'] != true) {
       PierLog.error(
@@ -206,10 +208,8 @@ class CartProvider with ChangeNotifier {
       notifyListeners();
 
       if (item.carritoItemId != null) {
-        await _api.putAuth(
-          ApiConstants.carritoItem(item.carritoItemId!),
-          {'cantidad': item.quantity - 1},
-        );
+        await _repo.actualizarCantidad(
+            item.carritoItemId!, item.quantity - 1);
       }
     } else {
       await removeItem(lineKey);
@@ -227,7 +227,7 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
 
     if (item.carritoItemId != null) {
-      await _api.deleteAuth(ApiConstants.carritoItem(item.carritoItemId!));
+      await _repo.eliminarItem(item.carritoItemId!);
     }
   }
 
@@ -237,7 +237,7 @@ class CartProvider with ChangeNotifier {
     _items = {};
     _synced = false;
     notifyListeners();
-    await _api.deleteAuth(ApiConstants.carrito);
+    await _repo.vaciar();
   }
 
   // ── Limpiar solo en memoria (logout) ─────────────────────────────

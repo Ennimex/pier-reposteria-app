@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/historial_repartidor_screen.dart
+// lib/ui/repartidor/widgets/historial_repartidor_screen.dart
 //
 // "Historial": entregas finalizadas hoy (entregadas y fallidas) + total del día.
 import 'package:flutter/material.dart';

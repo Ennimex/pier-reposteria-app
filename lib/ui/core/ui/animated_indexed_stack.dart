@@ -1,4 +1,4 @@
-// lib/presentation/widgets/animated_indexed_stack.dart
+// lib/ui/core/ui/animated_indexed_stack.dart
 //
 // IndexedStack con transición al cambiar de índice: fade + deslizamiento
 // horizontal sutil en la dirección del cambio de pestaña (derecha si vas a

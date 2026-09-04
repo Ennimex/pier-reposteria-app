@@ -1,4 +1,4 @@
-// lib/data/models/entrega_model.dart
+// lib/domain/models/entrega_model.dart
 //
 // Modelo de una entrega a domicilio desde la óptica del REPARTIDOR.
 // Fuente: GET /api/entregas/mis-entregas (routes/entregasRoutes.js). Ese

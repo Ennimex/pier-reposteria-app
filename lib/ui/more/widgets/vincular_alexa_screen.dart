@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/more/vincular_alexa_screen.dart
+// lib/ui/more/widgets/vincular_alexa_screen.dart
 // Vincular la cuenta con la skill de Alexa por codigo de un solo uso.
 // Espejo del componente web VincularAlexa.tsx:
 //   POST /api/auth/alexa/generar-codigo (auth) -> { codigo, expira_en_segundos }
@@ -9,9 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
@@ -23,7 +22,7 @@ class VincularAlexaScreen extends StatefulWidget {
 }
 
 class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
-  final ApiService _api = ApiService();
+  final _cuentaRepo = CuentaRepository();
 
   String? _codigo;
   int _segundos = 0;
@@ -45,7 +44,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
       _copiado = false;
     });
 
-    final result = await _api.postAuth(ApiConstants.alexaGenerarCodigo, {});
+    final result = await _cuentaRepo.generarCodigoAlexa();
 
     if (!mounted) return;
     if (result['success'] == true && result['codigo'] != null) {

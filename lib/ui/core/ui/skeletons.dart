@@ -1,4 +1,4 @@
-// lib/presentation/widgets/skeletons.dart
+// lib/ui/core/ui/skeletons.dart
 //
 // Placeholders animados (shimmer) reutilizables para los estados de carga.
 // Cada tarjeta se auto-envuelve en Shimmer para poder usarse dentro de slivers

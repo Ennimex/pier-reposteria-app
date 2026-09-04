@@ -1,9 +1,9 @@
-// lib/presentation/screens/client/quejas/quejas_screen.dart
+// lib/ui/more/widgets/quejas_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
@@ -96,7 +96,8 @@ class QuejasScreen extends StatefulWidget {
 }
 
 class _QuejasScreenState extends State<QuejasScreen> {
-  final ApiService _api = ApiService();
+  final _quejasRepo = QuejasRepository();
+  final _pedidosRepo = PedidosRepository();
 
   List<Map<String, dynamic>> _quejas = [];
   List<Map<String, dynamic>> _pedidos = [];
@@ -117,8 +118,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
   }
 
   Future<void> _cargarQuejas() async {
-    PierLog.api('GET ${ApiConstants.misQuejas}');
-    final result = await _api.getAuth(ApiConstants.misQuejas);
+    final result = await _quejasRepo.misQuejas();
     if (!mounted) return;
     if (result['success'] == true) {
       final lista =
@@ -131,8 +131,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
   }
 
   Future<void> _cargarPedidos() async {
-    PierLog.api('GET ${ApiConstants.misPedidos}');
-    final result = await _api.getAuth(ApiConstants.misPedidos);
+    final result = await _pedidosRepo.misPedidos();
     if (!mounted) return;
     if (result['success'] == true) {
       setState(() => _pedidos =
@@ -620,7 +619,7 @@ class _FormularioQueja extends StatefulWidget {
 }
 
 class _FormularioQuejaState extends State<_FormularioQueja> {
-  final ApiService _api = ApiService();
+  final _quejasRepo = QuejasRepository();
   final _asuntoCtrl = TextEditingController();
   final _descripcionCtrl = TextEditingController();
 
@@ -644,7 +643,6 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
     }
 
     setState(() => _enviando = true);
-    PierLog.api('POST ${ApiConstants.crearQueja}');
 
     final body = <String, dynamic>{
       'tipo': _tipo.value,
@@ -657,7 +655,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
           _pedidoSeleccionado;
     }
 
-    final result = await _api.postAuth(ApiConstants.crearQueja, body);
+    final result = await _quejasRepo.crear(body);
 
     if (!mounted) return;
     setState(() => _enviando = false);

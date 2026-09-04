@@ -1,9 +1,8 @@
-// lib/data/providers/tema_provider.dart
+// lib/ui/core/state/tema_provider.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/ui/core/themes/tema_catalogo.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 
@@ -13,7 +12,7 @@ import 'package:pier_pasteleria/utils/logger.dart';
 /// en el panel — y aplica la paleta a AppColors. Refresca cada 60s, así el
 /// tema de temporada cambia sin lanzar updates de la app.
 class TemaProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  final ConfiguracionRepository _repo;
   Timer? _timer;
   TemaPier _tema = temaNormal;
   bool _modoAuto = false;
@@ -21,7 +20,8 @@ class TemaProvider extends ChangeNotifier {
   TemaPier get tema => _tema;
   bool get modoAuto => _modoAuto;
 
-  TemaProvider() {
+  TemaProvider({ConfiguracionRepository? repo})
+      : _repo = repo ?? ConfiguracionRepository() {
     resolverTema();
     _timer =
         Timer.periodic(const Duration(seconds: 60), (_) => resolverTema());
@@ -31,8 +31,7 @@ class TemaProvider extends ChangeNotifier {
     var nuevo = temaNormal;
     var auto = false;
     try {
-      final res = await _api
-          .get(ApiConstants.configuracionSeccion('personalizacion'));
+      final res = await _repo.seccion('personalizacion');
       if (res['success'] == true && res['config'] is Map) {
         final config = res['config'] as Map;
         auto = config['modo_auto'] == true || config['modo_auto'] == 'true';

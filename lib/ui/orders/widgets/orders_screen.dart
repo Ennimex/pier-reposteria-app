@@ -1,11 +1,10 @@
-// lib/presentation/screens/client/orders/orders_screen.dart
+// lib/ui/orders/widgets/orders_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
@@ -24,7 +23,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ApiService _api = ApiService();
+  final _pedidosRepo = PedidosRepository();
   NavigationProvider? _nav;
 
   List<Order> _activeOrders = [];
@@ -77,7 +76,7 @@ class _OrdersScreenState extends State<OrdersScreen>
       return;
     }
     if (!silent) setState(() => _isLoading = true);
-    final result = await _api.getAuth(ApiConstants.misPedidos);
+    final result = await _pedidosRepo.misPedidos();
     if (!mounted) return;
     if (result['success'] == true) {
       final data = result['pedidos'] ?? result['data'] ?? [];

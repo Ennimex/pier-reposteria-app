@@ -1,14 +1,20 @@
-//lib/core/services/auth_service.dart
+// lib/data/repositories/auth_repository.dart
+//
+// Única puerta a autenticación (registro, login, Google, perfil, reset).
+// Recibe un ApiClient por constructor (ApiService en la app, FakeApiClient
+// en pruebas). Conserva token y usuario en StorageService.
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/storage_service.dart';
 
-class AuthService {
-  final ApiService _api = ApiService();
+class AuthRepository {
+  final ApiClient _api;
+  AuthRepository({ApiClient? api}) : _api = api ?? ApiService();
   final StorageService _storage = StorageService();
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 

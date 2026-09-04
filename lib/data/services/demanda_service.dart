@@ -1,4 +1,4 @@
-// lib/core/services/demanda_service.dart
+// lib/data/services/demanda_service.dart
 //
 // Registro silencioso de "demanda no atendida": qué busca la gente en el
 // catálogo y qué intenta comprar cuando está agotado. Espejo de

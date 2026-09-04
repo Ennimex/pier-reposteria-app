@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/checkout/checkout_screen.dart
+// lib/ui/checkout/widgets/checkout_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -6,10 +6,11 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/direcciones_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pagos_repository.dart';
 import 'package:pier_pasteleria/domain/models/direccion_model.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
@@ -23,7 +24,9 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  final _api = ApiService();
+  final _configRepo = ConfiguracionRepository();
+  final _direccionesRepo = DireccionesRepository();
+  final _pagosRepo = PagosRepository();
 
   // pickup | domicilio
   String _tipoEntrega = 'pickup';
@@ -81,7 +84,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _cargarConfiguracion() async {
     final result =
-        await _api.get(ApiConstants.configuracionSeccion('contacto'));
+        await _configRepo.seccion('contacto');
     if (!mounted) return;
     if (result['success'] == true) {
       final config = result['config'] as Map<String, dynamic>? ?? {};
@@ -97,7 +100,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _cargarDirecciones() async {
     setState(() => _loadingDirecciones = true);
-    final result = await _api.getAuth(ApiConstants.direcciones);
+    final result = await _direccionesRepo.listar();
     if (!mounted) return;
     if (result['success'] == true) {
       final data = result['direcciones'] ?? [];
@@ -163,7 +166,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
     if (confirmar != true || !mounted) return;
 
-    final result = await _api.deleteAuth(ApiConstants.direccionById(d.id));
+    final result = await _direccionesRepo.eliminar(d.id);
     if (!mounted) return;
     if (result['success'] == true) {
       if (_selectedDireccion?.id == d.id) {
@@ -334,7 +337,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           intentBody['horario_recogida'] = horario;
         }
         final intentResult =
-            await _api.postAuth(ApiConstants.crearPaymentIntent, intentBody);
+            await _pagosRepo.crearIntent(intentBody);
         if (!mounted) return;
 
         if (intentResult['success'] != true) {
@@ -411,7 +414,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       Map<String, dynamic> confirmResult = const {};
       for (var intento = 1; intento <= 3; intento++) {
         confirmResult =
-            await _api.postAuth(ApiConstants.confirmarPago, confirmBody);
+            await _pagosRepo.confirmar(confirmBody);
         if (confirmResult['success'] == true) break;
         if (intento < 3) {
           await Future.delayed(Duration(seconds: 2 * intento));
@@ -1260,7 +1263,7 @@ class _AgregarDireccionSheet extends StatefulWidget {
 }
 
 class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
-  final _api = ApiService();
+  final _direccionesRepo = DireccionesRepository();
   final _aliasCtrl = TextEditingController();
   final _calleCtrl = TextEditingController();
   final _refCtrl = TextEditingController();
@@ -1296,7 +1299,7 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
   }
 
   Future<void> _cargarColonias() async {
-    final result = await _api.get(ApiConstants.zonasColonias);
+    final result = await _direccionesRepo.colonias();
     if (!mounted) return;
     if (result['success'] == true) {
       setState(() {
@@ -1345,9 +1348,8 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
       'telefono_contacto': _telCtrl.text.trim(),
     };
     final result = _esEdicion
-        ? await _api.putAuth(
-            ApiConstants.direccionById(widget.editar!.id), body)
-        : await _api.postAuth(ApiConstants.direcciones, body);
+        ? await _direccionesRepo.actualizar(widget.editar!.id, body)
+        : await _direccionesRepo.crear(body);
     if (!mounted) return;
     setState(() => _guardando = false);
     if (result['success'] == true && result['direccion'] != null) {

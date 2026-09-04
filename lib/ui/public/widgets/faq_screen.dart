@@ -1,11 +1,10 @@
-// lib/presentation/screens/public/faq_screen.dart
+// lib/ui/public/widgets/faq_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
@@ -19,7 +18,7 @@ class FAQScreen extends StatefulWidget {
 
 class _FAQScreenState extends State<FAQScreen> {
   String _categoriaSeleccionada = 'Todas';
-  final ApiService _api = ApiService();
+  final _configRepo = ConfiguracionRepository();
 
   /// 'Todas' + categorías presentes en las preguntas. Las conocidas van en
   /// su orden de siempre; las que capture el panel se agregan al final.
@@ -108,7 +107,7 @@ class _FAQScreenState extends State<FAQScreen> {
   /// [{categoria, pregunta, respuesta}]. Sin datos o con error se conservan
   /// las preguntas por defecto.
   Future<void> _cargarFaqs() async {
-    final r = await _api.get(ApiConstants.configuracionSeccion('faq'));
+    final r = await _configRepo.seccion('faq');
     if (!mounted || r['success'] != true) return;
     final cfg = r['config'];
     if (cfg is! Map) return;

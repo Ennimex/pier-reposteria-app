@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/repartidor_main_screen.dart
+// lib/ui/repartidor/widgets/repartidor_main_screen.dart
 //
 // Shell del módulo Repartidor: bottom nav Entregas / Historial / Perfil.
 import 'package:flutter/material.dart';

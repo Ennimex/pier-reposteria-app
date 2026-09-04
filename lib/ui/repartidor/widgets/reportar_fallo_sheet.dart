@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/reportar_fallo_sheet.dart
+// lib/ui/repartidor/widgets/reportar_fallo_sheet.dart
 //
 // Hoja para reportar una entrega fallida. Marca la entrega como "fallida" con
 // un motivo obligatorio. Devuelve true por Navigator.pop si tuvo éxito.

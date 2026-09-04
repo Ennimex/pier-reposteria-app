@@ -1,10 +1,9 @@
-// lib/presentation/screens/client/reviews/my_reviews_screen.dart
+// lib/ui/reviews/widgets/my_reviews_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_dimensions.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
@@ -17,7 +16,7 @@ class MyReviewsScreen extends StatefulWidget {
 }
 
 class _MyReviewsScreenState extends State<MyReviewsScreen> {
-  final ApiService _api = ApiService();
+  final _resenasRepo = ResenasRepository();
   List<Map<String, dynamic>> _resenas = [];
   bool _isLoading = true;
 
@@ -30,8 +29,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   Future<void> _cargarResenas() async {
     setState(() => _isLoading = true);
-    PierLog.api('GET ${ApiConstants.misResenas}');
-    final result = await _api.getAuth(ApiConstants.misResenas);
+    final result = await _resenasRepo.misResenas();
     if (!mounted) return;
     if (result['success'] == true) {
       final lista =
@@ -52,9 +50,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       builder: (_) => _EditarResenaSheet(resena: r),
     );
     if (result == null || !mounted) return;
-    PierLog.api('PUT ${ApiConstants.editarResena(r['id'].toString())}');
-    final resp = await _api.putAuth(
-      ApiConstants.editarResena(r['id'].toString()),
+    final resp = await _resenasRepo.editar(
+      r['id'].toString(),
       {
         'rating': result['rating'],
         'titulo': result['titulo'],

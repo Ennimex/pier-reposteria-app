@@ -1,12 +1,14 @@
-// lib/data/providers/order_provider.dart
+// lib/ui/core/state/order_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 
 class OrderProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  final PedidosRepository _repo;
+
+  OrderProvider({PedidosRepository? repo})
+      : _repo = repo ?? PedidosRepository();
 
   List<Order> _orders = [];
   bool _isLoading = false;
@@ -28,7 +30,7 @@ class OrderProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _api.getAuth(ApiConstants.misPedidos);
+    final result = await _repo.misPedidos();
 
     _isLoading = false;
 
@@ -73,7 +75,7 @@ class OrderProvider extends ChangeNotifier {
   /// usuario (403 si no). El detalle devuelve los items por separado; aquí se
   /// fusionan para que Order.fromJson los lea.
   Future<Order?> fetchOrderDetail(String id) async {
-    final result = await _api.getAuth(ApiConstants.pedidoById(id));
+    final result = await _repo.detalle(id);
     if (result['success'] == true && result['pedido'] != null) {
       final pedidoJson = Map<String, dynamic>.from(result['pedido'] as Map);
       pedidoJson['items'] =
@@ -100,8 +102,7 @@ class OrderProvider extends ChangeNotifier {
   /// (p. ej. al enviar el correo de confirmación) y el pedido SÍ quedó
   /// cancelado.
   Future<Map<String, dynamic>> cancelarPedido(String id) async {
-    final result =
-        await _api.putAuth(ApiConstants.pedidoCancelar(id), {});
+    final result = await _repo.cancelar(id);
     final okServidor = result['success'] == true;
 
     // Sincroniza lista y detalle con el estado real (éxito o no).

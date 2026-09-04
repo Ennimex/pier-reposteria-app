@@ -1,4 +1,4 @@
-// lib/presentation/widgets/order/order_card.dart
+// lib/ui/core/ui/order_card.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';

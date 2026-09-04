@@ -1,12 +1,12 @@
-// lib/presentation/screens/client/favorites/favorites_screen.dart
+// lib/ui/favorites/widgets/favorites_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/services/demanda_service.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
@@ -40,7 +40,8 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  final ApiService _api = ApiService();
+  final _productosRepo = ProductosRepository();
+  final _favoritosRepo = FavoritosRepository();
   final TextEditingController _searchController = TextEditingController();
 
   List<Product> _favoritos = [];
@@ -84,7 +85,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _cargarCategorias() async {
-    final result = await _api.get(ApiConstants.categorias);
+    final result = await _productosRepo.categorias();
     if (!mounted) return;
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(
@@ -97,7 +98,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Future<void> _cargarFavoritos() async {
     setState(() => _isLoading = true);
-    final result = await _api.getAuth(ApiConstants.favoritos);
+    final result = await _favoritosRepo.listar();
     if (!mounted) return;
     if (result['success'] == true) {
       final data = result['favoritos'] ?? result['data'] ?? [];
@@ -114,7 +115,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Future<void> _quitarFavorito(Product product) async {
     setState(() => _favoritos.remove(product));
-    final result = await _api.deleteAuth(ApiConstants.favoritoById(product.id));
+    final result = await _favoritosRepo.quitar(product.id);
     if (!mounted) return;
     if (result['success'] != true) {
       setState(() => _favoritos.add(product));

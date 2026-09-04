@@ -1,4 +1,4 @@
-// lib/presentation/screens/splash/splash_screen.dart
+// lib/ui/splash/widgets/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';

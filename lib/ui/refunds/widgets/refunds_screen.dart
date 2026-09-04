@@ -1,9 +1,9 @@
-// lib/presentation/screens/client/refunds/refunds_screen.dart
+// lib/ui/refunds/widgets/refunds_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/reembolsos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
@@ -16,7 +16,8 @@ class RefundsScreen extends StatefulWidget {
 
 class _RefundsScreenState extends State<RefundsScreen>
     with SingleTickerProviderStateMixin {
-  final ApiService _api = ApiService();
+  final _reembolsosRepo = ReembolsosRepository();
+  final _pedidosRepo = PedidosRepository();
   late TabController _tabController;
 
   // ── MIS REEMBOLSOS ──────────────────────────────────────────────
@@ -58,7 +59,7 @@ class _RefundsScreenState extends State<RefundsScreen>
 
   Future<void> _cargarReembolsos() async {
     setState(() => _loadingReembolsos = true);
-    final result = await _api.getAuth(ApiConstants.misReembolsos);
+    final result = await _reembolsosRepo.misReembolsos();
     if (!mounted) return;
     if (result['success'] == true) {
       setState(() {
@@ -70,7 +71,7 @@ class _RefundsScreenState extends State<RefundsScreen>
   }
 
   Future<void> _cargarPedidosCompletados() async {
-    final result = await _api.getAuth(ApiConstants.misPedidos);
+    final result = await _pedidosRepo.misPedidos();
     if (!mounted) return;
     if (result['success'] == true) {
       final todos = List<Map<String, dynamic>>.from(
@@ -95,8 +96,7 @@ class _RefundsScreenState extends State<RefundsScreen>
             _pedidoSeleccionado!['total']?.toString() ?? '0') ??
         0.0;
 
-    final result = await _api.postAuth(
-      ApiConstants.crearReembolso,
+    final result = await _reembolsosRepo.crear(
       {
         'pedido_id': _pedidoSeleccionado!['id'],
         'monto': monto,

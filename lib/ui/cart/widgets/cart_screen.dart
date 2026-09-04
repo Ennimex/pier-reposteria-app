@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/cart/cart_screen.dart
+// lib/ui/cart/widgets/cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';

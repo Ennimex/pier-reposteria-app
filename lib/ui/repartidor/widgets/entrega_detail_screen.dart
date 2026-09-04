@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/entrega_detail_screen.dart
+// lib/ui/repartidor/widgets/entrega_detail_screen.dart
 //
 // Detalle de una entrega: cliente, dirección y resumen de cobro. Las acciones
 // respetan el flujo del backend: asignada -> "Salir en camino" (en_camino) ->

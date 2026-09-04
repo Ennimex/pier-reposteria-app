@@ -1,11 +1,13 @@
-// lib/presentation/screens/client/more/more_screen.dart
+// lib/ui/more/widgets/more_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
@@ -34,7 +36,10 @@ class MoreScreen extends StatefulWidget {
 }
 
 class _MoreScreenState extends State<MoreScreen> {
-  final ApiService _api = ApiService();
+  final _configRepo = ConfiguracionRepository();
+  final _pedidosRepo = PedidosRepository();
+  final _favoritosRepo = FavoritosRepository();
+  final _resenasRepo = ResenasRepository();
 
   int _totalPedidos   = 0;
   int _totalFavoritos = 0;
@@ -81,7 +86,7 @@ class _MoreScreenState extends State<MoreScreen> {
     // El horario vive dentro de 'contacto' (clave 'horarios'); no hay seccion
     // 'horarios' publica.
     final result =
-        await _api.get(ApiConstants.configuracionSeccion('contacto'));
+        await _configRepo.seccion('contacto');
 
     if (!mounted) return;
     setState(() {
@@ -100,9 +105,9 @@ class _MoreScreenState extends State<MoreScreen> {
     }
 
     final results = await Future.wait([
-      _api.getAuth(ApiConstants.misPedidos),
-      _api.getAuth(ApiConstants.favoritosIds),
-      _api.getAuth(ApiConstants.misResenas),
+      _pedidosRepo.misPedidos(),
+      _favoritosRepo.ids(),
+      _resenasRepo.misResenas(),
     ]);
 
     if (!mounted) return;

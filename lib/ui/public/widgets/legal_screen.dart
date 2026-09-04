@@ -1,10 +1,9 @@
-// lib/presentation/screens/public/legal_screen.dart
+// lib/ui/public/widgets/legal_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
@@ -19,7 +18,7 @@ class LegalScreen extends StatefulWidget {
 class _LegalScreenState extends State<LegalScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ApiService _api = ApiService();
+  final _configRepo = ConfiguracionRepository();
 
   // Textos del panel (configuracion/legales, misma fuente que Legales.tsx).
   // null = usar las secciones por defecto de la app.
@@ -37,7 +36,7 @@ class _LegalScreenState extends State<LegalScreen>
   /// GET /configuracion/legales → privacidad, terminos, reembolsos (texto
   /// plano con saltos de línea). Vacío o error → textos por defecto.
   Future<void> _cargarLegales() async {
-    final r = await _api.get(ApiConstants.configuracionSeccion('legales'));
+    final r = await _configRepo.seccion('legales');
     if (!mounted || r['success'] != true) return;
     final cfg = r['config'];
     if (cfg is! Map) return;

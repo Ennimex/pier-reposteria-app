@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:pier_pasteleria/app.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/pagos_repository.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
@@ -17,7 +17,7 @@ void main() async {
 
   // Cargar publishable key del backend para no hardcodearla
   try {
-    final result = await ApiService().get('/pagos/config');
+    final result = await PagosRepository().config();
     if (result['success'] == true) {
       Stripe.publishableKey = result['publishableKey'] as String;
       await Stripe.instance.applySettings();

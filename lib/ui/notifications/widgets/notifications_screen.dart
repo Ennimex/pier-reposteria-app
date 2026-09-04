@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/notifications/notifications_screen.dart
+// lib/ui/notifications/widgets/notifications_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';

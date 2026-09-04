@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/products/product_detail_screen.dart
+// lib/ui/products/widgets/product_detail_screen.dart
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -12,8 +12,9 @@ import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/services/demanda_service.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
@@ -31,7 +32,8 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen>
     with TickerProviderStateMixin {
-  final ApiService _api = ApiService();
+  final _favoritosRepo = FavoritosRepository();
+  final _productosRepo = ProductosRepository();
 
   int _quantity = 1;
   bool _isFavorite = false;
@@ -108,8 +110,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Future<void> _cargarEstadoFavorito() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) return;
-    PierLog.api('GET ${ApiConstants.favoritosIds}');
-    final result = await _api.getAuth(ApiConstants.favoritosIds);
+    final result = await _favoritosRepo.ids();
     if (!mounted) return;
     if (result['success'] == true) {
       final ids = List<String>.from(
@@ -129,12 +130,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
     final yaEsFav = _isFavorite;
     setState(() => _isFavorite = !_isFavorite);
-    PierLog.api(yaEsFav
-        ? 'DELETE ${ApiConstants.favoritoById(widget.product.id)}'
-        : 'POST /favoritos/${widget.product.id}');
     final result = yaEsFav
-        ? await _api.deleteAuth(ApiConstants.favoritoById(widget.product.id))
-        : await _api.postAuth('/favoritos/${widget.product.id}', {});
+        ? await _favoritosRepo.quitar(widget.product.id)
+        : await _favoritosRepo.agregar(widget.product.id);
     if (!mounted) return;
     if (result['success'] != true) {
       PierLog.error('Error al actualizar favorito: ${result['message']}');
@@ -194,9 +192,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   // id contra el catálogo del provider para recuperar descripción/rating.
   // La afinidad no se muestra (métrica interna del backend).
   Future<void> _cargarRecomendaciones() async {
-    PierLog.api('GET ${ApiConstants.recomendaciones(widget.product.id)}');
     final result =
-        await _api.get(ApiConstants.recomendaciones(widget.product.id));
+        await _productosRepo.recomendaciones(widget.product.id);
     if (!mounted) return;
     if (result['success'] == true) {
       final data =
@@ -1358,7 +1355,7 @@ class ReviewItemWidget extends StatefulWidget {
 }
 
 class _ReviewItemWidgetState extends State<ReviewItemWidget> {
-  final ApiService _api = ApiService();
+  final _resenasRepo = ResenasRepository();
   late int _likes;
   late bool _hasLiked;
   bool _isLoading = false;
@@ -1379,15 +1376,13 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
     }
     if (_isLoading || widget.id.isEmpty) return;
 
-    PierLog.api('POST ${ApiConstants.likeResena(widget.id)}');
     setState(() {
       _isLoading = true;
       _hasLiked = !_hasLiked;
       _likes += _hasLiked ? 1 : -1;
     });
 
-    final result =
-        await _api.postAuth(ApiConstants.likeResena(widget.id), {});
+    final result = await _resenasRepo.like(widget.id);
     if (!mounted) return;
 
     if (result['success'] != true) {

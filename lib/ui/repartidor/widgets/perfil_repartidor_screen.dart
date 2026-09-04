@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/perfil_repartidor_screen.dart
+// lib/ui/repartidor/widgets/perfil_repartidor_screen.dart
 //
 // "Perfil" del repartidor: datos, estado de servicio (disponibilidad),
 // métricas del día y cerrar sesión.

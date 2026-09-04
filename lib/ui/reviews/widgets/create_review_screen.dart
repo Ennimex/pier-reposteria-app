@@ -1,9 +1,8 @@
-// lib/presentation/screens/client/reviews/create_review_screen.dart
+// lib/ui/reviews/widgets/create_review_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +20,7 @@ class CreateReviewScreen extends StatefulWidget {
 }
 
 class _CreateReviewScreenState extends State<CreateReviewScreen> {
-  final ApiService _api = ApiService();
+  final _resenasRepo = ResenasRepository();
   final _comentarioCtrl = TextEditingController();
   final _tituloCtrl = TextEditingController();
 
@@ -70,10 +69,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
     }
 
     setState(() => _enviando = true);
-    PierLog.api('POST ${ApiConstants.crearResena}');
-
-    final result = await _api.postAuth(
-      ApiConstants.crearResena,
+    final result = await _resenasRepo.crear(
       {
         'producto_id': widget.product.id,
         'rating': _rating,

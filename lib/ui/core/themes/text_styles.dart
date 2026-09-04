@@ -1,4 +1,4 @@
-// lib/core/theme/text_styles.dart
+// lib/ui/core/themes/text_styles.dart
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 

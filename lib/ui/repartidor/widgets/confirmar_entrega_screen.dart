@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/confirmar_entrega_screen.dart
+// lib/ui/repartidor/widgets/confirmar_entrega_screen.dart
 //
 // Confirma una entrega: quién recibió, evidencia opcional y (si aplica) cobro
 // en efectivo. Marca la entrega como "entregada".

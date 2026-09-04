@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/entregas_screen.dart
+// lib/ui/repartidor/widgets/entregas_screen.dart
 //
 // "Mis entregas": disponibilidad + lista de entregas en curso.
 import 'package:flutter/material.dart';

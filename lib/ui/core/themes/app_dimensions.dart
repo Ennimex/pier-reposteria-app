@@ -1,4 +1,4 @@
-// lib/core/theme/app_dimensions.dart
+// lib/ui/core/themes/app_dimensions.dart
 import 'package:flutter/widgets.dart';
 
 /// Escala de espaciado (base 8pt), radios y elevaciones de Pier.

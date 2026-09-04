@@ -1,10 +1,10 @@
-// lib/presentation/screens/client/more/profile_screen.dart
+// lib/ui/more/widgets/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
@@ -24,7 +24,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ApiService _api = ApiService();
+  final _favoritosRepo = FavoritosRepository();
+  final _pedidosRepo = PedidosRepository();
 
   List<Product> _favoritos = [];
   List<Map<String, dynamic>> _pedidos = [];
@@ -41,8 +42,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _cargarDatos() async {
     // ── Favoritos ──────────────────────────────────────────────────
-    PierLog.api('GET ${ApiConstants.favoritos}');
-    final favResult = await _api.getAuth(ApiConstants.favoritos);
+    final favResult = await _favoritosRepo.listar();
     if (mounted) {
       if (favResult['success'] == true) {
         final data = favResult['favoritos'] ?? favResult['data'] ?? [];
@@ -62,8 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     // ── Pedidos ────────────────────────────────────────────────────
-    PierLog.api('GET ${ApiConstants.misPedidos}');
-    final pedResult = await _api.getAuth(ApiConstants.misPedidos);
+    final pedResult = await _pedidosRepo.misPedidos();
     if (mounted) {
       if (pedResult['success'] == true) {
         setState(() {
@@ -85,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (pedidoId.isEmpty || _reordenandoId != null) return;
     setState(() => _reordenandoId = pedidoId);
 
-    final result = await _api.getAuth(ApiConstants.pedidoById(pedidoId));
+    final result = await _pedidosRepo.detalle(pedidoId);
     if (!mounted) return;
 
     final items = result['success'] == true

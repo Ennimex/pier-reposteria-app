@@ -1,4 +1,4 @@
-// lib/presentation/screens/repartidor/widgets/repartidor_ui.dart
+// lib/ui/repartidor/widgets/repartidor_ui.dart
 //
 // Piezas de UI compartidas del módulo Repartidor (chips de estado, formato).
 import 'package:flutter/material.dart';

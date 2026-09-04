@@ -1,10 +1,12 @@
-// lib/data/providers/auth_provider.dart
+// lib/ui/core/state/auth_provider.dart
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
-import 'package:pier_pasteleria/data/services/auth_service.dart';
+import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
 
 class AuthProvider with ChangeNotifier {
-  final AuthService _authService = AuthService();
+  final AuthRepository _authService;
+
+  AuthProvider({AuthRepository? auth}) : _authService = auth ?? AuthRepository();
 
   bool _isAuthenticated = false;
   bool _isLoading = false;

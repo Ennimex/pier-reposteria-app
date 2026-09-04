@@ -1,10 +1,9 @@
-// lib/presentation/screens/public/about_us_screen.dart
+// lib/ui/public/widgets/about_us_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
@@ -17,7 +16,7 @@ class AboutUsScreen extends StatefulWidget {
 }
 
 class _AboutUsScreenState extends State<AboutUsScreen> {
-  final ApiService _api = ApiService();
+  final _configRepo = ConfiguracionRepository();
 
   // Textos por defecto de la app. Si Dirección los captura en el panel
   // (configuracion/nosotros, misma fuente que Nosotros.tsx) se reemplazan.
@@ -60,7 +59,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
   /// existe. timeline/equipo de la web no se muestran en la app. Cualquier
   /// campo ausente o vacío conserva el texto por defecto.
   Future<void> _cargarConfig() async {
-    final r = await _api.get(ApiConstants.configuracionSeccion('nosotros'));
+    final r = await _configRepo.seccion('nosotros');
     if (!mounted || r['success'] != true) return;
     final cfg = r['config'];
     if (cfg is! Map) return;

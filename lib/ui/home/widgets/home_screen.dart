@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/home/home_screen.dart
+// lib/ui/home/widgets/home_screen.dart
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -6,8 +6,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
@@ -46,7 +48,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
-  final ApiService _api = ApiService();
+  final _productosRepo = ProductosRepository();
+  final _resenasRepo = ResenasRepository();
+  final _configRepo = ConfiguracionRepository();
+  final _pedidosRepo = PedidosRepository();
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _timer;
@@ -160,8 +165,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _cargarCategorias() async {
-    PierLog.api('GET ${ApiConstants.categorias}');
-    final result = await _api.get(ApiConstants.categorias);
+    final result = await _productosRepo.categorias();
     if (!mounted) return;
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(
@@ -176,8 +180,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _cargarResenasDestacadas() async {
-    PierLog.api('GET ${ApiConstants.resenasDestacadas}');
-    final result = await _api.get(ApiConstants.resenasDestacadas);
+    final result = await _resenasRepo.destacadas();
     if (!mounted) return;
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(result['resenas'] ?? []);
@@ -192,8 +195,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// ✅ FIX: ahora separa por campo `tipo` igual que el web
   Future<void> _cargarPromociones() async {
-    PierLog.api('GET ${ApiConstants.promocionesActivas}');
-    final result = await _api.get(ApiConstants.promocionesActivas);
+    final result = await _productosRepo.promocionesActivas();
     if (!mounted) return;
     if (result['success'] == true) {
       final lista = List<Map<String, dynamic>>.from(
@@ -246,9 +248,9 @@ class _HomeScreenState extends State<HomeScreen>
     // (clave 'hero') — mismas fuentes que la web (Inicio.tsx).
     PierLog.api('GET configuracion/contacto + personalizacion + inicio');
     final results = await Future.wait([
-      _api.get(ApiConstants.configuracionSeccion('contacto')),
-      _api.get(ApiConstants.configuracionSeccion('personalizacion')),
-      _api.get(ApiConstants.configuracionSeccion('inicio')),
+      _configRepo.seccion('contacto'),
+      _configRepo.seccion('personalizacion'),
+      _configRepo.seccion('inicio'),
     ]);
     if (!mounted) return;
     if (results[0]['success'] == true) {
@@ -343,8 +345,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (!auth.isAuthenticated) return;
     PierLog.info('Cargando datos usuario...');
     final results = await Future.wait([
-      _api.getAuth(ApiConstants.productosComprados),
-      _api.getAuth(ApiConstants.misPedidos),
+      _pedidosRepo.productosComprados(),
+      _pedidosRepo.misPedidos(),
     ]);
     if (!mounted) return;
     if (results[0]['success'] == true) {

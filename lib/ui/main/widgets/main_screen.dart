@@ -1,4 +1,4 @@
-// lib/presentation/screens/client/main_screen.dart
+// lib/ui/main/widgets/main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';

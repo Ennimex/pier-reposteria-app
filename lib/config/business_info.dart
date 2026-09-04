@@ -1,4 +1,4 @@
-// lib/core/constants/business_info.dart
+// lib/config/business_info.dart
 //
 // FUENTE ÚNICA de la información del negocio.
 // El backend NO expone dirección/teléfono/email/horario/redes por ninguna ruta

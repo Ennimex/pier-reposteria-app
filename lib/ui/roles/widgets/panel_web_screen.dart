@@ -1,4 +1,4 @@
-// lib/presentation/screens/roles/panel_web_screen.dart
+// lib/ui/roles/widgets/panel_web_screen.dart
 //
 // Pantalla para los roles internos (empleado, gerencia, direccion_general).
 // Estos roles operan desde el panel web; la app móvil no tiene sus vistas.
