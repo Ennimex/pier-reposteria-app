@@ -1,0 +1,67 @@
+name: Historia de usuario
+description: Funcionalidad descrita desde la perspectiva del usuario
+title: "[Historia] "
+labels: ["historia"]
+body:
+  - type: textarea
+    id: historia
+    attributes:
+      label: Historia
+      description: Redáctala con el formato "Como… quiero… para…"
+      placeholder: |
+        Como cliente
+        quiero ver el estado de mi pedido en tiempo real
+        para saber cuándo llegará.
+    validations:
+      required: true
+
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación (Gherkin)
+      description: Uno o más escenarios con Dado / Cuando / Entonces
+      placeholder: |
+        Escenario: pedido en camino
+          Dado que tengo un pedido con estado "en camino"
+          Cuando abro el detalle del pedido
+          Entonces veo el nombre del repartidor y un botón para llamarlo
+      render: gherkin
+    validations:
+      required: true
+
+  - type: dropdown
+    id: plataforma
+    attributes:
+      label: Plataforma
+      options:
+        - Móvil
+        - Backend
+        - Web
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options:
+        - Alta
+        - Media
+        - Baja
+      default: 1
+    validations:
+      required: true
+
+  - type: input
+    id: epica
+    attributes:
+      label: Épica relacionada
+      description: Número del issue de la épica (por ejemplo "#3")
+      placeholder: "#"
+
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas técnicas
+      description: Archivos a tocar, dependencias, riesgos (opcional)

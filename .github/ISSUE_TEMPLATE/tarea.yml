@@ -1,0 +1,62 @@
+name: Tarea técnica
+description: Trabajo de infraestructura, configuración, pruebas o deuda técnica sin valor directo para el usuario final
+title: "[Tarea] "
+labels: ["tarea"]
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: Qué se va a hacer y por qué es necesario
+    validations:
+      required: true
+
+  - type: textarea
+    id: alcance
+    attributes:
+      label: Alcance / pasos
+      description: Archivos, comandos o configuraciones concretas a tocar
+      placeholder: |
+        - [ ] Paso 1
+        - [ ] Paso 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterio de terminado
+      description: Cómo se verifica que la tarea quedó lista (comando, captura, pipeline en verde…)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: plataforma
+    attributes:
+      label: Plataforma
+      options:
+        - Móvil
+        - Backend
+        - Web
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options:
+        - Alta
+        - Media
+        - Baja
+      default: 1
+    validations:
+      required: true
+
+  - type: input
+    id: epica
+    attributes:
+      label: Épica relacionada
+      description: Número del issue de la épica (por ejemplo "#9")
+      placeholder: "#"
