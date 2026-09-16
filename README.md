@@ -45,7 +45,7 @@ lib/
   circulares: constantes, servicios base, tema y utilidades.
 - **data** conoce el backend y expone el estado de la app a través de providers.
 - **presentation** pinta y navega; lee los providers y, en varias pantallas, llama
-  al servicio de API de  directamente.
+  al servicio de API de `core/services` directamente.
 
 ## Requisitos previos
 
