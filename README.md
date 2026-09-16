@@ -114,6 +114,6 @@ ci: ejecutar analyze y test en cada pull request
 
 ## Enlaces
 
-- Tablero de planeación (GitHub Projects): _pendiente_
+- Tablero de planeación (GitHub Projects): https://github.com/users/Ennimex/projects/2
 - Documento de evidencias: _pendiente_
 - Backend: https://github.com/PedroRubioo/pier-reposteria-backend
