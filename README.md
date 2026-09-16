@@ -44,7 +44,8 @@ lib/
 - **core** contiene lo que cualquier otra capa puede usar sin crear dependencias
   circulares: constantes, servicios base, tema y utilidades.
 - **data** conoce el backend y expone el estado de la app a través de providers.
-- **presentation** solo pinta: lee providers y navega; no llama a la API directamente.
+- **presentation** pinta y navega; lee los providers y, en varias pantallas, llama
+  al servicio de API de  directamente.
 
 ## Requisitos previos
 
