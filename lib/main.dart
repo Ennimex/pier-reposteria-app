@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'app.dart';
-import 'core/services/api_service.dart';
-import 'data/providers/cart_provider.dart';
-import 'data/providers/order_provider.dart';
-import 'data/providers/auth_provider.dart';
-import 'data/providers/product_provider.dart';
-import 'data/providers/navigation_provider.dart';
-import 'data/providers/notification_provider.dart';
-import 'data/providers/entregas_provider.dart';
-import 'data/providers/tema_provider.dart';
+import 'package:pier_pasteleria/app.dart';
+import 'package:pier_pasteleria/data/repositories/pagos_repository.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Cargar publishable key del backend para no hardcodearla
   try {
-    final result = await ApiService().get('/pagos/config');
+    final result = await PagosRepository().config();
     if (result['success'] == true) {
       Stripe.publishableKey = result['publishableKey'] as String;
       await Stripe.instance.applySettings();

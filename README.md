@@ -27,25 +27,35 @@ contiene lógica de negocio del lado del servidor.
 
 ```
 lib/
-├── core/            # Transversal: no depende de ninguna pantalla
-│   ├── constants/   # api_constants (rutas del backend), colores, strings, rutas
-│   ├── services/    # Clientes de bajo nivel: API, almacenamiento, notificaciones
-│   ├── theme/       # Tema visual (incluye temas de temporada)
-│   └── utils/       # Validadores, formateadores, logger, helpers
-├── data/            # Capa de datos
-│   ├── models/      # Modelos de dominio (producto, pedido, usuario, …)
-│   └── providers/   # ChangeNotifiers globales (auth, carrito, pedidos, …)
-├── presentation/    # Capa de UI
-│   ├── screens/     # Pantallas agrupadas por rol: auth, client, public, repartidor
-│   └── widgets/     # Widgets reutilizables
-└── routes/          # Configuración de go_router
+├── config/            # api_constants (rutas del backend), datos del negocio, strings
+├── utils/             # Validadores, formateadores, logger, helpers
+├── routing/           # Configuración de go_router
+├── domain/
+│   └── models/        # Modelos de dominio (producto, pedido, usuario, …)
+├── data/              # Capa de datos: lo único que conoce el backend
+│   ├── services/      # Bajo nivel: ApiClient (interfaz), ApiService, almacenamiento,
+│   │                  # notificaciones
+│   └── repositories/  # Un repositorio por dominio (auth, productos, carrito, pedidos, …)
+└── ui/                # Capa de UI
+    ├── core/
+    │   ├── themes/    # Tema visual (incluye temas de temporada)
+    │   ├── ui/        # Widgets reutilizables
+    │   └── state/     # ChangeNotifiers globales (auth, carrito, pedidos, …)
+    └── <función>/     # auth, home, products, cart, checkout, orders, …
+        └── widgets/   # Pantallas (*_screen.dart) y widgets de esa función
 ```
 
-- **core** contiene lo que cualquier otra capa puede usar sin crear dependencias
-  circulares: constantes, servicios base, tema y utilidades.
-- **data** conoce el backend y expone el estado de la app a través de providers.
-- **presentation** pinta y navega; lee los providers y, en varias pantallas, llama
-  al servicio de API de `core/services` directamente.
+La app sigue la arquitectura MVVM de la
+[guía oficial de Flutter](https://docs.flutter.dev/app-architecture) (migración en curso):
+
+- **data** es la única capa que habla con el backend. Las pantallas y los providers
+  piden los datos a un repositorio; nadie fuera de `lib/data/` importa `ApiService`
+  ni `ApiConstants`.
+- Cada repositorio recibe un `ApiClient` opcional (`X({ApiClient? api})`), lo que
+  permite probarlo sin red con `test/fakes/fake_api_client.dart`.
+- **ui** pinta y navega; el estado global vive en `ui/core/state`. Los ViewModels por
+  pantalla (`ui/<función>/view_model/`) llegan en la siguiente fase.
+- Los imports son absolutos: `package:pier_pasteleria/...`.
 
 ## Requisitos previos
 
