@@ -10,6 +10,7 @@ import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
+import 'package:pier_pasteleria/config/app_version.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
@@ -412,7 +413,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            const Text('Versión 1.0.0 • Pier Repostería',
+            const Text('Versión ${AppVersion.name} • Pier Repostería',
                 style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
