@@ -132,6 +132,23 @@ build: subir versión a 1.1.0+2
 ci: ejecutar analyze y test en cada pull request
 ```
 
+## Definición de terminado
+
+Una historia o una tarea está terminada cuando:
+
+1. Cumple todos sus criterios de aceptación.
+2. Su Pull Request hacia `main` declara `Closes #N` y fue aprobado por el compañero.
+3. `flutter analyze` no reporta errores ni avisos nuevos respecto a `main`.
+4. `flutter test` pasa en verde, y el cambio agrega o actualiza pruebas cuando toca lógica.
+5. No introduce secretos: sin llaves, tokens, keystores, `key.properties` ni archivos `.env`.
+6. Se probó en dispositivo físico o emulador, y el Pull Request anota qué se probó.
+7. El Pull Request está mezclado, el issue cerrado y la tarjeta en Done.
+
+Una liberación está terminada cuando, además:
+
+8. `main` lleva un tag SemVer `vX.Y.Z` que coincide con `pubspec.yaml`.
+9. Existe un APK firmado con la llave de release, generado desde ese tag.
+
 ## Versionado (SemVer)
 
 La versión vive en `version:` de `pubspec.yaml` con el formato
@@ -170,9 +187,9 @@ y miércoles 13:20 (Móvil).
 | 1 | 16-sep-2026 | 29-sep-2026 | Habilitar el pipeline |
 | 2 | 30-sep-2026 | 13-oct-2026 | Calidad y pruebas |
 | 3 | 14-oct-2026 | 27-oct-2026 | Liberación y monitoreo |
-| 4 | 28-oct-2026 | 10-nov-2026 | Por planear |
-| 5 | 11-nov-2026 | 24-nov-2026 | Por planear |
-| 6 | 25-nov-2026 | 08-dic-2026 | Por planear |
+| 4 | 28-oct-2026 | 10-nov-2026 | Catálogo y pedidos |
+| 5 | 11-nov-2026 | 24-nov-2026 | Reseñas, reembolsos y quejas |
+| 6 | 25-nov-2026 | 08-dic-2026 | Repartidor y Alexa |
 
 Cada sprint es un milestone del repositorio y una iteración del tablero. El
 cronograma tipo Gantt está en la vista **Cronograma** del tablero.
