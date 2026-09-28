@@ -182,14 +182,17 @@ Móvil Integral (14:10-15:50) y Gestión del Proceso de Desarrollo de Software
 (15:50-17:30). Los bloqueos se atienden en las asesorías: martes 12:30 (Gestión)
 y miércoles 13:20 (Móvil).
 
-| Sprint | Inicio | Cierre y entrega | Objetivo |
-|---|---|---|---|
-| 1 | 16-sep-2026 | 29-sep-2026 | Habilitar el pipeline |
-| 2 | 30-sep-2026 | 13-oct-2026 | Calidad y pruebas |
-| 3 | 14-oct-2026 | 27-oct-2026 | Liberación y monitoreo |
-| 4 | 28-oct-2026 | 10-nov-2026 | Catálogo y pedidos |
-| 5 | 11-nov-2026 | 24-nov-2026 | Reseñas, reembolsos y quejas |
-| 6 | 25-nov-2026 | 08-dic-2026 | Repartidor y Alexa |
+| Sprint | Inicio | Cierre y entrega | Objetivo | Producto verificable |
+|---|---|---|---|---|
+| 0 | 16-sep-2026 | 29-sep-2026 | Preparación | Repositorio y tablero configurados, entorno Flutter, MVVM y SemVer en main por PR, Definición de terminado y documento de evidencias |
+| 1 | 30-sep-2026 | 13-oct-2026 | Habilitar el pipeline | APK firmado con keystore propio y ambientes dev/staging/prod separados |
+| 2 | 14-oct-2026 | 27-oct-2026 | Calidad y pruebas | Pipeline en verde con pruebas y quality gate de SonarCloud en cada PR |
+| 3 | 28-oct-2026 | 10-nov-2026 | Liberación y monitoreo | APK en GitHub Releases con Sentry activo y métricas definidas |
+| 4 | 11-nov-2026 | 24-nov-2026 | Catálogo, pedidos y reseñas | Pruebas automatizadas de #2, #4 y #5 en verde y APK del sprint en Releases |
+| 5 | 25-nov-2026 | 08-dic-2026 | Reembolsos, repartidor y Alexa | Pruebas de #6, #7 y #8 en verde, APK en Releases y versión candidata para el canal interno de Play |
+
+El Sprint 0 es de preparación: configura el repositorio, el tablero, el entorno y
+la arquitectura antes de empezar a construir el pipeline.
 
 Cada sprint es un milestone del repositorio y una iteración del tablero. El
 cronograma tipo Gantt está en la vista **Cronograma** del tablero.
