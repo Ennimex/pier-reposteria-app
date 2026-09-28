@@ -200,5 +200,5 @@ cronograma tipo Gantt está en la vista **Cronograma** del tablero.
 ## Enlaces
 
 - Tablero de planeación (GitHub Projects): https://github.com/users/Ennimex/projects/2
-- Documento de evidencias: _pendiente_
+- Documento de evidencias (Actividad 2): [docs/ACTIVIDAD2_EVIDENCIAS.pdf](docs/ACTIVIDAD2_EVIDENCIAS.pdf)
 - Backend: https://github.com/PedroRubioo/pier-reposteria-backend
