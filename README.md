@@ -36,6 +36,23 @@ El responsable de cada actividad aparece como *Assignee* en su issue y en el
 ## Estructura de carpetas
 
 ```
+pier-reposteria-app/
+├── lib/                   # Código de la app (detalle abajo)
+├── test/                  # Pruebas que corren sin red: unitarias, de aceptación y de esfuerzo
+│   └── fakes/             # FakeApiClient: doble del backend para probar sin internet
+├── integration_test/      # Pruebas de integración y de rendimiento en emulador o celular (desde el Sprint 2)
+├── android/  ios/         # Proyectos nativos; la firma de release se configura en android/
+├── assets/                # Imágenes y recursos de la app
+├── docs/                  # Documentos de evidencias de la materia
+├── .github/               # Plantillas de Pull Request e issues; workflows de GitHub Actions (Sprint 1)
+├── analysis_options.yaml  # Reglas de flutter analyze
+├── pubspec.yaml           # Dependencias y versión de la app (SemVer)
+└── linux/ macos/ web/ windows/   # Generados por Flutter; no se usan en este proyecto
+```
+
+Dentro de `lib/`:
+
+```
 lib/
 ├── config/            # api_constants (rutas del backend), datos del negocio, strings
 ├── utils/             # Validadores, formateadores, logger, helpers
@@ -69,9 +86,12 @@ La app sigue la arquitectura MVVM de la
 
 ## Requisitos previos
 
-- Flutter estable (3.x) con el SDK de Dart que trae (`^3.10`).
-- Android Studio o las herramientas de línea de comandos de Android (SDK + emulador
-  o dispositivo físico con depuración USB).
+- Flutter 3.44.4 (canal `stable`), que incluye Dart 3.12. Es la versión con la que
+  se genera `pubspec.lock`; versiones 3.x más nuevas también compilan el proyecto.
+- JDK 21 (Temurin) para compilar Android: `android/app/build.gradle.kts` usa
+  `JavaVersion.VERSION_21` y Gradle 8.14.
+- Android Studio o las herramientas de línea de comandos de Android (SDK y un
+  emulador, o un dispositivo físico con depuración USB).
 - Xcode (solo para compilar iOS, desde macOS).
 - Acceso a internet: la app apunta al backend en Render.
 
@@ -85,7 +105,8 @@ flutter devices          # identifica tu dispositivo o emulador
 flutter run -d <device-id>
 ```
 
-Comprobaciones antes de abrir un Pull Request:
+Comprobaciones antes de abrir un Pull Request (qué revisa cada una, en
+[Pruebas](#pruebas)):
 
 ```bash
 flutter analyze
@@ -94,6 +115,34 @@ flutter test
 
 Para pagos de prueba con Stripe usa la tarjeta `4242 4242 4242 4242` con cualquier
 fecha futura y CVC.
+
+## Pruebas
+
+Cada historia del tablero tiene sus pruebas en el mismo sprint en que se entrega.
+Las actividades de prueba son los issues con la etiqueta `prueba` y el título en
+MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
+
+| Tipo | Qué comprueba | Dónde vive | Cuándo corre |
+|---|---|---|---|
+| Unitarias | Validadores, providers y repositorios, sin red, con `FakeApiClient` | `test/unitarias/` | Cada Pull Request (`ci.yml`) |
+| Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`ci.yml`) |
+| Aceptación | Una prueba de widget por cada escenario Gherkin de la historia | `test/aceptacion/` | Cada Pull Request (`ci.yml`) |
+| Integración | Flujos que unen varias historias, en emulador Android contra staging | `integration_test/flujos/` | Pull Requests que tocan código (`integracion.yml`) |
+| Regresión | Toda la suite acumulada sobre `main` | Las carpetas anteriores | Martes de cierre de sprint y cada tag (`regresion.yml`) |
+| Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
+| Esfuerzo | Catálogo de 1,000 productos, carrito de 100 artículos y 5,000 toques de monkey | `test/esfuerzo/` | Cada tag y a mano (`esfuerzo.yml`) |
+
+Herramientas: `flutter_test` e `integration_test` (vienen con el SDK),
+`very_good_analysis`, SonarCloud, `reactivecircus/android-emulator-runner`,
+`adb shell monkey` y GitHub Actions. Las 31 pruebas actuales viven en `test/`;
+las carpetas por tipo y los workflows de `.github/workflows/` se crean en el
+Sprint 1 (#19). Para correrlas en tu máquina:
+
+```bash
+flutter test                     # unitarias, aceptación y esfuerzo
+flutter test --coverage          # igual, con reporte en coverage/lcov.info
+flutter test integration_test    # integración, con un emulador o celular conectado
+```
 
 ## Estrategia de ramas (GitHub Flow)
 
@@ -111,6 +160,10 @@ fecha futura y CVC.
 ## Convención de commits (Conventional Commits)
 
 Formato: `<tipo>(<ámbito opcional>): <descripción en minúsculas>`
+
+El cuerpo del commit cita el issue en el que se trabaja con `Refs #N`. El
+`Closes #N` que cierra el issue va en la descripción del Pull Request, no en el
+commit.
 
 | Tipo | Uso |
 |---|---|
@@ -130,6 +183,10 @@ feat(checkout): mostrar resumen antes de pagar
 fix(auth): manejar token expirado al reabrir la app
 build: subir versión a 1.1.0+2
 ci: ejecutar analyze y test en cada pull request
+
+docs: completar el README con la estrategia de pruebas
+
+Refs #73
 ```
 
 ## Definición de terminado
