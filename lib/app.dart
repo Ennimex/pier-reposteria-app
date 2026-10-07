@@ -7,7 +7,12 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final String initialLocation;
+
+  const MyApp({
+    super.key,
+    this.initialLocation = AppRoutes.splash,
+  });
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -20,7 +25,10 @@ class _MyAppState extends State<MyApp> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Crear el router solo una vez
-    _router ??= AppRoutes.router(context);
+    _router ??= AppRoutes.router(
+      context,
+      initialLocation: widget.initialLocation,
+    );
   }
 
   @override
