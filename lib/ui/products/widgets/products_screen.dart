@@ -37,7 +37,15 @@ IconData _iconForCategoria(String nombre) {
 
 class ProductsScreen extends StatefulWidget {
   final String? initialCategory;
-  const ProductsScreen({super.key, this.initialCategory});
+  final ProductosRepository? productosRepository;
+  final FavoritosRepository? favoritosRepository;
+
+  const ProductsScreen({
+    super.key,
+    this.initialCategory,
+    this.productosRepository,
+    this.favoritosRepository,
+  });
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -46,8 +54,10 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen>
     with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  final _productosRepo = ProductosRepository();
-  final _favoritosRepo = FavoritosRepository();
+  late final _productosRepo =
+      widget.productosRepository ?? ProductosRepository();
+  late final _favoritosRepo =
+      widget.favoritosRepository ?? FavoritosRepository();
 
   SortOption _sort = SortOption.popular;
   String _category = 'Todos';

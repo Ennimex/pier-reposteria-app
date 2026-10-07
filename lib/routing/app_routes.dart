@@ -81,11 +81,14 @@ class AppRoutes {
     return main;
   }
 
-  static GoRouter router(BuildContext context) {
+  static GoRouter router(
+    BuildContext context, {
+    String initialLocation = splash,
+  }) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     return GoRouter(
-      initialLocation: splash,
+      initialLocation: initialLocation,
       refreshListenable: authProvider,
       redirect: (context, state) {
         final isAuth = authProvider.isAuthenticated;

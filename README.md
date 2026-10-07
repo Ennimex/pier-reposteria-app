@@ -40,11 +40,11 @@ pier-reposteria-app/
 ├── lib/                   # Código de la app (detalle abajo)
 ├── test/                  # Pruebas que corren sin red: unitarias, de aceptación y de esfuerzo
 │   └── fakes/             # FakeApiClient: doble del backend para probar sin internet
-├── integration_test/      # Pruebas de integración y de rendimiento en emulador o celular (desde el Sprint 2)
+├── integration_test/      # Pruebas de integración en emulador o celular
 ├── android/  ios/         # Proyectos nativos; la firma de release se configura en android/
 ├── assets/                # Imágenes y recursos de la app
 ├── docs/                  # Documentos de evidencias de la materia
-├── .github/               # Plantillas de Pull Request e issues; workflows de GitHub Actions (Sprint 1)
+├── .github/               # Plantillas de Pull Request e issues; workflows de GitHub Actions
 ├── analysis_options.yaml  # Reglas de flutter analyze
 ├── pubspec.yaml           # Dependencias y versión de la app (SemVer)
 └── linux/ macos/ web/ windows/   # Generados por Flutter; no se usan en este proyecto
@@ -124,25 +124,31 @@ MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
 | Tipo | Qué comprueba | Dónde vive | Cuándo corre |
 |---|---|---|---|
-| Unitarias | Validadores, providers y repositorios, sin red, con `FakeApiClient` | `test/unitarias/` | Cada Pull Request (`ci.yml`) |
+| Unitarias | Validadores, providers y repositorios, sin red, con `FakeApiClient` | `test/` | Cada Pull Request (`ci.yml`) |
 | Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`ci.yml`) |
-| Aceptación | Una prueba de widget por cada escenario Gherkin de la historia | `test/aceptacion/` | Cada Pull Request (`ci.yml`) |
-| Integración | Flujos que unen varias historias, en emulador Android contra staging | `integration_test/flujos/` | Pull Requests que tocan código (`integracion.yml`) |
-| Regresión | Toda la suite acumulada sobre `main` | Las carpetas anteriores | Martes de cierre de sprint y cada tag (`regresion.yml`) |
+| Aceptación | Escenarios Gherkin automatizados como pruebas de widget | `test/` | Cada Pull Request (`ci.yml`) |
+| Integración | Smoke tests del login y catálogo en emulador Android, con `FakeApiClient` y sin backend | `integration_test/app_smoke_test.dart` | Pull Requests que tocan código de app (`integracion.yml`) |
+| Regresión | Toda la suite acumulada sobre la rama o tag | `test/` e `integration_test/` | Martes 08:00 UTC, cada tag y a mano (`regresion.yml`) |
 | Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
 | Esfuerzo | Catálogo de 1,000 productos, carrito de 100 artículos y 5,000 toques de monkey | `test/esfuerzo/` | Cada tag y a mano (`esfuerzo.yml`) |
 
-Herramientas: `flutter_test` e `integration_test` (vienen con el SDK),
-`very_good_analysis`, SonarCloud, `reactivecircus/android-emulator-runner`,
-`adb shell monkey` y GitHub Actions. Las 31 pruebas actuales viven en `test/`;
-las carpetas por tipo y los workflows de `.github/workflows/` se crean en el
-Sprint 1 (#19). Para correrlas en tu máquina:
+Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarCloud,
+`reactivecircus/android-emulator-runner` y GitHub Actions. Las pruebas unitarias
+existentes viven en `test/`; el smoke test de integración también usa
+`FakeApiClient`, por lo que no contacta el backend ni requiere credenciales.
+El workflow de CI compara el análisis con el baseline conocido (0 errores, 1
+warning y 36 infos) y falla si el resultado empeora. Para ejecutar localmente:
 
 ```bash
 flutter test                     # unitarias, aceptación y esfuerzo
 flutter test --coverage          # igual, con reporte en coverage/lcov.info
-flutter test integration_test    # integración, con un emulador o celular conectado
+flutter test integration_test    # smoke tests, con emulador o celular conectado
 ```
+
+El workflow de CI requiere configurar `SONAR_TOKEN` como secreto del repositorio
+y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
+resultado del quality gate de SonarCloud; el quality gate y su umbral de
+cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.
 
 ## Estrategia de ramas (GitHub Flow)
 
