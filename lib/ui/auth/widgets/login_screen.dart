@@ -9,6 +9,7 @@ import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/forgot_password_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -172,11 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.email],
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Ingresa tu email';
-                    if (!v.contains('@')) return 'Email inválido';
-                    return null;
-                  },
+                  validator: Validators.email,
                 ),
                 const SizedBox(height: 14),
 
@@ -200,11 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () => setState(
                         () => _isPasswordVisible = !_isPasswordVisible),
                   ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
-                    if (v.length < 6) return 'Mínimo 6 caracteres';
-                    return null;
-                  },
+                  validator: Validators.passwordLogin,
                 ),
 
                 // ── OLVIDÉ CONTRASEÑA ────────────────────────────
