@@ -9,6 +9,7 @@ import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/public/widgets/legal_screen.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -175,35 +176,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // ── CAMPOS ───────────────────────────────────────
                 _field(_nombreCtrl, 'Nombre',
                     LucideIcons.user,
-                    validator: (v) =>
-                        (v == null || v.length < 2)
-                            ? 'Mínimo 2 caracteres'
-                            : null),
+                    validator: Validators.nombre),
                 const SizedBox(height: 12),
                 _field(_apellidoCtrl, 'Apellido',
                     LucideIcons.user,
-                    validator: (v) =>
-                        (v == null || v.length < 2)
-                            ? 'Mínimo 2 caracteres'
-                            : null),
+                    validator: Validators.nombre),
                 const SizedBox(height: 12),
                 _field(_emailCtrl, 'Email', LucideIcons.mail,
                     keyboardType: TextInputType.emailAddress,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'Ingresa tu email';
-                      }
-                      if (!v.contains('@')) return 'Email inválido';
-                      return null;
-                    }),
+                    validator: Validators.email),
                 const SizedBox(height: 12),
                 _field(_telefonoCtrl, 'Teléfono',
                     LucideIcons.phone,
                     keyboardType: TextInputType.phone,
-                    validator: (v) =>
-                        (v == null || v.length != 10)
-                            ? 'Debe tener 10 dígitos'
-                            : null),
+                    validator: Validators.telefono),
                 const SizedBox(height: 12),
                 _field(_passwordCtrl, 'Contraseña',
                     LucideIcons.lock,
@@ -220,12 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     // ✅ FIX: sincronizado con backend (mín 6 + letra + número)
                     helperText: 'Mínimo 6 caracteres, 1 letra y 1 número',
-                    validator: (v) {
-                      if (v == null || v.length < 6) return 'Mínimo 6 caracteres';
-                      if (!RegExp(r'[a-zA-Z]').hasMatch(v)) return 'Debe contener al menos 1 letra';
-                      if (!RegExp(r'\d').hasMatch(v)) return 'Debe contener al menos 1 número';
-                      return null;
-                    }),
+                    validator: Validators.passwordNueva),
                 const SizedBox(height: 12),
                 _field(_confirmPasswordCtrl, 'Confirmar contraseña',
                     LucideIcons.lock,
@@ -242,9 +223,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               !_isConfirmPasswordVisible),
                     ),
                     validator: (v) =>
-                        v != _passwordCtrl.text
-                            ? 'Las contraseñas no coinciden'
-                            : null),
+                        Validators.confirmarPassword(v, _passwordCtrl.text)),
                 const SizedBox(height: 16),
 
                 // ── TÉRMINOS ─────────────────────────────────────
