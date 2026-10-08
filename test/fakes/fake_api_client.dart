@@ -8,6 +8,7 @@
 //     '/resenas/mis-resenas': {'success': true, 'resenas': [...]},
 //   });
 //   api.fallar('/carrito', 'Token expirado');
+//   api.demorar('/auth/login', const Duration(seconds: 1)); // estado de carga
 //   ...
 //   expect(api.llamo('/resenas/mis-resenas', metodo: 'GET-Auth'), true);
 import 'package:pier_pasteleria/data/services/api_client.dart';
@@ -30,6 +31,9 @@ typedef RespuestaDinamica = Map<String, dynamic> Function(LlamadaApi llamada);
 class FakeApiClient implements ApiClient {
   final Map<String, dynamic> _respuestas;
 
+  /// Retraso por endpoint, para probar estados de carga.
+  final Map<String, Duration> _demoras = {};
+
   /// Todas las llamadas recibidas, en orden.
   final List<LlamadaApi> llamadas = [];
 
@@ -43,6 +47,11 @@ class FakeApiClient implements ApiClient {
   /// Atajo: simula que el backend rechazó la llamada con ese mensaje.
   void fallar(String endpoint, String mensaje) =>
       _respuestas[endpoint] = {'success': false, 'message': mensaje};
+
+  /// La respuesta de este endpoint tarda [duracion] en llegar. En pruebas de
+  /// widget el tiempo es simulado: se avanza con `tester.pump(duracion)`.
+  void demorar(String endpoint, Duration duracion) =>
+      _demoras[endpoint] = duracion;
 
   /// ¿Se llamó este endpoint? Opcionalmente con un método concreto.
   bool llamo(String endpoint, {String? metodo}) => llamadas.any((l) =>
@@ -60,6 +69,8 @@ class FakeApiClient implements ApiClient {
       [Map<String, dynamic>? body]) async {
     final llamada = LlamadaApi(metodo, endpoint, body);
     llamadas.add(llamada);
+    final demora = _demoras[endpoint];
+    if (demora != null) await Future<void>.delayed(demora);
     // Coincidencia exacta; si no, sin query string (cotizar?colonia=X).
     final clave = _respuestas.containsKey(endpoint)
         ? endpoint

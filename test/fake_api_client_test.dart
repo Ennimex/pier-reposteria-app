@@ -68,5 +68,25 @@ void main() {
       final b = await api.get('/x');
       expect(b['n'], 1);
     });
+
+    test('demorar retrasa la respuesta de un endpoint (estado de carga)',
+        () async {
+      final api = FakeApiClient(respuestas: {
+        '/auth/login': {'success': true},
+      })
+        ..demorar('/auth/login', const Duration(milliseconds: 200));
+
+      var respondio = false;
+      final futura = api.post('/auth/login', {})
+        ..then((_) => respondio = true);
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(respondio, isFalse);
+      expect(api.llamo('/auth/login', metodo: 'POST'), isTrue);
+
+      final r = await futura;
+      expect(respondio, isTrue);
+      expect(r['success'], true);
+    });
   });
 }
