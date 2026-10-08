@@ -1,17 +1,17 @@
 // lib/ui/orders/widgets/orders_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
+import 'package:provider/provider.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -410,39 +410,30 @@ class _OrdersScreenState extends State<OrdersScreen>
       case OrderStatus.pending:
         color = AppColors.estadoPendiente;
         label = order.porConfirmar ? 'Por confirmar' : 'Pendiente';
-        break;
       case OrderStatus.preparing:
         color = AppColors.estadoPreparacion;
         label = 'Preparando';
-        break;
       case OrderStatus.ready:
         color = AppColors.estadoListo;
         label = 'Listo ✓';
-        break;
       case OrderStatus.completed:
         color = AppColors.estadoCompletado;
         label = 'Completado';
-        break;
       case OrderStatus.cancelled:
         color = AppColors.estadoCancelado;
         label = 'Cancelado';
-        break;
       case OrderStatus.assigned:
         color = AppColors.estadoAsignada;
         label = 'Asignado';
-        break;
       case OrderStatus.onTheWay:
         color = AppColors.estadoEnCamino;
         label = 'En camino';
-        break;
       case OrderStatus.delivered:
         color = AppColors.estadoEntregada;
         label = 'Entregado';
-        break;
       case OrderStatus.deliveryFailed:
         color = AppColors.estadoFallida;
         label = 'Entrega fallida';
-        break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

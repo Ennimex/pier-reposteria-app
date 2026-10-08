@@ -8,19 +8,19 @@
 // "Reportar" (fallida) está disponible en ambos estados.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/confirmar_entrega_screen.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/reportar_fallo_sheet.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/confirmar_entrega_screen.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/reportar_fallo_sheet.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EntregaDetailScreen extends StatefulWidget {
+  const EntregaDetailScreen({required this.entrega, super.key});
   final EntregaRepartidor entrega;
-  const EntregaDetailScreen({super.key, required this.entrega});
 
   @override
   State<EntregaDetailScreen> createState() => _EntregaDetailScreenState();
@@ -48,7 +48,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
   Future<void> _whatsapp(BuildContext context) async {
     final tel = entrega.direccion.telefonoContacto ?? entrega.clienteTelefono;
     if (tel == null) return;
-    final digits = tel.replaceAll(RegExp(r'[^0-9]'), '');
+    final digits = tel.replaceAll(RegExp('[^0-9]'), '');
     final uri = Uri.parse('https://wa.me/$digits');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
         context.mounted) {
@@ -116,7 +116,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
         builder: (_) => ConfirmarEntregaScreen(entrega: entrega),
       ),
     );
-    if (ok == true && context.mounted) Navigator.pop(context, true);
+    if ((ok ?? false) && context.mounted) Navigator.pop(context, true);
   }
 
   Future<void> _reportarProblema(BuildContext context) async {
@@ -129,7 +129,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
       ),
       builder: (_) => ReportarFalloSheet(entrega: entrega),
     );
-    if (ok == true && context.mounted) Navigator.pop(context, true);
+    if ((ok ?? false) && context.mounted) Navigator.pop(context, true);
   }
 
   @override
@@ -169,7 +169,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed:
-                              _avisandoLlegada ? null : () => _avisarLlegada(),
+                              _avisandoLlegada ? null : _avisarLlegada,
                           icon: _avisandoLlegada
                               ? const SizedBox(
                                   width: 18,
@@ -214,7 +214,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
                           child: _estado == EstadoEntrega.asignada
                               ? ElevatedButton.icon(
                                   onPressed:
-                                      _saliendo ? null : () => _salirEnCamino(),
+                                      _saliendo ? null : _salirEnCamino,
                                   icon: _saliendo
                                       ? const SizedBox(
                                           width: 18,
@@ -351,8 +351,8 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
             Row(
               children: [
                 Icon(LucideIcons.mapPin, color: AppColors.pierVerde, size: 22),
-                SizedBox(width: 8),
-                Text(
+                const SizedBox(width: 8),
+                const Text(
                   'Dirección de entrega',
                   style: TextStyle(
                     fontSize: 17,

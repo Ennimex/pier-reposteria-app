@@ -7,10 +7,10 @@ import 'package:pier_pasteleria/data/repositories/entregas_repository.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 
 class EntregasProvider with ChangeNotifier {
-  final EntregasRepository _repo;
 
   EntregasProvider({EntregasRepository? repo})
       : _repo = repo ?? EntregasRepository();
+  final EntregasRepository _repo;
 
   List<EntregaRepartidor> _entregas = [];
   List<PedidoDisponible> _disponibles = [];
@@ -41,7 +41,7 @@ class EntregasProvider with ChangeNotifier {
   /// Suma cobrada de las entregas completadas hoy.
   double get totalDia => _entregas
       .where((e) => e.estado == EstadoEntrega.entregada)
-      .fold(0.0, (sum, e) => sum + e.total);
+      .fold(0, (sum, e) => sum + e.total);
 
   /// Carga entregas + disponibilidad. `silent` para pull-to-refresh.
   Future<void> cargar({bool silent = false}) async {

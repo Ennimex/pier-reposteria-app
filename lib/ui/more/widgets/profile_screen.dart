@@ -1,20 +1,20 @@
 // lib/ui/more/widgets/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
+import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/orders_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -206,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
                           Text('Hola, $saludo',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 14,
                                   color: AppColors.textSecondary)),
                         ],
@@ -237,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       fotoUrl,
                                       width: 52, height: 52,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, e, __) =>
+                                      errorBuilder: (_, e, _) =>
                                           _buildAvatarIniciales(iniciales),
                                     ),
                                   )
@@ -301,13 +301,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: _loadingFavoritos
                   ? Center(
                       child: Padding(
-                      padding: EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(20),
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde),
                     ))
                   : _favoritos.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(
                               horizontal: 20),
                           child: Text('Sin favoritos aún',
                               style: TextStyle(
@@ -354,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           width: 120,
                                           height: 100,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, e, __) =>
+                                          errorBuilder: (_, e, _) =>
                                               Container(
                                             width: 120,
                                             height: 100,
@@ -425,7 +425,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 builder: (_) =>
                                     const OrdersScreen()));
                       },
-                      child: Icon(LucideIcons.history,
+                      child: const Icon(LucideIcons.history,
                           color: AppColors.textSecondary, size: 22),
                     ),
                   ],
@@ -434,18 +434,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-            _loadingPedidos
-                ? SliverToBoxAdapter(
+            if (_loadingPedidos) SliverToBoxAdapter(
                     child: Center(
                         child: Padding(
-                    padding: EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(20),
                     child: CircularProgressIndicator(
                         color: AppColors.pierVerde),
-                  )))
-                : _pedidos.isEmpty
-                    ? SliverToBoxAdapter(
+                  ))) else _pedidos.isEmpty
+                    ? const SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                               horizontal: 20),
                           child: Text('Sin pedidos aún',
                               style: TextStyle(
@@ -524,11 +522,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     Color estadoColor;
     switch (estado) {
-      case 'completado': estadoColor = AppColors.estadoCompletado; break;
+      case 'completado': estadoColor = AppColors.estadoCompletado;
       case 'en_preparacion':
-      case 'preparando': estadoColor = AppColors.estadoPreparacion; break;
-      case 'listo': estadoColor = AppColors.estadoListo; break;
-      case 'cancelado': estadoColor = AppColors.estadoCancelado; break;
+      case 'preparando': estadoColor = AppColors.estadoPreparacion;
+      case 'listo': estadoColor = AppColors.estadoListo;
+      case 'cancelado': estadoColor = AppColors.estadoCancelado;
       default: estadoColor = AppColors.estadoPendiente;
     }
 
@@ -573,7 +571,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(fecha,
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 12, color: AppColors.textSecondary)),
           ),
         ),
@@ -590,7 +588,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 48, height: 48,
                       fit: BoxFit.cover,
                       // ✅ FIX: (_, e, __)
-                      errorBuilder: (_, e, __) =>
+                      errorBuilder: (_, e, _) =>
                           _imagePlaceholder())
                   : _imagePlaceholder(),
             ),
@@ -629,19 +627,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    reordenando
-                        ? SizedBox(
+                    if (reordenando) SizedBox(
                             width: 14,
                             height: 14,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: AppColors.pierVerde),
-                          )
-                        : Icon(LucideIcons.rotateCcw,
+                          ) else const Icon(LucideIcons.rotateCcw,
                             size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(reordenando ? 'Agregando…' : 'Reordenar',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w500)),

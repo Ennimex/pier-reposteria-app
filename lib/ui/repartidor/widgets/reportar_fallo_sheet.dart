@@ -4,15 +4,15 @@
 // un motivo obligatorio. Devuelve true por Navigator.pop si tuvo éxito.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ReportarFalloSheet extends StatefulWidget {
+  const ReportarFalloSheet({required this.entrega, super.key});
   final EntregaRepartidor entrega;
-  const ReportarFalloSheet({super.key, required this.entrega});
 
   @override
   State<ReportarFalloSheet> createState() => _ReportarFalloSheetState();

@@ -1,22 +1,20 @@
 // lib/ui/core/ui/product_card.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ProductCard extends StatelessWidget {
-  final Product product;
-  final VoidCallback onTap;
 
   const ProductCard({
-    super.key,
-    required this.product,
-    required this.onTap,
+    required this.product, required this.onTap, super.key,
   });
+  final Product product;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

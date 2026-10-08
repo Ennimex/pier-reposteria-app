@@ -1,17 +1,17 @@
 // lib/ui/auth/widgets/reset_password_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
+  const ResetPasswordScreen({required this.email, super.key});
   final String email;
-  const ResetPasswordScreen({super.key, required this.email});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -75,7 +75,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _showSnack('La contraseña debe tener al menos 6 caracteres', AppColors.error);
       return;
     }
-    if (!RegExp(r'[a-zA-Z]').hasMatch(pass)) {
+    if (!RegExp('[a-zA-Z]').hasMatch(pass)) {
       _showSnack('La contraseña debe contener al menos 1 letra', AppColors.error);
       return;
     }
@@ -160,9 +160,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       color: AppColors.textPrimary),
                   textAlign: TextAlign.center),
               const SizedBox(height: 10),
-              Text(
+              const Text(
                 'Tu contraseña ha sido actualizada correctamente. Ya puedes iniciar sesión.',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -258,9 +258,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       color: AppColors.textPrimary),
                   textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Ingresa el código que enviamos a',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),

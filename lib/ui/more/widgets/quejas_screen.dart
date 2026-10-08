@@ -1,12 +1,12 @@
 // lib/ui/more/widgets/quejas_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 enum TipoQueja { queja, sugerencia, comentario }
@@ -186,7 +186,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
               decoration: BoxDecoration(
                 color: AppColors.pierVerdeOscuro,
                 borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(24)),
+                    const BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +239,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                               Icon(LucideIcons.plus,
                                   color: AppColors.pierVerdeOscuro,
                                   size: 16),
-                              SizedBox(width: 5),
+                              const SizedBox(width: 5),
                               Text('Nueva',
                                   style: TextStyle(
                                       color: AppColors.pierVerdeOscuro,
@@ -288,7 +288,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                             padding:
                                 const EdgeInsets.fromLTRB(16, 16, 16, 32),
                             itemCount: _quejas.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 10),
                             itemBuilder: (_, i) =>
                                 _buildCard(_quejas[i]),
@@ -404,7 +404,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Descripción
-                  Text('Descripción',
+                  const Text('Descripción',
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -412,7 +412,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                           letterSpacing: .3)),
                   const SizedBox(height: 6),
                   Text(descripcion,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                           height: 1.5)),
@@ -420,7 +420,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                   // Pedido asociado
                   if (pedidoId != null) ...[
                     const SizedBox(height: 12),
-                    Text('Pedido asociado',
+                    const Text('Pedido asociado',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -527,7 +527,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(label,
-          style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
     );
   }
 
@@ -575,7 +575,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Si tienes alguna queja, sugerencia o\ncomentario, cuéntanoslo.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
@@ -606,13 +606,13 @@ class _QuejasScreenState extends State<QuejasScreen> {
 
 // ── Formulario (BottomSheet) ──────────────────────────────────────
 class _FormularioQueja extends StatefulWidget {
-  final List<Map<String, dynamic>> pedidos;
-  final VoidCallback onEnviado;
 
   const _FormularioQueja({
     required this.pedidos,
     required this.onEnviado,
   });
+  final List<Map<String, dynamic>> pedidos;
+  final VoidCallback onEnviado;
 
   @override
   State<_FormularioQueja> createState() => _FormularioQuejaState();
@@ -795,8 +795,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                       style: TextStyle(
                           fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.5))),
                   items: [
-                    DropdownMenuItem<String>(
-                      value: null,
+                    const DropdownMenuItem<String>(
                       child: Text('Sin pedido asociado',
                           style: TextStyle(
                               fontSize: 14,

@@ -20,8 +20,13 @@ class ApiConstants {
 
   static Ambiente get ambiente => ambienteDesde(_ambienteDefine);
 
-  static String get baseUrl =>
-      resolverBaseUrl(ambiente, urlForzada: _urlForzada);
+  static String get baseUrl => resolverBaseUrl(
+        ambiente,
+        // Sin --dart-define el analizador ve '' y lo cree redundante, pero
+        // quitarlo rompería API_BASE_URL.
+        // ignore: avoid_redundant_argument_values
+        urlForzada: _urlForzada,
+      );
 
   /// Valor de AMBIENTE a enum; vacío o desconocido es prod.
   static Ambiente ambienteDesde(String valor) => Ambiente.values.firstWhere(

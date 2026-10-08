@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class FavoritosRepository {
-  final ApiClient _api;
   FavoritosRepository({ApiClient? api}) : _api = api ?? ApiService();
+  final ApiClient _api;
 
   /// GET /favoritos/ids: solo ids (para pintar corazones).
   Future<Map<String, dynamic>> ids() => _api.getAuth(ApiConstants.favoritosIds);

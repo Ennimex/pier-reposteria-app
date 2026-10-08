@@ -1,19 +1,19 @@
 // lib/ui/reviews/widgets/create_review_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/reviews/widgets/my_reviews_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/reviews/widgets/my_reviews_screen.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 class CreateReviewScreen extends StatefulWidget {
+  const CreateReviewScreen({required this.product, super.key});
   final Product product;
-  const CreateReviewScreen({super.key, required this.product});
 
   @override
   State<CreateReviewScreen> createState() => _CreateReviewScreenState();
@@ -155,7 +155,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                 autoAprobada
                     ? 'Tu reseña ha sido publicada. ¡Otros clientes podrán verla y disfrutar de nuestras delicias!'
                     : 'Tu reseña está en revisión y será publicada pronto. ¡Gracias por tomarte el tiempo!',
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
                     height: 1.5),
@@ -298,7 +298,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               widget.product.imagenUrl,
                               width: 90, height: 90,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              errorBuilder: (_, _, _) => Container(
                                 width: 90, height: 90,
                                 color: AppColors.pierArena,
                                 child: Icon(LucideIcons.cake,
@@ -514,12 +514,12 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             color: AppColors.textSecondary
                                 .withValues(alpha: 0.15)),
                       ),
-                      child: Row(
+                      child: const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(LucideIcons.info,
                               size: 16, color: AppColors.textSecondary),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Solo puedes reseñar productos que hayas comprado. Las reseñas con calificación ≥ 4 se publican automáticamente.',

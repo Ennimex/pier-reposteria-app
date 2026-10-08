@@ -1,11 +1,12 @@
 // lib/data/services/api_service.dart
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
-import 'package:pier_pasteleria/data/services/storage_service.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
+import 'package:pier_pasteleria/data/services/storage_service.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
 
 // Implementa el contrato ApiClient (data/services/api_client.dart): los
 // repositorios dependen de la interfaz, y en pruebas se sustituye por
@@ -180,7 +181,7 @@ class ApiService implements ApiClient {
       }
       
       request.fields.addAll(fields);
-      String ext = filePath.split('.').last.toLowerCase();
+      var ext = filePath.split('.').last.toLowerCase();
       if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) {
         ext = 'jpeg'; // fallback
       }

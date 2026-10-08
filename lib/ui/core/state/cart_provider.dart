@@ -1,10 +1,19 @@
 // lib/ui/core/state/cart_provider.dart
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
 
-class CartItem {
+class CartItem {          // 'chico' | 'grande' — el backend cobra según esto
+
+  CartItem({
+    required this.id,
+    required this.nombre, required this.quantity, required this.precio, required this.imagenUrl, this.carritoItemId,
+    double? precioOriginal,
+    this.tieneDescuento = false,
+    this.promoNombre,
+    this.tamano = 'chico',
+  }) : precioOriginal = precioOriginal ?? precio;
   final String id;              // producto_id
   final String? carritoItemId;  // id en tblcarrito_items
   final String nombre;
@@ -14,20 +23,7 @@ class CartItem {
   final String imagenUrl;
   final bool tieneDescuento;
   final String? promoNombre;    // nombre_temporada de la promoción
-  final String tamano;          // 'chico' | 'grande' — el backend cobra según esto
-
-  CartItem({
-    required this.id,
-    this.carritoItemId,
-    required this.nombre,
-    required this.quantity,
-    required this.precio,
-    double? precioOriginal,
-    required this.imagenUrl,
-    this.tieneDescuento = false,
-    this.promoNombre,
-    this.tamano = 'chico',
-  }) : precioOriginal = precioOriginal ?? precio;
+  final String tamano;
 
   // Clave única de línea: un mismo producto en chico y grande son dos líneas.
   String get lineKey => '${id}_$tamano';
@@ -64,10 +60,10 @@ class CartItem {
 }
 
 class CartProvider with ChangeNotifier {
-  final CarritoRepository _repo;
 
   CartProvider({CarritoRepository? repo})
       : _repo = repo ?? CarritoRepository();
+  final CarritoRepository _repo;
   Map<String, CartItem> _items = {};
   bool _synced = false;
 
@@ -78,11 +74,11 @@ class CartProvider with ChangeNotifier {
 
   // ✅ Total con descuentos ya aplicados
   double get totalAmount =>
-      _items.values.fold(0.0, (sum, item) => sum + item.subtotal);
+      _items.values.fold(0, (sum, item) => sum + item.subtotal);
 
   // ✅ Total original sin descuentos (para mostrar tachado)
   double get totalOriginal =>
-      _items.values.fold(0.0, (sum, item) => sum + item.precioOriginal * item.quantity);
+      _items.values.fold(0, (sum, item) => sum + item.precioOriginal * item.quantity);
 
   // ✅ Ahorro total del carrito
   double get totalAhorro => totalOriginal - totalAmount;

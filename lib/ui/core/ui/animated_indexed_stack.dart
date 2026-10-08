@@ -10,6 +10,12 @@
 import 'package:flutter/material.dart';
 
 class AnimatedIndexedStack extends StatefulWidget {
+
+  const AnimatedIndexedStack({
+    required this.index, required this.children, super.key,
+    this.duration = const Duration(milliseconds: 260),
+    this.onSwipeToIndex,
+  });
   final int index;
   final List<Widget> children;
   final Duration duration;
@@ -20,14 +26,6 @@ class AnimatedIndexedStack extends StatefulWidget {
   /// horizontales internos (carruseles, listas de productos) ganan el gesto
   /// donde existan, igual que en cualquier app.
   final ValueChanged<int>? onSwipeToIndex;
-
-  const AnimatedIndexedStack({
-    super.key,
-    required this.index,
-    required this.children,
-    this.duration = const Duration(milliseconds: 260),
-    this.onSwipeToIndex,
-  });
 
   @override
   State<AnimatedIndexedStack> createState() => _AnimatedIndexedStackState();

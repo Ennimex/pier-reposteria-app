@@ -8,11 +8,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
-import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class VincularAlexaScreen extends StatefulWidget {
   const VincularAlexaScreen({super.key});
@@ -147,13 +146,13 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
                   ),
                 ]),
                 const SizedBox(height: 14),
-                Text.rich(
+                const Text.rich(
                   TextSpan(
                     style: TextStyle(
                         fontSize: 13,
                         height: 1.5,
                         color: AppColors.textSecondary),
-                    children: const [
+                    children: [
                       TextSpan(
                           text:
                               'Genera un código de un solo uso (expira en 5 minutos) y dile a tu Alexa: '),
@@ -259,7 +258,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
             Border.all(color: AppColors.pierVerde.withValues(alpha: 0.25), width: 2),
       ),
       child: Column(children: [
-        Text('TU CÓDIGO DE VINCULACIÓN',
+        const Text('TU CÓDIGO DE VINCULACIÓN',
             style: TextStyle(
                 fontSize: 11,
                 letterSpacing: 2,
@@ -302,7 +301,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
         const SizedBox(height: 12),
         Text.rich(
           TextSpan(
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             children: [
               const TextSpan(text: 'Expira en '),
               TextSpan(
@@ -318,7 +317,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
         Text(
           'Dile: "vincula mi cuenta con el código $deletreado"',
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
               fontSize: 13,
               fontStyle: FontStyle.italic,
               height: 1.4,

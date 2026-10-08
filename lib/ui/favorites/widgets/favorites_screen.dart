@@ -1,21 +1,21 @@
 // lib/ui/favorites/widgets/favorites_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/services/demanda_service.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
+import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:provider/provider.dart';
 
 // Icono de fallback según nombre de categoría
 IconData _iconForCategoria(String nombre) {
@@ -384,7 +384,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       child: Image.network(
                         p.imagenUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
+                        errorBuilder: (_, _, _) => ColoredBox(
                           color: AppColors.pierArena,
                           child: Icon(LucideIcons.cake,
                               color: AppColors.pierVerde, size: 36),
@@ -655,7 +655,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 children: cats.map((cat) {
                   final nombre =
                       (cat['nombre'] ?? cat['name'] ?? '').toString();
-                  final IconData icon = cat['icon'] != null
+                  final icon = cat['icon'] != null
                       ? cat['icon'] as IconData
                       : _iconForCategoria(nombre);
 

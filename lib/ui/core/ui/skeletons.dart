@@ -4,8 +4,8 @@
 // Cada tarjeta se auto-envuelve en Shimmer para poder usarse dentro de slivers
 // (donde no se puede envolver todo el grid/lista de una sola vez).
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:shimmer/shimmer.dart';
 
 /// Envuelve un contenido en el shimmer con los colores de la paleta.
 Widget _shimmer({required Widget child}) => Shimmer.fromColors(

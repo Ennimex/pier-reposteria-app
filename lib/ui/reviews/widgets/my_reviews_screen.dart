@@ -1,12 +1,12 @@
 // lib/ui/reviews/widgets/my_reviews_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_dimensions.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
 class MyReviewsScreen extends StatefulWidget {
   const MyReviewsScreen({super.key});
@@ -155,7 +155,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                             padding:
                                 const EdgeInsets.fromLTRB(16, 0, 16, 32),
                             itemCount: _resenas.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 12),
                             itemBuilder: (context, i) =>
                                 _buildCard(_resenas[i]),
@@ -185,12 +185,10 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         estadoColor = AppColors.pierVerde;
         estadoLabel = 'Publicada';
         estadoIcon = Icons.check_circle_rounded;
-        break;
       case 'rechazada':
         estadoColor = Colors.red.shade400;
         estadoLabel = 'Rechazada';
         estadoIcon = LucideIcons.circleX;
-        break;
       default:
         estadoColor = Colors.orange.shade400;
         estadoLabel = 'En revisión';
@@ -223,7 +221,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           productoImagen,
                           width: 52, height: 52,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorBuilder: (_, _, _) =>
                               _productoPlaceholder(),
                         )
                       : _productoPlaceholder(),
@@ -267,7 +265,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 GestureDetector(
                   onTap: () => _editarResena(r),
                   child: Padding(
-                    padding: EdgeInsets.only(left: 4, top: 4, bottom: 4),
+                    padding: const EdgeInsets.only(left: 4, top: 4, bottom: 4),
                     child: Icon(LucideIcons.pencil,
                         size: 18, color: AppColors.pierVerde),
                   ),
@@ -440,8 +438,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
 // ── HOJA DE EDICIÓN DE RESEÑA ──────────────────────────────────────
 class _EditarResenaSheet extends StatefulWidget {
-  final Map<String, dynamic> resena;
   const _EditarResenaSheet({required this.resena});
+  final Map<String, dynamic> resena;
 
   @override
   State<_EditarResenaSheet> createState() => _EditarResenaSheetState();

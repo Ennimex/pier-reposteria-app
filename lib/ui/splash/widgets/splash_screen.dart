@@ -1,12 +1,12 @@
 // lib/ui/splash/widgets/splash_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/routing/app_routes.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeIn,
     );
 
-    _scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
+    _scaleAnim = Tween<double>(begin: 0.85, end: 1).animate(
       CurvedAnimation(
           parent: _animController, curve: Curves.easeOutBack),
     );
@@ -145,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen>
                         color: AppColors.pierDorado,
                         fontWeight: FontWeight.w600,
                         fontStyle: FontStyle.italic,
-                        shadows: [
+                        shadows: const [
                           Shadow(
                             color: Colors.black45,
                             offset: Offset(0, 1),

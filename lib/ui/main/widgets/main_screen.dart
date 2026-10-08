@@ -1,21 +1,20 @@
 // lib/ui/main/widgets/main_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/ui/animated_indexed_stack.dart';
 import 'package:flutter/services.dart';
-
-import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
-import 'package:pier_pasteleria/ui/cart/widgets/cart_screen.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/orders_screen.dart';
-import 'package:pier_pasteleria/ui/more/widgets/more_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_pasteleria/ui/cart/widgets/cart_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/animated_indexed_stack.dart';
+import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
+import 'package:pier_pasteleria/ui/more/widgets/more_screen.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/orders_screen.dart';
+import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
+import 'package:provider/provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -104,13 +103,11 @@ class _MainScreenState extends State<MainScreen> {
               child: const CartScreen(),
             ),
             // Tab 3 — Pedidos (auth-aware, recrea el navigator al cambiar auth)
-            isAuthenticated
-                ? _NestedNavigator(
+            if (isAuthenticated) _NestedNavigator(
                     key: const ValueKey('pedidos_auth'),
                     navigatorKey: _navigatorKeys[3],
                     child: const OrdersScreen(),
-                  )
-                : _NestedNavigator(
+                  ) else _NestedNavigator(
                     key: const ValueKey('pedidos_guest'),
                     navigatorKey: _navigatorKeys[3],
                     child: const _LoginRequiredView(
@@ -161,7 +158,7 @@ class _MainScreenState extends State<MainScreen> {
                         // Rebote al cambiar la cantidad (la key reinicia el tween)
                         child: TweenAnimationBuilder<double>(
                           key: ValueKey(cart.totalQuantity),
-                          tween: Tween(begin: 1.5, end: 1.0),
+                          tween: Tween(begin: 1.5, end: 1),
                           duration: const Duration(milliseconds: 450),
                           curve: Curves.elasticOut,
                           builder: (_, scale, child) =>
@@ -209,14 +206,12 @@ class _MainScreenState extends State<MainScreen> {
 
 // Widget que encapsula cada Navigator anidado
 class _NestedNavigator extends StatelessWidget {
-  final GlobalKey<NavigatorState> navigatorKey;
-  final Widget child;
 
   const _NestedNavigator({
-    super.key,
-    required this.navigatorKey,
-    required this.child,
+    required this.navigatorKey, required this.child, super.key,
   });
+  final GlobalKey<NavigatorState> navigatorKey;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -230,15 +225,15 @@ class _NestedNavigator extends StatelessWidget {
 
 // Vista para tabs que requieren login
 class _LoginRequiredView extends StatelessWidget {
-  final String title;
-  final String message;
-  final IconData icon;
 
   const _LoginRequiredView({
     required this.title,
     required this.message,
     required this.icon,
   });
+  final String title;
+  final String message;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {

@@ -1,15 +1,15 @@
 // lib/ui/public/widgets/contact_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
@@ -85,7 +85,7 @@ class _ContactScreenState extends State<ContactScreen> {
   }
 
   Future<void> _abrirWhatsApp() async {
-    final digits = _whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
+    final digits = _whatsapp.replaceAll(RegExp('[^0-9]'), '');
     final numero = digits.isNotEmpty ? digits : BusinessInfo.whatsappNumero;
     final uri = Uri.parse(
         'https://wa.me/$numero?text=${Uri.encodeComponent('Hola, tengo una pregunta')}');
@@ -190,7 +190,7 @@ class _ContactScreenState extends State<ContactScreen> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary)),
               const SizedBox(height: 10),
-              Text(
+              const Text(
                 'Gracias por contactarnos. Te responderemos a la brevedad en tu correo electrónico.',
                 style: TextStyle(
                     fontSize: 14,

@@ -1,12 +1,12 @@
 // lib/ui/public/widgets/legal_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
 class LegalScreen extends StatefulWidget {
   const LegalScreen({super.key});
@@ -190,27 +190,27 @@ class _LegalScreenState extends State<LegalScreen>
                     sections: _privacidad != null
                         ? _seccionesDesde(_privacidad!)
                         : [
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Responsable del Tratamiento',
                         content:
                             '${BusinessInfo.marca}, con domicilio en ${BusinessInfo.direccionCompleta}.\nEmail: ${BusinessInfo.email}',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Datos que Recopilamos',
                         content:
                             '• Identificación: Nombre, teléfono, correo electrónico.\n• Acceso digital: Usuario y contraseñas.\n• Transaccionales: Historial de pedidos.\n\nImportante: No almacenamos datos financieros sensibles (tarjetas, CVV).',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Finalidades',
                         content:
                             '• Primarias: Gestión de pedidos y atención a clientes.\n• Secundarias: Envío de promociones (solo con consentimiento).',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Derechos ARCO',
                         content:
                             'Puede ejercer sus derechos de Acceso, Rectificación, Cancelación u Oposición enviando un correo a ${BusinessInfo.email}.\nTiempo de respuesta: Máximo 20 días hábiles.',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Conservación',
                         content:
                             'La información se conservará por un periodo máximo de 5 años tras su última interacción.',
@@ -223,22 +223,22 @@ class _LegalScreenState extends State<LegalScreen>
                     sections: _terminos != null
                         ? _seccionesDesde(_terminos!)
                         : [
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Proceso de Compra',
                         content:
                             'Todos los precios incluyen impuestos. La transacción se confirma una vez procesado el pago.',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Entregas y Envíos',
                         content:
                             'Puedes recoger tu pedido en la sucursal de ${BusinessInfo.ciudad} o solicitar envío a domicilio en las colonias con cobertura. El costo de envío se calcula según la colonia y se muestra antes de pagar.',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Cancelaciones',
                         content:
                             'El cliente puede cancelar únicamente ANTES de que inicie la elaboración. Nos reservamos el derecho de cancelar por falta de insumos, sin cargo al cliente.',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Marco Legal',
                         content:
                             'Para la interpretación de estos términos, las partes se someten a las leyes vigentes en México y a los tribunales de Huejutla de Reyes, Hidalgo.',
@@ -251,17 +251,17 @@ class _LegalScreenState extends State<LegalScreen>
                     sections: _reembolsos != null
                         ? _seccionesDesde(_reembolsos!)
                         : [
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Condiciones de Devolución',
                         content:
                             '• Aplica únicamente el MISMO DÍA de la compra.\n• Debe presentarse al menos el 50% del producto.\n• No aplica en productos manipulados incorrectamente por el cliente.',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Reembolsos',
                         content:
                             'Se gestionan en un máximo de 3 horas hábiles posteriores a la aprobación. Si el error es nuestro, absorbemos el costo total.',
                       ),
-                      _LegalSection(
+                      const _LegalSection(
                         title: 'Garantía',
                         content:
                             'La garantía de frescura es válida únicamente el día de la entrega o recolección.',
@@ -382,7 +382,7 @@ class _LegalScreenState extends State<LegalScreen>
 }
 
 class _LegalSection {
+  const _LegalSection({required this.content, this.title = ''});
   final String title;
   final String content;
-  const _LegalSection({this.title = '', required this.content});
 }

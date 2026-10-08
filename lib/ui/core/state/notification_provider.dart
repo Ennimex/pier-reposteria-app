@@ -5,10 +5,10 @@ import 'package:pier_pasteleria/data/repositories/notificaciones_repository.dart
 import 'package:pier_pasteleria/utils/logger.dart';
 
 class NotificationProvider extends ChangeNotifier {
-  final NotificacionesRepository _repo;
 
   NotificationProvider({NotificacionesRepository? repo})
       : _repo = repo ?? NotificacionesRepository();
+  final NotificacionesRepository _repo;
 
   List<Map<String, dynamic>> _notificaciones = [];
   int _noLeidas = 0;

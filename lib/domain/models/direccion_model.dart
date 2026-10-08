@@ -2,15 +2,7 @@
 //
 // Dirección de entrega del cliente (libreta reutilizable). Fuente:
 // GET /api/direcciones — incluye la zona/tarifa si la colonia tiene cobertura.
-class DireccionCliente {
-  final String id;
-  final String alias;
-  final String calleNumero;
-  final String colonia;
-  final String? referencias;
-  final String? telefonoContacto;
-  final String? zonaNombre;
-  final double? tarifa; // null = sin cobertura de envío en esa colonia
+class DireccionCliente { // null = sin cobertura de envío en esa colonia
 
   const DireccionCliente({
     required this.id,
@@ -22,8 +14,6 @@ class DireccionCliente {
     this.zonaNombre,
     this.tarifa,
   });
-
-  bool get tieneCobertura => tarifa != null;
 
   factory DireccionCliente.fromJson(Map<String, dynamic> json) {
     String? str(dynamic v) {
@@ -44,6 +34,16 @@ class DireccionCliente {
           : null,
     );
   }
+  final String id;
+  final String alias;
+  final String calleNumero;
+  final String colonia;
+  final String? referencias;
+  final String? telefonoContacto;
+  final String? zonaNombre;
+  final double? tarifa;
+
+  bool get tieneCobertura => tarifa != null;
 
   String get lineaResumen {
     final partes = [calleNumero, colonia].where((s) => s.isNotEmpty);

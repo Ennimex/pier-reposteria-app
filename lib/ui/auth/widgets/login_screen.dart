@@ -1,15 +1,15 @@
 // lib/ui/auth/widgets/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/forgot_password_screen.dart';
+import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/utils/validators.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -159,8 +159,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.textPrimary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 6),
-                Text('Inicia sesión para continuar',
-                    style: const TextStyle(
+                const Text('Inicia sesión para continuar',
+                    style: TextStyle(
                         fontSize: 15, color: AppColors.textSecondary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 32),
@@ -208,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) =>
-                                ForgotPasswordScreen())),
+                                const ForgotPasswordScreen())),
                     child: Text('¿Olvidaste tu contraseña?',
                         style: TextStyle(
                             color: AppColors.pierDorado,
@@ -248,10 +248,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Divider(
                           color: AppColors.textSecondary
                               .withValues(alpha: 0.3))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14),
                     child: Text('O continúa con',
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.textSecondary, fontSize: 13)),
                   ),
                   Expanded(
@@ -307,8 +307,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('¿No tienes cuenta?',
-                        style: const TextStyle(
+                    const Text('¿No tienes cuenta?',
+                        style: TextStyle(
                             color: AppColors.textSecondary)),
                     TextButton(
                       onPressed: () => Navigator.push(

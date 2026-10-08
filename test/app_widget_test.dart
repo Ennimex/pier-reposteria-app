@@ -76,7 +76,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: _providers(api),
-          child: MyApp(initialLocation: AppRoutes.login),
+          child: const MyApp(initialLocation: AppRoutes.login),
         ),
       );
       await tester.pumpAndSettle();

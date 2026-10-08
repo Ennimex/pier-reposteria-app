@@ -1,12 +1,12 @@
 // lib/ui/public/widgets/about_us_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
 class AboutUsScreen extends StatefulWidget {
   const AboutUsScreen({super.key});
@@ -65,7 +65,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
     if (cfg is! Map) return;
 
     final historia = parseConfigValor(cfg['historia']);
-    String? titulo, contenido, fundacion;
+    String? titulo;
+    String? contenido;
+    String? fundacion;
     if (historia is Map) {
       titulo = configTexto(historia['titulo']);
       contenido = configTexto(historia['contenido']);
@@ -143,7 +145,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   Image.network(
                     'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&fit=crop',
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
+                    errorBuilder: (_, _, _) => ColoredBox(
                       color: AppColors.pierVerdeOscuro,
                       child: const Icon(LucideIcons.store,
                           color: Colors.white54, size: 60),

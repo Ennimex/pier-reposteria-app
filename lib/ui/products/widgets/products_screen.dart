@@ -1,23 +1,24 @@
 // lib/ui/products/widgets/products_screen.dart
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/services/demanda_service.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
+import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }
 
@@ -36,9 +37,6 @@ IconData _iconForCategoria(String nombre) {
 }
 
 class ProductsScreen extends StatefulWidget {
-  final String? initialCategory;
-  final ProductosRepository? productosRepository;
-  final FavoritosRepository? favoritosRepository;
 
   const ProductsScreen({
     super.key,
@@ -46,6 +44,9 @@ class ProductsScreen extends StatefulWidget {
     this.productosRepository,
     this.favoritosRepository,
   });
+  final String? initialCategory;
+  final ProductosRepository? productosRepository;
+  final FavoritosRepository? favoritosRepository;
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -54,9 +55,9 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen>
     with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  late final _productosRepo =
+  late final ProductosRepository _productosRepo =
       widget.productosRepository ?? ProductosRepository();
-  late final _favoritosRepo =
+  late final FavoritosRepository _favoritosRepo =
       widget.favoritosRepository ?? FavoritosRepository();
 
   SortOption _sort = SortOption.popular;
@@ -265,7 +266,7 @@ class _ProductsScreenState extends State<ProductsScreen>
       // Sin sesión: limpiar los corazones del usuario anterior (la
       // pestaña vive en el IndexedStack y conservaba el set viejo,
       // mostrando productos como "favoritos" siendo invitado).
-      if (_favoritos.isNotEmpty) setState(() => _favoritos.clear());
+      if (_favoritos.isNotEmpty) setState(_favoritos.clear);
       return;
     }
     final result = await _favoritosRepo.ids();
@@ -297,7 +298,7 @@ class _ProductsScreenState extends State<ProductsScreen>
       final c = AnimationController(
           vsync: this, duration: const Duration(milliseconds: 500));
       _cartControllers[id] = c;
-      _cartAnims[id] = Tween<double>(begin: 1.0, end: 1.3).animate(
+      _cartAnims[id] = Tween<double>(begin: 1, end: 1.3).animate(
           CurvedAnimation(parent: c, curve: Curves.elasticOut));
     }
     return _cartControllers[id]!;
@@ -612,7 +613,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                 if (!_filtrosLoaded)
                   Center(
                     child: Padding(
-                      padding: EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(20),
                       child: CircularProgressIndicator(color: AppColors.pierVerde),
                     ),
                   ),
@@ -1030,7 +1031,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               Hero(
                 tag: 'producto-img-${p.id}',
                 child: Image.network(p.imagenUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, e, __) => Container(
+                    errorBuilder: (_, e, _) => ColoredBox(
                       color: AppColors.pierArena,
                       child: Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 40),
                     )),
@@ -1095,7 +1096,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                       // Pop solo al marcar (al desmarcar entra sin rebote)
                       tween: Tween(
                           begin: _favoritos.contains(p.id) ? 1.6 : 1.0,
-                          end: 1.0),
+                          end: 1),
                       duration: const Duration(milliseconds: 450),
                       curve: Curves.elasticOut,
                       builder: (_, scale, child) =>
@@ -1150,7 +1151,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(p.descripcion,
-                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary, height: 1.3),
+                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, height: 1.3),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1159,7 +1160,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                       const Icon(Icons.star_rounded, color: Colors.amber, size: 13),
                       const SizedBox(width: 3),
                       Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '—',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                     ]),
                     Consumer<CartProvider>(
                       builder: (context, cart, child) {
@@ -1214,7 +1215,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               Hero(
                 tag: 'producto-img-${p.id}',
                 child: Image.network(p.imagenUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, e, __) => Container(
+                    errorBuilder: (_, e, _) => ColoredBox(
                       color: AppColors.pierArena,
                       child: Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 36),
                     )),
@@ -1272,7 +1273,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                       key: ValueKey(_favoritos.contains(p.id)),
                       tween: Tween(
                           begin: _favoritos.contains(p.id) ? 1.6 : 1.0,
-                          end: 1.0),
+                          end: 1),
                       duration: const Duration(milliseconds: 450),
                       curve: Curves.elasticOut,
                       builder: (_, scale, child) =>
@@ -1300,7 +1301,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(p.descripcion,
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1325,7 +1326,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                           const Icon(Icons.star_rounded, color: Colors.amber, size: 12),
                           const SizedBox(width: 3),
                           Text(p.rating > 0 ? p.rating.toStringAsFixed(1) : '—',
-                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                         ]),
                       ],
                     ),
@@ -1419,7 +1420,7 @@ class _ProductsScreenState extends State<ProductsScreen>
           const Text('Sin resultados',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          Text('Intenta con otros términos\no ajusta los filtros',
+          const Text('Intenta con otros términos\no ajusta los filtros',
               textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: AppColors.textSecondary)),
           const SizedBox(height: 24),
           ElevatedButton.icon(

@@ -3,19 +3,20 @@
 // Confirma una entrega: quién recibió, evidencia opcional y (si aplica) cobro
 // en efectivo. Marca la entrega como "entregada".
 import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
+import 'package:provider/provider.dart';
 
 class ConfirmarEntregaScreen extends StatefulWidget {
+  const ConfirmarEntregaScreen({required this.entrega, super.key});
   final EntregaRepartidor entrega;
-  const ConfirmarEntregaScreen({super.key, required this.entrega});
 
   @override
   State<ConfirmarEntregaScreen> createState() => _ConfirmarEntregaScreenState();
@@ -301,7 +302,7 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
               children: [
                 Text(
                   esEfectivo ? 'Cobro en efectivo' : 'Pagado en la app',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,

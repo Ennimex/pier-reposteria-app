@@ -22,7 +22,7 @@ class Validators {
   /// Contraseña nueva (registro): longitud mínima, una letra y un número.
   static String? passwordNueva(String? v) {
     if (v == null || v.length < 6) return 'Mínimo 6 caracteres';
-    if (!RegExp(r'[a-zA-Z]').hasMatch(v)) {
+    if (!RegExp('[a-zA-Z]').hasMatch(v)) {
       return 'Debe contener al menos 1 letra';
     }
     if (!RegExp(r'\d').hasMatch(v)) return 'Debe contener al menos 1 número';

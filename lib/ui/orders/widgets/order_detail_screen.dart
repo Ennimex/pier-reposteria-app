@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 class OrderDetailScreen extends StatefulWidget {
+  const OrderDetailScreen({required this.order, super.key});
   final Order order;
-  const OrderDetailScreen({super.key, required this.order});
 
   @override
   State<OrderDetailScreen> createState() => _OrderDetailScreenState();
@@ -651,15 +651,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     switch (status) {
       case OrderStatus.pending:
         label = _order.porConfirmar ? 'Por confirmar' : 'Pendiente';
-        break;
-      case OrderStatus.preparing:  label = 'Preparando'; break;
-      case OrderStatus.ready:      label = 'Listo'; break;
-      case OrderStatus.completed:  label = 'Completado'; break;
-      case OrderStatus.cancelled:  label = 'Cancelado'; break;
-      case OrderStatus.assigned:       label = 'Asignado'; break;
-      case OrderStatus.onTheWay:       label = 'En camino'; break;
-      case OrderStatus.delivered:      label = 'Entregado'; break;
-      case OrderStatus.deliveryFailed: label = 'Entrega fallida'; break;
+      case OrderStatus.preparing:  label = 'Preparando';
+      case OrderStatus.ready:      label = 'Listo';
+      case OrderStatus.completed:  label = 'Completado';
+      case OrderStatus.cancelled:  label = 'Cancelado';
+      case OrderStatus.assigned:       label = 'Asignado';
+      case OrderStatus.onTheWay:       label = 'En camino';
+      case OrderStatus.delivered:      label = 'Entregado';
+      case OrderStatus.deliveryFailed: label = 'Entrega fallida';
     }
     return Container(
       padding:

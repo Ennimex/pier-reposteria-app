@@ -3,15 +3,15 @@
 // "Perfil" del repartidor: datos, estado de servicio (disponibilidad),
 // métricas del día y cerrar sesión.
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
+import 'package:provider/provider.dart';
 
 class PerfilRepartidorScreen extends StatelessWidget {
   const PerfilRepartidorScreen({super.key});
@@ -170,7 +170,7 @@ class PerfilRepartidorScreen extends StatelessWidget {
                 value: provider.disponible,
                 activeThumbColor: Colors.white,
                 activeTrackColor: AppColors.pierVerde,
-                onChanged: (v) => provider.setDisponible(v),
+                onChanged: provider.setDisponible,
               ),
             ],
           ),

@@ -11,7 +11,6 @@ class AppTheme {
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.pierVerde,
-      brightness: Brightness.light,
     ).copyWith(
       primary: AppColors.pierVerde,
       secondary: AppColors.pierDorado,
@@ -33,10 +32,10 @@ class AppTheme {
       // Transición de rutas: slide desde la derecha con parallax (estilo
       // Cupertino) para TODOS los Navigator.push; en iOS además habilita
       // el gesto de regresar deslizando desde el borde.
-      pageTransitionsTheme: PageTransitionsTheme(
+      pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: const CupertinoPageTransitionsBuilder(),
-          TargetPlatform.iOS: const CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         },
       ),
 

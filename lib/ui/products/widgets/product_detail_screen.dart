@@ -1,30 +1,31 @@
 // lib/ui/products/widgets/product_detail_screen.dart
-import 'dart:io';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/services/demanda_service.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/create_review_screen.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/product_reviews_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ProductDetailScreen extends StatefulWidget {
+  const ProductDetailScreen({required this.product, super.key});
   final Product product;
-  const ProductDetailScreen({super.key, required this.product});
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -74,7 +75,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
     _cartAnimController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 500));
-    _cartAnim = Tween<double>(begin: 1.0, end: 1.08).animate(
+    _cartAnim = Tween<double>(begin: 1, end: 1.08).animate(
         CurvedAnimation(parent: _cartAnimController, curve: Curves.elasticOut));
 
     _cargarDetalle();
@@ -101,7 +102,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       final c = AnimationController(
           vsync: this, duration: const Duration(milliseconds: 500));
       _relatedCartControllers[id] = c;
-      _relatedCartAnims[id] = Tween<double>(begin: 1.0, end: 1.3).animate(
+      _relatedCartAnims[id] = Tween<double>(begin: 1, end: 1.3).animate(
           CurvedAnimation(parent: c, curve: Curves.elasticOut));
     }
     return _relatedCartControllers[id]!;
@@ -199,7 +200,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       final data =
           List<Map<String, dynamic>>.from(result['recomendaciones'] ?? []);
       final items = data
-          .map((json) => Product.fromJson(json))
+          .map(Product.fromJson)
           .where((p) => p.id.isNotEmpty && p.id != widget.product.id)
           .toList();
       PierLog.info('✅ ${items.length} recomendaciones cargadas');
@@ -288,7 +289,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ));
   }
 
-  void _shareProduct() async {
+  Future<void> _shareProduct() async {
     if (_isSharing) return;
     setState(() => _isSharing = true);
     PierLog.info('Compartiendo: ${widget.product.nombre}');
@@ -383,7 +384,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       itemBuilder: (context, i) => Image.network(
                         _images[i],
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, _) => Container(
+                        errorBuilder: (context, error, _) => ColoredBox(
                           color: AppColors.pierArena,
                           child: const Icon(LucideIcons.image,
                               size: 60, color: AppColors.textSecondary),
@@ -404,7 +405,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             key: ValueKey(_isFavorite),
                             // Pop solo al marcar favorito
                             tween: Tween(
-                                begin: _isFavorite ? 1.35 : 1.0, end: 1.0),
+                                begin: _isFavorite ? 1.35 : 1.0, end: 1),
                             duration: const Duration(milliseconds: 450),
                             curve: Curves.elasticOut,
                             builder: (_, scale, child) =>
@@ -491,7 +492,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               decoration: BoxDecoration(
                 color: AppColors.pierArena,
                 borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24)),
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
@@ -562,7 +563,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           ),
                           const SizedBox(width: 4),
                           Text('($totalResenas)',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 13, color: AppColors.textSecondary)),
                         ]),
                       ],
@@ -624,7 +625,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
                     Text(
                       widget.product.descripcion,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
                           height: 1.5),
@@ -746,7 +747,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Total',
+                              const Text('Total',
                                   style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textSecondary)),
@@ -770,8 +771,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             ),
                             child: Row(children: [
                               _qtyBtn(LucideIcons.minus, () {
-                                if (_quantity > 1)
+                                if (_quantity > 1) {
                                   setState(() => _quantity--);
+                                }
                               }),
                               Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -782,8 +784,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                         fontWeight: FontWeight.bold)),
                               ),
                               _qtyBtn(LucideIcons.plus, () {
-                                if (_quantity < 10)
+                                if (_quantity < 10) {
                                   setState(() => _quantity++);
+                                }
                               }),
                             ]),
                           ),
@@ -905,7 +908,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           child: Row(children: [
                             Icon(LucideIcons.pencil,
                                 color: AppColors.pierVerde, size: 16),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             Text('Escribir',
                                 style: TextStyle(
                                     fontSize: 13,
@@ -916,14 +919,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _loadingResenas
-                        ? Center(
+                    if (_loadingResenas) Center(
                             child: CircularProgressIndicator(
-                                color: AppColors.pierVerde))
-                        : _resenas.isEmpty
-                            ? Padding(
+                                color: AppColors.pierVerde)) else _resenas.isEmpty
+                            ? const Padding(
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                    EdgeInsets.symmetric(vertical: 12),
                                 child: Text('Aún no hay opiniones.',
                                     style: TextStyle(
                                         color: AppColors.textSecondary,
@@ -1088,7 +1089,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   Image.network(
                     p.imagenUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => ColoredBox(
                       color: AppColors.pierArena,
                       child: Icon(LucideIcons.cake,
                           color: AppColors.pierVerde, size: 40),
@@ -1229,7 +1230,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         const SizedBox(height: 3),
                         // Descripción
                         Text(p.descripcion,
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontSize: 10,
                                 color: AppColors.textSecondary,
                                 height: 1.3),
@@ -1253,7 +1254,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       const SizedBox(width: 3),
                       Text(
                         p.rating > 0 ? p.rating.toStringAsFixed(1) : '—',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 10,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w600),
@@ -1331,6 +1332,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
 // ── ReviewItemWidget ──────────────────────────────────────────────────────────
 class ReviewItemWidget extends StatefulWidget {
+
+  const ReviewItemWidget({
+    required this.id, required this.name, required this.rating, required this.comment, required this.date, required this.likesCount, required this.hasLiked, super.key,
+  });
   final String id;
   final String name;
   final double rating;
@@ -1338,17 +1343,6 @@ class ReviewItemWidget extends StatefulWidget {
   final String date;
   final int likesCount;
   final bool hasLiked;
-
-  const ReviewItemWidget({
-    super.key,
-    required this.id,
-    required this.name,
-    required this.rating,
-    required this.comment,
-    required this.date,
-    required this.likesCount,
-    required this.hasLiked,
-  });
 
   @override
   State<ReviewItemWidget> createState() => _ReviewItemWidgetState();
@@ -1496,7 +1490,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
       ),
       const SizedBox(height: 10),
       Text(widget.comment,
-          style: TextStyle(
+          style: const TextStyle(
               fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
     ]);
   }

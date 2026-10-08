@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class NotificacionesRepository {
-  final ApiClient _api;
   NotificacionesRepository({ApiClient? api}) : _api = api ?? ApiService();
+  final ApiClient _api;
 
   /// GET /notificaciones
   Future<Map<String, dynamic>> listar() => _api.getAuth(ApiConstants.notificaciones);

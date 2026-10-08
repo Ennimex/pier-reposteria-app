@@ -1,33 +1,33 @@
 // lib/ui/more/widgets/more_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/app_version.dart';
+import 'package:pier_pasteleria/config/business_info.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/public/widgets/about_us_screen.dart';
-import 'package:pier_pasteleria/ui/public/widgets/faq_screen.dart';
-import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
-import 'package:pier_pasteleria/ui/public/widgets/legal_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
-import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
-import 'package:pier_pasteleria/ui/refunds/widgets/refunds_screen.dart';
-import 'package:pier_pasteleria/ui/reviews/widgets/my_reviews_screen.dart';
 import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
 import 'package:pier_pasteleria/ui/more/widgets/quejas_screen.dart'; // ✅ NUEVO
 import 'package:pier_pasteleria/ui/more/widgets/vincular_alexa_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
+import 'package:pier_pasteleria/ui/public/widgets/about_us_screen.dart';
+import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_pasteleria/ui/public/widgets/faq_screen.dart';
+import 'package:pier_pasteleria/ui/public/widgets/legal_screen.dart';
+import 'package:pier_pasteleria/ui/refunds/widgets/refunds_screen.dart';
+import 'package:pier_pasteleria/ui/reviews/widgets/my_reviews_screen.dart';
+import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:provider/provider.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -144,7 +144,7 @@ class _MoreScreenState extends State<MoreScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Cancelar',
+            child: const Text('Cancelar',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
@@ -277,7 +277,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: LucideIcons.messageCircle,
                 iconColor: AppColors.pierDoradoOscuro,
                 title: 'Quejas y Sugerencias',
-                onTap: () => _goProtected(QuejasScreen()),
+                onTap: () => _goProtected(const QuejasScreen()),
               ),
               _buildDivider(),
               _buildTile(
@@ -452,8 +452,7 @@ class _MoreScreenState extends State<MoreScreen> {
                   color: AppColors.textPrimary,
                   fontFamily: 'Playfair Display')),
           const SizedBox(height: 12),
-          _loadingConfig
-              ? Container(
+          if (_loadingConfig) Container(
                   height: 100,
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -463,8 +462,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     child: CircularProgressIndicator(
                         color: AppColors.pierVerde, strokeWidth: 2),
                   ),
-                )
-              : Container(
+                ) else Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: AppColors.pierVerdeOscuro,
@@ -680,7 +678,7 @@ class _MoreScreenState extends State<MoreScreen> {
           Image.network(
             'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&fit=crop',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => ColoredBox(
               color: AppColors.pierVerdeOscuro,
               child: const Icon(LucideIcons.croissant,
                   color: Colors.white54, size: 60),
@@ -774,7 +772,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       fotoUrl,
                       width: 52, height: 52,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
+                      errorBuilder: (_, _, _) => Center(
                         child: Text(
                             iniciales.isNotEmpty ? iniciales : 'U',
                             style: TextStyle(
@@ -862,19 +860,17 @@ class _MoreScreenState extends State<MoreScreen> {
           ],
         ),
         child: Column(children: [
-          _loadingStats
-              ? SizedBox(
+          if (_loadingStats) SizedBox(
                   height: 20, width: 20,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.pierVerde))
-              : Text(value,
+                      strokeWidth: 2, color: AppColors.pierVerde)) else Text(value,
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerde)),
           const SizedBox(height: 4),
           Text(label,
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ]),
       ),
     );
@@ -910,7 +906,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 color: AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(sub,
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ]),
     );
   }

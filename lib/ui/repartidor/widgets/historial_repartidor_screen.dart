@@ -3,13 +3,13 @@
 // "Historial": entregas finalizadas hoy (entregadas y fallidas) + total del día.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/entrega_detail_screen.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:provider/provider.dart';
 
 class HistorialRepartidorScreen extends StatelessWidget {
   const HistorialRepartidorScreen({super.key});
@@ -104,8 +104,8 @@ class HistorialRepartidorScreen extends StatelessWidget {
 }
 
 class _HistorialItem extends StatelessWidget {
-  final EntregaRepartidor entrega;
   const _HistorialItem({required this.entrega});
+  final EntregaRepartidor entrega;
 
   @override
   Widget build(BuildContext context) {
@@ -204,8 +204,8 @@ class _HistorialItem extends StatelessWidget {
 }
 
 class _TotalDiaBar extends StatelessWidget {
-  final EntregasProvider provider;
   const _TotalDiaBar({required this.provider});
+  final EntregasProvider provider;
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +217,6 @@ class _TotalDiaBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

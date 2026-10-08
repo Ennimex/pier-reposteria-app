@@ -1,14 +1,14 @@
 // lib/ui/core/ui/order_card.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 
 class OrderCard extends StatelessWidget {
+
+  const OrderCard({required this.order, required this.onTap, super.key});
   final Order order;
   final VoidCallback onTap;
-
-  const OrderCard({super.key, required this.order, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

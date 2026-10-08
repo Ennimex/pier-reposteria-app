@@ -1,29 +1,30 @@
 // lib/ui/home/widgets/home_screen.dart
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
-import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
+import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
@@ -211,16 +212,12 @@ class _HomeScreenState extends State<HomeScreen>
         switch (tipo) {
           case 'banner':
             banner ??= p; // tomar solo el primero
-            break;
           case 'relampago':
             if (p['producto_id'] != null) relampago.add(p);
-            break;
           case 'temporada':
             if (p['producto_id'] != null) temporada.add(p);
-            break;
           case 'destacado':
             if (p['producto_id'] != null) destacado.add(p);
-            break;
         }
       }
 
@@ -316,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen>
         final titulo = (hero is Map) ? hero['titulo']?.toString() ?? '' : '';
         if (titulo.isNotEmpty) {
           slides = _heroSlides
-              .map((s) => Map<String, String>.from(s))
+              .map(Map<String, String>.from)
               .toList();
           slides[0]['title'] = titulo;
           final subtitulo = hero['subtitulo']?.toString() ?? '';
@@ -443,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen>
             if (productProvider.isLoading)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.all(40),
+                  padding: const EdgeInsets.all(40),
                   child: Center(child: CircularProgressIndicator(
                       color: AppColors.pierVerde)),
                 ),
@@ -534,7 +531,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text('Descubre algo dulce hoy',
+                const Text('Descubre algo dulce hoy',
                     style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
             ),
@@ -611,14 +608,12 @@ class _HomeScreenState extends State<HomeScreen>
         icon = LucideIcons.cookingPot;
         mensaje = 'Pedido #$numero en preparación';
         color = AppColors.estadoPreparacion;
-        break;
       case 'listo':
         icon = Icons.check_circle_outline_rounded;
         mensaje = _pedidoActivo!['tipo_entrega'] == 'domicilio'
             ? 'Pedido #$numero listo, buscando repartidor'
             : 'Pedido #$numero listo para recoger';
         color = AppColors.pierVerde;
-        break;
       default:
         // 'pendiente' ahora es exclusivo de los pedidos programados que el
         // personal debe confirmar (backend: por_confirmar).
@@ -741,7 +736,7 @@ class _HomeScreenState extends State<HomeScreen>
                   fit: StackFit.expand,
                   children: [
                     Image.network(slide['image']!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorBuilder: (_, _, _) => ColoredBox(
                           color: AppColors.pierVerdeOscuro,
                           child: const Icon(LucideIcons.cake,
                               color: Colors.white, size: 60),
@@ -1003,7 +998,7 @@ class _HomeScreenState extends State<HomeScreen>
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: AppColors.pierVerdeOscuro)),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Icon(LucideIcons.arrowRight,
                           color: AppColors.pierVerdeOscuro, size: 16),
                     ],
@@ -1083,7 +1078,7 @@ class _HomeScreenState extends State<HomeScreen>
                       final pp =
                           Provider.of<ProductProvider>(context, listen: false);
                       final producto = pp.productos.firstWhere(
-                        (p) => p.id.toString() == productoId,
+                        (p) => p.id == productoId,
                         orElse: () => Product(
                             id: '', nombre: '', descripcion: '',
                             precio: 0, categoria: '', imagenUrl: ''),
@@ -1112,12 +1107,10 @@ class _HomeScreenState extends State<HomeScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Stack(fit: StackFit.expand, children: [
-                        imagenUrl.isNotEmpty
-                            ? Image.network(imagenUrl,
+                        if (imagenUrl.isNotEmpty) Image.network(imagenUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    Container(color: gradientColor))
-                            : Container(color: gradientColor),
+                                errorBuilder: (_, _, _) =>
+                                    Container(color: gradientColor)) else Container(color: gradientColor),
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -1298,7 +1291,7 @@ class _HomeScreenState extends State<HomeScreen>
                       final pp =
                           Provider.of<ProductProvider>(context, listen: false);
                       final producto = pp.productos.firstWhere(
-                        (p) => p.id.toString() == productoId,
+                        (p) => p.id == productoId,
                         orElse: () => Product(
                             id: '', nombre: '', descripcion: '',
                             precio: 0, categoria: '', imagenUrl: ''),
@@ -1330,9 +1323,7 @@ class _HomeScreenState extends State<HomeScreen>
     required String titulo,
     required String subtitulo,
     required String precio,
-    String? precioOriginal,
-    required Color accent,
-    required VoidCallback onTap,
+    required Color accent, required VoidCallback onTap, String? precioOriginal,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -1357,14 +1348,12 @@ class _HomeScreenState extends State<HomeScreen>
                 height: 115,
                 width: double.infinity,
                 child: Stack(fit: StackFit.expand, children: [
-                  imagenUrl.isNotEmpty
-                      ? Image.network(imagenUrl, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                  if (imagenUrl.isNotEmpty) Image.network(imagenUrl, fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => ColoredBox(
                             color: accent.withValues(alpha: 0.12),
                             child: Icon(LucideIcons.cake,
                                 color: accent, size: 40),
-                          ))
-                      : Container(
+                          )) else ColoredBox(
                           color: accent.withValues(alpha: 0.12),
                           child: Icon(LucideIcons.cake,
                               color: accent, size: 40),
@@ -1433,7 +1422,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(subtitulo,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       fontSize: 10,
                                       color: AppColors.textSecondary),
                                   maxLines: 1,
@@ -1524,7 +1513,7 @@ class _HomeScreenState extends State<HomeScreen>
                     color: AppColors.textPrimary)),
           ]),
           const SizedBox(height: 4),
-          Text('Seleccionados especialmente para ti',
+          const Text('Seleccionados especialmente para ti',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 14),
           ...(_promoDestacado.map((promo) {
@@ -1553,7 +1542,7 @@ class _HomeScreenState extends State<HomeScreen>
                   final pp =
                       Provider.of<ProductProvider>(context, listen: false);
                   final producto = pp.productos.firstWhere(
-                    (p) => p.id.toString() == productoId,
+                    (p) => p.id == productoId,
                     orElse: () => Product(
                         id: '', nombre: '', descripcion: '',
                         precio: 0, categoria: '', imagenUrl: ''),
@@ -1587,15 +1576,13 @@ class _HomeScreenState extends State<HomeScreen>
                       SizedBox(
                         width: 110,
                         child: Stack(fit: StackFit.expand, children: [
-                          imagenUrl.isNotEmpty
-                              ? Image.network(imagenUrl,
+                          if (imagenUrl.isNotEmpty) Image.network(imagenUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
+                                  errorBuilder: (_, _, _) => ColoredBox(
                                     color: AppColors.pierArena,
                                     child: Icon(LucideIcons.cake,
                                         color: AppColors.pierDorado, size: 36),
-                                  ))
-                              : Container(
+                                  )) else ColoredBox(
                                   color: AppColors.pierArena,
                                   child: Icon(LucideIcons.cake,
                                       color: AppColors.pierDorado, size: 36),
@@ -1754,7 +1741,7 @@ class _HomeScreenState extends State<HomeScreen>
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: display.map((cat) {
               final nombre = (cat['nombre'] ?? cat['name'] ?? '').toString();
-              final IconData icon = cat['icon'] != null
+              final icon = cat['icon'] != null
                   ? cat['icon'] as IconData
                   : _iconForCategoria(nombre);
               final total = conteos[nombre] ?? 0;
@@ -1804,7 +1791,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(nombre,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary)),
@@ -1827,7 +1814,7 @@ class _HomeScreenState extends State<HomeScreen>
               p['precio_chico']?.toString() ?? '0') ??
           0.0;
       return provider.productos.firstWhere(
-        (prod) => prod.id.toString() == p['id']?.toString(),
+        (prod) => prod.id == p['id']?.toString(),
         orElse: () => Product(
           id: p['id']?.toString() ?? '',
           nombre: p['nombre'] ?? '',
@@ -1855,8 +1842,8 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           Row(children: [
             Icon(Icons.star_rounded, color: AppColors.pierDorado, size: 20),
-            SizedBox(width: 6),
-            Text('Lo que dicen nuestros clientes',
+            const SizedBox(width: 6),
+            const Text('Lo que dicen nuestros clientes',
                 style: TextStyle(
                     fontFamily: 'Playfair Display',
                     fontSize: 17,
@@ -1914,7 +1901,7 @@ class _HomeScreenState extends State<HomeScreen>
                               overflow: TextOverflow.ellipsis),
                           if (producto.isNotEmpty)
                             Text(producto,
-                                style: TextStyle(
+                                style: const TextStyle(
                                     fontSize: 11, color: AppColors.textSecondary)),
                         ],
                       ),
@@ -1931,7 +1918,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ]),
                   const SizedBox(height: 10),
                   Text(comentario,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 13, color: AppColors.textSecondary, height: 1.5),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis),
@@ -1960,7 +1947,7 @@ class _HomeScreenState extends State<HomeScreen>
     final lista = raw
         .whereType<Map>()
         .where((s) => (s['sucursal']?.toString() ?? '').isNotEmpty)
-        .map((s) => Map<String, dynamic>.from(s))
+        .map(Map<String, dynamic>.from)
         .toList();
     return lista.length >= 2 ? lista.take(2).toList() : const [];
   }
@@ -2219,8 +2206,7 @@ class _HomeScreenState extends State<HomeScreen>
   // ── SECCIÓN DE PRODUCTOS ──────────────────────────────────────────
   Widget _buildProductSection({
     required String title,
-    IconData? titleIcon,
-    required List<Product> productos,
+    required List<Product> productos, IconData? titleIcon,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 24, 0, 0),
@@ -2265,7 +2251,7 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: productos.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
                 final p = productos[i];
                 return GestureDetector(
@@ -2296,7 +2282,7 @@ class _HomeScreenState extends State<HomeScreen>
                               fit: StackFit.expand,
                               children: [
                                 Image.network(p.imagenUrl, fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
+                                    errorBuilder: (_, _, _) => ColoredBox(
                                       color: AppColors.pierArena,
                                       child: Icon(LucideIcons.cake,
                                           color: AppColors.pierVerde, size: 40),
@@ -2414,7 +2400,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           overflow: TextOverflow.ellipsis),
                                       const SizedBox(height: 3),
                                       Text(p.descripcion,
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                               fontSize: 10,
                                               color: AppColors.textSecondary,
                                               height: 1.3),
@@ -2430,7 +2416,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       p.rating > 0
                                           ? p.rating.toStringAsFixed(1)
                                           : '—',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                           fontSize: 10,
                                           color: AppColors.textSecondary,
                                           fontWeight: FontWeight.w600),
@@ -2505,7 +2491,7 @@ class _HomeScreenState extends State<HomeScreen>
                         color: AppColors.pierVerde.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(f['icon'] as IconData,
+                      child: Icon(f['icon']! as IconData,
                           color: AppColors.pierVerde, size: 20),
                     ),
                     const SizedBox(width: 10),
@@ -2514,13 +2500,13 @@ class _HomeScreenState extends State<HomeScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(f['title'] as String,
+                          Text(f['title']! as String,
                               style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary)),
-                          Text(f['desc'] as String,
-                              style: TextStyle(
+                          Text(f['desc']! as String,
+                              style: const TextStyle(
                                   fontSize: 10, color: AppColors.textSecondary)),
                         ],
                       ),

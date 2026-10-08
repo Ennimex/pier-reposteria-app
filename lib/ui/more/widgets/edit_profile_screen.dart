@@ -1,12 +1,12 @@
 // lib/ui/more/widgets/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -199,7 +199,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: 10),
                       Center(
                         child: Text(email,
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textSecondary)),
                       ),
@@ -259,7 +259,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(email,
-                                style: TextStyle(
+                                style: const TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textSecondary)),
                           ),
@@ -267,8 +267,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               color: AppColors.textSecondary.withValues(alpha: 0.5), size: 16),
                         ]),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
                         child: Text(
                             'El correo no puede ser modificado.',
                             style: TextStyle(
@@ -312,13 +312,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
 
                       const SizedBox(height: 20),
-                      Center(
+                      const Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(LucideIcons.award,
                                 color: AppColors.textSecondary, size: 14),
-                            const SizedBox(width: 5),
+                            SizedBox(width: 5),
                             Text('Cliente Distinguido Pier',
                                 style: TextStyle(
                                     fontSize: 12,

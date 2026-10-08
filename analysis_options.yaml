@@ -1,28 +1,24 @@
-# This file configures the analyzer, which statically analyzes Dart code to
-# check for errors, warnings, and lints.
+# Análisis estático del proyecto (#18): very_good_analysis con una adopción
+# gradual. Cada excepción dice por qué existe y cuándo se retira.
 #
-# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
-# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
-# invoked from the command line by running `flutter analyze`.
+# Para silenciar un aviso puntual se puede usar `// ignore: nombre_de_regla`
+# en la línea, siempre con un comentario que explique el motivo.
+include: package:very_good_analysis/analysis_options.yaml
 
-# The following line activates a set of recommended lints for Flutter apps,
-# packages, and plugins designed to encourage good coding practices.
-include: package:flutter_lints/flutter.yaml
+analyzer:
+  language:
+    # Los modos estrictos marcan cada uso de los Map crudos del backend sin
+    # convertirlos de tipo (81 errores al adoptar el set). Se encienden cuando
+    # cada pantalla tenga su ViewModel con datos tipados (MVVM, Fases 3 a 5).
+    strict-casts: false
+    strict-inference: false
+    strict-raw-types: false
 
 linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
-
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+    # Pier es una app, no un paquete publicado: documentar cada miembro
+    # público (642 avisos) no aporta a quien la mantiene.
+    public_member_api_docs: false
+    # El límite de 80 columnas choca con los árboles de widgets anidados y
+    # con los textos de la interfaz (352 avisos) sin mejorar la lectura.
+    lines_longer_than_80_chars: false

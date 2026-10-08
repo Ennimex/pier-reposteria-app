@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class CuentaRepository {
-  final ApiClient _api;
   CuentaRepository({ApiClient? api}) : _api = api ?? ApiService();
+  final ApiClient _api;
 
   /// PUT /usuarios/perfil/actualizar
   Future<Map<String, dynamic>> actualizarPerfil(Map<String, dynamic> body) =>

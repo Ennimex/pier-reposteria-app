@@ -1,12 +1,12 @@
 // lib/ui/core/state/auth_provider.dart
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
 
 class AuthProvider with ChangeNotifier {
-  final AuthRepository _authService;
 
   AuthProvider({AuthRepository? auth}) : _authService = auth ?? AuthRepository();
+  final AuthRepository _authService;
 
   bool _isAuthenticated = false;
   bool _isLoading = false;
@@ -138,7 +138,7 @@ class AuthProvider with ChangeNotifier {
 
   // Reenviar código
   Future<Map<String, dynamic>> resendVerificationCode(String email) async {
-    return await _authService.resendVerificationCode(email);
+    return _authService.resendVerificationCode(email);
   }
 
   // Logout
@@ -151,7 +151,7 @@ class AuthProvider with ChangeNotifier {
 
   // Solicitar reset de contraseña
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
-    return await _authService.requestPasswordReset(email);
+    return _authService.requestPasswordReset(email);
   }
 
   // Restablecer contraseña
@@ -160,7 +160,7 @@ class AuthProvider with ChangeNotifier {
     required String codigo,
     required String nuevaPassword,
   }) async {
-    return await _authService.resetPassword(
+    return _authService.resetPassword(
       email: email,
       codigo: codigo,
       nuevaPassword: nuevaPassword,

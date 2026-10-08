@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class PedidosRepository {
-  final ApiClient _api;
   PedidosRepository({ApiClient? api}) : _api = api ?? ApiService();
+  final ApiClient _api;
 
   /// GET /pedidos/mis-pedidos
   Future<Map<String, dynamic>> misPedidos() => _api.getAuth(ApiConstants.misPedidos);

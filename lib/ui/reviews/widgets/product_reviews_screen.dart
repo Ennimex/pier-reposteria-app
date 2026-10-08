@@ -1,19 +1,19 @@
 // lib/ui/reviews/widgets/product_reviews_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/reviews/widgets/create_review_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/reviews/widgets/create_review_screen.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 class ProductReviewsScreen extends StatefulWidget {
+  const ProductReviewsScreen({required this.product, super.key});
   final Product product;
-  const ProductReviewsScreen({super.key, required this.product});
 
   @override
   State<ProductReviewsScreen> createState() =>
@@ -39,7 +39,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   }
 
   Map<int, int> get _distribucion {
-    final Map<int, int> dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    final dist = <int, int>{5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
     for (final r in _resenas) {
       final stars =
           (double.tryParse(r['rating']?.toString() ?? '0') ?? 0).round();
@@ -49,7 +49,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   }
 
   List<Map<String, dynamic>> get _filtradas {
-    var lista = _filtroEstrellas == 0
+    final lista = _filtroEstrellas == 0
         ? List<Map<String, dynamic>>.from(_resenas)
         : _resenas.where((r) {
             final s =
@@ -153,8 +153,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
       if (diff.inDays == 1) return 'Ayer';
       if (diff.inDays < 7) return 'Hace ${diff.inDays} días';
       if (diff.inDays < 14) return 'Hace 1 semana';
-      if (diff.inDays < 30)
+      if (diff.inDays < 30) {
         return 'Hace ${(diff.inDays / 7).floor()} semanas';
+      }
       const months = [
         'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
         'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
@@ -203,7 +204,6 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Text('Opiniones',
                             style: TextStyle(
@@ -326,7 +326,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                                 child: Center(
                                   child: Text(
                                     'No hay opiniones de $_filtroEstrellas estrella${_filtroEstrellas == 1 ? '' : 's'}',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                         color: AppColors.textSecondary,
                                         fontSize: 14),
                                     textAlign: TextAlign.center,
@@ -366,7 +366,6 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
     final total = _resenas.length;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Column(
           children: [
@@ -825,9 +824,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          Text('Sé el primero en calificar\neste producto.',
+          const Text('Sé el primero en calificar\neste producto.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),

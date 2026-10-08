@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class ProductosRepository {
-  final ApiClient _api;
   ProductosRepository({ApiClient? api}) : _api = api ?? ApiService();
+  final ApiClient _api;
 
   /// GET /productos: catálogo activo con precios y stock_online.
   Future<Map<String, dynamic>> listar() => _api.get(ApiConstants.productos);

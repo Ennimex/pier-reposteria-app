@@ -5,23 +5,18 @@
 // Se les da la bienvenida con su identidad de rol y se les invita a abrir el
 // sitio web para tener una mejor perspectiva de su trabajo.
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/config/business_info.dart';
+import 'package:pier_pasteleria/routing/app_routes.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 
 /// Datos de presentación de cada rol interno (título, acento, icono).
 class _RolInfo {
-  final String panel;
-  final String descripcion;
-  final IconData icono;
-  final Color acento;
-  final Color acentoOscuro;
 
   const _RolInfo({
     required this.panel,
@@ -30,6 +25,11 @@ class _RolInfo {
     required this.acento,
     required this.acentoOscuro,
   });
+  final String panel;
+  final String descripcion;
+  final IconData icono;
+  final Color acento;
+  final Color acentoOscuro;
 
   /// Deriva la info a partir del rol del backend.
   static _RolInfo from(String? rol) {

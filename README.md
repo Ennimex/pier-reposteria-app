@@ -157,8 +157,11 @@ Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarClou
 `reactivecircus/android-emulator-runner` y GitHub Actions. Las pruebas unitarias
 existentes viven en `test/`; el smoke test de integración también usa
 `FakeApiClient`, por lo que no contacta el backend ni requiere credenciales.
-El workflow de CI compara el análisis con el baseline conocido (0 errores, 1
-warning y 36 infos) y falla si el resultado empeora. Para ejecutar localmente:
+El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
+están en `analysis_options.yaml`. El workflow de CI compara el resultado con el
+baseline de `tool/check_analysis.sh` (0 errores, 1 warning y 140 infos) y falla
+si empeora; al corregir avisos, el baseline se baja en el mismo Pull Request.
+Para ejecutar localmente:
 
 ```bash
 flutter test                     # unitarias, aceptación y esfuerzo

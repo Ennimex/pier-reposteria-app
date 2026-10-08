@@ -4,17 +4,18 @@
 // Recibe un ApiClient por constructor (ApiService en la app, FakeApiClient
 // en pruebas). Conserva token y usuario en StorageService.
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
+import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/data/services/storage_service.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
 
 class AuthRepository {
-  final ApiClient _api;
   AuthRepository({ApiClient? api}) : _api = api ?? ApiService();
+  final ApiClient _api;
   final StorageService _storage = StorageService();
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
@@ -54,7 +55,7 @@ class AuthRepository {
 
   // Reenviar código de verificación
   Future<Map<String, dynamic>> resendVerificationCode(String email) async {
-    return await _api.post(ApiConstants.resendVerification, {'email': email});
+    return _api.post(ApiConstants.resendVerification, {'email': email});
   }
 
   // Login
@@ -90,15 +91,15 @@ class AuthRepository {
       // Cerrar sesión previa de Google para forzar selector de cuenta
       await _googleSignIn.signOut();
 
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
         return {'success': false, 'message': 'Inicio de sesión cancelado'};
       }
 
-      final GoogleSignInAuthentication googleAuth =
+      final googleAuth =
           await googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
+      final idToken = googleAuth.idToken;
 
       if (idToken == null) {
         return {
@@ -164,7 +165,7 @@ class AuthRepository {
 
   // Solicitar reset de contraseña
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
-    return await _api.post(ApiConstants.requestPasswordReset, {'email': email});
+    return _api.post(ApiConstants.requestPasswordReset, {'email': email});
   }
 
   // Restablecer contraseña con código
@@ -173,7 +174,7 @@ class AuthRepository {
     required String codigo,
     required String nuevaPassword,
   }) async {
-    return await _api.post(ApiConstants.resetPassword, {
+    return _api.post(ApiConstants.resetPassword, {
       'email': email,
       'codigo': codigo,
       'nuevaPassword': nuevaPassword,
@@ -182,7 +183,7 @@ class AuthRepository {
 
   // Verificar si hay sesión activa (para Splash)
   Future<bool> isAuthenticated() async {
-    return await _storage.isAuthenticated();
+    return _storage.isAuthenticated();
   }
 
   // Obtener usuario guardado localmente
