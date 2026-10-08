@@ -159,8 +159,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.textPrimary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 6),
-                const Text('Inicia sesión para continuar',
-                    style: TextStyle(
+                Text('Inicia sesión para continuar',
+                    style: const TextStyle(
                         fontSize: 15, color: AppColors.textSecondary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 32),
@@ -208,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) =>
-                                const ForgotPasswordScreen())),
+                                ForgotPasswordScreen())),
                     child: Text('¿Olvidaste tu contraseña?',
                         style: TextStyle(
                             color: AppColors.pierDorado,
@@ -248,10 +248,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Divider(
                           color: AppColors.textSecondary
                               .withValues(alpha: 0.3))),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     child: Text('O continúa con',
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: AppColors.textSecondary, fontSize: 13)),
                   ),
                   Expanded(
@@ -307,8 +307,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('¿No tienes cuenta?',
-                        style: TextStyle(
+                    Text('¿No tienes cuenta?',
+                        style: const TextStyle(
                             color: AppColors.textSecondary)),
                     TextButton(
                       onPressed: () => Navigator.push(

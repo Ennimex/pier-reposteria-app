@@ -36,7 +36,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await context.read<NotificationProvider>().marcarTodasLeidas();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('Todas marcadas como leídas'),
+      content: Text('Todas marcadas como leídas'),
       backgroundColor: AppColors.pierVerde,
       behavior: SnackBarBehavior.floating,
     ));
@@ -45,7 +45,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   // Agrupa notificaciones por: Hoy, Ayer, Anteriores
   Map<String, List<Map<String, dynamic>>> _agrupar(
       List<Map<String, dynamic>> notificaciones) {
-    final grupos = <String, List<Map<String, dynamic>>>{
+    final Map<String, List<Map<String, dynamic>>> grupos = {
       'Hoy': [],
       'Ayer': [],
       'Anteriores': [],
@@ -126,6 +126,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Text('Notificaciones',
                       style: TextStyle(
@@ -179,7 +180,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             vertical: 14),
                                     child: Center(
                                       child: Text(entry.key,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 13,
                                               color: AppColors.textSecondary,
                                               fontWeight:
@@ -207,16 +208,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildItem(Map<String, dynamic> notif) {
-    final leida = notif['leida'] == true;
+    final bool leida = notif['leida'] == true;
     final tipo = notif['tipo']?.toString() ?? 'sistema';
 
     IconData icon;
     switch (tipo) {
-      case 'pedido':    icon = LucideIcons.shoppingBag;
-      case 'promocion': icon = LucideIcons.tag;
-      case 'resena':    icon = Icons.star_outline_rounded;
-      case 'reembolso': icon = LucideIcons.rotateCcw;
-      case 'producto':  icon = LucideIcons.cake;
+      case 'pedido':    icon = LucideIcons.shoppingBag; break;
+      case 'promocion': icon = LucideIcons.tag; break;
+      case 'resena':    icon = Icons.star_outline_rounded; break;
+      case 'reembolso': icon = LucideIcons.rotateCcw; break;
+      case 'producto':  icon = LucideIcons.cake; break;
       default:          icon = LucideIcons.bell;
     }
 
@@ -287,7 +288,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     notif['mensaje'] ?? '',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
                         height: 1.4),
@@ -348,7 +349,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Aquí aparecerán tus pedidos, promociones y novedades de Pier Repostería.',
               textAlign: TextAlign.center,
               style: TextStyle(

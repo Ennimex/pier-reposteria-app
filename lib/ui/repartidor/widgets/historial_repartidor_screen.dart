@@ -104,8 +104,8 @@ class HistorialRepartidorScreen extends StatelessWidget {
 }
 
 class _HistorialItem extends StatelessWidget {
-  const _HistorialItem({required this.entrega});
   final EntregaRepartidor entrega;
+  const _HistorialItem({required this.entrega});
 
   @override
   Widget build(BuildContext context) {
@@ -204,8 +204,8 @@ class _HistorialItem extends StatelessWidget {
 }
 
 class _TotalDiaBar extends StatelessWidget {
-  const _TotalDiaBar({required this.provider});
   final EntregasProvider provider;
+  const _TotalDiaBar({required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -217,6 +217,7 @@ class _TotalDiaBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

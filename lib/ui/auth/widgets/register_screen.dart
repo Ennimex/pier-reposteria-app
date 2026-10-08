@@ -167,8 +167,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         color: AppColors.textPrimary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 6),
-                const Text('Completa los siguientes datos',
-                    style: TextStyle(
+                Text('Completa los siguientes datos',
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 28),

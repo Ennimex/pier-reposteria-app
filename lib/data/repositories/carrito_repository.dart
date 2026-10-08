@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class CarritoRepository {
-  CarritoRepository({ApiClient? api}) : _api = api ?? ApiService();
   final ApiClient _api;
+  CarritoRepository({ApiClient? api}) : _api = api ?? ApiService();
 
   /// GET /carrito
   Future<Map<String, dynamic>> obtener() => _api.getAuth(ApiConstants.carrito);

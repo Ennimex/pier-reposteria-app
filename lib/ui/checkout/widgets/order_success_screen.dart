@@ -9,13 +9,6 @@ import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 class OrderSuccessScreen extends StatelessWidget {
-
-  const OrderSuccessScreen({
-    required this.orderId, required this.pickupDate, required this.pickupTime, required this.total, super.key,
-    this.esDomicilio = false,
-    this.direccionResumen,
-    this.porConfirmar = false,
-  });
   final String orderId;
   final String pickupDate;
   final String pickupTime;
@@ -25,6 +18,17 @@ class OrderSuccessScreen extends StatelessWidget {
   // Pedido programado con productos sin stock hoy: el personal confirmará
   // la disponibilidad para la fecha elegida.
   final bool porConfirmar;
+
+  const OrderSuccessScreen({
+    super.key,
+    required this.orderId,
+    required this.pickupDate,
+    required this.pickupTime,
+    required this.total,
+    this.esDomicilio = false,
+    this.direccionResumen,
+    this.porConfirmar = false,
+  });
 
   void _goHome(BuildContext context) {
     // Esta pantalla vive apilada en el navigator interno del tab Carrito:
@@ -48,7 +52,7 @@ class OrderSuccessScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(30),
+            padding: const EdgeInsets.all(30.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -96,8 +100,8 @@ class OrderSuccessScreen extends StatelessWidget {
                       children: [
                         Icon(LucideIcons.clock,
                             size: 18, color: AppColors.pierDoradoOscuro),
-                        const SizedBox(width: 10),
-                        const Expanded(
+                        SizedBox(width: 10),
+                        Expanded(
                           child: Text(
                             'Como tu pedido es para otra fecha, te avisaremos '
                             'muy pronto si podemos prepararlo. Si no fuera '
@@ -126,10 +130,12 @@ class OrderSuccessScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      if (esDomicilio) _buildRow(
+                      esDomicilio
+                          ? _buildRow(
                               LucideIcons.bike,
                               'Entrega a domicilio',
-                              direccionResumen ?? 'A tu domicilio') else _buildRow(LucideIcons.store, 'Sucursal',
+                              direccionResumen ?? 'A tu domicilio')
+                          : _buildRow(LucideIcons.store, 'Sucursal',
                               '${BusinessInfo.sucursal} — ${BusinessInfo.ciudad}'),
                       const Divider(height: 24),
                       _buildRow(

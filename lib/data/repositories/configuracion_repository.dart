@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class ConfiguracionRepository {
-  ConfiguracionRepository({ApiClient? api}) : _api = api ?? ApiService();
   final ApiClient _api;
+  ConfiguracionRepository({ApiClient? api}) : _api = api ?? ApiService();
 
   /// GET /configuracion/:seccion -> {success, config: {clave: valor}}.
   /// Solo secciones de la whitelist pública del backend; el resto da 403.

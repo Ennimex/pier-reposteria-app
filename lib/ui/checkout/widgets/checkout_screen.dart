@@ -151,7 +151,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar',
+            child: Text('Cancelar',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
@@ -199,6 +199,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           data: Theme.of(ctx).copyWith(
             colorScheme: ColorScheme.light(
               primary: AppColors.pierVerde,
+              onPrimary: Colors.white,
               onSurface: AppColors.textPrimary,
             ),
           ),
@@ -247,8 +248,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         title: Row(
           children: [
             Icon(LucideIcons.clock, color: AppColors.pierDoradoOscuro),
-            const SizedBox(width: 10),
-            const Expanded(
+            SizedBox(width: 10),
+            Expanded(
               child: Text('Pedido sujeto a confirmación',
                   style: TextStyle(fontSize: 17)),
             ),
@@ -276,7 +277,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ],
       ),
     );
-    return continuar ?? false;
+    return continuar == true;
   }
 
   Future<void> _processPayment() async {
@@ -410,7 +411,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // El backend limpia el carrito en la misma transacción que crea el
       // pedido, así que reintentar la confirmación NO puede duplicarlo.
-      var confirmResult = const <String, dynamic>{};
+      Map<String, dynamic> confirmResult = const {};
       for (var intento = 1; intento <= 3; intento++) {
         confirmResult =
             await _pagosRepo.confirmar(confirmBody);
@@ -584,7 +585,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Subtotal',
+                        Text('Subtotal',
                             style: TextStyle(
                                 color: AppColors.textSecondary, fontSize: 14)),
                         Text(
@@ -629,10 +630,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(children: [
-                          Icon(LucideIcons.truck,
+                        Row(children: [
+                          const Icon(LucideIcons.truck,
                               size: 16, color: AppColors.textSecondary),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text('Costo de envío',
                               style: TextStyle(
                                   color: AppColors.textSecondary,
@@ -758,12 +759,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
                 ),
                 child: Row(children: [
-                  const Icon(LucideIcons.circleAlert,
+                  Icon(LucideIcons.circleAlert,
                       color: AppColors.error, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(_errorMsg!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.error, fontSize: 13)),
                   ),
                 ]),
@@ -817,7 +818,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   Icon(LucideIcons.lock,
                       size: 13, color: AppColors.textSecondary.withValues(alpha: 0.5)),
                   const SizedBox(width: 4),
-                  const Text('Pago cifrado y seguro con Stripe',
+                  Text('Pago cifrado y seguro con Stripe',
                       style: TextStyle(
                           fontSize: 12, color: AppColors.textSecondary)),
                 ],
@@ -961,7 +962,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 color: AppColors.error.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: const Text('Sin cobertura',
+                              child: Text('Sin cobertura',
                                   style: TextStyle(
                                       fontSize: 10,
                                       color: AppColors.error,
@@ -977,7 +978,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(d.lineaResumen,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13,
                               color: AppColors.textSecondary),
                           maxLines: 1,
@@ -1068,8 +1069,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   hint: Row(children: [
                     Icon(LucideIcons.clock,
                         size: 20, color: AppColors.pierVerde),
-                    const SizedBox(width: 10),
-                    const Text('Hora'),
+                    SizedBox(width: 10),
+                    Text('Hora'),
                   ]),
                   value: _selectedTime,
                   items: _currentTimeSlots
@@ -1129,7 +1130,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           : AppColors.textPrimary)),
               const SizedBox(height: 2),
               Text(sub,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12, color: AppColors.textSecondary)),
             ],
           ),
@@ -1209,21 +1210,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   color: AppColors.error, size: 20),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Fuera de servicio',
+                  const Text('Fuera de servicio',
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: AppColors.error)),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
                     'En este momento estamos cerrados. Horario: '
                     '${BusinessInfo.horario}. Puedes dejar tu pedido y lo '
                     'prepararemos en horario de atención.',
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 13,
                         height: 1.35,
                         color: AppColors.textSecondary),
@@ -1254,8 +1255,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 // Devuelve la DireccionCliente creada/actualizada por Navigator.pop.
 // ══════════════════════════════════════════════════════════════════════
 class _AgregarDireccionSheet extends StatefulWidget {
-  const _AgregarDireccionSheet({this.editar});
   final DireccionCliente? editar;
+  const _AgregarDireccionSheet({this.editar});
 
   @override
   State<_AgregarDireccionSheet> createState() => _AgregarDireccionSheetState();
@@ -1395,7 +1396,7 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
             // Colonia (solo las que tienen cobertura)
             if (_loadingColonias)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 8),
                 child: Center(
                     child: CircularProgressIndicator(
                         color: AppColors.pierVerde, strokeWidth: 2)),
@@ -1407,7 +1408,7 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
                   color: AppColors.error.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
+                child: Text(
                     'Aún no hay colonias con cobertura de envío. Recoge en sucursal.',
                     style: TextStyle(fontSize: 13, color: AppColors.error)),
               )
@@ -1426,8 +1427,8 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
                     hint: Row(children: [
                       Icon(LucideIcons.building2,
                           size: 20, color: AppColors.pierVerde),
-                      const SizedBox(width: 10),
-                      const Text('Colonia'),
+                      SizedBox(width: 10),
+                      Text('Colonia'),
                     ]),
                     value: _colonia,
                     icon: Icon(LucideIcons.chevronDown,

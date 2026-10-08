@@ -130,12 +130,12 @@ class AppRoutes {
 
         GoRoute(path: login,               builder: (c, s) => const LoginScreen()),
         GoRoute(path: registro,            builder: (c, s) => const RegisterScreen()),
-        GoRoute(path: recuperarContrasena, builder: (c, s) => const ForgotPasswordScreen()),
+        GoRoute(path: recuperarContrasena, builder: (c, s) => ForgotPasswordScreen()),
 
         GoRoute(
           path: verificarEmail,
           builder: (c, s) {
-            final args = s.extra! as Map<String, dynamic>;
+            final args = s.extra as Map<String, dynamic>;
             return VerifyEmailScreen(email: args['email'] as String);
           },
         ),
@@ -150,7 +150,7 @@ class AppRoutes {
 
         GoRoute(
           path: '/producto/:id',
-          builder: (c, s) => ProductDetailScreen(product: s.extra! as Product),
+          builder: (c, s) => ProductDetailScreen(product: s.extra as Product),
         ),
 
         GoRoute(path: checkout, builder: (c, s) => const CheckoutScreen()),
@@ -158,7 +158,7 @@ class AppRoutes {
         GoRoute(
           path: orderSuccess,
           builder: (c, s) {
-            final args = s.extra! as Map<String, dynamic>;
+            final args = s.extra as Map<String, dynamic>;
             return OrderSuccessScreen(
               orderId:    args['orderId']    as String,
               pickupDate: args['pickupDate'] as String,
@@ -170,7 +170,7 @@ class AppRoutes {
 
         GoRoute(
           path: '/cliente/pedido/:id',
-          builder: (c, s) => OrderDetailScreen(order: s.extra! as Order),
+          builder: (c, s) => OrderDetailScreen(order: s.extra as Order),
         ),
 
         GoRoute(path: favoritos,      builder: (c, s) => const FavoritesScreen()),
@@ -180,13 +180,13 @@ class AppRoutes {
         GoRoute(
           path: crearResena,
           builder: (c, s) =>
-              CreateReviewScreen(product: s.extra! as Product),
+              CreateReviewScreen(product: s.extra as Product),
         ),
 
         GoRoute(
           path: opiniones,
           builder: (c, s) =>
-              ProductReviewsScreen(product: s.extra! as Product),
+              ProductReviewsScreen(product: s.extra as Product),
         ),
 
         GoRoute(path: clienteContacto, builder: (c, s) => const ContactScreen()),

@@ -65,9 +65,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
     if (cfg is! Map) return;
 
     final historia = parseConfigValor(cfg['historia']);
-    String? titulo;
-    String? contenido;
-    String? fundacion;
+    String? titulo, contenido, fundacion;
     if (historia is Map) {
       titulo = configTexto(historia['titulo']);
       contenido = configTexto(historia['contenido']);
@@ -145,7 +143,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   Image.network(
                     'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&fit=crop',
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => ColoredBox(
+                    errorBuilder: (_, _, _) => Container(
                       color: AppColors.pierVerdeOscuro,
                       child: const Icon(LucideIcons.store,
                           color: Colors.white54, size: 60),

@@ -186,7 +186,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
               decoration: BoxDecoration(
                 color: AppColors.pierVerdeOscuro,
                 borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(24)),
+                    BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +239,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                               Icon(LucideIcons.plus,
                                   color: AppColors.pierVerdeOscuro,
                                   size: 16),
-                              const SizedBox(width: 5),
+                              SizedBox(width: 5),
                               Text('Nueva',
                                   style: TextStyle(
                                       color: AppColors.pierVerdeOscuro,
@@ -288,7 +288,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                             padding:
                                 const EdgeInsets.fromLTRB(16, 16, 16, 32),
                             itemCount: _quejas.length,
-                            separatorBuilder: (_, _) =>
+                            separatorBuilder: (_, __) =>
                                 const SizedBox(height: 10),
                             itemBuilder: (_, i) =>
                                 _buildCard(_quejas[i]),
@@ -404,7 +404,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Descripción
-                  const Text('Descripción',
+                  Text('Descripción',
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -412,7 +412,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                           letterSpacing: .3)),
                   const SizedBox(height: 6),
                   Text(descripcion,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                           height: 1.5)),
@@ -420,7 +420,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                   // Pedido asociado
                   if (pedidoId != null) ...[
                     const SizedBox(height: 12),
-                    const Text('Pedido asociado',
+                    Text('Pedido asociado',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -527,7 +527,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+          style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
     );
   }
 
@@ -575,7 +575,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Si tienes alguna queja, sugerencia o\ncomentario, cuéntanoslo.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
@@ -606,13 +606,13 @@ class _QuejasScreenState extends State<QuejasScreen> {
 
 // ── Formulario (BottomSheet) ──────────────────────────────────────
 class _FormularioQueja extends StatefulWidget {
+  final List<Map<String, dynamic>> pedidos;
+  final VoidCallback onEnviado;
 
   const _FormularioQueja({
     required this.pedidos,
     required this.onEnviado,
   });
-  final List<Map<String, dynamic>> pedidos;
-  final VoidCallback onEnviado;
 
   @override
   State<_FormularioQueja> createState() => _FormularioQuejaState();
@@ -795,7 +795,8 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                       style: TextStyle(
                           fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.5))),
                   items: [
-                    const DropdownMenuItem<String>(
+                    DropdownMenuItem<String>(
+                      value: null,
                       child: Text('Sin pedido asociado',
                           style: TextStyle(
                               fontSize: 14,

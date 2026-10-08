@@ -16,11 +16,18 @@ enum OrderStatus {
 }
 
 class OrderItem {
+  final String nombre;
+  final int cantidad;
+  final String? tamano;
+  final double precioUnitario;
+  final double subtotal;
 
   OrderItem({
     required this.nombre,
     required this.cantidad,
-    required this.precioUnitario, required this.subtotal, this.tamano,
+    this.tamano,
+    required this.precioUnitario,
+    required this.subtotal,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -34,27 +41,52 @@ class OrderItem {
           double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
     );
   }
-  final String nombre;
-  final int cantidad;
-  final String? tamano;
-  final double precioUnitario;
-  final double subtotal;
 }
 
 class Order {
+  final String id;
+  final String numero;
+  final List<OrderItem> items;
+  final double total;
+  final String? notas;
+  final String? horarioRecogida;
+  final String? metodoPago;
+  final String? tipoEntrega; // 'pickup' | 'domicilio'
+  final OrderStatus status;
+  // Pedido programado con productos sin stock hoy: el personal debe
+  // aprobarlo o rechazarlo (backend: tblpedidos.por_confirmar). Con el
+  // flujo nuevo, todo pedido 'pendiente' nace con esta bandera.
+  final bool porConfirmar;
+  final DateTime createdAt;
 
   Order({
     required this.id,
     required this.numero,
     required this.items,
     required this.total,
-    required this.createdAt, this.notas,
+    this.notas,
     this.horarioRecogida,
     this.metodoPago,
     this.tipoEntrega,
     this.status = OrderStatus.pending,
     this.porConfirmar = false,
+    required this.createdAt,
   });
+
+  bool get esDomicilio => tipoEntrega == 'domicilio';
+
+  /// Estados terminales: el pedido ya no está en curso (va a "Historial").
+  bool get esFinalizado =>
+      status == OrderStatus.completed ||
+      status == OrderStatus.cancelled ||
+      status == OrderStatus.delivered ||
+      status == OrderStatus.deliveryFailed;
+
+  /// El cliente puede cancelar su pedido mientras nadie lo haya tomado.
+  /// Espejo de la regla del backend (PUT /pedidos/:id/cancelar): solo
+  /// 'pendiente' o 'listo'; al pasar a 'asignado' ya no aplica.
+  bool get esCancelablePorCliente =>
+      status == OrderStatus.pending || status == OrderStatus.ready;
 
   factory Order.fromJson(Map<String, dynamic> json) {
     final itemsRaw = json['items'] ?? [];
@@ -83,35 +115,6 @@ class Order {
           : DateTime.now(),
     );
   }
-  final String id;
-  final String numero;
-  final List<OrderItem> items;
-  final double total;
-  final String? notas;
-  final String? horarioRecogida;
-  final String? metodoPago;
-  final String? tipoEntrega; // 'pickup' | 'domicilio'
-  final OrderStatus status;
-  // Pedido programado con productos sin stock hoy: el personal debe
-  // aprobarlo o rechazarlo (backend: tblpedidos.por_confirmar). Con el
-  // flujo nuevo, todo pedido 'pendiente' nace con esta bandera.
-  final bool porConfirmar;
-  final DateTime createdAt;
-
-  bool get esDomicilio => tipoEntrega == 'domicilio';
-
-  /// Estados terminales: el pedido ya no está en curso (va a "Historial").
-  bool get esFinalizado =>
-      status == OrderStatus.completed ||
-      status == OrderStatus.cancelled ||
-      status == OrderStatus.delivered ||
-      status == OrderStatus.deliveryFailed;
-
-  /// El cliente puede cancelar su pedido mientras nadie lo haya tomado.
-  /// Espejo de la regla del backend (PUT /pedidos/:id/cancelar): solo
-  /// 'pendiente' o 'listo'; al pasar a 'asignado' ya no aplica.
-  bool get esCancelablePorCliente =>
-      status == OrderStatus.pending || status == OrderStatus.ready;
 
   static OrderStatus _parseStatus(dynamic status) {
     switch (status.toString().toLowerCase()) {

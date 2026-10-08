@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class DireccionesRepository {
-  DireccionesRepository({ApiClient? api}) : _api = api ?? ApiService();
   final ApiClient _api;
+  DireccionesRepository({ApiClient? api}) : _api = api ?? ApiService();
 
   /// GET /direcciones (del cliente, con tarifa/cobertura por colonia)
   Future<Map<String, dynamic>> listar() => _api.getAuth(ApiConstants.direcciones);

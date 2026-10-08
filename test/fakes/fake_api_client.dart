@@ -15,10 +15,10 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 
 /// Una llamada registrada por el falso.
 class LlamadaApi {
-  const LlamadaApi(this.metodo, this.endpoint, [this.body]);
   final String metodo; // GET, GET-Auth, POST, POST-Auth, PUT-Auth, DELETE-Auth, UPLOAD
   final String endpoint;
   final Map<String, dynamic>? body;
+  const LlamadaApi(this.metodo, this.endpoint, [this.body]);
 
   @override
   String toString() => '$metodo $endpoint${body == null ? '' : ' $body'}';
@@ -29,9 +29,6 @@ class LlamadaApi {
 typedef RespuestaDinamica = Map<String, dynamic> Function(LlamadaApi llamada);
 
 class FakeApiClient implements ApiClient {
-
-  FakeApiClient({Map<String, dynamic>? respuestas})
-      : _respuestas = {...?respuestas};
   final Map<String, dynamic> _respuestas;
 
   /// Retraso por endpoint, para probar estados de carga.
@@ -39,6 +36,9 @@ class FakeApiClient implements ApiClient {
 
   /// Todas las llamadas recibidas, en orden.
   final List<LlamadaApi> llamadas = [];
+
+  FakeApiClient({Map<String, dynamic>? respuestas})
+      : _respuestas = {...?respuestas};
 
   /// Configura una respuesta fija para un endpoint.
   void responder(String endpoint, Map<String, dynamic> respuesta) =>

@@ -11,8 +11,8 @@ import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class ReportarFalloSheet extends StatefulWidget {
-  const ReportarFalloSheet({required this.entrega, super.key});
   final EntregaRepartidor entrega;
+  const ReportarFalloSheet({super.key, required this.entrega});
 
   @override
   State<ReportarFalloSheet> createState() => _ReportarFalloSheetState();

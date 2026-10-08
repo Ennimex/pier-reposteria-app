@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class PagosRepository {
-  PagosRepository({ApiClient? api}) : _api = api ?? ApiService();
   final ApiClient _api;
+  PagosRepository({ApiClient? api}) : _api = api ?? ApiService();
 
   /// GET /pagos/config: publishable key (público).
   Future<Map<String, dynamic>> config() => _api.get(ApiConstants.stripeConfig);

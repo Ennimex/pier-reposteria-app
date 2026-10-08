@@ -144,7 +144,7 @@ class _MoreScreenState extends State<MoreScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar',
+            child: Text('Cancelar',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
@@ -277,7 +277,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: LucideIcons.messageCircle,
                 iconColor: AppColors.pierDoradoOscuro,
                 title: 'Quejas y Sugerencias',
-                onTap: () => _goProtected(const QuejasScreen()),
+                onTap: () => _goProtected(QuejasScreen()),
               ),
               _buildDivider(),
               _buildTile(
@@ -452,7 +452,8 @@ class _MoreScreenState extends State<MoreScreen> {
                   color: AppColors.textPrimary,
                   fontFamily: 'Playfair Display')),
           const SizedBox(height: 12),
-          if (_loadingConfig) Container(
+          _loadingConfig
+              ? Container(
                   height: 100,
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -462,7 +463,8 @@ class _MoreScreenState extends State<MoreScreen> {
                     child: CircularProgressIndicator(
                         color: AppColors.pierVerde, strokeWidth: 2),
                   ),
-                ) else Container(
+                )
+              : Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: AppColors.pierVerdeOscuro,
@@ -678,7 +680,7 @@ class _MoreScreenState extends State<MoreScreen> {
           Image.network(
             'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&fit=crop',
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => ColoredBox(
+            errorBuilder: (_, __, ___) => Container(
               color: AppColors.pierVerdeOscuro,
               child: const Icon(LucideIcons.croissant,
                   color: Colors.white54, size: 60),
@@ -772,7 +774,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       fotoUrl,
                       width: 52, height: 52,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Center(
+                      errorBuilder: (_, __, ___) => Center(
                         child: Text(
                             iniciales.isNotEmpty ? iniciales : 'U',
                             style: TextStyle(
@@ -860,17 +862,19 @@ class _MoreScreenState extends State<MoreScreen> {
           ],
         ),
         child: Column(children: [
-          if (_loadingStats) SizedBox(
+          _loadingStats
+              ? SizedBox(
                   height: 20, width: 20,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.pierVerde)) else Text(value,
+                      strokeWidth: 2, color: AppColors.pierVerde))
+              : Text(value,
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerde)),
           const SizedBox(height: 4),
           Text(label,
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ]),
       ),
     );
@@ -906,7 +910,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 color: AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(sub,
-            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ]),
     );
   }

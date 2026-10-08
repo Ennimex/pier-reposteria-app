@@ -17,6 +17,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Datos de presentación de cada rol interno (título, acento, icono).
 class _RolInfo {
+  final String panel;
+  final String descripcion;
+  final IconData icono;
+  final Color acento;
+  final Color acentoOscuro;
 
   const _RolInfo({
     required this.panel,
@@ -25,11 +30,6 @@ class _RolInfo {
     required this.acento,
     required this.acentoOscuro,
   });
-  final String panel;
-  final String descripcion;
-  final IconData icono;
-  final Color acento;
-  final Color acentoOscuro;
 
   /// Deriva la info a partir del rol del backend.
   static _RolInfo from(String? rol) {

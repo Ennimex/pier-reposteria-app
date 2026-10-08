@@ -14,8 +14,8 @@ import 'package:pier_pasteleria/data/services/storage_service.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 
 class AuthRepository {
-  AuthRepository({ApiClient? api}) : _api = api ?? ApiService();
   final ApiClient _api;
+  AuthRepository({ApiClient? api}) : _api = api ?? ApiService();
   final StorageService _storage = StorageService();
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
@@ -55,7 +55,7 @@ class AuthRepository {
 
   // Reenviar código de verificación
   Future<Map<String, dynamic>> resendVerificationCode(String email) async {
-    return _api.post(ApiConstants.resendVerification, {'email': email});
+    return await _api.post(ApiConstants.resendVerification, {'email': email});
   }
 
   // Login
@@ -91,15 +91,15 @@ class AuthRepository {
       // Cerrar sesión previa de Google para forzar selector de cuenta
       await _googleSignIn.signOut();
 
-      final googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
         return {'success': false, 'message': 'Inicio de sesión cancelado'};
       }
 
-      final googleAuth =
+      final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
-      final idToken = googleAuth.idToken;
+      final String? idToken = googleAuth.idToken;
 
       if (idToken == null) {
         return {
@@ -165,7 +165,7 @@ class AuthRepository {
 
   // Solicitar reset de contraseña
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
-    return _api.post(ApiConstants.requestPasswordReset, {'email': email});
+    return await _api.post(ApiConstants.requestPasswordReset, {'email': email});
   }
 
   // Restablecer contraseña con código
@@ -174,7 +174,7 @@ class AuthRepository {
     required String codigo,
     required String nuevaPassword,
   }) async {
-    return _api.post(ApiConstants.resetPassword, {
+    return await _api.post(ApiConstants.resetPassword, {
       'email': email,
       'codigo': codigo,
       'nuevaPassword': nuevaPassword,
@@ -183,7 +183,7 @@ class AuthRepository {
 
   // Verificar si hay sesión activa (para Splash)
   Future<bool> isAuthenticated() async {
-    return _storage.isAuthenticated();
+    return await _storage.isAuthenticated();
   }
 
   // Obtener usuario guardado localmente

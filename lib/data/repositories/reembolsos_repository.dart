@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class ReembolsosRepository {
-  ReembolsosRepository({ApiClient? api}) : _api = api ?? ApiService();
   final ApiClient _api;
+  ReembolsosRepository({ApiClient? api}) : _api = api ?? ApiService();
 
   /// GET /reembolsos/mis-reembolsos
   Future<Map<String, dynamic>> misReembolsos() => _api.getAuth(ApiConstants.misReembolsos);

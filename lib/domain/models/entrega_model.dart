@@ -45,6 +45,14 @@ extension EstadoEntregaX on EstadoEntrega {
 /// Snapshot de la dirección de entrega guardado en el pedido.
 /// El backend la guarda como JSON (JSON.stringify) del row de tbldirecciones.
 class DireccionEntrega {
+  final String? alias;
+  final String? calleNumero;
+  final String? colonia;
+  final String? referencias;
+  final String? telefonoContacto;
+  // Coordenadas GPS (migración 004; null si la dirección no las tiene)
+  final double? lat;
+  final double? lng;
 
   const DireccionEntrega({
     this.alias,
@@ -90,14 +98,6 @@ class DireccionEntrega {
       lng: numOrNull('lng'),
     );
   }
-  final String? alias;
-  final String? calleNumero;
-  final String? colonia;
-  final String? referencias;
-  final String? telefonoContacto;
-  // Coordenadas GPS (migración 004; null si la dirección no las tiene)
-  final double? lat;
-  final double? lng;
 
   bool get isEmpty =>
       (calleNumero == null || calleNumero!.isEmpty) &&
@@ -117,14 +117,26 @@ class DireccionEntrega {
 /// Pedido a domicilio listo y sin repartidor, del pool que el repartidor puede
 /// tomar. Fuente: GET /api/entregas/disponibles (routes/entregasRoutes.js).
 class PedidoDisponible {
+  final String pedidoId;
+  final String numero;
+  final double total;
+  final double costoEnvio;
+  final String? notas;
+  final String? horarioEntrega;
+  final DireccionEntrega direccion;
+  final String clienteNombre;
+  final String clienteApellido;
 
   const PedidoDisponible({
     required this.pedidoId,
     required this.numero,
     required this.total,
     required this.costoEnvio,
-    required this.direccion, required this.clienteNombre, required this.clienteApellido, this.notas,
+    this.notas,
     this.horarioEntrega,
+    required this.direccion,
+    required this.clienteNombre,
+    required this.clienteApellido,
   });
 
   factory PedidoDisponible.fromJson(Map<String, dynamic> json) {
@@ -146,21 +158,37 @@ class PedidoDisponible {
       clienteApellido: json['cliente_apellido']?.toString() ?? '',
     );
   }
-  final String pedidoId;
-  final String numero;
-  final double total;
-  final double costoEnvio;
-  final String? notas;
-  final String? horarioEntrega;
-  final DireccionEntrega direccion;
-  final String clienteNombre;
-  final String clienteApellido;
 
   String get clienteNombreCompleto =>
       '$clienteNombre $clienteApellido'.trim();
 }
 
 class EntregaRepartidor {
+  final String id;
+  final String pedidoId;
+  final EstadoEntrega estado;
+
+  // Snapshot del pedido
+  final String numero;
+  final double total;
+  final double costoEnvio;
+  final String? metodoPago;
+  final String? notas;
+  final String? horarioEntrega;
+  final DireccionEntrega direccion;
+
+  // Cliente
+  final String clienteNombre;
+  final String clienteApellido;
+  final String? clienteTelefono;
+
+  // Estado de la entrega
+  final String? recibioNombre;
+  final String? motivoFallo;
+  final String? evidenciaUrl;
+  final DateTime? asignadoAt;
+  final DateTime? salioAt;
+  final DateTime? finalizadoAt;
 
   const EntregaRepartidor({
     required this.id,
@@ -169,9 +197,12 @@ class EntregaRepartidor {
     required this.numero,
     required this.total,
     required this.costoEnvio,
-    required this.direccion, required this.clienteNombre, required this.clienteApellido, this.metodoPago,
+    this.metodoPago,
     this.notas,
     this.horarioEntrega,
+    required this.direccion,
+    required this.clienteNombre,
+    required this.clienteApellido,
     this.clienteTelefono,
     this.recibioNombre,
     this.motivoFallo,
@@ -212,31 +243,6 @@ class EntregaRepartidor {
       finalizadoAt: dt(json['finalizado_at']),
     );
   }
-  final String id;
-  final String pedidoId;
-  final EstadoEntrega estado;
-
-  // Snapshot del pedido
-  final String numero;
-  final double total;
-  final double costoEnvio;
-  final String? metodoPago;
-  final String? notas;
-  final String? horarioEntrega;
-  final DireccionEntrega direccion;
-
-  // Cliente
-  final String clienteNombre;
-  final String clienteApellido;
-  final String? clienteTelefono;
-
-  // Estado de la entrega
-  final String? recibioNombre;
-  final String? motivoFallo;
-  final String? evidenciaUrl;
-  final DateTime? asignadoAt;
-  final DateTime? salioAt;
-  final DateTime? finalizadoAt;
 
   static EstadoEntrega parseEstado(dynamic raw) {
     switch (raw?.toString().toLowerCase()) {

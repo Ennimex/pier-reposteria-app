@@ -410,30 +410,39 @@ class _OrdersScreenState extends State<OrdersScreen>
       case OrderStatus.pending:
         color = AppColors.estadoPendiente;
         label = order.porConfirmar ? 'Por confirmar' : 'Pendiente';
+        break;
       case OrderStatus.preparing:
         color = AppColors.estadoPreparacion;
         label = 'Preparando';
+        break;
       case OrderStatus.ready:
         color = AppColors.estadoListo;
         label = 'Listo ✓';
+        break;
       case OrderStatus.completed:
         color = AppColors.estadoCompletado;
         label = 'Completado';
+        break;
       case OrderStatus.cancelled:
         color = AppColors.estadoCancelado;
         label = 'Cancelado';
+        break;
       case OrderStatus.assigned:
         color = AppColors.estadoAsignada;
         label = 'Asignado';
+        break;
       case OrderStatus.onTheWay:
         color = AppColors.estadoEnCamino;
         label = 'En camino';
+        break;
       case OrderStatus.delivered:
         color = AppColors.estadoEntregada;
         label = 'Entregado';
+        break;
       case OrderStatus.deliveryFailed:
         color = AppColors.estadoFallida;
         label = 'Entrega fallida';
+        break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

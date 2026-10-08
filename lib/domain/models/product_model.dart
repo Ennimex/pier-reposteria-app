@@ -2,52 +2,6 @@ import 'dart:convert';
 import 'package:pier_pasteleria/utils/logger.dart';
 // lib/data/models/product_model.dart
 class Product {
-
-  Product({
-    required this.id,
-    required this.nombre,
-    required this.descripcion,
-    required this.precio,
-    required this.categoria, required this.imagenUrl, this.precioGrande,
-    this.imagenes = const [],
-    this.ingredientes = const [],
-    this.sabor,
-    this.tamano,
-    this.tipo,
-    this.popular = false,
-    this.esNuevo = false,
-    this.stockOnline,
-    this.disponible = true,
-    this.rating = 0.0,
-    this.totalResenas = 0,
-  });
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id']?.toString() ?? '',
-      nombre: json['nombre'] ?? '',
-      descripcion: json['descripcion'] ?? '',
-      precio: double.tryParse(json['precio_chico']?.toString() ?? '0') ?? 0.0,
-      precioGrande: json['precio_grande'] != null
-          ? double.tryParse(json['precio_grande'].toString())
-          : null,
-      categoria: json['categoria'] ?? '',
-      imagenUrl: json['imagen_url'] ?? '',
-      imagenes: Product._parseList(json['imagenes']),
-      ingredientes: Product._parseList(json['ingredientes']),
-      sabor: json['sabor'],
-      tamano: json['tamano'],
-      tipo: json['tipo'],
-      popular: json['popular'] == true || json['popular'] == 1,
-      esNuevo: json['es_nuevo'] == true || json['es_nuevo'] == 1,
-      stockOnline: json['stock_online'] != null
-          ? int.tryParse(json['stock_online'].toString())
-          : null,
-      disponible: json['activo'] == true || json['activo'] == 1,
-      rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
-      totalResenas: int.tryParse(json['reviews']?.toString() ?? '0') ?? 0,
-    );
-  }
   final String id;
   final String nombre;
   final String descripcion;
@@ -68,6 +22,27 @@ class Product {
   final bool disponible;
   final double rating;
   final int totalResenas;
+
+  Product({
+    required this.id,
+    required this.nombre,
+    required this.descripcion,
+    required this.precio,
+    this.precioGrande,
+    required this.categoria,
+    required this.imagenUrl,
+    this.imagenes = const [],
+    this.ingredientes = const [],
+    this.sabor,
+    this.tamano,
+    this.tipo,
+    this.popular = false,
+    this.esNuevo = false,
+    this.stockOnline,
+    this.disponible = true,
+    this.rating = 0.0,
+    this.totalResenas = 0,
+  });
 
   // Método estático — Dart no permite funciones locales tipadas dentro de factories
   static List<String> _parseList(dynamic val) {
@@ -94,6 +69,33 @@ class Product {
       }
     }
     return const [];
+  }
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id']?.toString() ?? '',
+      nombre: json['nombre'] ?? '',
+      descripcion: json['descripcion'] ?? '',
+      precio: double.tryParse(json['precio_chico']?.toString() ?? '0') ?? 0.0,
+      precioGrande: json['precio_grande'] != null
+          ? double.tryParse(json['precio_grande'].toString())
+          : null,
+      categoria: json['categoria'] ?? '',
+      imagenUrl: json['imagen_url'] ?? '',
+      imagenes: Product._parseList(json['imagenes']),
+      ingredientes: Product._parseList(json['ingredientes']),
+      sabor: json['sabor'],
+      tamano: json['tamano'],
+      tipo: json['tipo'],
+      popular: json['popular'] == true || json['popular'] == 1,
+      esNuevo: json['es_nuevo'] == true || json['es_nuevo'] == 1,
+      stockOnline: json['stock_online'] != null
+          ? int.tryParse(json['stock_online'].toString())
+          : null,
+      disponible: json['activo'] == true || json['activo'] == 1,
+      rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
+      totalResenas: int.tryParse(json['reviews']?.toString() ?? '0') ?? 0,
+    );
   }
 
   /// stock_online = 0 significa agotado (el backend rechaza agregarlo al

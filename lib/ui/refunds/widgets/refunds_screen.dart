@@ -302,8 +302,8 @@ class _RefundsScreenState extends State<RefundsScreen>
         itemBuilder: (context, i) {
           // Índice 0 = título de sección
           if (i == 0) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 16),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
               child: Text('Historial de solicitudes',
                   style: TextStyle(
                       fontSize: 15,
@@ -335,12 +335,15 @@ class _RefundsScreenState extends State<RefundsScreen>
       case 'procesado':
         statusColor = AppColors.pierVerde;
         statusLabel = estado == 'procesado' ? 'Procesado' : 'Aprobado';
+        break;
       case 'rechazado':
         statusColor = AppColors.estadoCancelado;
         statusLabel = 'Rechazado';
+        break;
       case 'en_revision':
         statusColor = AppColors.estadoPreparacion;
         statusLabel = 'En revisión';
+        break;
       default:
         statusColor = AppColors.estadoPendiente;
         statusLabel = 'Pendiente';
@@ -389,7 +392,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                       const SizedBox(height: 2),
                       Text(
                         _formatFecha(r['created_at']),
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
@@ -489,7 +492,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     const SizedBox(height: 6),
                     Text(
                       r['respuesta_admin'].toString(),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                           height: 1.4),
@@ -565,7 +568,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                         Icon(LucideIcons.info,
                             color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                         const SizedBox(width: 10),
-                        const Text('No tienes pedidos completados',
+                        Text('No tienes pedidos completados',
                             style: TextStyle(
                                 color: AppColors.textSecondary, fontSize: 13)),
                       ]),
@@ -589,7 +592,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                           ),
                         ),
                         icon: Padding(
-                          padding: const EdgeInsets.only(right: 14),
+                          padding: EdgeInsets.only(right: 14),
                           child: Icon(
                               LucideIcons.chevronDown,
                               color: AppColors.pierVerde),
@@ -759,7 +762,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Aún no tienes solicitudes. Si tuviste un problema con un pedido, puedes crear una aquí.',
               textAlign: TextAlign.center,
               style: TextStyle(

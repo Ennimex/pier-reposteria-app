@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({required this.email, super.key});
   final String email;
+  const ResetPasswordScreen({super.key, required this.email});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -75,7 +75,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _showSnack('La contraseña debe tener al menos 6 caracteres', AppColors.error);
       return;
     }
-    if (!RegExp('[a-zA-Z]').hasMatch(pass)) {
+    if (!RegExp(r'[a-zA-Z]').hasMatch(pass)) {
       _showSnack('La contraseña debe contener al menos 1 letra', AppColors.error);
       return;
     }
@@ -160,9 +160,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       color: AppColors.textPrimary),
                   textAlign: TextAlign.center),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 'Tu contraseña ha sido actualizada correctamente. Ya puedes iniciar sesión.',
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -258,9 +258,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       color: AppColors.textPrimary),
                   textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Ingresa el código que enviamos a',
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),

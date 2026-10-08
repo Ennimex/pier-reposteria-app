@@ -93,7 +93,7 @@ class _CartScreenState extends State<CartScreen> {
                   const SizedBox(width: 5),
                   Text(
                     '${cart.totalQuantity} producto${cart.totalQuantity == 1 ? '' : 's'}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500),
@@ -140,7 +140,7 @@ class _CartScreenState extends State<CartScreen> {
                       padding:
                           const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       itemCount: cartItems.length,
-                      separatorBuilder: (_, _) =>
+                      separatorBuilder: (_, __) =>
                           const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final item = cartItems[index];
@@ -194,7 +194,7 @@ class _CartScreenState extends State<CartScreen> {
                 item.imagenUrl,
                 width: 76, height: 76,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
+                errorBuilder: (_, __, ___) => Container(
                   width: 76, height: 76,
                   color: AppColors.pierArena,
                   child: Icon(LucideIcons.cake,
@@ -219,7 +219,7 @@ class _CartScreenState extends State<CartScreen> {
                   // Tamaño de la línea (chico / grande)
                   Text(
                     item.tamano == 'grande' ? 'Grande' : 'Chico',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500),
@@ -366,7 +366,7 @@ class _CartScreenState extends State<CartScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Subtotal',
+                Text('Subtotal',
                     style: TextStyle(
                         fontSize: 14, color: AppColors.textSecondary)),
                 Text(
@@ -485,7 +485,7 @@ class _CartScreenState extends State<CartScreen> {
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          const Text(
+          Text(
               'Agrega productos desde el catálogo\npara comenzar tu pedido.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -526,7 +526,7 @@ class _CartScreenState extends State<CartScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar',
+            child: Text('Cancelar',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(

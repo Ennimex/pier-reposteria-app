@@ -43,8 +43,8 @@ String formatHorarioEntrega(String? raw) {
 
 /// Chip de estado de una entrega, con punto de color.
 class EstadoEntregaChip extends StatelessWidget {
-  const EstadoEntregaChip({required this.estado, super.key});
   final EstadoEntrega estado;
+  const EstadoEntregaChip({super.key, required this.estado});
 
   @override
   Widget build(BuildContext context) {
@@ -86,15 +86,18 @@ class EstadoEntregaChip extends StatelessWidget {
 
 /// Avatar circular con iniciales.
 class InicialesAvatar extends StatelessWidget {
-
-  const InicialesAvatar({
-    required this.iniciales, required this.background, required this.foreground, super.key,
-    this.size = 48,
-  });
   final String iniciales;
   final double size;
   final Color background;
   final Color foreground;
+
+  const InicialesAvatar({
+    super.key,
+    required this.iniciales,
+    this.size = 48,
+    required this.background,
+    required this.foreground,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -5,10 +5,10 @@ import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 
 class ProductProvider with ChangeNotifier {
+  final ProductosRepository _repo;
 
   ProductProvider({ProductosRepository? repo})
       : _repo = repo ?? ProductosRepository();
-  final ProductosRepository _repo;
 
   List<Product> _productos = [];
   bool _isLoading = false;

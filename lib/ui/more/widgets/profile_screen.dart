@@ -206,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
                           Text('Hola, $saludo',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 14,
                                   color: AppColors.textSecondary)),
                         ],
@@ -237,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       fotoUrl,
                                       width: 52, height: 52,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, e, _) =>
+                                      errorBuilder: (_, e, __) =>
                                           _buildAvatarIniciales(iniciales),
                                     ),
                                   )
@@ -301,13 +301,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: _loadingFavoritos
                   ? Center(
                       child: Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: EdgeInsets.all(20),
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde),
                     ))
                   : _favoritos.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(
                               horizontal: 20),
                           child: Text('Sin favoritos aún',
                               style: TextStyle(
@@ -354,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           width: 120,
                                           height: 100,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, e, _) =>
+                                          errorBuilder: (_, e, __) =>
                                               Container(
                                             width: 120,
                                             height: 100,
@@ -425,7 +425,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 builder: (_) =>
                                     const OrdersScreen()));
                       },
-                      child: const Icon(LucideIcons.history,
+                      child: Icon(LucideIcons.history,
                           color: AppColors.textSecondary, size: 22),
                     ),
                   ],
@@ -434,16 +434,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-            if (_loadingPedidos) SliverToBoxAdapter(
+            _loadingPedidos
+                ? SliverToBoxAdapter(
                     child: Center(
                         child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20),
                     child: CircularProgressIndicator(
                         color: AppColors.pierVerde),
-                  ))) else _pedidos.isEmpty
-                    ? const SliverToBoxAdapter(
+                  )))
+                : _pedidos.isEmpty
+                    ? SliverToBoxAdapter(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                               horizontal: 20),
                           child: Text('Sin pedidos aún',
                               style: TextStyle(
@@ -522,11 +524,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     Color estadoColor;
     switch (estado) {
-      case 'completado': estadoColor = AppColors.estadoCompletado;
+      case 'completado': estadoColor = AppColors.estadoCompletado; break;
       case 'en_preparacion':
-      case 'preparando': estadoColor = AppColors.estadoPreparacion;
-      case 'listo': estadoColor = AppColors.estadoListo;
-      case 'cancelado': estadoColor = AppColors.estadoCancelado;
+      case 'preparando': estadoColor = AppColors.estadoPreparacion; break;
+      case 'listo': estadoColor = AppColors.estadoListo; break;
+      case 'cancelado': estadoColor = AppColors.estadoCancelado; break;
       default: estadoColor = AppColors.estadoPendiente;
     }
 
@@ -571,7 +573,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(fecha,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12, color: AppColors.textSecondary)),
           ),
         ),
@@ -588,7 +590,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 48, height: 48,
                       fit: BoxFit.cover,
                       // ✅ FIX: (_, e, __)
-                      errorBuilder: (_, e, _) =>
+                      errorBuilder: (_, e, __) =>
                           _imagePlaceholder())
                   : _imagePlaceholder(),
             ),
@@ -627,17 +629,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (reordenando) SizedBox(
+                    reordenando
+                        ? SizedBox(
                             width: 14,
                             height: 14,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: AppColors.pierVerde),
-                          ) else const Icon(LucideIcons.rotateCcw,
+                          )
+                        : Icon(LucideIcons.rotateCcw,
                             size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(reordenando ? 'Agregando…' : 'Reordenar',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w500)),

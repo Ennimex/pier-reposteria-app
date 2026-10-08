@@ -5,10 +5,10 @@ import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 
 class OrderProvider extends ChangeNotifier {
+  final PedidosRepository _repo;
 
   OrderProvider({PedidosRepository? repo})
       : _repo = repo ?? PedidosRepository();
-  final PedidosRepository _repo;
 
   List<Order> _orders = [];
   bool _isLoading = false;

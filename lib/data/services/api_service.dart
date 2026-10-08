@@ -181,7 +181,7 @@ class ApiService implements ApiClient {
       }
       
       request.fields.addAll(fields);
-      var ext = filePath.split('.').last.toLowerCase();
+      String ext = filePath.split('.').last.toLowerCase();
       if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) {
         ext = 'jpeg'; // fallback
       }

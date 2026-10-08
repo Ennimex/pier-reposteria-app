@@ -12,8 +12,8 @@ import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class CreateReviewScreen extends StatefulWidget {
-  const CreateReviewScreen({required this.product, super.key});
   final Product product;
+  const CreateReviewScreen({super.key, required this.product});
 
   @override
   State<CreateReviewScreen> createState() => _CreateReviewScreenState();
@@ -155,7 +155,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                 autoAprobada
                     ? 'Tu reseña ha sido publicada. ¡Otros clientes podrán verla y disfrutar de nuestras delicias!'
                     : 'Tu reseña está en revisión y será publicada pronto. ¡Gracias por tomarte el tiempo!',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
                     height: 1.5),
@@ -298,7 +298,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               widget.product.imagenUrl,
                               width: 90, height: 90,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(
+                              errorBuilder: (_, __, ___) => Container(
                                 width: 90, height: 90,
                                 color: AppColors.pierArena,
                                 child: Icon(LucideIcons.cake,
@@ -514,12 +514,12 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             color: AppColors.textSecondary
                                 .withValues(alpha: 0.15)),
                       ),
-                      child: const Row(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(LucideIcons.info,
                               size: 16, color: AppColors.textSecondary),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Solo puedes reseñar productos que hayas comprado. Las reseñas con calificación ≥ 4 se publican automáticamente.',

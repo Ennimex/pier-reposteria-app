@@ -85,7 +85,7 @@ class _ContactScreenState extends State<ContactScreen> {
   }
 
   Future<void> _abrirWhatsApp() async {
-    final digits = _whatsapp.replaceAll(RegExp('[^0-9]'), '');
+    final digits = _whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
     final numero = digits.isNotEmpty ? digits : BusinessInfo.whatsappNumero;
     final uri = Uri.parse(
         'https://wa.me/$numero?text=${Uri.encodeComponent('Hola, tengo una pregunta')}');
@@ -190,7 +190,7 @@ class _ContactScreenState extends State<ContactScreen> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary)),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 'Gracias por contactarnos. Te responderemos a la brevedad en tu correo electrónico.',
                 style: TextStyle(
                     fontSize: 14,

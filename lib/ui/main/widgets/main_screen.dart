@@ -103,11 +103,13 @@ class _MainScreenState extends State<MainScreen> {
               child: const CartScreen(),
             ),
             // Tab 3 — Pedidos (auth-aware, recrea el navigator al cambiar auth)
-            if (isAuthenticated) _NestedNavigator(
+            isAuthenticated
+                ? _NestedNavigator(
                     key: const ValueKey('pedidos_auth'),
                     navigatorKey: _navigatorKeys[3],
                     child: const OrdersScreen(),
-                  ) else _NestedNavigator(
+                  )
+                : _NestedNavigator(
                     key: const ValueKey('pedidos_guest'),
                     navigatorKey: _navigatorKeys[3],
                     child: const _LoginRequiredView(
@@ -158,7 +160,7 @@ class _MainScreenState extends State<MainScreen> {
                         // Rebote al cambiar la cantidad (la key reinicia el tween)
                         child: TweenAnimationBuilder<double>(
                           key: ValueKey(cart.totalQuantity),
-                          tween: Tween(begin: 1.5, end: 1),
+                          tween: Tween(begin: 1.5, end: 1.0),
                           duration: const Duration(milliseconds: 450),
                           curve: Curves.elasticOut,
                           builder: (_, scale, child) =>
@@ -206,12 +208,14 @@ class _MainScreenState extends State<MainScreen> {
 
 // Widget que encapsula cada Navigator anidado
 class _NestedNavigator extends StatelessWidget {
-
-  const _NestedNavigator({
-    required this.navigatorKey, required this.child, super.key,
-  });
   final GlobalKey<NavigatorState> navigatorKey;
   final Widget child;
+
+  const _NestedNavigator({
+    super.key,
+    required this.navigatorKey,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -225,15 +229,15 @@ class _NestedNavigator extends StatelessWidget {
 
 // Vista para tabs que requieren login
 class _LoginRequiredView extends StatelessWidget {
+  final String title;
+  final String message;
+  final IconData icon;
 
   const _LoginRequiredView({
     required this.title,
     required this.message,
     required this.icon,
   });
-  final String title;
-  final String message;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {

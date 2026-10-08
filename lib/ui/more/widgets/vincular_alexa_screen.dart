@@ -146,13 +146,13 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
                   ),
                 ]),
                 const SizedBox(height: 14),
-                const Text.rich(
+                Text.rich(
                   TextSpan(
                     style: TextStyle(
                         fontSize: 13,
                         height: 1.5,
                         color: AppColors.textSecondary),
-                    children: [
+                    children: const [
                       TextSpan(
                           text:
                               'Genera un código de un solo uso (expira en 5 minutos) y dile a tu Alexa: '),
@@ -258,7 +258,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
             Border.all(color: AppColors.pierVerde.withValues(alpha: 0.25), width: 2),
       ),
       child: Column(children: [
-        const Text('TU CÓDIGO DE VINCULACIÓN',
+        Text('TU CÓDIGO DE VINCULACIÓN',
             style: TextStyle(
                 fontSize: 11,
                 letterSpacing: 2,
@@ -301,7 +301,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
         const SizedBox(height: 12),
         Text.rich(
           TextSpan(
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             children: [
               const TextSpan(text: 'Expira en '),
               TextSpan(
@@ -317,7 +317,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
         Text(
           'Dile: "vincula mi cuenta con el código $deletreado"',
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 13,
               fontStyle: FontStyle.italic,
               height: 1.4,

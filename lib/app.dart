@@ -7,12 +7,12 @@ import 'package:pier_pasteleria/ui/core/themes/app_theme.dart';
 import 'package:provider/provider.dart';
 
 class MyApp extends StatefulWidget {
+  final String initialLocation;
 
   const MyApp({
     super.key,
     this.initialLocation = AppRoutes.splash,
   });
-  final String initialLocation;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -40,7 +40,7 @@ class _MyAppState extends State<MyApp> {
       title: 'Pier Repostería',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      routerConfig: _router,
+      routerConfig: _router!,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

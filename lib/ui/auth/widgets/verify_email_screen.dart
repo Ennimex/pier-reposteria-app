@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
-  const VerifyEmailScreen({required this.email, super.key});
   final String email;
+  const VerifyEmailScreen({super.key, required this.email});
 
   @override
   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
@@ -190,9 +190,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 10),
-                    const Text(
+                    Text(
                       'Ingresa el código de 6 dígitos que enviamos a',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
                       ),
@@ -308,9 +308,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           '¿No recibiste el código?  ',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 13,
                           ),

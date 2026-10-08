@@ -129,9 +129,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Ingresa tu correo y te enviaremos un código para restablecer tu contraseña.',
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                 textAlign: TextAlign.center,
               ),

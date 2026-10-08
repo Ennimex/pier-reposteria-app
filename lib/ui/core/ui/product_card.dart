@@ -9,12 +9,14 @@ import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class ProductCard extends StatelessWidget {
-
-  const ProductCard({
-    required this.product, required this.onTap, super.key,
-  });
   final Product product;
   final VoidCallback onTap;
+
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

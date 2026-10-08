@@ -190,27 +190,27 @@ class _LegalScreenState extends State<LegalScreen>
                     sections: _privacidad != null
                         ? _seccionesDesde(_privacidad!)
                         : [
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Responsable del Tratamiento',
                         content:
                             '${BusinessInfo.marca}, con domicilio en ${BusinessInfo.direccionCompleta}.\nEmail: ${BusinessInfo.email}',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Datos que Recopilamos',
                         content:
                             '• Identificación: Nombre, teléfono, correo electrónico.\n• Acceso digital: Usuario y contraseñas.\n• Transaccionales: Historial de pedidos.\n\nImportante: No almacenamos datos financieros sensibles (tarjetas, CVV).',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Finalidades',
                         content:
                             '• Primarias: Gestión de pedidos y atención a clientes.\n• Secundarias: Envío de promociones (solo con consentimiento).',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Derechos ARCO',
                         content:
                             'Puede ejercer sus derechos de Acceso, Rectificación, Cancelación u Oposición enviando un correo a ${BusinessInfo.email}.\nTiempo de respuesta: Máximo 20 días hábiles.',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Conservación',
                         content:
                             'La información se conservará por un periodo máximo de 5 años tras su última interacción.',
@@ -223,22 +223,22 @@ class _LegalScreenState extends State<LegalScreen>
                     sections: _terminos != null
                         ? _seccionesDesde(_terminos!)
                         : [
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Proceso de Compra',
                         content:
                             'Todos los precios incluyen impuestos. La transacción se confirma una vez procesado el pago.',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Entregas y Envíos',
                         content:
                             'Puedes recoger tu pedido en la sucursal de ${BusinessInfo.ciudad} o solicitar envío a domicilio en las colonias con cobertura. El costo de envío se calcula según la colonia y se muestra antes de pagar.',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Cancelaciones',
                         content:
                             'El cliente puede cancelar únicamente ANTES de que inicie la elaboración. Nos reservamos el derecho de cancelar por falta de insumos, sin cargo al cliente.',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Marco Legal',
                         content:
                             'Para la interpretación de estos términos, las partes se someten a las leyes vigentes en México y a los tribunales de Huejutla de Reyes, Hidalgo.',
@@ -251,17 +251,17 @@ class _LegalScreenState extends State<LegalScreen>
                     sections: _reembolsos != null
                         ? _seccionesDesde(_reembolsos!)
                         : [
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Condiciones de Devolución',
                         content:
                             '• Aplica únicamente el MISMO DÍA de la compra.\n• Debe presentarse al menos el 50% del producto.\n• No aplica en productos manipulados incorrectamente por el cliente.',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Reembolsos',
                         content:
                             'Se gestionan en un máximo de 3 horas hábiles posteriores a la aprobación. Si el error es nuestro, absorbemos el costo total.',
                       ),
-                      const _LegalSection(
+                      _LegalSection(
                         title: 'Garantía',
                         content:
                             'La garantía de frescura es válida únicamente el día de la entrega o recolección.',
@@ -382,7 +382,7 @@ class _LegalScreenState extends State<LegalScreen>
 }
 
 class _LegalSection {
-  const _LegalSection({required this.content, this.title = ''});
   final String title;
   final String content;
+  const _LegalSection({this.title = '', required this.content});
 }

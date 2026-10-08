@@ -155,7 +155,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                             padding:
                                 const EdgeInsets.fromLTRB(16, 0, 16, 32),
                             itemCount: _resenas.length,
-                            separatorBuilder: (_, _) =>
+                            separatorBuilder: (_, __) =>
                                 const SizedBox(height: 12),
                             itemBuilder: (context, i) =>
                                 _buildCard(_resenas[i]),
@@ -185,10 +185,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         estadoColor = AppColors.pierVerde;
         estadoLabel = 'Publicada';
         estadoIcon = Icons.check_circle_rounded;
+        break;
       case 'rechazada':
         estadoColor = Colors.red.shade400;
         estadoLabel = 'Rechazada';
         estadoIcon = LucideIcons.circleX;
+        break;
       default:
         estadoColor = Colors.orange.shade400;
         estadoLabel = 'En revisión';
@@ -221,7 +223,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           productoImagen,
                           width: 52, height: 52,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
+                          errorBuilder: (_, __, ___) =>
                               _productoPlaceholder(),
                         )
                       : _productoPlaceholder(),
@@ -265,7 +267,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 GestureDetector(
                   onTap: () => _editarResena(r),
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 4, top: 4, bottom: 4),
+                    padding: EdgeInsets.only(left: 4, top: 4, bottom: 4),
                     child: Icon(LucideIcons.pencil,
                         size: 18, color: AppColors.pierVerde),
                   ),
@@ -438,8 +440,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
 // ── HOJA DE EDICIÓN DE RESEÑA ──────────────────────────────────────
 class _EditarResenaSheet extends StatefulWidget {
-  const _EditarResenaSheet({required this.resena});
   final Map<String, dynamic> resena;
+  const _EditarResenaSheet({required this.resena});
 
   @override
   State<_EditarResenaSheet> createState() => _EditarResenaSheetState();

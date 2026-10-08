@@ -170,7 +170,7 @@ class PerfilRepartidorScreen extends StatelessWidget {
                 value: provider.disponible,
                 activeThumbColor: Colors.white,
                 activeTrackColor: AppColors.pierVerde,
-                onChanged: provider.setDisponible,
+                onChanged: (v) => provider.setDisponible(v),
               ),
             ],
           ),

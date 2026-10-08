@@ -9,6 +9,14 @@ import 'package:flutter/material.dart';
 /// Los 8 tokens de color que la web pinta como variables CSS --pier-*.
 /// Aquí alimentan los getters dinámicos de AppColors.
 class PaletaPier {
+  final Color verde;
+  final Color verdeOscuro;
+  final Color verdeClaro;
+  final Color dorado;
+  final Color doradoOscuro;
+  final Color doradoClaro;
+  final Color arena;
+  final Color arenaOscuro;
 
   const PaletaPier({
     required this.verde,
@@ -20,24 +28,13 @@ class PaletaPier {
     required this.arena,
     required this.arenaOscuro,
   });
-  final Color verde;
-  final Color verdeOscuro;
-  final Color verdeClaro;
-  final Color dorado;
-  final Color doradoOscuro;
-  final Color doradoClaro;
-  final Color arena;
-  final Color arenaOscuro;
 }
 
 /// Rango mes/día para el modo automático; puede cruzar el año
 /// (ej. invierno: 27 dic → 31 ene).
 class RangoFechas {
+  final int desdeMes, desdeDia, hastaMes, hastaDia;
   const RangoFechas(this.desdeMes, this.desdeDia, this.hastaMes, this.hastaDia);
-  final int desdeMes;
-  final int desdeDia;
-  final int hastaMes;
-  final int hastaDia;
 
   bool contiene(DateTime fecha) {
     final valor = fecha.month * 100 + fecha.day;
@@ -49,6 +46,12 @@ class RangoFechas {
 }
 
 class TemaPier {
+  final String id;
+  final String nombre;
+  final PaletaPier colores;
+
+  /// Sin fechas = solo activable a mano desde el panel.
+  final RangoFechas? fechas;
 
   const TemaPier({
     required this.id,
@@ -56,12 +59,6 @@ class TemaPier {
     required this.colores,
     this.fechas,
   });
-  final String id;
-  final String nombre;
-  final PaletaPier colores;
-
-  /// Sin fechas = solo activable a mano desde el panel.
-  final RangoFechas? fechas;
 }
 
 /// Pier Clásico. verdeOscuro y doradoOscuro conservan los valores HISTÓRICOS

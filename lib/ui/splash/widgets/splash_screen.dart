@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeIn,
     );
 
-    _scaleAnim = Tween<double>(begin: 0.85, end: 1).animate(
+    _scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(
           parent: _animController, curve: Curves.easeOutBack),
     );
@@ -145,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen>
                         color: AppColors.pierDorado,
                         fontWeight: FontWeight.w600,
                         fontStyle: FontStyle.italic,
-                        shadows: const [
+                        shadows: [
                           Shadow(
                             color: Colors.black45,
                             offset: Offset(0, 1),

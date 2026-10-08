@@ -10,8 +10,8 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class ResenasRepository {
-  ResenasRepository({ApiClient? api}) : _api = api ?? ApiService();
   final ApiClient _api;
+  ResenasRepository({ApiClient? api}) : _api = api ?? ApiService();
 
   /// GET /resenas/mis-resenas
   Future<Map<String, dynamic>> misResenas() => _api.getAuth(ApiConstants.misResenas);

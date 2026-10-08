@@ -384,7 +384,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       child: Image.network(
                         p.imagenUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => ColoredBox(
+                        errorBuilder: (_, _, _) => Container(
                           color: AppColors.pierArena,
                           child: Icon(LucideIcons.cake,
                               color: AppColors.pierVerde, size: 36),
@@ -655,7 +655,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 children: cats.map((cat) {
                   final nombre =
                       (cat['nombre'] ?? cat['name'] ?? '').toString();
-                  final icon = cat['icon'] != null
+                  final IconData icon = cat['icon'] != null
                       ? cat['icon'] as IconData
                       : _iconForCategoria(nombre);
 

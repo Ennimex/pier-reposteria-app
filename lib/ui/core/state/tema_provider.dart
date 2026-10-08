@@ -13,13 +13,6 @@ import 'package:pier_pasteleria/utils/logger.dart';
 /// en el panel — y aplica la paleta a AppColors. Refresca cada 60s, así el
 /// tema de temporada cambia sin lanzar updates de la app.
 class TemaProvider extends ChangeNotifier {
-
-  TemaProvider({ConfiguracionRepository? repo})
-      : _repo = repo ?? ConfiguracionRepository() {
-    resolverTema();
-    _timer =
-        Timer.periodic(const Duration(seconds: 60), (_) => resolverTema());
-  }
   final ConfiguracionRepository _repo;
   Timer? _timer;
   TemaPier _tema = temaNormal;
@@ -27,6 +20,13 @@ class TemaProvider extends ChangeNotifier {
 
   TemaPier get tema => _tema;
   bool get modoAuto => _modoAuto;
+
+  TemaProvider({ConfiguracionRepository? repo})
+      : _repo = repo ?? ConfiguracionRepository() {
+    resolverTema();
+    _timer =
+        Timer.periodic(const Duration(seconds: 60), (_) => resolverTema());
+  }
 
   Future<void> resolverTema() async {
     var nuevo = temaNormal;

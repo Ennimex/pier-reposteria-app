@@ -15,8 +15,8 @@ import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:provider/provider.dart';
 
 class ConfirmarEntregaScreen extends StatefulWidget {
-  const ConfirmarEntregaScreen({required this.entrega, super.key});
   final EntregaRepartidor entrega;
+  const ConfirmarEntregaScreen({super.key, required this.entrega});
 
   @override
   State<ConfirmarEntregaScreen> createState() => _ConfirmarEntregaScreenState();
@@ -302,7 +302,7 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
               children: [
                 Text(
                   esEfectivo ? 'Cobro en efectivo' : 'Pagado en la app',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,

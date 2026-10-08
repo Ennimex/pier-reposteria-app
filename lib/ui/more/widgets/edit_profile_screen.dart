@@ -199,7 +199,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: 10),
                       Center(
                         child: Text(email,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textSecondary)),
                       ),
@@ -259,7 +259,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(email,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textSecondary)),
                           ),
@@ -267,8 +267,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               color: AppColors.textSecondary.withValues(alpha: 0.5), size: 16),
                         ]),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.only(top: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
                         child: Text(
                             'El correo no puede ser modificado.',
                             style: TextStyle(
@@ -312,13 +312,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
 
                       const SizedBox(height: 20),
-                      const Center(
+                      Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(LucideIcons.award,
                                 color: AppColors.textSecondary, size: 14),
-                            SizedBox(width: 5),
+                            const SizedBox(width: 5),
                             Text('Cliente Distinguido Pier',
                                 style: TextStyle(
                                     fontSize: 12,

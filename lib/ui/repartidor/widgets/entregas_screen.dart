@@ -113,8 +113,8 @@ class EntregasScreen extends StatelessWidget {
 }
 
 class _DisponibilidadCard extends StatelessWidget {
-  const _DisponibilidadCard({required this.provider});
   final EntregasProvider provider;
+  const _DisponibilidadCard({required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -190,8 +190,8 @@ class _DisponibilidadCard extends StatelessWidget {
 }
 
 class _EntregaCard extends StatelessWidget {
-  const _EntregaCard({required this.entrega});
   final EntregaRepartidor entrega;
+  const _EntregaCard({required this.entrega});
 
   @override
   Widget build(BuildContext context) {
@@ -302,9 +302,9 @@ class _EntregaCard extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title, {required this.count});
   final String title;
   final int count;
+  const _SectionTitle(this.title, {required this.count});
 
   @override
   Widget build(BuildContext context) {
@@ -343,8 +343,8 @@ class _SectionTitle extends StatelessWidget {
 
 /// Tarjeta de un pedido del pool con botón para tomarlo.
 class _DisponibleCard extends StatefulWidget {
-  const _DisponibleCard({required this.pedido});
   final PedidoDisponible pedido;
+  const _DisponibleCard({required this.pedido});
 
   @override
   State<_DisponibleCard> createState() => _DisponibleCardState();
@@ -490,8 +490,8 @@ class _DisponibleCardState extends State<_DisponibleCard> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.disponible});
   final bool disponible;
+  const _EmptyState({required this.disponible});
 
   @override
   Widget build(BuildContext context) {
