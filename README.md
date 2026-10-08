@@ -159,7 +159,7 @@ existentes viven en `test/`; el smoke test de integración también usa
 `FakeApiClient`, por lo que no contacta el backend ni requiere credenciales.
 El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
 están en `analysis_options.yaml`. El workflow de CI compara el resultado con el
-baseline de `tool/check_analysis.sh` (0 errores, 1 warning y 168 infos, medido
+baseline de `tool/check_analysis.sh` (0 errores, 1 warning y 648 infos, medido
 con Flutter 3.44.4, la versión del CI) y falla si empeora; al corregir avisos,
 el baseline se baja en el mismo Pull Request.
 Para ejecutar localmente:
