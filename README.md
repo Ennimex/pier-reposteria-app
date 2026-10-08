@@ -105,6 +105,27 @@ flutter devices          # identifica tu dispositivo o emulador
 flutter run -d <device-id>
 ```
 
+### Ambientes
+
+La app apunta al backend de producción salvo que se indique otro ambiente al
+compilar con `--dart-define`:
+
+| Ambiente | Comando | Backend |
+|---|---|---|
+| prod (por defecto) | `flutter run` | `https://pier-reposteria-backend.onrender.com/api` |
+| dev | `flutter run --dart-define=AMBIENTE=dev` | Backend local, `http://10.0.2.2:3000/api` (localhost de la PC visto desde el emulador) |
+| staging | `flutter run --dart-define=AMBIENTE=staging` | Producción, mientras no exista un backend de staging |
+
+En un celular físico, `10.0.2.2` no llega a la PC: usa la IP de la PC en la red
+con `--dart-define=API_BASE_URL`, que tiene prioridad sobre el ambiente:
+
+```bash
+flutter run --dart-define=AMBIENTE=dev --dart-define=API_BASE_URL=http://192.168.1.50:3000/api
+```
+
+El backend local usa http, que Android solo permite en los builds debug. Al
+arrancar, en debug, el log muestra el ambiente y la URL en uso.
+
 Comprobaciones antes de abrir un Pull Request (qué revisa cada una, en
 [Pruebas](#pruebas)):
 
