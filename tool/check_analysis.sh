@@ -21,9 +21,11 @@ if [ "$analyze_status" -ne 0 ]; then
   exit "$analyze_status"
 fi
 
-errors=$(grep -Ec '^[[:space:]]*error - ' "$output_file" || true)
-warnings=$(grep -Ec '^[[:space:]]*warning - ' "$output_file" || true)
-infos=$(grep -Ec '^[[:space:]]*info - ' "$output_file" || true)
+# flutter analyze separa los campos con «•» en Linux (CI) y con «-» en
+# Windows: se cuentan ambos formatos.
+errors=$(grep -Ec '^[[:space:]]*error (-|•) ' "$output_file" || true)
+warnings=$(grep -Ec '^[[:space:]]*warning (-|•) ' "$output_file" || true)
+infos=$(grep -Ec '^[[:space:]]*info (-|•) ' "$output_file" || true)
 
 if [ "$errors" -gt "$baseline_errors" ] ||
   [ "$warnings" -gt "$baseline_warnings" ] ||
