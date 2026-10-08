@@ -13,6 +13,18 @@ import 'package:pier_pasteleria/data/services/api_client.dart';
 class ApiService implements ApiClient {
   final StorageService _storage = StorageService();
 
+  // Anuncia una sola vez a qué backend apunta (PierLog solo imprime en debug).
+  static bool _ambienteAnunciado = false;
+
+  static String _url(String endpoint) {
+    if (!_ambienteAnunciado) {
+      _ambienteAnunciado = true;
+      PierLog.info(
+          'Ambiente ${ApiConstants.ambiente.name} → ${ApiConstants.baseUrl}');
+    }
+    return '${ApiConstants.baseUrl}$endpoint';
+  }
+
   // Headers base sin auth
   Map<String, String> get _baseHeaders => {
         'Content-Type': 'application/json',
@@ -33,7 +45,7 @@ class ApiService implements ApiClient {
     PierLog.api('GET $endpoint');
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        Uri.parse(_url(endpoint)),
         headers: _baseHeaders,
       );
       return _handleResponse(response, endpoint);
@@ -49,7 +61,7 @@ class ApiService implements ApiClient {
     PierLog.api('GET-Auth $endpoint');
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        Uri.parse(_url(endpoint)),
         headers: await _authHeaders,
       );
       return _handleResponse(response, endpoint);
@@ -66,7 +78,7 @@ class ApiService implements ApiClient {
     PierLog.api('POST $endpoint');
     try {
       final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        Uri.parse(_url(endpoint)),
         headers: _baseHeaders,
         body: jsonEncode(body),
       );
@@ -84,7 +96,7 @@ class ApiService implements ApiClient {
     PierLog.api('POST-Auth $endpoint');
     try {
       final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        Uri.parse(_url(endpoint)),
         headers: await _authHeaders,
         body: jsonEncode(body),
       );
@@ -102,7 +114,7 @@ class ApiService implements ApiClient {
     PierLog.api('PUT-Auth $endpoint');
     try {
       final response = await http.put(
-        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        Uri.parse(_url(endpoint)),
         headers: await _authHeaders,
         body: jsonEncode(body),
       );
@@ -119,7 +131,7 @@ class ApiService implements ApiClient {
     PierLog.api('DELETE-Auth $endpoint');
     try {
       final response = await http.delete(
-        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        Uri.parse(_url(endpoint)),
         headers: await _authHeaders,
       );
       return _handleResponse(response, endpoint);
@@ -160,7 +172,7 @@ class ApiService implements ApiClient {
     PierLog.api('UPLOAD-Auth $endpoint');
     try {
       final token = await _storage.getToken();
-      final uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
+      final uri = Uri.parse(_url(endpoint));
       final request = http.MultipartRequest('POST', uri);
       
       if (token != null) {

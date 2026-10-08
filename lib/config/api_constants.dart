@@ -1,9 +1,46 @@
 // lib/config/api_constants.dart
+//
+// La URL del backend depende del ambiente, que se elige al compilar:
+//   flutter run --dart-define=AMBIENTE=dev
+//   flutter run --dart-define=AMBIENTE=dev --dart-define=API_BASE_URL=http://192.168.1.50:3000/api
+// Sin --dart-define el ambiente es prod (el build de siempre).
+
+enum Ambiente { dev, staging, prod }
 
 class ApiConstants {
-  static const String _prodUrl = 'https://pier-reposteria-backend.onrender.com/api';
+  static const String prodUrl = 'https://pier-reposteria-backend.onrender.com/api';
 
-  static String get baseUrl => _prodUrl;
+  /// Backend local en la PC, visto desde el emulador de Android. En un
+  /// celular físico usar API_BASE_URL con la IP de la PC en la red.
+  static const String devUrl = 'http://10.0.2.2:3000/api';
+
+  static const String _ambienteDefine =
+      String.fromEnvironment('AMBIENTE', defaultValue: 'prod');
+  static const String _urlForzada = String.fromEnvironment('API_BASE_URL');
+
+  static Ambiente get ambiente => ambienteDesde(_ambienteDefine);
+
+  static String get baseUrl =>
+      resolverBaseUrl(ambiente, urlForzada: _urlForzada);
+
+  /// Valor de AMBIENTE a enum; vacío o desconocido es prod.
+  static Ambiente ambienteDesde(String valor) => Ambiente.values.firstWhere(
+        (a) => a.name == valor.trim().toLowerCase(),
+        orElse: () => Ambiente.prod,
+      );
+
+  static String resolverBaseUrl(Ambiente ambiente, {String urlForzada = ''}) {
+    if (urlForzada.isNotEmpty) return urlForzada;
+    switch (ambiente) {
+      case Ambiente.dev:
+        return devUrl;
+      case Ambiente.staging:
+        // Aún no existe un backend de staging: usa el de producción.
+        return prodUrl;
+      case Ambiente.prod:
+        return prodUrl;
+    }
+  }
 
   // ── AUTH ─────────────────────────────────────────────────────────
   static const String login                = '/auth/login';
