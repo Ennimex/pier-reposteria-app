@@ -1,48 +1,41 @@
 // lib/routing/app_routes.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
-
-// Splash
-import 'package:pier_pasteleria/ui/splash/widgets/splash_screen.dart';
-
+import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/ui/auth/widgets/forgot_password_screen.dart';
 // Auth
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/forgot_password_screen.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/verify_email_screen.dart';
-
+import 'package:pier_pasteleria/ui/checkout/widgets/checkout_screen.dart';
+import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
 // Shell cliente (BottomNavBar)
 import 'package:pier_pasteleria/ui/main/widgets/main_screen.dart';
-
-// Shell repartidor
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_main_screen.dart';
-
-// Roles internos (empleado / gerencia / dirección) → panel web
-import 'package:pier_pasteleria/ui/roles/widgets/panel_web_screen.dart';
-
+import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
+import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
+import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
+// Cliente - push screens
+import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 // Públicas
 import 'package:pier_pasteleria/ui/public/widgets/about_us_screen.dart';
 import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
 import 'package:pier_pasteleria/ui/public/widgets/faq_screen.dart';
 import 'package:pier_pasteleria/ui/public/widgets/legal_screen.dart';
-
-// Cliente - push screens
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/checkout_screen.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
-import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
-import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
 import 'package:pier_pasteleria/ui/refunds/widgets/refunds_screen.dart';
+// Shell repartidor
+import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_main_screen.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/create_review_screen.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/product_reviews_screen.dart';
-import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
-import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
+// Roles internos (empleado / gerencia / dirección) → panel web
+import 'package:pier_pasteleria/ui/roles/widgets/panel_web_screen.dart';
+// Splash
+import 'package:pier_pasteleria/ui/splash/widgets/splash_screen.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 class AppRoutes {
   static const String splash              = '/splash';

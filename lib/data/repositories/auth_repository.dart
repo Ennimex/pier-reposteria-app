@@ -4,13 +4,14 @@
 // Recibe un ApiClient por constructor (ApiService en la app, FakeApiClient
 // en pruebas). Conserva token y usuario en StorageService.
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
+import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/data/services/storage_service.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
 
 class AuthRepository {
   final ApiClient _api;

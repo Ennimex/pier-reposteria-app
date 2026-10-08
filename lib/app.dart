@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_theme.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'package:pier_pasteleria/routing/app_routes.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_theme.dart';
+import 'package:provider/provider.dart';
 
 class MyApp extends StatefulWidget {
   final String initialLocation;

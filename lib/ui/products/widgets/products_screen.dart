@@ -1,23 +1,24 @@
 // lib/ui/products/widgets/products_screen.dart
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/services/demanda_service.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
+import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }
 

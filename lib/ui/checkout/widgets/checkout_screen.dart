@@ -1,20 +1,20 @@
 // lib/ui/checkout/widgets/checkout_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/data/repositories/direcciones_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pagos_repository.dart';
 import 'package:pier_pasteleria/domain/models/direccion_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:provider/provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});

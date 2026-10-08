@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:pier_pasteleria/app.dart';
 import 'package:pier_pasteleria/data/repositories/pagos_repository.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

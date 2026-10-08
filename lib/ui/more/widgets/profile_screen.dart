@@ -1,20 +1,20 @@
 // lib/ui/more/widgets/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
+import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/orders_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

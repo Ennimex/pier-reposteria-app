@@ -1,7 +1,7 @@
 // lib/ui/core/state/auth_provider.dart
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthRepository _authService;

@@ -8,15 +8,15 @@
 // "Reportar" (fallida) está disponible en ambos estados.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/confirmar_entrega_screen.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/reportar_fallo_sheet.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/confirmar_entrega_screen.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/reportar_fallo_sheet.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EntregaDetailScreen extends StatefulWidget {
   final EntregaRepartidor entrega;

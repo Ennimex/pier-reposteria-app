@@ -1,29 +1,30 @@
 // lib/ui/home/widgets/home_screen.dart
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
-import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
+import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:provider/provider.dart';
 
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {

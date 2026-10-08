@@ -8,11 +8,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
-import 'package:provider/provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class VincularAlexaScreen extends StatefulWidget {
   const VincularAlexaScreen({super.key});

@@ -1,8 +1,8 @@
 // lib/ui/core/state/cart_provider.dart
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/utils/logger.dart';
 
 class CartItem {
   final String id;              // producto_id

@@ -1,15 +1,15 @@
 // lib/ui/auth/widgets/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/forgot_password_screen.dart';
+import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/utils/validators.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
