@@ -3,95 +3,56 @@
 // Espejo del componente web VincularAlexa.tsx:
 //   POST /api/auth/alexa/generar-codigo (auth) -> { codigo, expira_en_segundos }
 // El usuario le dice el codigo a Alexa y la skill lo canjea por un JWT.
-import 'dart:async';
-
+// MVVM: el estado vive en VincularAlexaViewModel; esta vista solo lo pinta.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/more/view_model/vincular_alexa_view_model.dart';
 import 'package:provider/provider.dart';
 
 class VincularAlexaScreen extends StatefulWidget {
-  const VincularAlexaScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const VincularAlexaScreen({super.key, this.viewModel});
+
+  final VincularAlexaViewModel? viewModel;
 
   @override
   State<VincularAlexaScreen> createState() => _VincularAlexaScreenState();
 }
 
 class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
-  final _cuentaRepo = CuentaRepository();
-
-  String? _codigo;
-  int _segundos = 0;
-  bool _generando = false;
-  bool _copiado = false;
-  String _error = '';
-  Timer? _timer;
+  // El State solo es dueño del ViewModel (lo crea y lo libera).
+  late final VincularAlexaViewModel _vm = widget.viewModel ??
+      VincularAlexaViewModel(repo: CuentaRepository());
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _vm.dispose();
     super.dispose();
   }
 
-  Future<void> _generar() async {
-    setState(() {
-      _generando = true;
-      _error = '';
-      _copiado = false;
-    });
-
-    final result = await _cuentaRepo.generarCodigoAlexa();
-
-    if (!mounted) return;
-    if (result['success'] == true && result['codigo'] != null) {
-      _timer?.cancel();
-      setState(() {
-        _codigo = result['codigo'].toString();
-        _segundos = (result['expira_en_segundos'] as num?)?.toInt() ?? 300;
-        _generando = false;
-      });
-      _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (!mounted) return;
-        setState(() {
-          if (_segundos <= 1) {
-            _codigo = null;
-            _segundos = 0;
-            t.cancel();
-          } else {
-            _segundos--;
-          }
-        });
-      });
-    } else {
-      setState(() {
-        _error = result['message']?.toString() ??
-            'No se pudo generar el código';
-        _generando = false;
-      });
-    }
-  }
-
   Future<void> _copiar() async {
-    final codigo = _codigo;
+    final codigo = _vm.codigo;
     if (codigo == null) return;
     await Clipboard.setData(ClipboardData(text: codigo));
     if (!mounted) return;
-    setState(() => _copiado = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _copiado = false);
-    });
+    _vm.marcarCopiado();
   }
-
-  String _formatoTiempo(int s) =>
-      '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(),
+    );
+  }
+
+  Widget _buildPantalla() {
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       appBar: AppBar(title: const Text('Vincular con Alexa')),
@@ -146,13 +107,13 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
                   ),
                 ]),
                 const SizedBox(height: 14),
-                Text.rich(
+                const Text.rich(
                   TextSpan(
                     style: TextStyle(
                         fontSize: 13,
                         height: 1.5,
                         color: AppColors.textSecondary),
-                    children: const [
+                    children: [
                       TextSpan(
                           text:
                               'Genera un código de un solo uso (expira en 5 minutos) y dile a tu Alexa: '),
@@ -175,7 +136,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
           ),
 
           // ── ERROR ──────────────────────────────────────────────────
-          if (_error.isNotEmpty) ...[
+          if (_vm.error.isNotEmpty) ...[
             const SizedBox(height: 16),
             Container(
               padding:
@@ -191,7 +152,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
                     color: AppColors.error, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(_error,
+                  child: Text(_vm.error,
                       style: const TextStyle(
                           fontSize: 13, color: AppColors.error)),
                 ),
@@ -202,14 +163,14 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
           const SizedBox(height: 16),
 
           // ── CÓDIGO O BOTÓN ─────────────────────────────────────────
-          if (_codigo != null)
-            _buildCodigo(_codigo!)
+          if (_vm.codigo != null)
+            _buildCodigo(_vm.codigo!)
           else
             SizedBox(
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: _generando ? null : _generar,
-                icon: _generando
+                onPressed: _vm.generando ? null : _vm.generar,
+                icon: _vm.generando
                     ? const SizedBox(
                         width: 18,
                         height: 18,
@@ -218,7 +179,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
                     : const Icon(LucideIcons.mic,
                         color: Colors.white, size: 18),
                 label: Text(
-                    _generando
+                    _vm.generando
                         ? 'Generando...'
                         : 'Generar código de vinculación',
                     style: const TextStyle(
@@ -258,7 +219,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
             Border.all(color: AppColors.pierVerde.withValues(alpha: 0.25), width: 2),
       ),
       child: Column(children: [
-        Text('TU CÓDIGO DE VINCULACIÓN',
+        const Text('TU CÓDIGO DE VINCULACIÓN',
             style: TextStyle(
                 fontSize: 11,
                 letterSpacing: 2,
@@ -284,14 +245,14 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: _copiado
+                      color: _vm.copiado
                           ? AppColors.pierVerde
                           : AppColors.textSecondary.withValues(alpha: 0.3)),
                 ),
                 child: Icon(
-                    _copiado ? LucideIcons.check : LucideIcons.copy,
+                    _vm.copiado ? LucideIcons.check : LucideIcons.copy,
                     size: 18,
-                    color: _copiado
+                    color: _vm.copiado
                         ? AppColors.pierVerde
                         : AppColors.textSecondary),
               ),
@@ -301,11 +262,11 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
         const SizedBox(height: 12),
         Text.rich(
           TextSpan(
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             children: [
               const TextSpan(text: 'Expira en '),
               TextSpan(
-                  text: _formatoTiempo(_segundos),
+                  text: _vm.tiempoRestante,
                   style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerdeOscuro)),
@@ -317,7 +278,7 @@ class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
         Text(
           'Dile: "vincula mi cuenta con el código $deletreado"',
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
               fontSize: 13,
               fontStyle: FontStyle.italic,
               height: 1.4,
