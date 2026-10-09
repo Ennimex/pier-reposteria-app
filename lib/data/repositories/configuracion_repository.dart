@@ -7,13 +7,14 @@
 // FakeApiClient (test/fakes/).
 //
 // Fase 3: las secciones que ya tienen ViewModel tienen su método tipado
-// (nosotros, faq) y lanzan ApiException si el backend falla.
+// (nosotros, faq, legales) y lanzan ApiException si el backend falla.
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/domain/models/info_nosotros.dart';
 import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
+import 'package:pier_pasteleria/domain/models/textos_legales.dart';
 
 class ConfiguracionRepository {
   ConfiguracionRepository({ApiClient? api}) : _api = api ?? ApiService();
@@ -47,5 +48,17 @@ class ConfiguracionRepository {
     }
     final cfg = r['config'];
     return cfg is Map ? PreguntaFrecuente.listaDesdeConfig(cfg) : const [];
+  }
+
+  /// GET /configuracion/legales. Sin `config` devuelve todo null.
+  Future<TextosLegales> legales() async {
+    final r = await seccion('legales');
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar los textos legales',
+      );
+    }
+    final cfg = r['config'];
+    return cfg is Map ? TextosLegales.fromConfig(cfg) : const TextosLegales();
   }
 }
