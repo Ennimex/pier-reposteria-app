@@ -5,13 +5,18 @@
 // consumen hoy las pantallas; el tipado a modelos llega con cada ViewModel.
 // Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
 // FakeApiClient (test/fakes/).
+//
+// Fase 3: los métodos tipados (crearResena) lanzan ApiException si el
+// backend falla.
 import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
 class ResenasRepository {
-  final ApiClient _api;
   ResenasRepository({ApiClient? api}) : _api = api ?? ApiService();
+
+  final ApiClient _api;
 
   /// GET /resenas/mis-resenas
   Future<Map<String, dynamic>> misResenas() => _api.getAuth(ApiConstants.misResenas);
@@ -23,9 +28,28 @@ class ResenasRepository {
   Future<Map<String, dynamic>> porProducto(String productoId) =>
       _api.get(ApiConstants.resenasPorProducto(productoId));
 
-  /// POST /resenas: {producto_id, rating, titulo, comentario}
-  Future<Map<String, dynamic>> crear(Map<String, dynamic> body) =>
-      _api.postAuth(ApiConstants.crearResena, body);
+  /// POST /resenas: {producto_id, rating, titulo, comentario}. Devuelve
+  /// true si quedó publicada de inmediato (auto_aprobada) y false si quedó en
+  /// revisión. Lanza ApiException con el mensaje del backend (p. ej. «Ya
+  /// dejaste una reseña para este producto»).
+  Future<bool> crearResena({
+    required String productoId,
+    required int rating,
+    required String titulo,
+    required String comentario,
+  }) async {
+    final r = await _api.postAuth(ApiConstants.crearResena, {
+      'producto_id': productoId,
+      'rating': rating,
+      'titulo': titulo,
+      'comentario': comentario,
+    });
+    if (r['success'] != true) {
+      throw ApiException(r['message']?.toString() ?? 'Error al enviar');
+    }
+    final resena = r['resena'];
+    return resena is Map && resena['auto_aprobada'] == true;
+  }
 
   /// PUT /resenas/:id (solo la propia)
   Future<Map<String, dynamic>> editar(String id, Map<String, dynamic> body) =>
