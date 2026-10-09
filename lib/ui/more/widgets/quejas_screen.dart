@@ -1,179 +1,100 @@
 // lib/ui/more/widgets/quejas_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
+import 'package:pier_pasteleria/domain/models/queja.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/more/view_model/quejas_view_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
-// ── Tipos ─────────────────────────────────────────────────────────
-enum TipoQueja { queja, sugerencia, comentario }
-enum CategoriaQueja { producto, servicio, plataforma, otro }
-enum EstadoQueja { pendiente, en_proceso, resuelto }
-
-extension TipoQuejaExt on TipoQueja {
-  String get label {
-    switch (this) {
-      case TipoQueja.queja: return 'Queja';
-      case TipoQueja.sugerencia: return 'Sugerencia';
-      case TipoQueja.comentario: return 'Comentario';
-    }
-  }
-  String get value {
-    switch (this) {
-      case TipoQueja.queja: return 'queja';
-      case TipoQueja.sugerencia: return 'sugerencia';
-      case TipoQueja.comentario: return 'comentario';
-    }
-  }
-}
-
-extension CategoriaQuejaExt on CategoriaQueja {
-  String get label {
-    switch (this) {
-      case CategoriaQueja.producto: return 'Producto';
-      case CategoriaQueja.servicio: return 'Servicio';
-      case CategoriaQueja.plataforma: return 'Plataforma';
-      case CategoriaQueja.otro: return 'Otro';
-    }
-  }
-  String get value {
-    switch (this) {
-      case CategoriaQueja.producto: return 'producto';
-      case CategoriaQueja.servicio: return 'servicio';
-      case CategoriaQueja.plataforma: return 'plataforma';
-      case CategoriaQueja.otro: return 'otro';
-    }
-  }
-}
-
-extension EstadoQuejaExt on EstadoQueja {
-  String get label {
-    switch (this) {
-      case EstadoQueja.pendiente: return 'Pendiente';
-      case EstadoQueja.en_proceso: return 'En proceso';
-      case EstadoQueja.resuelto: return 'Resuelto';
-    }
-  }
-  Color get color {
-    switch (this) {
-      case EstadoQueja.pendiente: return AppColors.estadoPendiente;
-      case EstadoQueja.en_proceso: return AppColors.estadoPreparacion;
-      case EstadoQueja.resuelto: return AppColors.estadoListo;
-    }
-  }
-  Color get bgColor {
-    switch (this) {
-      case EstadoQueja.pendiente: return AppColors.estadoPendiente.withValues(alpha: 0.1);
-      case EstadoQueja.en_proceso: return AppColors.estadoPreparacion.withValues(alpha: 0.1);
-      case EstadoQueja.resuelto: return AppColors.estadoListo.withValues(alpha: 0.1);
-    }
-  }
-  IconData get icon {
-    switch (this) {
-      case EstadoQueja.pendiente: return LucideIcons.hourglass;
-      case EstadoQueja.en_proceso: return LucideIcons.refreshCw;
-      case EstadoQueja.resuelto: return Icons.check_circle_rounded;
-    }
-  }
-  static EstadoQueja fromString(String s) {
-    switch (s) {
-      case 'en_proceso': return EstadoQueja.en_proceso;
-      case 'resuelto': return EstadoQueja.resuelto;
-      default: return EstadoQueja.pendiente;
-    }
-  }
+// Color e icono de cada estado (presentación; el enum vive en domain/).
+extension on EstadoQueja {
+  Color get color => switch (this) {
+        EstadoQueja.pendiente => AppColors.estadoPendiente,
+        EstadoQueja.enProceso => AppColors.estadoPreparacion,
+        EstadoQueja.resuelto => AppColors.estadoListo,
+      };
+  Color get bgColor => color.withValues(alpha: 0.1);
+  IconData get icon => switch (this) {
+        EstadoQueja.pendiente => LucideIcons.hourglass,
+        EstadoQueja.enProceso => LucideIcons.refreshCw,
+        EstadoQueja.resuelto => Icons.check_circle_rounded,
+      };
 }
 
 // ── Screen ────────────────────────────────────────────────────────
 class QuejasScreen extends StatefulWidget {
-  const QuejasScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const QuejasScreen({super.key, this.viewModel});
+
+  final QuejasViewModel? viewModel;
 
   @override
   State<QuejasScreen> createState() => _QuejasScreenState();
 }
 
 class _QuejasScreenState extends State<QuejasScreen> {
-  final _quejasRepo = QuejasRepository();
-  final _pedidosRepo = PedidosRepository();
-
-  List<Map<String, dynamic>> _quejas = [];
-  List<Map<String, dynamic>> _pedidos = [];
-  bool _cargando = true;
-  int? _expandida; // id de la queja expandida
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final QuejasViewModel _vm = widget.viewModel ??
+      QuejasViewModel(
+        quejasRepo: QuejasRepository(),
+        pedidosRepo: PedidosRepository(),
+      );
 
   @override
   void initState() {
     super.initState();
     PierLog.nav('→ QuejasScreen');
-    _cargarDatos();
+    unawaited(_vm.cargar());
   }
 
-  Future<void> _cargarDatos() async {
-    setState(() => _cargando = true);
-    await Future.wait([_cargarQuejas(), _cargarPedidos()]);
-    if (mounted) setState(() => _cargando = false);
-  }
-
-  Future<void> _cargarQuejas() async {
-    final result = await _quejasRepo.misQuejas();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final lista =
-          List<Map<String, dynamic>>.from(result['quejas'] ?? []);
-      setState(() => _quejas = lista);
-      PierLog.info('✅ Quejas cargadas: ${lista.length}');
-    } else {
-      PierLog.error('Error al cargar quejas: ${result['message']}');
-    }
-  }
-
-  Future<void> _cargarPedidos() async {
-    final result = await _pedidosRepo.misPedidos();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      setState(() => _pedidos =
-          List<Map<String, dynamic>>.from(result['pedidos'] ?? []));
-      PierLog.debug('Pedidos para dropdown: ${_pedidos.length}');
-    }
+  @override
+  void dispose() {
+    _vm.dispose();
+    super.dispose();
   }
 
   void _abrirFormulario() {
     PierLog.nav('→ QuejasScreen BottomSheet formulario');
-    showModalBottomSheet(
+    _vm.nuevaQueja();
+    unawaited(showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _FormularioQueja(
-        pedidos: _pedidos,
-        onEnviado: () {
-          Navigator.pop(context);
-          _cargarQuejas();
-        },
+        vm: _vm,
+        onEnviado: () => Navigator.pop(context),
       ),
-    );
+    ));
   }
 
-  String _formatearFecha(String? fechaStr) {
-    if (fechaStr == null) return '';
-    try {
-      final dt = DateTime.parse(fechaStr).toLocal();
-      const meses = [
-        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-      ];
-      return '${dt.day} ${meses[dt.month - 1]}, ${dt.year}';
-    } catch (_) {
-      return '';
-    }
+  String _formatearFecha(DateTime? dt) {
+    if (dt == null) return '';
+    const meses = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return '${dt.day} ${meses[dt.month - 1]}, ${dt.year}';
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildContenido(),
+    );
+  }
+
+  Widget _buildContenido() {
+    final quejas = _vm.quejas;
+    final cargando = _vm.cargando;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -186,7 +107,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
               decoration: BoxDecoration(
                 color: AppColors.pierVerdeOscuro,
                 borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(24)),
+                    const BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +160,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                               Icon(LucideIcons.plus,
                                   color: AppColors.pierVerdeOscuro,
                                   size: 16),
-                              SizedBox(width: 5),
+                              const SizedBox(width: 5),
                               Text('Nueva',
                                   style: TextStyle(
                                       color: AppColors.pierVerdeOscuro,
@@ -251,7 +172,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                       ),
                     ],
                   ),
-                  if (!_cargando && _quejas.isNotEmpty) ...[
+                  if (!cargando && quejas.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -261,7 +182,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${_quejas.length} registro${_quejas.length == 1 ? '' : 's'}',
+                        '${quejas.length} registro${quejas.length == 1 ? '' : 's'}',
                         style: const TextStyle(
                             fontSize: 13,
                             color: Colors.white70,
@@ -275,23 +196,23 @@ class _QuejasScreenState extends State<QuejasScreen> {
 
             // ── CONTENIDO ─────────────────────────────────────────
             Expanded(
-              child: _cargando
+              child: cargando
                   ? Center(
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
-                  : _quejas.isEmpty
+                  : quejas.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
-                          onRefresh: _cargarDatos,
+                          onRefresh: _vm.cargar,
                           color: AppColors.pierVerde,
                           child: ListView.separated(
                             padding:
                                 const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                            itemCount: _quejas.length,
-                            separatorBuilder: (_, __) =>
+                            itemCount: quejas.length,
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 10),
                             itemBuilder: (_, i) =>
-                                _buildCard(_quejas[i]),
+                                _buildCard(quejas[i]),
                           ),
                         ),
             ),
@@ -301,18 +222,15 @@ class _QuejasScreenState extends State<QuejasScreen> {
     );
   }
 
-  Widget _buildCard(Map<String, dynamic> q) {
-    final id = q['id'] as int? ?? 0;
-    final ticket = q['ticket']?.toString() ?? '';
-    final asunto = q['asunto']?.toString() ?? '';
-    final descripcion = q['descripcion']?.toString() ?? '';
-    final respuesta = q['respuesta']?.toString();
-    final pedidoId = q['pedido_id'];
-    final estado = EstadoQuejaExt.fromString(q['estado']?.toString() ?? '');
-    final tipo = q['tipo']?.toString() ?? '';
-    final categoria = q['categoria']?.toString() ?? '';
-    final fecha = _formatearFecha(q['created_at']?.toString());
-    final expandida = _expandida == id;
+  Widget _buildCard(Queja q) {
+    final ticket = q.ticket;
+    final asunto = q.asunto;
+    final descripcion = q.descripcion;
+    final respuesta = q.respuesta;
+    final pedidoId = q.pedidoId;
+    final estado = q.estado;
+    final fecha = _formatearFecha(q.creadaEn);
+    final expandida = _vm.expandidaId == q.id;
 
     return Container(
       decoration: BoxDecoration(
@@ -330,8 +248,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
         children: [
           // ── CABECERA ────────────────────────────────────────────
           GestureDetector(
-            onTap: () =>
-                setState(() => _expandida = expandida ? null : id),
+            onTap: () => _vm.alternar(q.id),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
               child: Row(
@@ -363,9 +280,9 @@ class _QuejasScreenState extends State<QuejasScreen> {
                             const SizedBox(width: 6),
                             _estadoBadge(estado),
                             const SizedBox(width: 6),
-                            _miniChip(_tipoCapitalizado(tipo)),
+                            _miniChip(q.tipoTexto),
                             const SizedBox(width: 6),
-                            _miniChip(_categoriaCapitalizada(categoria)),
+                            _miniChip(q.categoriaTexto),
                           ]),
                         ),
                         const SizedBox(height: 4),
@@ -404,7 +321,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Descripción
-                  Text('Descripción',
+                  const Text('Descripción',
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -412,7 +329,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                           letterSpacing: .3)),
                   const SizedBox(height: 6),
                   Text(descripcion,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                           height: 1.5)),
@@ -420,7 +337,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                   // Pedido asociado
                   if (pedidoId != null) ...[
                     const SizedBox(height: 12),
-                    Text('Pedido asociado',
+                    const Text('Pedido asociado',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -445,7 +362,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                               size: 14,
                               color: AppColors.pierVerde),
                           const SizedBox(width: 6),
-                          Text('Pedido #$pedidoId',
+                          Text('Pedido #${_vm.numeroDePedido(pedidoId)}',
                               style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.pierVerde,
@@ -456,7 +373,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                   ],
 
                   // Respuesta del equipo (solo si hay respuesta)
-                  if (respuesta != null && respuesta.isNotEmpty) ...[
+                  if (respuesta != null) ...[
                     const SizedBox(height: 14),
                     Container(
                       width: double.infinity,
@@ -510,7 +427,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(estado.icon, size: 11, color: estado.color),
         const SizedBox(width: 4),
-        Text(estado.label,
+        Text(estado.etiqueta,
             style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
@@ -527,27 +444,8 @@ class _QuejasScreenState extends State<QuejasScreen> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(label,
-          style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
     );
-  }
-
-  String _tipoCapitalizado(String t) {
-    switch (t) {
-      case 'queja': return 'Queja';
-      case 'sugerencia': return 'Sugerencia';
-      case 'comentario': return 'Comentario';
-      default: return t;
-    }
-  }
-
-  String _categoriaCapitalizada(String c) {
-    switch (c) {
-      case 'producto': return 'Producto';
-      case 'servicio': return 'Servicio';
-      case 'plataforma': return 'Plataforma';
-      case 'otro': return 'Otro';
-      default: return c;
-    }
   }
 
   Widget _buildEmptyState() {
@@ -575,7 +473,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Si tienes alguna queja, sugerencia o\ncomentario, cuéntanoslo.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
@@ -606,27 +504,23 @@ class _QuejasScreenState extends State<QuejasScreen> {
 
 // ── Formulario (BottomSheet) ──────────────────────────────────────
 class _FormularioQueja extends StatefulWidget {
-  final List<Map<String, dynamic>> pedidos;
-  final VoidCallback onEnviado;
-
   const _FormularioQueja({
-    required this.pedidos,
+    required this.vm,
     required this.onEnviado,
   });
+
+  final QuejasViewModel vm;
+  final VoidCallback onEnviado;
 
   @override
   State<_FormularioQueja> createState() => _FormularioQuejaState();
 }
 
 class _FormularioQuejaState extends State<_FormularioQueja> {
-  final _quejasRepo = QuejasRepository();
   final _asuntoCtrl = TextEditingController();
   final _descripcionCtrl = TextEditingController();
 
-  TipoQueja _tipo = TipoQueja.queja;
-  CategoriaQueja _categoria = CategoriaQueja.producto;
-  String? _pedidoSeleccionado; // pedido_id como string
-  bool _enviando = false;
+  QuejasViewModel get _vm => widget.vm;
 
   @override
   void dispose() {
@@ -636,40 +530,18 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
   }
 
   Future<void> _enviar() async {
-    if (_asuntoCtrl.text.trim().isEmpty ||
-        _descripcionCtrl.text.trim().isEmpty) {
-      _showSnack('Completa todos los campos obligatorios');
-      return;
-    }
-
-    setState(() => _enviando = true);
-
-    final body = <String, dynamic>{
-      'tipo': _tipo.value,
-      'categoria': _categoria.value,
-      'asunto': _asuntoCtrl.text.trim(),
-      'descripcion': _descripcionCtrl.text.trim(),
-    };
-    if (_pedidoSeleccionado != null && _pedidoSeleccionado!.isNotEmpty) {
-      body['pedido_id'] = int.tryParse(_pedidoSeleccionado!) ??
-          _pedidoSeleccionado;
-    }
-
-    final result = await _quejasRepo.crear(body);
-
+    final r = await _vm.enviar(
+      asunto: _asuntoCtrl.text,
+      descripcion: _descripcionCtrl.text,
+    );
     if (!mounted) return;
-    setState(() => _enviando = false);
-
-    if (result['success'] == true) {
-      final ticket =
-          result['queja']?['ticket']?.toString() ?? '';
-      PierLog.info('✅ Queja enviada — ticket: $ticket');
+    final error = r.error;
+    final ticket = r.ticket;
+    if (error != null) {
+      _showSnack(error);
+    } else if (ticket != null) {
       widget.onEnviado();
       _showSnackSuccess('Queja enviada — ticket $ticket');
-    } else {
-      PierLog.error('Error al enviar queja: ${result['message']}');
-      _showSnack(result['message']?.toString() ??
-          'Error al enviar la queja');
     }
   }
 
@@ -704,6 +576,13 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildHoja(context),
+    );
+  }
+
+  Widget _buildHoja(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
@@ -733,12 +612,15 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Nueva queja o sugerencia',
-                    style: TextStyle(
-                        fontFamily: 'Playfair Display',
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary)),
+                // Flexible: con el texto del sistema grande no desborda.
+                const Flexible(
+                  child: Text('Nueva queja o sugerencia',
+                      style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
+                ),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
@@ -758,20 +640,20 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
             // Tipo
             _label('Tipo'),
             _selector<TipoQueja>(
-              value: _tipo,
+              value: _vm.tipo,
               items: TipoQueja.values,
-              labelOf: (t) => t.label,
-              onChanged: (t) => setState(() => _tipo = t),
+              labelOf: (t) => t.etiqueta,
+              onChanged: _vm.seleccionarTipo,
             ),
             const SizedBox(height: 14),
 
             // Categoría
             _label('Categoría'),
             _selector<CategoriaQueja>(
-              value: _categoria,
+              value: _vm.categoria,
               items: CategoriaQueja.values,
-              labelOf: (c) => c.label,
-              onChanged: (c) => setState(() => _categoria = c),
+              labelOf: (c) => c.etiqueta,
+              onChanged: _vm.seleccionarCategoria,
             ),
             const SizedBox(height: 14),
 
@@ -785,7 +667,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  value: _pedidoSeleccionado,
+                  value: _vm.pedidoId,
                   isExpanded: true,
                   icon: Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
@@ -795,32 +677,24 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                       style: TextStyle(
                           fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.5))),
                   items: [
-                    DropdownMenuItem<String>(
-                      value: null,
+                    const DropdownMenuItem<String>(
                       child: Text('Sin pedido asociado',
                           style: TextStyle(
                               fontSize: 14,
                               color: AppColors.textSecondary)),
                     ),
-                    ...widget.pedidos.map((p) {
-                      final num = p['numero']?.toString() ?? '';
-                      final total =
-                          double.tryParse(p['total']?.toString() ?? '0')
-                              ?.toStringAsFixed(0) ??
-                              '0';
-                      final estado = p['estado']?.toString() ?? '';
+                    ..._vm.pedidos.map((p) {
                       return DropdownMenuItem<String>(
-                        value: p['id']?.toString(),
+                        value: p.id,
                         child: Text(
-                          '#$num — \$$total ($estado)',
+                          '#${p.numero} — \$${p.total.toStringAsFixed(0)} (${p.statusText})',
                           style: const TextStyle(fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                         ),
                       );
                     }),
                   ],
-                  onChanged: (v) =>
-                      setState(() => _pedidoSeleccionado = v),
+                  onChanged: _vm.seleccionarPedido,
                 ),
               ),
             ),
@@ -842,7 +716,6 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
               controller: _descripcionCtrl,
               maxLines: 4,
               maxLength: 1000,
-              onChanged: (_) => setState(() {}),
               decoration:
                   _inputDeco(hint: 'Detalla tu queja o sugerencia...'),
             ),
@@ -853,8 +726,8 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: _enviando ? null : _enviar,
-                icon: _enviando
+                onPressed: _vm.enviando ? null : _enviar,
+                icon: _vm.enviando
                     ? const SizedBox(
                         height: 18, width: 18,
                         child: CircularProgressIndicator(
@@ -862,7 +735,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
                     : const Icon(LucideIcons.send,
                         color: Colors.white, size: 18),
                 label: Text(
-                    _enviando ? 'Enviando...' : 'Enviar queja',
+                    _vm.enviando ? 'Enviando...' : 'Enviar queja',
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
