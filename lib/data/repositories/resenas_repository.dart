@@ -6,12 +6,13 @@
 // Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
 // FakeApiClient (test/fakes/).
 //
-// Fase 3: los métodos tipados (crearResena) lanzan ApiException si el
-// backend falla.
+// Fase 3: los métodos tipados (crearResena, listarMisResenas, editarResena)
+// lanzan ApiException si el backend falla.
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_pasteleria/domain/models/mi_resena.dart';
 
 class ResenasRepository {
   ResenasRepository({ApiClient? api}) : _api = api ?? ApiService();
@@ -51,9 +52,42 @@ class ResenasRepository {
     return resena is Map && resena['auto_aprobada'] == true;
   }
 
-  /// PUT /resenas/:id (solo la propia)
-  Future<Map<String, dynamic>> editar(String id, Map<String, dynamic> body) =>
-      _api.putAuth(ApiConstants.editarResena(id), body);
+  /// GET /resenas/mis-resenas tipado; ignora elementos que no sean objetos.
+  /// misResenas() crudo se queda para el contador de «Más».
+  Future<List<MiResena>> listarMisResenas() async {
+    final r = await misResenas();
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar tus reseñas',
+      );
+    }
+    final data = r['resenas'];
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<dynamic, dynamic>>()
+        .map((j) => MiResena.fromJson(Map<String, dynamic>.from(j)))
+        .toList();
+  }
+
+  /// PUT /resenas/:id (solo la propia). Devuelve el mensaje del backend para
+  /// mostrarlo; lanza ApiException si no se guardó.
+  Future<String> editarResena({
+    required String id,
+    required int rating,
+    required String titulo,
+    required String comentario,
+  }) async {
+    final r = await _api.putAuth(ApiConstants.editarResena(id), {
+      'rating': rating,
+      'titulo': titulo,
+      'comentario': comentario,
+    });
+    final mensaje = r['message']?.toString();
+    if (r['success'] != true) {
+      throw ApiException(mensaje ?? 'No se pudo actualizar la reseña');
+    }
+    return mensaje ?? 'Reseña actualizada';
+  }
 
   /// POST /resenas/:id/like ("útil")
   Future<Map<String, dynamic>> like(String id) => _api.postAuth(ApiConstants.likeResena(id), {});
