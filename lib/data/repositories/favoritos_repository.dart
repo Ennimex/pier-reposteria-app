@@ -6,7 +6,7 @@
 // Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
 // FakeApiClient (test/fakes/).
 //
-// Fase 3: los métodos tipados (listarProductos) lanzan ApiException si el
+// Fase 3: los métodos tipados (listarProductos, quitarFavorito) lanzan ApiException si el
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
@@ -50,4 +50,15 @@ class FavoritosRepository {
   /// DELETE /favoritos/:id
   Future<Map<String, dynamic>> quitar(String productoId) =>
       _api.deleteAuth(ApiConstants.favoritoById(productoId));
+
+  /// DELETE /favoritos/:id tipado: lanza ApiException si no se quitó.
+  /// quitar() crudo se queda para catálogo y detalle (aún sin ViewModel).
+  Future<void> quitarFavorito(String productoId) async {
+    final r = await quitar(productoId);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'Error al quitar de favoritos',
+      );
+    }
+  }
 }

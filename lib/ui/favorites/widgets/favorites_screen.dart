@@ -1,10 +1,11 @@
 // lib/ui/favorites/widgets/favorites_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/data/services/demanda_service.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
@@ -14,123 +15,83 @@ import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
+import 'package:pier_pasteleria/ui/favorites/view_model/favorites_view_model.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:provider/provider.dart';
 
 // Icono de fallback según nombre de categoría
 IconData _iconForCategoria(String nombre) {
   switch (nombre.toLowerCase()) {
-    case 'pasteles': return LucideIcons.cake;
-    case 'roscas': return LucideIcons.donut;
-    case 'pays': return LucideIcons.chartPie;
-    case 'postres': return LucideIcons.cookie;
+    case 'pasteles':
+      return LucideIcons.cake;
+    case 'roscas':
+      return LucideIcons.donut;
+    case 'pays':
+      return LucideIcons.chartPie;
+    case 'postres':
+      return LucideIcons.cookie;
     case 'cafetería':
-    case 'cafeteria': return LucideIcons.coffee;
-    case 'bebidas': return LucideIcons.cupSoda;
-    case 'panes': return LucideIcons.croissant;
-    default: return LucideIcons.sandwich;
+    case 'cafeteria':
+      return LucideIcons.coffee;
+    case 'bebidas':
+      return LucideIcons.cupSoda;
+    case 'panes':
+      return LucideIcons.croissant;
+    default:
+      return LucideIcons.sandwich;
   }
 }
 
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const FavoritesScreen({super.key, this.viewModel});
+
+  final FavoritesViewModel? viewModel;
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  final _productosRepo = ProductosRepository();
-  final _favoritosRepo = FavoritosRepository();
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final FavoritesViewModel _vm = widget.viewModel ??
+      FavoritesViewModel(
+        favoritosRepo: FavoritosRepository(),
+        productosRepo: ProductosRepository(),
+      );
   final TextEditingController _searchController = TextEditingController();
-
-  List<Product> _favoritos = [];
-  String _searchQuery = '';
-  bool _isLoading = true;
-
-  // ✅ FIX: categorías cargadas del backend en vez de hardcodeadas
-  List<Map<String, dynamic>> _categoriasApi = [];
-
-  // Fallback si el API no responde
-  final List<Map<String, dynamic>> _categoriasFallback = [
-    {'nombre': 'Pasteles', 'icon': LucideIcons.cake},
-    {'nombre': 'Roscas',   'icon': LucideIcons.donut},
-    {'nombre': 'Pays',     'icon': LucideIcons.chartPie},
-    {'nombre': 'Cafetería', 'icon': LucideIcons.coffee},
-  ];
-
-  List<Product> get _filtered {
-    if (_searchQuery.isEmpty) return _favoritos;
-    final q = _searchQuery.toLowerCase();
-    return _favoritos.where((p) =>
-        p.nombre.toLowerCase().contains(q) ||
-        p.categoria.toLowerCase().contains(q)).toList();
-  }
 
   @override
   void initState() {
     super.initState();
-    _cargarFavoritos();
-    _cargarCategorias();
+    unawaited(_vm.cargar());
     // Asegura que promociones estén disponibles para mostrar precios con descuento.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ProductProvider>().cargarProductos();
+      if (mounted) unawaited(context.read<ProductProvider>().cargarProductos());
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _vm.dispose();
     super.dispose();
   }
 
-  Future<void> _cargarCategorias() async {
-    final result = await _productosRepo.categorias();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final lista = List<Map<String, dynamic>>.from(
-          result['categorias'] ?? result['data'] ?? []);
-      if (lista.isNotEmpty) {
-        setState(() => _categoriasApi = lista);
-      }
-    }
-  }
-
-  Future<void> _cargarFavoritos() async {
-    setState(() => _isLoading = true);
-    final result = await _favoritosRepo.listar();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final data = result['favoritos'] ?? result['data'] ?? [];
-      setState(() {
-        _favoritos = (data as List).map((json) {
-          final map = Map<String, dynamic>.from(json as Map<String, dynamic>);
-          map['activo'] = true;
-          return Product.fromJson(map);
-        }).toList();
-      });
-    }
-    setState(() => _isLoading = false);
-  }
-
   Future<void> _quitarFavorito(Product product) async {
-    setState(() => _favoritos.remove(product));
-    final result = await _favoritosRepo.quitar(product.id);
-    if (!mounted) return;
-    if (result['success'] != true) {
-      setState(() => _favoritos.add(product));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Error al quitar de favoritos'),
-            backgroundColor: Colors.red),
-      );
-    }
+    final ok = await _vm.quitar(product);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Error al quitar de favoritos'),
+          backgroundColor: Colors.red),
+    );
   }
 
   /// "Avísame": registra el interés en un producto agotado (demanda no
   /// atendida) y lo confirma. Espejo del botón Avísame de la web.
   void _avisarme(Product p) {
-    DemandaService.registrarClicAgotado(p.id);
+    _vm.avisarme(p);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
@@ -158,11 +119,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
       Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()));
+          MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
       return;
     }
     final cart = Provider.of<CartProvider>(context, listen: false);
-    cart.addItem(p);
+    unawaited(cart.addItem(p));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
@@ -179,13 +140,22 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
-    final filtered = _filtered;
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildContenido(context),
+    );
+  }
+
+  Widget _buildContenido(BuildContext context) {
+    final filtered = _vm.filtrados;
+    final favoritos = _vm.favoritos;
+    final searchQuery = _vm.busqueda;
     final prov = context.watch<ProductProvider>();
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
-        child: _isLoading
+        child: _vm.cargando
             ? GridView.count(
                 padding: const EdgeInsets.fromLTRB(16, 80, 16, 40),
                 crossAxisCount: 2,
@@ -252,20 +222,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                         child: TextField(
                           controller: _searchController,
-                          onChanged: (v) => setState(() => _searchQuery = v),
+                          onChanged: _vm.buscar,
                           decoration: InputDecoration(
                             hintText: 'Buscar en favoritos...',
                             hintStyle: TextStyle(
                                 color: Colors.grey[400], fontSize: 14),
                             prefixIcon: Icon(LucideIcons.search,
                                 color: AppColors.pierVerde, size: 22),
-                            suffixIcon: _searchQuery.isNotEmpty
+                            suffixIcon: searchQuery.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(LucideIcons.x,
                                         color: Colors.grey, size: 18),
                                     onPressed: () {
                                       _searchController.clear();
-                                      setState(() => _searchQuery = '');
+                                      _vm.buscar('');
                                     })
                                 : null,
                             border: InputBorder.none,
@@ -278,7 +248,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ),
 
                   // ── CONTADOR ────────────────────────────────────
-                  if (_favoritos.isNotEmpty)
+                  if (favoritos.isNotEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
@@ -287,8 +257,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                               size: 13, color: AppColors.pierVerde),
                           const SizedBox(width: 6),
                           Text(
-                            _searchQuery.isEmpty
-                                ? '${_favoritos.length} producto${_favoritos.length == 1 ? '' : 's'} guardado${_favoritos.length == 1 ? '' : 's'}'
+                            searchQuery.isEmpty
+                                ? '${favoritos.length} producto${favoritos.length == 1 ? '' : 's'} guardado${favoritos.length == 1 ? '' : 's'}'
                                 : '${filtered.length} resultado${filtered.length == 1 ? '' : 's'}',
                             style: TextStyle(
                                 fontSize: 12,
@@ -300,7 +270,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     ),
 
                   // ── GRID ────────────────────────────────────────
-                  if (_favoritos.isEmpty)
+                  if (favoritos.isEmpty)
                     SliverFillRemaining(child: _buildEmptyState())
                   else if (filtered.isEmpty)
                     SliverFillRemaining(
@@ -311,7 +281,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             Icon(LucideIcons.searchX,
                                 size: 56, color: Colors.grey[300]),
                             const SizedBox(height: 16),
-                            Text('Sin resultados para "$_searchQuery"',
+                            Text('Sin resultados para "$searchQuery"',
                                 style: TextStyle(
                                     color: Colors.grey[500], fontSize: 15)),
                           ],
@@ -353,10 +323,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final tienePromo = prov.tieneDescuento(p.id);
     final precioFinal = prov.precioConDescuento(p.id, p.precio);
     return GestureDetector(
-      onTap: () => Navigator.push(
+      onTap: () => unawaited(Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => ProductDetailScreen(product: p)),
-      ).then((_) => _cargarFavoritos()),
+        MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: p)),
+      ).then((_) => _vm.cargarFavoritos())),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -384,7 +354,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       child: Image.network(
                         p.imagenUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
+                        errorBuilder: (_, _, _) => ColoredBox(
                           color: AppColors.pierArena,
                           child: Icon(LucideIcons.cake,
                               color: AppColors.pierVerde, size: 36),
@@ -421,7 +391,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   Positioned(
                     top: 10, right: 10,
                     child: GestureDetector(
-                      onTap: () => _quitarFavorito(p),
+                      onTap: () => unawaited(_quitarFavorito(p)),
                       child: Container(
                         width: 34, height: 34,
                         decoration: BoxDecoration(
@@ -539,12 +509,21 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
+  // Cierra Favoritos y cambia a la pestaña del catálogo (si hay navegación
+  // por pestañas arriba; si no, solo cierra).
+  void _irAlMenu() {
+    Navigator.pop(context);
+    try {
+      context.read<NavigationProvider>().goCatalogo();
+    } on ProviderNotFoundException {
+      // Abierta fuera del shell con pestañas.
+    }
+  }
+
   // ── EMPTY STATE ───────────────────────────────────────────────────
   Widget _buildEmptyState() {
-    // ✅ FIX: usar categorías del backend, fallback si no hay
-    final cats = _categoriasApi.isNotEmpty
-        ? _categoriasApi.take(4).toList()
-        : _categoriasFallback;
+    // Categorías del backend (o de respaldo), con su icono por nombre.
+    final cats = _vm.categoriasSugeridas;
 
     return Column(
       children: [
@@ -602,12 +581,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                try {
-                  context.read<NavigationProvider>().goCatalogo();
-                } catch (_) {}
-              },
+              onPressed: _irAlMenu,
               icon: const Icon(LucideIcons.utensilsCrossed,
                   color: Colors.white, size: 18),
               label: const Text('Ver Menú',
@@ -652,20 +626,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: cats.map((cat) {
-                  final nombre =
-                      (cat['nombre'] ?? cat['name'] ?? '').toString();
-                  final IconData icon = cat['icon'] != null
-                      ? cat['icon'] as IconData
-                      : _iconForCategoria(nombre);
+                children: cats.map((nombre) {
+                  final icon = _iconForCategoria(nombre);
 
                   return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      try {
-                        context.read<NavigationProvider>().goCatalogo();
-                      } catch (_) {}
-                    },
+                    onTap: _irAlMenu,
                     child: Column(children: [
                       Container(
                         width: 62, height: 62,
