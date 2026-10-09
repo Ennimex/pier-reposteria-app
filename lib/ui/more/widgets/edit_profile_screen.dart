@@ -5,80 +5,73 @@ import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/more/view_model/edit_profile_view_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo
+  /// con la sesión actual.
+  const EditProfileScreen({super.key, this.viewModel});
+
+  final EditProfileViewModel? viewModel;
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _cuentaRepo = CuentaRepository();
   final _formKey = GlobalKey<FormState>();
 
-  late TextEditingController _nombreCtrl;
-  late TextEditingController _apellidoCtrl;
-  late TextEditingController _telefonoCtrl;
-
-  bool _guardando = false;
-  bool _cambios = false;
+  // El State es dueño del ViewModel y de los controladores de texto.
+  late final EditProfileViewModel _vm = widget.viewModel ??
+      EditProfileViewModel(
+        repo: CuentaRepository(),
+        usuario: context.read<AuthProvider>().currentUser,
+      );
+  late final TextEditingController _nombreCtrl =
+      TextEditingController(text: _vm.nombre);
+  late final TextEditingController _apellidoCtrl =
+      TextEditingController(text: _vm.apellido);
+  late final TextEditingController _telefonoCtrl =
+      TextEditingController(text: _vm.telefono);
 
   @override
   void initState() {
     super.initState();
     PierLog.nav('→ EditProfileScreen');
-    final user =
-        Provider.of<AuthProvider>(context, listen: false).currentUser;
-    _nombreCtrl =
-        TextEditingController(text: user?['nombre']?.toString() ?? '');
-    _apellidoCtrl =
-        TextEditingController(text: user?['apellido']?.toString() ?? '');
-    _telefonoCtrl =
-        TextEditingController(text: user?['telefono']?.toString() ?? '');
-
     _nombreCtrl.addListener(_onChanged);
     _apellidoCtrl.addListener(_onChanged);
     _telefonoCtrl.addListener(_onChanged);
   }
 
-  void _onChanged() => setState(() => _cambios = true);
+  void _onChanged() => _vm.editar(
+        nombre: _nombreCtrl.text,
+        apellido: _apellidoCtrl.text,
+        telefono: _telefonoCtrl.text,
+      );
 
   @override
   void dispose() {
     _nombreCtrl.dispose();
     _apellidoCtrl.dispose();
     _telefonoCtrl.dispose();
+    _vm.dispose();
     super.dispose();
   }
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _guardando = true);
+    final auth = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
 
-    final body = <String, dynamic>{
-      'nombre': _nombreCtrl.text.trim(),
-      'apellido': _apellidoCtrl.text.trim(),
-      'telefono': _telefonoCtrl.text.trim().isEmpty
-          ? null
-          : _telefonoCtrl.text.trim(),
-    };
-
-    final result = await _cuentaRepo.actualizarPerfil(body);
-
+    final usuario = await _vm.guardar();
     if (!mounted) return;
-    setState(() => _guardando = false);
 
-    if (result['success'] == true) {
+    if (usuario != null) {
       PierLog.info('✅ Perfil actualizado');
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final updatedUser =
-          result['user'] as Map<String, dynamic>?;
-      if (updatedUser != null) auth.updateCurrentUser(updatedUser);
-      setState(() => _cambios = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      auth.updateCurrentUser(usuario);
+      messenger.showSnackBar(SnackBar(
         content: const Row(children: [
           Icon(Icons.check_circle_rounded,
               color: Colors.white, size: 18),
@@ -91,10 +84,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12)),
       ));
-    } else {
-      PierLog.error('Error al guardar perfil: ${result['message']}');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(result['message'] ?? 'Error al guardar'),
+    } else if (_vm.error != null) {
+      PierLog.error('Error al guardar perfil: ${_vm.error}');
+      messenger.showSnackBar(SnackBar(
+        content: Text(_vm.error!),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
@@ -108,13 +101,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
-    final user = Provider.of<AuthProvider>(context).currentUser;
-    final email = user?['email']?.toString() ?? '';
-    final nombre = _nombreCtrl.text;
-    final apellido = _apellidoCtrl.text;
-    final iniciales =
-        '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}'
-        '${apellido.isNotEmpty ? apellido[0].toUpperCase() : ''}';
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(context),
+    );
+  }
+
+  Widget _buildPantalla(BuildContext context) {
+    final email = _vm.email;
+    final guardando = _vm.guardando;
+    final cambios = _vm.hayCambios;
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -157,13 +153,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   // Guardar — verde si hay cambios pendientes
                   GestureDetector(
-                    onTap: (_guardando || !_cambios) ? null : _guardar,
+                    onTap: (guardando || !cambios) ? null : _guardar,
                     child: Text(
-                      _guardando ? 'Guardando...' : 'Guardar',
+                      guardando ? 'Guardando...' : 'Guardar',
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: _cambios
+                          color: cambios
                               ? AppColors.pierVerde
                               : AppColors.textSecondary.withValues(alpha: 0.5)),
                     ),
@@ -193,13 +189,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             border: Border.all(
                                 color: AppColors.pierDorado, width: 2),
                           ),
-                          child: _buildAvatarIniciales(iniciales),
+                          child: _buildAvatarIniciales(_vm.iniciales),
                         ),
                       ),
                       const SizedBox(height: 10),
                       Center(
                         child: Text(email,
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textSecondary)),
                       ),
@@ -259,7 +255,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(email,
-                                style: TextStyle(
+                                style: const TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textSecondary)),
                           ),
@@ -267,8 +263,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               color: AppColors.textSecondary.withValues(alpha: 0.5), size: 16),
                         ]),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
                         child: Text(
                             'El correo no puede ser modificado.',
                             style: TextStyle(
@@ -283,8 +279,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         height: 54,
                         child: ElevatedButton.icon(
                           onPressed:
-                              (_guardando || !_cambios) ? null : _guardar,
-                          icon: _guardando
+                              (guardando || !cambios) ? null : _guardar,
+                          icon: guardando
                               ? const SizedBox(
                                   height: 18, width: 18,
                                   child: CircularProgressIndicator(
@@ -293,7 +289,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               : const Icon(LucideIcons.save,
                                   color: Colors.white, size: 18),
                           label: Text(
-                              _guardando
+                              guardando
                                   ? 'Guardando...'
                                   : 'Guardar cambios',
                               style: const TextStyle(
@@ -312,13 +308,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
 
                       const SizedBox(height: 20),
-                      Center(
+                      const Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(LucideIcons.award,
                                 color: AppColors.textSecondary, size: 14),
-                            const SizedBox(width: 5),
+                            SizedBox(width: 5),
                             Text('Cliente Distinguido Pier',
                                 style: TextStyle(
                                     fontSize: 12,
@@ -378,7 +374,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildAvatarIniciales(String iniciales) => Center(
         child: Text(
-          iniciales.isNotEmpty ? iniciales : 'U',
+          iniciales,
           style: const TextStyle(
               fontFamily: 'Playfair Display',
               fontSize: 36,

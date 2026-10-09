@@ -7,7 +7,8 @@
 // FakeApiClient (test/fakes/).
 //
 // Fase 3: los métodos que ya tienen ViewModel devuelven modelos tipados y
-// lanzan ApiException si el backend falla (generarCodigoAlexa).
+// lanzan ApiException si el backend falla (generarCodigoAlexa,
+// actualizarPerfil).
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
@@ -19,9 +20,29 @@ class CuentaRepository {
 
   final ApiClient _api;
 
-  /// PUT /usuarios/perfil/actualizar
-  Future<Map<String, dynamic>> actualizarPerfil(Map<String, dynamic> body) =>
-      _api.putAuth(ApiConstants.updateProfileData, body);
+  /// PUT /usuarios/perfil/actualizar -> {user: {id, nombre, apellido, email,
+  /// telefono, avatar_url, rol}}. Devuelve ese `user` crudo porque
+  /// AuthProvider guarda la sesión como Map (se tipa al adelgazar providers,
+  /// Fase 5). Ojo: el backend usa COALESCE, así que `telefono: null` conserva
+  /// el teléfono anterior (no lo borra).
+  Future<Map<String, dynamic>> actualizarPerfil({
+    required String nombre,
+    required String apellido,
+    String? telefono,
+  }) async {
+    final result = await _api.putAuth(ApiConstants.updateProfileData, {
+      'nombre': nombre,
+      'apellido': apellido,
+      'telefono': telefono,
+    });
+    final user = result['user'];
+    if (result['success'] != true || user is! Map) {
+      throw ApiException(
+        result['message']?.toString() ?? 'No se pudo guardar el perfil',
+      );
+    }
+    return Map<String, dynamic>.from(user);
+  }
 
   /// POST /auth/alexa/generar-codigo -> {codigo, expira_en_segundos}
   Future<CodigoAlexa> generarCodigoAlexa() async {
