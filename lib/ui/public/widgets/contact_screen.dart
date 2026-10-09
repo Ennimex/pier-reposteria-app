@@ -1,18 +1,22 @@
 // lib/ui/public/widgets/contact_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_pasteleria/ui/public/view_model/contact_view_model.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ContactScreen extends StatefulWidget {
-  const ContactScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const ContactScreen({super.key, this.viewModel});
+
+  final ContactViewModel? viewModel;
 
   @override
   State<ContactScreen> createState() => _ContactScreenState();
@@ -24,30 +28,18 @@ class _ContactScreenState extends State<ContactScreen> {
   final _emailCtrl   = TextEditingController();
   final _telefonoCtrl = TextEditingController();
   final _mensajeCtrl = TextEditingController();
-  final _configRepo = ConfiguracionRepository();
-  final _cuentaRepo = CuentaRepository();
 
-  String _tipoProducto = 'Información general';
-  bool _enviando = false;
-
-  // Datos de contacto: fuente única en BusinessInfo (el backend no expone
-  // contacto/horarios). El fetch de config queda como defensa por si algún día
-  // el panel los publica.
-  String _telefono = BusinessInfo.telefono;
-  String _emailContacto = BusinessInfo.email;
-  String _horario = BusinessInfo.horario;
-  String _whatsapp = BusinessInfo.whatsappNumero;
-
-  final List<String> _tiposProducto = [
-    'Información general', 'Pasteles', 'Roscas', 'Pays',
-    'Postres', 'Cafetería', 'Pedidos', 'Reembolsos',
-    'Sugerencias', 'Quejas', 'Otro',
-  ];
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final ContactViewModel _vm = widget.viewModel ??
+      ContactViewModel(
+        configRepo: ConfiguracionRepository(),
+        cuentaRepo: CuentaRepository(),
+      );
 
   @override
   void initState() {
     super.initState();
-    _cargarConfiguracion();
+    unawaited(_vm.cargar());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user =
           Provider.of<AuthProvider>(context, listen: false).currentUser;
@@ -59,34 +51,8 @@ class _ContactScreenState extends State<ContactScreen> {
     });
   }
 
-  // ✅ Cargar contacto del backend. El horario vive dentro de 'contacto'
-  // (clave 'horarios'); no existe una seccion 'horarios' publica.
-  Future<void> _cargarConfiguracion() async {
-    final result = await _configRepo.seccion('contacto');
-    if (!mounted) return;
-
-    final configContacto = result['success'] == true
-        ? Map<String, dynamic>.from(result['config'] ?? {})
-        : <String, dynamic>{};
-
-    setState(() {
-      if (configContacto['telefono'] != null) {
-        _telefono = configContacto['telefono'].toString();
-      }
-      if (configContacto['email'] != null) {
-        _emailContacto = configContacto['email'].toString();
-      }
-      if (configContacto['whatsapp'] != null) {
-        _whatsapp = configContacto['whatsapp'].toString();
-      }
-      _horario =
-          formatearHorario(configContacto['horarios'], fallback: _horario);
-    });
-  }
-
   Future<void> _abrirWhatsApp() async {
-    final digits = _whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
-    final numero = digits.isNotEmpty ? digits : BusinessInfo.whatsappNumero;
+    final numero = _vm.numeroWhatsApp;
     final uri = Uri.parse(
         'https://wa.me/$numero?text=${Uri.encodeComponent('Hola, tengo una pregunta')}');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
@@ -105,38 +71,27 @@ class _ContactScreenState extends State<ContactScreen> {
     _emailCtrl.dispose();
     _telefonoCtrl.dispose();
     _mensajeCtrl.dispose();
+    _vm.dispose();
     super.dispose();
   }
 
   Future<void> _enviar() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _enviando = true);
-
-    final body = {
-      'nombre':        _nombreCtrl.text.trim(),
-      'email':         _emailCtrl.text.trim(),
-      'telefono':      _telefonoCtrl.text.trim().isEmpty
-          ? null
-          : _telefonoCtrl.text.trim(),
-      'tipo_producto': _tipoProducto,
-      'mensaje':       _mensajeCtrl.text.trim(),
-    };
-
-    final isAuth =
-        Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-    final result =
-        await _cuentaRepo.enviarContacto(body, conSesion: isAuth);
-
+    final enviado = await _vm.enviar(
+      nombre: _nombreCtrl.text,
+      email: _emailCtrl.text,
+      telefono: _telefonoCtrl.text,
+      conSesion: context.read<AuthProvider>().isAuthenticated,
+    );
     if (!mounted) return;
-    setState(() => _enviando = false);
 
-    if (result['success'] == true) {
+    if (enviado) {
       _mensajeCtrl.clear();
       _telefonoCtrl.clear();
       _showSuccessDialog();
-    } else {
+    } else if (_vm.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(result['message'] ?? 'Error al enviar'),
+        content: Text(_vm.error!),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
@@ -146,7 +101,7 @@ class _ContactScreenState extends State<ContactScreen> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
+    unawaited(showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => Dialog(
@@ -190,7 +145,7 @@ class _ContactScreenState extends State<ContactScreen> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary)),
               const SizedBox(height: 10),
-              Text(
+              const Text(
                 'Gracias por contactarnos. Te responderemos a la brevedad en tu correo electrónico.',
                 style: TextStyle(
                     fontSize: 14,
@@ -238,14 +193,22 @@ class _ContactScreenState extends State<ContactScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(context),
+    );
+  }
+
+  Widget _buildPantalla(BuildContext context) {
     final isAuth = Provider.of<AuthProvider>(context).isAuthenticated;
+    final enviando = _vm.enviando;
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -382,19 +345,20 @@ class _ContactScreenState extends State<ContactScreen> {
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16)),
-                            initialValue: _tipoProducto,
+                            initialValue: _vm.tipoProducto,
                             icon: Icon(
                                 LucideIcons.chevronDown,
                                 color: AppColors.pierVerde),
-                            items: _tiposProducto
+                            items: ContactViewModel.tiposProducto
                                 .map((t) => DropdownMenuItem(
                                     value: t,
                                     child: Text(t,
                                         style: const TextStyle(
                                             fontSize: 14))))
                                 .toList(),
-                            onChanged: (val) =>
-                                setState(() => _tipoProducto = val!),
+                            onChanged: (val) {
+                              if (val != null) _vm.elegirTipo(val);
+                            },
                           ),
                         ),
                       ),
@@ -405,7 +369,7 @@ class _ContactScreenState extends State<ContactScreen> {
                       TextFormField(
                         controller: _mensajeCtrl,
                         maxLines: 5,
-                        onChanged: (_) => setState(() {}),
+                        onChanged: _vm.editarMensaje,
                         decoration: InputDecoration(
                           hintText:
                               'Describe tu consulta o queja con detalle...',
@@ -431,16 +395,18 @@ class _ContactScreenState extends State<ContactScreen> {
                                   const BorderSide(color: AppColors.error)),
                           contentPadding: const EdgeInsets.all(14),
                           suffixText:
-                              '${_mensajeCtrl.text.trim().length} / mín. 20',
+                              '${_vm.largoMensaje} / mín. ${ContactViewModel.minimoMensaje}',
                           suffixStyle: TextStyle(
                               fontSize: 11,
-                              color: _mensajeCtrl.text.trim().length >= 20
+                              color: _vm.mensajeValido
                                   ? AppColors.pierVerde
                                   : AppColors.textSecondary
                                       .withValues(alpha: 0.6)),
                         ),
                         validator: (v) =>
-                            (v == null || v.trim().length < 20)
+                            (v == null ||
+                                    v.trim().length <
+                                        ContactViewModel.minimoMensaje)
                                 ? 'Mínimo 20 caracteres'
                                 : null,
                       ),
@@ -450,8 +416,8 @@ class _ContactScreenState extends State<ContactScreen> {
                         width: double.infinity,
                         height: 54,
                         child: ElevatedButton.icon(
-                          onPressed: _enviando ? null : _enviar,
-                          icon: _enviando
+                          onPressed: enviando ? null : _enviar,
+                          icon: enviando
                               ? const SizedBox(
                                   height: 18, width: 18,
                                   child: CircularProgressIndicator(
@@ -460,7 +426,7 @@ class _ContactScreenState extends State<ContactScreen> {
                               : const Icon(LucideIcons.send,
                                   color: Colors.white, size: 18),
                           label: Text(
-                              _enviando ? 'Enviando...' : 'Enviar Mensaje',
+                              enviando ? 'Enviando...' : 'Enviar Mensaje',
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -491,13 +457,13 @@ class _ContactScreenState extends State<ContactScreen> {
                               color: AppColors.textPrimary)),
                       const SizedBox(height: 14),
                       _contactTile(
-                          LucideIcons.phone, _telefono, 'Llámanos'),
+                          LucideIcons.phone, _vm.telefono, 'Llámanos'),
                       const SizedBox(height: 10),
                       _contactTile(LucideIcons.mail,
-                          _emailContacto, 'Escríbenos'),
+                          _vm.email, 'Escríbenos'),
                       const SizedBox(height: 10),
                       _contactTile(LucideIcons.clock,
-                          _horario, 'Horario de atención'),
+                          _vm.horario, 'Horario de atención'),
                       const SizedBox(height: 16),
 
                       // WhatsApp
@@ -593,19 +559,23 @@ class _ContactScreenState extends State<ContactScreen> {
           child: Icon(icon, color: AppColors.pierVerde, size: 18),
         ),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
-            const SizedBox(height: 2),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
-          ],
+        // Expanded: el horario del panel puede ser largo o traer una línea
+        // por sucursal; sin límite de ancho se salía del recuadro.
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
+            ],
+          ),
         ),
       ]),
     );

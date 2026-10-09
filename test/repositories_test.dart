@@ -98,8 +98,16 @@ void main() {
         '/contacto': {'success': true},
       });
       final repo = CuentaRepository(api: api);
-      await repo.enviarContacto({'mensaje': 'hola'}, conSesion: true);
-      await repo.enviarContacto({'mensaje': 'hola'}, conSesion: false);
+      Future<void> enviar({required bool conSesion}) => repo.enviarContacto(
+            nombre: 'Ana',
+            email: 'ana@pier.mx',
+            telefono: '',
+            tipoProducto: 'Otro',
+            mensaje: 'hola',
+            conSesion: conSesion,
+          );
+      await enviar(conSesion: true);
+      await enviar(conSesion: false);
       expect(api.llamadas.map((l) => l.metodo).toList(),
           ['POST-Auth', 'POST']);
     });
