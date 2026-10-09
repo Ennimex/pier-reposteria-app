@@ -6,13 +6,14 @@
 // Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
 // FakeApiClient (test/fakes/).
 //
-// Fase 3: los métodos tipados (crearResena, listarMisResenas, editarResena)
-// lanzan ApiException si el backend falla.
+// Fase 3: los métodos tipados (crearResena, listarMisResenas, editarResena,
+// listarDeProducto, alternarUtil) lanzan ApiException si el backend falla.
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/domain/models/mi_resena.dart';
+import 'package:pier_pasteleria/domain/models/resena_producto.dart';
 
 class ResenasRepository {
   ResenasRepository({ApiClient? api}) : _api = api ?? ApiService();
@@ -28,6 +29,24 @@ class ResenasRepository {
   /// GET /resenas/producto/:id (público, solo aprobadas)
   Future<Map<String, dynamic>> porProducto(String productoId) =>
       _api.get(ApiConstants.resenasPorProducto(productoId));
+
+  /// GET /resenas/producto/:id tipado, en el orden del backend (verificadas,
+  /// más útiles, recientes); ignora elementos que no sean objetos.
+  /// porProducto() crudo se queda para el detalle de producto.
+  Future<List<ResenaProducto>> listarDeProducto(String productoId) async {
+    final r = await porProducto(productoId);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar las opiniones',
+      );
+    }
+    final data = r['resenas'];
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<dynamic, dynamic>>()
+        .map((j) => ResenaProducto.fromJson(Map<String, dynamic>.from(j)))
+        .toList();
+  }
 
   /// POST /resenas: {producto_id, rating, titulo, comentario}. Devuelve
   /// true si quedó publicada de inmediato (auto_aprobada) y false si quedó en
@@ -91,4 +110,14 @@ class ResenasRepository {
 
   /// POST /resenas/:id/like ("útil")
   Future<Map<String, dynamic>> like(String id) => _api.postAuth(ApiConstants.likeResena(id), {});
+
+  /// POST /resenas/:id/like tipado. El backend alterna (si ya era «útil»
+  /// lo quita); devuelve cómo quedó: true = marcada. Lanza ApiException.
+  Future<bool> alternarUtil(String id) async {
+    final r = await like(id);
+    if (r['success'] != true) {
+      throw ApiException(r['message']?.toString() ?? 'Error al dar like');
+    }
+    return r['liked'] == true;
+  }
 }

@@ -1,19 +1,30 @@
 // lib/ui/reviews/widgets/product_reviews_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/domain/models/resena_producto.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/reviews/view_model/product_reviews_view_model.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/create_review_screen.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class ProductReviewsScreen extends StatefulWidget {
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const ProductReviewsScreen({
+    required this.product,
+    super.key,
+    this.viewModel,
+  });
+
   final Product product;
-  const ProductReviewsScreen({super.key, required this.product});
+  final ProductReviewsViewModel? viewModel;
 
   @override
   State<ProductReviewsScreen> createState() =>
@@ -21,156 +32,72 @@ class ProductReviewsScreen extends StatefulWidget {
 }
 
 class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
-  final _resenasRepo = ResenasRepository();
-
-  List<Map<String, dynamic>> _resenas = [];
-  bool _isLoading = true;
-  int _filtroEstrellas = 0;
-  String _orden = 'recientes';
-  final Set<String> _likedIds = {};
-
-  double get _ratingPromedio {
-    if (_resenas.isEmpty) return 0;
-    final suma = _resenas.fold<double>(
-        0,
-        (s, r) =>
-            s + (double.tryParse(r['rating']?.toString() ?? '0') ?? 0));
-    return suma / _resenas.length;
-  }
-
-  Map<int, int> get _distribucion {
-    final Map<int, int> dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
-    for (final r in _resenas) {
-      final stars =
-          (double.tryParse(r['rating']?.toString() ?? '0') ?? 0).round();
-      if (dist.containsKey(stars)) dist[stars] = dist[stars]! + 1;
-    }
-    return dist;
-  }
-
-  List<Map<String, dynamic>> get _filtradas {
-    var lista = _filtroEstrellas == 0
-        ? List<Map<String, dynamic>>.from(_resenas)
-        : _resenas.where((r) {
-            final s =
-                (double.tryParse(r['rating']?.toString() ?? '0') ?? 0)
-                    .round();
-            return s == _filtroEstrellas;
-          }).toList();
-
-    switch (_orden) {
-      case 'mejor':
-        lista.sort((a, b) =>
-            (double.tryParse(b['rating']?.toString() ?? '0') ?? 0)
-                .compareTo(
-                    double.tryParse(a['rating']?.toString() ?? '0') ??
-                        0));
-      case 'peor':
-        lista.sort((a, b) =>
-            (double.tryParse(a['rating']?.toString() ?? '0') ?? 0)
-                .compareTo(
-                    double.tryParse(b['rating']?.toString() ?? '0') ??
-                        0));
-      default:
-        break;
-    }
-    return lista;
-  }
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final ProductReviewsViewModel _vm = widget.viewModel ??
+      ProductReviewsViewModel(
+        repo: ResenasRepository(),
+        productoId: widget.product.id,
+      );
 
   @override
   void initState() {
     super.initState();
     PierLog.nav('→ ProductReviewsScreen: ${widget.product.nombre}');
-    _cargarResenas();
+    unawaited(_vm.cargar());
   }
 
-  Future<void> _cargarResenas() async {
-    setState(() => _isLoading = true);
-    final result = await _resenasRepo.porProducto(widget.product.id);
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final lista =
-          List<Map<String, dynamic>>.from(result['resenas'] ?? []);
-      setState(() => _resenas = lista);
-      PierLog.info(
-          '✅ Reseñas cargadas: ${lista.length} para ${widget.product.nombre}');
-    } else {
-      PierLog.error('Error al cargar reseñas: ${result['message']}');
-    }
-    setState(() => _isLoading = false);
+  @override
+  void dispose() {
+    _vm.dispose();
+    super.dispose();
   }
 
-  Future<void> _toggleLike(Map<String, dynamic> resena) async {
+  void _irALogin() {
+    Navigator.push(
+        context, MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
+  }
+
+  void _toggleLike(ResenaProducto resena) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
-      Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()));
+      _irALogin();
       return;
     }
-
-    final id = resena['id'].toString();
-    final yaLiked = _likedIds.contains(id);
-    final currentCount =
-        int.tryParse(resena['util_count']?.toString() ?? '0') ?? 0;
-
-    // Optimistic update
-    setState(() {
-      if (yaLiked) {
-        _likedIds.remove(id);
-        resena['util_count'] = currentCount - 1;
-      } else {
-        _likedIds.add(id);
-        resena['util_count'] = currentCount + 1;
-      }
-    });
-
-    final result = await _resenasRepo.like(id);
-    if (!mounted) return;
-
-    if (result['success'] != true) {
-      PierLog.error('Error al dar like a reseña $id');
-      setState(() {
-        if (yaLiked) {
-          _likedIds.add(id);
-          resena['util_count'] = currentCount;
-        } else {
-          _likedIds.remove(id);
-          resena['util_count'] = currentCount;
-        }
-      });
-    } else {
-      PierLog.info(
-          'Like ${yaLiked ? 'removido' : 'agregado'} en reseña $id');
-    }
+    unawaited(_vm.alternarUtil(resena.id));
   }
 
-  String _formatFecha(dynamic fecha) {
-    if (fecha == null) return '';
-    try {
-      final dt = DateTime.parse(fecha.toString()).toLocal();
-      final diff = DateTime.now().difference(dt);
-      if (diff.inDays == 0) return 'Hoy';
-      if (diff.inDays == 1) return 'Ayer';
-      if (diff.inDays < 7) return 'Hace ${diff.inDays} días';
-      if (diff.inDays < 14) return 'Hace 1 semana';
-      if (diff.inDays < 30)
-        return 'Hace ${(diff.inDays / 7).floor()} semanas';
-      const months = [
-        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-      ];
-      return '${dt.day} ${months[dt.month - 1]}';
-    } catch (_) {
-      return '';
+  String _formatFecha(DateTime? dt) {
+    if (dt == null) return '';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays == 0) return 'Hoy';
+    if (diff.inDays == 1) return 'Ayer';
+    if (diff.inDays < 7) return 'Hace ${diff.inDays} días';
+    if (diff.inDays < 14) return 'Hace 1 semana';
+    if (diff.inDays < 30) {
+      return 'Hace ${(diff.inDays / 7).floor()} semanas';
     }
+    const months = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return '${dt.day} ${months[dt.month - 1]}';
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildContenido(),
+    );
+  }
+
+  Widget _buildContenido() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final filtradas = _filtradas;
+    final resenas = _vm.resenas;
+    final filtradas = _vm.filtradas;
+    final filtroEstrellas = _vm.filtroEstrellas;
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -203,7 +130,6 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Text('Opiniones',
                             style: TextStyle(
@@ -225,18 +151,14 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                     onTap: () {
                       PierLog.nav('→ CreateReviewScreen desde reviews');
                       if (auth.isAuthenticated) {
-                        Navigator.push(
+                        unawaited(Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          MaterialPageRoute<void>(
                               builder: (_) => CreateReviewScreen(
                                   product: widget.product)),
-                        ).then((_) => _cargarResenas());
+                        ).then((_) => _vm.cargar()));
                       } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const LoginScreen()),
-                        );
+                        _irALogin();
                       }
                     },
                     child: Container(
@@ -268,12 +190,12 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
             const SizedBox(height: 16),
 
             Expanded(
-              child: _isLoading
+              child: _vm.cargando
                   ? Center(
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
                   : RefreshIndicator(
-                      onRefresh: _cargarResenas,
+                      onRefresh: _vm.cargar,
                       color: AppColors.pierVerde,
                       child: CustomScrollView(
                         slivers: [
@@ -295,7 +217,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                                       offset: const Offset(0, 4))
                                 ],
                               ),
-                              child: _resenas.isEmpty
+                              child: resenas.isEmpty
                                   ? const Center(
                                       child: Padding(
                                       padding:
@@ -311,12 +233,12 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                           ),
 
                           // ── FILTROS ────────────────────────────
-                          if (_resenas.isNotEmpty)
+                          if (resenas.isNotEmpty)
                             SliverToBoxAdapter(
                                 child: _buildFiltros()),
 
                           // ── LISTA ──────────────────────────────
-                          if (_resenas.isEmpty)
+                          if (resenas.isEmpty)
                             SliverFillRemaining(
                                 child: _buildEmptyState())
                           else if (filtradas.isEmpty)
@@ -325,8 +247,8 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                                 padding: const EdgeInsets.all(40),
                                 child: Center(
                                   child: Text(
-                                    'No hay opiniones de $_filtroEstrellas estrella${_filtroEstrellas == 1 ? '' : 's'}',
-                                    style: TextStyle(
+                                    'No hay opiniones de $filtroEstrellas estrella${filtroEstrellas == 1 ? '' : 's'}',
+                                    style: const TextStyle(
                                         color: AppColors.textSecondary,
                                         fontSize: 14),
                                     textAlign: TextAlign.center,
@@ -362,16 +284,16 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
 
   // ── RESUMEN ──────────────────────────────────────────────────────
   Widget _buildResumen() {
-    final dist = _distribucion;
-    final total = _resenas.length;
+    final dist = _vm.distribucion;
+    final total = _vm.resenas.length;
+    final promedio = _vm.promedio;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Column(
           children: [
             Text(
-              _ratingPromedio.toStringAsFixed(1),
+              promedio.toStringAsFixed(1),
               style: const TextStyle(
                   fontSize: 52,
                   fontWeight: FontWeight.bold,
@@ -383,7 +305,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
               children: List.generate(
                   5,
                   (i) => Icon(
-                        i < _ratingPromedio.round()
+                        i < promedio.round()
                             ? Icons.star_rounded
                             : Icons.star_border_rounded,
                         size: 16,
@@ -490,11 +412,11 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                         size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 5),
                     Text(
-                      _orden == 'recientes'
-                          ? 'Recientes'
-                          : _orden == 'mejor'
-                              ? 'Mejor'
-                              : 'Peor',
+                      switch (_vm.orden) {
+                        OrdenResenas.recientes => 'Recientes',
+                        OrdenResenas.mejor => 'Mejor',
+                        OrdenResenas.peor => 'Peor',
+                      },
                       style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -514,9 +436,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   }
 
   Widget _filterChip(String label, int value) {
-    final sel = _filtroEstrellas == value;
+    final sel = _vm.filtroEstrellas == value;
     return GestureDetector(
-      onTap: () => setState(() => _filtroEstrellas = value),
+      onTap: () => _vm.filtrar(value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding:
@@ -540,7 +462,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   }
 
   void _showOrdenSheet() {
-    showModalBottomSheet(
+    unawaited(showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -566,17 +488,17 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
             ),
             const SizedBox(height: 12),
             ...[
-              ('Más recientes', 'recientes',
+              ('Más recientes', OrdenResenas.recientes,
                   LucideIcons.clock),
-              ('Mejor calificación', 'mejor',
+              ('Mejor calificación', OrdenResenas.mejor,
                   LucideIcons.thumbsUp),
-              ('Peor calificación', 'peor',
+              ('Peor calificación', OrdenResenas.peor,
                   LucideIcons.thumbsDown),
             ].map((t) {
-              final sel = _orden == t.$2;
+              final sel = _vm.orden == t.$2;
               return GestureDetector(
                 onTap: () {
-                  setState(() => _orden = t.$2);
+                  _vm.ordenar(t.$2);
                   Navigator.pop(context);
                 },
                 child: Container(
@@ -620,20 +542,17 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   // ── CARD DE RESEÑA ───────────────────────────────────────────────
-  Widget _buildReviewCard(Map<String, dynamic> r) {
-    final apellido = (r['autor_apellido'] ?? '') as String;
-    final nombre =
-        '${r['autor_nombre'] ?? ''} ${apellido.isNotEmpty ? '${apellido[0]}.' : ''}'
-            .trim();
-    final rating =
-        double.tryParse(r['rating']?.toString() ?? '5') ?? 5.0;
-    final titulo = r['titulo']?.toString() ?? '';
-    final comentario = r['comentario']?.toString() ?? '';
-    final verificada = r['verificada'] == true;
+  Widget _buildReviewCard(ResenaProducto r) {
+    final nombre = r.autor;
+    final rating = r.rating;
+    final titulo = r.titulo;
+    final comentario = r.comentario;
+    final verificada = r.verificada;
+    final util = _vm.esUtil(r.id);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -683,7 +602,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                             color: AppColors.textPrimary)),
-                    Text(_formatFecha(r['created_at']),
+                    Text(_formatFecha(r.creadaEn),
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary)),
                   ],
@@ -753,13 +672,13 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _likedIds.contains(r['id'].toString())
+                    color: util
                         ? AppColors.pierVerde.withValues(alpha: 0.1)
                         : AppColors.textSecondary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                         color:
-                            _likedIds.contains(r['id'].toString())
+                            util
                                 ? AppColors.pierVerde
                                     .withValues(alpha: 0.3)
                                 : AppColors.textSecondary
@@ -769,24 +688,18 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _likedIds.contains(r['id'].toString())
-                            ? LucideIcons.thumbsUp
-                            : LucideIcons.thumbsUp,
+                        LucideIcons.thumbsUp,
                         size: 14,
-                        color: _likedIds.contains(r['id'].toString())
+                        color: util
                             ? AppColors.pierVerde
                             : AppColors.textSecondary,
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        (int.tryParse(r['util_count']?.toString() ??
-                                    '0') ??
-                                0)
-                            .toString(),
+                        '${r.utilCount}',
                         style: TextStyle(
                             fontSize: 12,
-                            color: _likedIds
-                                    .contains(r['id'].toString())
+                            color: util
                                 ? AppColors.pierVerde
                                 : AppColors.textSecondary,
                             fontWeight: FontWeight.w600),
@@ -825,9 +738,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          Text('Sé el primero en calificar\neste producto.',
+          const Text('Sé el primero en calificar\neste producto.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),
