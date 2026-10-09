@@ -7,12 +7,13 @@
 // FakeApiClient (test/fakes/).
 //
 // Fase 3: las secciones que ya tienen ViewModel tienen su método tipado
-// (nosotros) y lanzan ApiException si el backend falla.
+// (nosotros, faq) y lanzan ApiException si el backend falla.
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/domain/models/info_nosotros.dart';
+import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
 
 class ConfiguracionRepository {
   ConfiguracionRepository({ApiClient? api}) : _api = api ?? ApiService();
@@ -34,5 +35,17 @@ class ConfiguracionRepository {
     }
     final cfg = r['config'];
     return cfg is Map ? InfoNosotros.fromConfig(cfg) : const InfoNosotros();
+  }
+
+  /// GET /configuracion/faq. Sin preguntas capturadas devuelve lista vacía.
+  Future<List<PreguntaFrecuente>> faq() async {
+    final r = await seccion('faq');
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar las preguntas',
+      );
+    }
+    final cfg = r['config'];
+    return cfg is Map ? PreguntaFrecuente.listaDesdeConfig(cfg) : const [];
   }
 }
