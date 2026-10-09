@@ -21,6 +21,10 @@ class OrderItem {
   final String? tamano;
   final double precioUnitario;
   final double subtotal;
+  // Solo vienen en el detalle (/pedidos/:id) o en algunos listados; se usan
+  // para «Volver a pedir» y la miniatura del perfil.
+  final String? productoId;
+  final String? imagenUrl;
 
   OrderItem({
     required this.nombre,
@@ -28,6 +32,8 @@ class OrderItem {
     this.tamano,
     required this.precioUnitario,
     required this.subtotal,
+    this.productoId,
+    this.imagenUrl,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -39,6 +45,8 @@ class OrderItem {
           double.tryParse(json['precio_unitario']?.toString() ?? '0') ?? 0.0,
       subtotal:
           double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
+      productoId: json['producto_id']?.toString(),
+      imagenUrl: json['imagen_url']?.toString(),
     );
   }
 }

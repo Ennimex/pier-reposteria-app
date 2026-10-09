@@ -1,15 +1,18 @@
 // lib/ui/more/widgets/profile_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
+import 'package:pier_pasteleria/ui/more/view_model/profile_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/orders_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
@@ -17,124 +20,55 @@ import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const ProfileScreen({super.key, this.viewModel});
+
+  final ProfileViewModel? viewModel;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _favoritosRepo = FavoritosRepository();
-  final _pedidosRepo = PedidosRepository();
-
-  List<Product> _favoritos = [];
-  List<Map<String, dynamic>> _pedidos = [];
-  bool _loadingFavoritos = true;
-  bool _loadingPedidos = true;
-  String? _reordenandoId; // id del pedido que se está reordenando
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final ProfileViewModel _vm = widget.viewModel ??
+      ProfileViewModel(
+        favoritosRepo: FavoritosRepository(),
+        pedidosRepo: PedidosRepository(),
+      );
 
   @override
   void initState() {
     super.initState();
     PierLog.nav('→ ProfileScreen');
-    _cargarDatos();
+    unawaited(_vm.cargar());
   }
 
-  Future<void> _cargarDatos() async {
-    // ── Favoritos ──────────────────────────────────────────────────
-    final favResult = await _favoritosRepo.listar();
-    if (mounted) {
-      if (favResult['success'] == true) {
-        final data = favResult['favoritos'] ?? favResult['data'] ?? [];
-        setState(() {
-          _favoritos = (data as List).map((json) {
-            final map = Map<String, dynamic>.from(json as Map<String, dynamic>);
-            map['activo'] = true;
-            return Product.fromJson(map);
-          }).toList();
-          _loadingFavoritos = false;
-        });
-        PierLog.info('✅ Favoritos: ${_favoritos.length}');
-      } else {
-        PierLog.error('Error favoritos: ${favResult['message']}');
-        setState(() => _loadingFavoritos = false);
-      }
-    }
-
-    // ── Pedidos ────────────────────────────────────────────────────
-    final pedResult = await _pedidosRepo.misPedidos();
-    if (mounted) {
-      if (pedResult['success'] == true) {
-        setState(() {
-          _pedidos = List<Map<String, dynamic>>.from(
-              pedResult['pedidos'] ?? []);
-          _loadingPedidos = false;
-        });
-        PierLog.info('✅ Pedidos: ${_pedidos.length}');
-      } else {
-        PierLog.error('Error pedidos: ${pedResult['message']}');
-        setState(() => _loadingPedidos = false);
-      }
-    }
+  @override
+  void dispose() {
+    _vm.dispose();
+    super.dispose();
   }
 
   // Vuelve a agregar los productos de un pedido al carrito y lleva al carrito.
-  // mis-pedidos no trae producto_id, así que pedimos el detalle /pedidos/:id.
   Future<void> _reordenar(String pedidoId) async {
-    if (pedidoId.isEmpty || _reordenandoId != null) return;
-    setState(() => _reordenandoId = pedidoId);
-
-    final result = await _pedidosRepo.detalle(pedidoId);
-    if (!mounted) return;
-
-    final items = result['success'] == true
-        ? List<Map<String, dynamic>>.from(result['items'] ?? [])
-        : <Map<String, dynamic>>[];
-
-    if (items.isEmpty) {
-      setState(() => _reordenandoId = null);
-      _snack('No se pudieron cargar los productos del pedido');
-      return;
-    }
-
     final cart = context.read<CartProvider>();
-    var agregados = 0;
-    for (final it in items) {
-      final pid = it['producto_id']?.toString() ?? '';
-      if (pid.isEmpty) continue;
-      final nombre = (it['nombre_producto'] ?? it['nombre'] ?? '').toString();
-      final tamano = it['tamano']?.toString() ?? 'chico';
-      final precio =
-          double.tryParse(it['precio_unitario']?.toString() ?? '0') ?? 0.0;
-      final cantidad = int.tryParse(it['cantidad']?.toString() ?? '1') ?? 1;
-      await cart.addItem(
-        Product(
-          id: pid,
-          nombre: nombre,
-          precio: precio,
-          imagenUrl: '',
-          descripcion: '',
-          categoria: '',
-        ),
-        cantidad,
-        tamano,
-        precio,
-      );
-      agregados++;
-    }
-
+    final resultado = await _vm.reordenar(pedidoId, agregar: cart.addItem);
     if (!mounted) return;
-    setState(() => _reordenandoId = null);
 
-    if (agregados == 0) {
-      _snack('No se pudieron agregar los productos');
-      return;
+    switch (resultado) {
+      case ResultadoReorden.ocupado:
+        return;
+      case ResultadoReorden.sinProductos:
+        _snack('No se pudieron cargar los productos del pedido');
+      case ResultadoReorden.ningunoAgregado:
+        _snack('No se pudieron agregar los productos');
+      case ResultadoReorden.agregado:
+        _snack('Productos agregados al carrito', success: true);
+        // Cierra el perfil y cambia a la pestaña Carrito (índice 2).
+        Navigator.of(context).pop();
+        context.read<NavigationProvider>().setSelectedIndex(2);
     }
-
-    _snack('Productos agregados al carrito', success: true);
-    // Cierra el perfil y cambia a la pestaña Carrito (índice 2).
-    Navigator.of(context).pop();
-    context.read<NavigationProvider>().setSelectedIndex(2);
   }
 
   void _snack(String msg, {bool success = false}) {
@@ -147,30 +81,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ));
   }
 
-  String _formatFechaPedido(dynamic fecha) {
-    if (fecha == null) return '';
-    try {
-      final dt = DateTime.parse(fecha.toString()).toLocal();
-      final now = DateTime.now();
-      final diff = now.difference(dt);
-      if (diff.inDays == 0) {
-        final h = dt.hour.toString().padLeft(2, '0');
-        final m = dt.minute.toString().padLeft(2, '0');
-        return 'Hoy, $h:$m ${dt.hour < 12 ? 'AM' : 'PM'}';
-      }
-      const months = ['Ene','Feb','Mar','Abr','May','Jun',
-                      'Jul','Ago','Sep','Oct','Nov','Dic'];
-      return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
-    } catch (_) {
-      return '';
+  String _formatFechaPedido(DateTime fecha) {
+    final dt = fecha.toLocal();
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays == 0) {
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return 'Hoy, $h:$m ${dt.hour < 12 ? 'AM' : 'PM'}';
     }
+    const months = ['Ene','Feb','Mar','Abr','May','Jun',
+                    'Jul','Ago','Sep','Oct','Nov','Dic'];
+    return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
+  }
+
+  /// «1x Pastel», o «2x Pastel de..., 3x más» con varios productos.
+  String _resumenPedido(List<OrderItem> items) {
+    if (items.isEmpty) return 'Sin productos';
+    final primero = items.first;
+    if (items.length == 1) return '1x ${primero.nombre}';
+    final corto = primero.nombre.split(' ').take(2).join(' ');
+    return '${primero.cantidad}x $corto..., ${items.length - 1}x más';
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(context),
+    );
+  }
+
+  Widget _buildPantalla(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final favoritos = _vm.favoritos;
+    final pedidos = _vm.pedidos;
     final user = auth.currentUser;
     final nombre = user?['nombre']?.toString() ?? '';
     final apellido = user?['apellido']?.toString() ?? '';
@@ -206,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
                           Text('Hola, $saludo',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 14,
                                   color: AppColors.textSecondary)),
                         ],
@@ -221,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           MaterialPageRoute(
                               builder: (_) =>
                                   const EditProfileScreen()),
-                        ).then((_) => setState(() {}));
+                        );
                       },
                       child: Stack(
                         children: [
@@ -237,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       fotoUrl,
                                       width: 52, height: 52,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, e, __) =>
+                                      errorBuilder: (_, e, _) =>
                                           _buildAvatarIniciales(iniciales),
                                     ),
                                   )
@@ -298,16 +244,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
             SliverToBoxAdapter(
-              child: _loadingFavoritos
+              child: _vm.cargandoFavoritos
                   ? Center(
                       child: Padding(
-                      padding: EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(20),
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde),
                     ))
-                  : _favoritos.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(
+                  : favoritos.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(
                               horizontal: 20),
                           child: Text('Sin favoritos aún',
                               style: TextStyle(
@@ -324,9 +270,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             separatorBuilder: (_, i) =>
                                 const SizedBox(width: 12),
                             itemCount:
-                                _favoritos.take(5).length,
+                                favoritos.take(5).length,
                             itemBuilder: (context, i) {
-                              final p = _favoritos[i];
+                              final p = favoritos[i];
                               return GestureDetector(
                                 onTap: () {
                                   PierLog.nav(
@@ -354,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           width: 120,
                                           height: 100,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, e, __) =>
+                                          errorBuilder: (_, e, _) =>
                                               Container(
                                             width: 120,
                                             height: 100,
@@ -425,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 builder: (_) =>
                                     const OrdersScreen()));
                       },
-                      child: Icon(LucideIcons.history,
+                      child: const Icon(LucideIcons.history,
                           color: AppColors.textSecondary, size: 22),
                     ),
                   ],
@@ -434,74 +380,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-            _loadingPedidos
-                ? SliverToBoxAdapter(
-                    child: Center(
-                        child: Padding(
-                    padding: EdgeInsets.all(20),
+            if (_vm.cargandoPedidos)
+              SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
                     child: CircularProgressIndicator(
                         color: AppColors.pierVerde),
-                  )))
-                : _pedidos.isEmpty
-                    ? SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20),
-                          child: Text('Sin pedidos aún',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14)),
-                        ),
-                      )
-                    : SliverPadding(
+                  ),
+                ),
+              )
+            else if (pedidos.isEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text('Sin pedidos aún',
+                      style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14)),
+                ),
+              )
+            else
+              SliverPadding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, i) {
-                              final p = _pedidos[i];
-                              final pedidoId = p['id']?.toString() ?? '';
-                              final numero =
-                                  p['numero']?.toString() ??
-                                      '#${p['id']}';
-                              final estado =
-                                  p['estado']?.toString() ??
-                                      'pendiente';
-                              final items =
-                                  List<Map<String, dynamic>>.from(
-                                      p['items'] ?? []);
-                              final total = double.tryParse(
-                                      p['total']?.toString() ??
-                                          '0') ??
-                                  0.0;
-                              final resumen = items.isEmpty
-                                  ? 'Sin productos'
-                                  : items.length == 1
-                                      ? '1x ${items.first['nombre_producto'] ?? items.first['nombre'] ?? ''}'
-                                      : '${items.first['cantidad']}x ${(items.first['nombre_producto'] ?? items.first['nombre'] ?? '').toString().split(' ').take(2).join(' ')}..., '
-                                          '${items.length > 1 ? '${items.length - 1}x más' : ''}';
+                              final p = pedidos[i];
+                              final items = p.items;
                               final imagen = items.isNotEmpty
-                                  ? items.first['imagen_url']
-                                          ?.toString() ??
-                                      ''
+                                  ? items.first.imagenUrl ?? ''
                                   : '';
                               return Padding(
                                 padding: const EdgeInsets.only(
                                     bottom: 12),
                                 child: _buildPedidoCard(
-                                  numero: numero,
-                                  fecha: _formatFechaPedido(
-                                      p['created_at']),
-                                  estado: estado,
-                                  resumen: resumen,
-                                  total: total,
+                                  numero: p.numero,
+                                  fecha: _formatFechaPedido(p.createdAt),
+                                  estadoTexto: p.statusText,
+                                  estadoColor: p.statusColor,
+                                  resumen: _resumenPedido(items),
+                                  total: p.total,
                                   imagenUrl: imagen,
-                                  reordenando: _reordenandoId == pedidoId,
-                                  onReordenar: () => _reordenar(pedidoId),
+                                  reordenando: _vm.reordenandoId == p.id,
+                                  onReordenar: () => _reordenar(p.id),
                                 ),
                               );
                             },
-                            childCount: _pedidos.take(5).length,
+                            childCount: pedidos.take(5).length,
                           ),
                         ),
                       ),
@@ -515,23 +442,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildPedidoCard({
     required String numero,
     required String fecha,
-    required String estado,
+    required String estadoTexto,
+    required Color estadoColor,
     required String resumen,
     required double total,
     required String imagenUrl,
     required bool reordenando,
     required VoidCallback onReordenar,
   }) {
-    Color estadoColor;
-    switch (estado) {
-      case 'completado': estadoColor = AppColors.estadoCompletado; break;
-      case 'en_preparacion':
-      case 'preparando': estadoColor = AppColors.estadoPreparacion; break;
-      case 'listo': estadoColor = AppColors.estadoListo; break;
-      case 'cancelado': estadoColor = AppColors.estadoCancelado; break;
-      default: estadoColor = AppColors.estadoPendiente;
-    }
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -560,7 +478,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: estadoColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(estado,
+              child: Text(estadoTexto,
                   style: TextStyle(
                       fontSize: 11,
                       color: estadoColor,
@@ -573,7 +491,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(fecha,
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 12, color: AppColors.textSecondary)),
           ),
         ),
@@ -590,7 +508,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 48, height: 48,
                       fit: BoxFit.cover,
                       // ✅ FIX: (_, e, __)
-                      errorBuilder: (_, e, __) =>
+                      errorBuilder: (_, e, _) =>
                           _imagePlaceholder())
                   : _imagePlaceholder(),
             ),
@@ -629,19 +547,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    reordenando
-                        ? SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.pierVerde),
-                          )
-                        : Icon(LucideIcons.rotateCcw,
-                            size: 14, color: AppColors.textSecondary),
+                    if (reordenando)
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.pierVerde),
+                      )
+                    else
+                      const Icon(LucideIcons.rotateCcw,
+                          size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(reordenando ? 'Agregando…' : 'Reordenar',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w500)),

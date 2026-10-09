@@ -6,7 +6,8 @@
 // Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
 // FakeApiClient (test/fakes/).
 //
-// Fase 3: los métodos tipados (listarMisPedidos) lanzan ApiException si el
+// Fase 3: los métodos tipados (listarMisPedidos, itemsDelPedido) lanzan
+// ApiException si el
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
@@ -41,6 +42,24 @@ class PedidosRepository {
 
   /// GET /pedidos/:id (items con producto_id/tamano/cantidad/precio_unitario)
   Future<Map<String, dynamic>> detalle(String id) => _api.getAuth(ApiConstants.pedidoById(id));
+
+  /// Productos de un pedido (para «Volver a pedir»): mis-pedidos no trae
+  /// producto_id, así que se lee el detalle. Ignora elementos que no sean
+  /// objetos; lanza ApiException si el backend falla.
+  Future<List<OrderItem>> itemsDelPedido(String id) async {
+    final r = await detalle(id);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudo cargar el pedido',
+      );
+    }
+    final data = r['items'];
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<dynamic, dynamic>>()
+        .map((j) => OrderItem.fromJson(Map<String, dynamic>.from(j)))
+        .toList();
+  }
 
   /// PUT /pedidos/:id/cancelar (solo pendiente/listo sin repartidor asignado)
   Future<Map<String, dynamic>> cancelar(String id) =>
