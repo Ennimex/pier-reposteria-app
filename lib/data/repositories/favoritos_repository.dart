@@ -6,7 +6,7 @@
 // Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
 // FakeApiClient (test/fakes/).
 //
-// Fase 3: los métodos tipados (listarProductos, quitarFavorito) lanzan ApiException si el
+// Fase 3: los métodos tipados (listarIds, listarProductos, quitarFavorito) lanzan ApiException si el
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
@@ -21,6 +21,20 @@ class FavoritosRepository {
 
   /// GET /favoritos/ids: solo ids (para pintar corazones).
   Future<Map<String, dynamic>> ids() => _api.getAuth(ApiConstants.favoritosIds);
+
+  /// GET /favoritos/ids tipado (p. ej. para contarlos en «Más»). ids() crudo
+  /// se queda para el catálogo y el detalle.
+  Future<List<String>> listarIds() async {
+    final r = await ids();
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar tus favoritos',
+      );
+    }
+    final data = r['ids'];
+    if (data is! List) return const [];
+    return data.map((id) => id.toString()).toList();
+  }
 
   /// GET /favoritos: productos completos.
   Future<Map<String, dynamic>> listar() => _api.getAuth(ApiConstants.favoritos);
