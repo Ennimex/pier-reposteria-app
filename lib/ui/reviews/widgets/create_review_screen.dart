@@ -36,7 +36,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
   // El State es dueño del ViewModel (lo crea y lo libera).
   late final CreateReviewViewModel _vm = widget.viewModel ??
       CreateReviewViewModel(
-        repo: ResenasRepository(),
+        repo: context.read<ResenasRepository>(),
         productoId: widget.product.id,
       );
 

@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
 import 'package:pier_pasteleria/ui/more/view_model/vincular_alexa_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -20,13 +20,13 @@ FakeApiClient _backendConCodigo({int? expira = 90}) => FakeApiClient(
     );
 
 VincularAlexaViewModel _vm(FakeApiClient api) =>
-    VincularAlexaViewModel(repo: CuentaRepository(api: api));
+    VincularAlexaViewModel(repo: CuentaRepositoryRemote(api: api));
 
 void main() {
   group('CuentaRepository.generarCodigoAlexa', () {
     test('devuelve el código tipado y va autenticado', () async {
       final api = _backendConCodigo();
-      final codigo = await CuentaRepository(api: api).generarCodigoAlexa();
+      final codigo = await CuentaRepositoryRemote(api: api).generarCodigoAlexa();
 
       expect(codigo.codigo, '482913');
       expect(codigo.expiraEnSegundos, 90);
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('sin expira_en_segundos usa 5 minutos', () async {
-      final codigo = await CuentaRepository(api: _backendConCodigo(expira: null))
+      final codigo = await CuentaRepositoryRemote(api: _backendConCodigo(expira: null))
           .generarCodigoAlexa();
       expect(codigo.expiraEnSegundos, 300);
     });
@@ -46,7 +46,7 @@ void main() {
       final api = FakeApiClient()
         ..fallar(ApiConstants.alexaGenerarCodigo, 'Token expirado');
       await expectLater(
-        CuentaRepository(api: api).generarCodigoAlexa(),
+        CuentaRepositoryRemote(api: api).generarCodigoAlexa(),
         throwsA(
           isA<ApiException>().having((e) => e.message, 'message', 'Token expirado'),
         ),
@@ -60,7 +60,7 @@ void main() {
         },
       );
       await expectLater(
-        CuentaRepository(api: api).generarCodigoAlexa(),
+        CuentaRepositoryRemote(api: api).generarCodigoAlexa(),
         throwsA(
           isA<ApiException>().having(
             (e) => e.message,

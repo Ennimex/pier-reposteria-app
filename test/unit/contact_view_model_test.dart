@@ -6,8 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/info_contacto.dart';
 import 'package:pier_pasteleria/ui/public/view_model/contact_view_model.dart';
 
@@ -19,8 +19,8 @@ const String _envio = ApiConstants.enviarContacto;
 const String _mensaje20 = 'Quiero un pastel de 3 pisos';
 
 ContactViewModel _vm(FakeApiClient api) => ContactViewModel(
-      configRepo: ConfiguracionRepository(api: api),
-      cuentaRepo: CuentaRepository(api: api),
+      configRepo: ConfiguracionRepositoryRemote(api: api),
+      cuentaRepo: CuentaRepositoryRemote(api: api),
     );
 
 Future<bool> _enviar(ContactViewModel vm, {String telefono = ''}) =>
@@ -57,7 +57,7 @@ void main() {
     test('contacto lanza ApiException si el backend falla', () async {
       final api = FakeApiClient()..fallar(_config, 'Sección no pública');
       await expectLater(
-        ConfiguracionRepository(api: api).contacto(),
+        ConfiguracionRepositoryRemote(api: api).contacto(),
         throwsA(isA<ApiException>()),
       );
     });
@@ -68,7 +68,7 @@ void main() {
           _envio: {'success': true},
         },
       );
-      await CuentaRepository(api: api).enviarContacto(
+      await CuentaRepositoryRemote(api: api).enviarContacto(
         nombre: 'Ana',
         email: 'ana@pier.mx',
         telefono: '',
@@ -91,7 +91,7 @@ void main() {
         () async {
       final api = FakeApiClient()..fallar(_envio, 'Demasiados mensajes');
       await expectLater(
-        CuentaRepository(api: api).enviarContacto(
+        CuentaRepositoryRemote(api: api).enviarContacto(
           nombre: 'Ana',
           email: 'ana@pier.mx',
           telefono: '',

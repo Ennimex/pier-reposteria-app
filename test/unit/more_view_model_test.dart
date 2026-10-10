@@ -2,10 +2,10 @@
 // red: contacto de «Encuéntranos» y contadores según la sesión.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/info_contacto.dart';
 import 'package:pier_pasteleria/ui/more/view_model/more_view_model.dart';
 
@@ -44,10 +44,10 @@ Map<String, dynamic> _conDatos() => {
     };
 
 MoreViewModel _vm(FakeApiClient api) => MoreViewModel(
-      configRepo: ConfiguracionRepository(api: api),
-      pedidosRepo: PedidosRepository(api: api),
-      favoritosRepo: FavoritosRepository(api: api),
-      resenasRepo: ResenasRepository(api: api),
+      configRepo: ConfiguracionRepositoryRemote(api: api),
+      pedidosRepo: PedidosRepositoryRemote(api: api),
+      favoritosRepo: FavoritosRepositoryRemote(api: api),
+      resenasRepo: ResenasRepositoryRemote(api: api),
     );
 
 void main() {
@@ -63,7 +63,7 @@ void main() {
     test('listarIds tipa los ids como texto', () async {
       final api = FakeApiClient(respuestas: _conDatos());
 
-      expect(await FavoritosRepository(api: api).listarIds(),
+      expect(await FavoritosRepositoryRemote(api: api).listarIds(),
           ['36', '40', '41']);
       expect(api.llamo(_favIds, metodo: 'GET-Auth'), isTrue);
     });

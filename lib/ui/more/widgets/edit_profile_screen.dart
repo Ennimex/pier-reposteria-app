@@ -26,7 +26,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // El State es dueño del ViewModel y de los controladores de texto.
   late final EditProfileViewModel _vm = widget.viewModel ??
       EditProfileViewModel(
-        repo: CuentaRepository(),
+        repo: context.read<CuentaRepository>(),
         usuario: context.read<AuthProvider>().currentUser,
       );
   late final TextEditingController _nombreCtrl =

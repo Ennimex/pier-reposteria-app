@@ -23,7 +23,7 @@ class AboutUsScreen extends StatefulWidget {
 class _AboutUsScreenState extends State<AboutUsScreen> {
   // El State solo es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final AboutUsViewModel _vm = widget.viewModel ??
-      AboutUsViewModel(repo: ConfiguracionRepository());
+      AboutUsViewModel(repo: context.read<ConfiguracionRepository>());
 
   // Íconos fijos de los 4 valores por defecto de la app.
   static const List<IconData> _iconosPorDefecto = [

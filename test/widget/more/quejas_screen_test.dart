@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/quejas_repository_remote.dart';
 import 'package:pier_pasteleria/ui/more/view_model/quejas_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/quejas_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,8 +21,8 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pumpApp(
     QuejasScreen(
       viewModel: QuejasViewModel(
-        quejasRepo: QuejasRepository(api: api),
-        pedidosRepo: PedidosRepository(api: api),
+        quejasRepo: QuejasRepositoryRemote(api: api),
+        pedidosRepo: PedidosRepositoryRemote(api: api),
       ),
     ),
     api: api,

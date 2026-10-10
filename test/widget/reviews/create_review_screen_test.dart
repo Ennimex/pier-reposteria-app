@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/reviews/view_model/create_review_view_model.dart';
@@ -34,7 +34,7 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
     CreateReviewScreen(
       product: _producto,
       viewModel: CreateReviewViewModel(
-        repo: ResenasRepository(api: api),
+        repo: ResenasRepositoryRemote(api: api),
         productoId: _producto.id,
       ),
     ),

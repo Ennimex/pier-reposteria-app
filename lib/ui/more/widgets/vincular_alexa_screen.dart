@@ -26,7 +26,7 @@ class VincularAlexaScreen extends StatefulWidget {
 class _VincularAlexaScreenState extends State<VincularAlexaScreen> {
   // El State solo es dueño del ViewModel (lo crea y lo libera).
   late final VincularAlexaViewModel _vm = widget.viewModel ??
-      VincularAlexaViewModel(repo: CuentaRepository());
+      VincularAlexaViewModel(repo: context.read<CuentaRepository>());
 
   @override
   void dispose() {

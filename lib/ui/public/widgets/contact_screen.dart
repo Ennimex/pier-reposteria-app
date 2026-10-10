@@ -32,8 +32,8 @@ class _ContactScreenState extends State<ContactScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ContactViewModel _vm = widget.viewModel ??
       ContactViewModel(
-        configRepo: ConfiguracionRepository(),
-        cuentaRepo: CuentaRepository(),
+        configRepo: context.read<ConfiguracionRepository>(),
+        cuentaRepo: context.read<CuentaRepository>(),
       );
 
   @override

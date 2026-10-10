@@ -2,8 +2,8 @@
 // lo que expone su ViewModel (MVVM, Fase 3), sin red.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_pasteleria/ui/more/view_model/profile_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,8 +15,8 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pumpApp(
     ProfileScreen(
       viewModel: ProfileViewModel(
-        favoritosRepo: FavoritosRepository(api: api),
-        pedidosRepo: PedidosRepository(api: api),
+        favoritosRepo: FavoritosRepositoryRemote(api: api),
+        pedidosRepo: PedidosRepositoryRemote(api: api),
       ),
     ),
     api: api,

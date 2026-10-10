@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_pasteleria/ui/orders/view_model/orders_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -25,14 +25,14 @@ final List<Object> _tres = [
 ];
 
 OrdersViewModel _vm(FakeApiClient api) =>
-    OrdersViewModel(repo: PedidosRepository(api: api));
+    OrdersViewModel(repo: PedidosRepositoryRemote(api: api));
 
 void main() {
   group('PedidosRepository.listarMisPedidos', () {
     test('tipa los pedidos e ignora lo que no es objeto', () async {
       final api = _backendCon([..._tres, 'basura']);
 
-      final lista = await PedidosRepository(api: api).listarMisPedidos();
+      final lista = await PedidosRepositoryRemote(api: api).listarMisPedidos();
 
       expect(lista.map((o) => o.numero), ['PIER-1', 'PIER-2', 'PIER-3']);
       expect(lista.first.total, 150);
@@ -40,7 +40,7 @@ void main() {
     });
 
     test('acepta la lista en data', () async {
-      final lista = await PedidosRepository(api: _backendCon(_tres, clave: 'data'))
+      final lista = await PedidosRepositoryRemote(api: _backendCon(_tres, clave: 'data'))
           .listarMisPedidos();
       expect(lista, hasLength(3));
     });
@@ -48,7 +48,7 @@ void main() {
     test('si el backend falla lanza ApiException', () async {
       final api = FakeApiClient()..fallar(_endpoint, 'Token expirado');
       await expectLater(
-        PedidosRepository(api: api).listarMisPedidos(),
+        PedidosRepositoryRemote(api: api).listarMisPedidos(),
         throwsA(isA<ApiException>()),
       );
     });

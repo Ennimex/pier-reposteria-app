@@ -3,56 +3,34 @@
 // Única puerta a los datos de el catálogo (productos, categorías, filtros, promociones). En esta fase (2 de MVVM) cada
 // método devuelve la respuesta cruda del backend ({success, ...}) tal como la
 // consumen hoy las pantallas; el tipado a modelos llega con cada ViewModel.
-// Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
-// FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+// Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
+// clase abstracta; la implementación HTTP es ProductosRepositoryRemote, registrada
+// una sola vez en lib/config/dependencies.dart.
 
-class ProductosRepository {
-  final ApiClient _api;
-  ProductosRepository({ApiClient? api}) : _api = api ?? ApiService();
-
+abstract class ProductosRepository {
   /// GET /productos: catálogo activo con precios y stock_online.
-  Future<Map<String, dynamic>> listar() => _api.get(ApiConstants.productos);
+  Future<Map<String, dynamic>> listar();
 
   /// GET /productos/:id: detalle + reseñas aprobadas + relacionados.
-  Future<Map<String, dynamic>> detalle(String id) => _api.get(ApiConstants.productoById(id));
+  Future<Map<String, dynamic>> detalle(String id);
 
   /// GET /categorias
-  Future<Map<String, dynamic>> categorias() => _api.get(ApiConstants.categorias);
+  Future<Map<String, dynamic>> categorias();
 
   /// GET /categorias tipado a solo los nombres (`nombre` o `name`), en el
   /// orden del backend; ignora los vacíos y lo que no sea objeto. Lanza
   /// ApiException si falla. categorias() crudo sigue para home y catálogo.
-  Future<List<String>> nombresDeCategorias() async {
-    final r = await categorias();
-    if (r['success'] != true) {
-      throw ApiException(
-        r['message']?.toString() ?? 'No se pudieron cargar las categorías',
-      );
-    }
-    final data = r['categorias'] ?? r['data'];
-    if (data is! List) return const [];
-    return data
-        .whereType<Map<dynamic, dynamic>>()
-        .map((c) => (c['nombre'] ?? c['name'] ?? '').toString())
-        .where((n) => n.isNotEmpty)
-        .toList();
-  }
+  Future<List<String>> nombresDeCategorias();
 
   /// GET /filtros: sabores/tamaños/tipos globales.
-  Future<Map<String, dynamic>> filtros() => _api.get(ApiConstants.filtros);
+  Future<Map<String, dynamic>> filtros();
 
   /// GET /categoria-opciones/:id: tipos y sabores de una categoría.
-  Future<Map<String, dynamic>> opcionesDeCategoria(String categoriaId) =>
-      _api.get(ApiConstants.categoriaOpciones(categoriaId));
+  Future<Map<String, dynamic>> opcionesDeCategoria(String categoriaId);
 
   /// GET /recomendaciones/:productoId: top 3 por co-compra (público).
-  Future<Map<String, dynamic>> recomendaciones(String productoId) =>
-      _api.get(ApiConstants.recomendaciones(productoId));
+  Future<Map<String, dynamic>> recomendaciones(String productoId);
 
   /// GET /promociones/activas
-  Future<Map<String, dynamic>> promocionesActivas() => _api.get(ApiConstants.promocionesActivas);
+  Future<Map<String, dynamic>> promocionesActivas();
 }

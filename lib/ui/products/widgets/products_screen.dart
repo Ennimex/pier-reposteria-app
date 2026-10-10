@@ -55,10 +55,8 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen>
     with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  late final _productosRepo =
-      widget.productosRepository ?? ProductosRepository();
-  late final _favoritosRepo =
-      widget.favoritosRepository ?? FavoritosRepository();
+  late final ProductosRepository _productosRepo;
+  late final FavoritosRepository _favoritosRepo;
 
   SortOption _sort = SortOption.popular;
   String _category = 'Todos';
@@ -123,6 +121,8 @@ class _ProductsScreenState extends State<ProductsScreen>
   @override
   void initState() {
     super.initState();
+    _productosRepo = widget.productosRepository ?? context.read();
+    _favoritosRepo = widget.favoritosRepository ?? context.read();
     _category = widget.initialCategory ?? 'Todos';
     PierLog.nav('ProductsScreen abierto — categoría inicial: $_category');
     WidgetsBinding.instance.addPostFrameCallback((_) async {

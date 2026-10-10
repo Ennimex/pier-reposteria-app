@@ -7,8 +7,7 @@ import 'package:pier_pasteleria/utils/logger.dart';
 class NotificationProvider extends ChangeNotifier {
   final NotificacionesRepository _repo;
 
-  NotificationProvider({NotificacionesRepository? repo})
-      : _repo = repo ?? NotificacionesRepository();
+  NotificationProvider({required NotificacionesRepository repo}) : _repo = repo;
 
   List<Map<String, dynamic>> _notificaciones = [];
   int _noLeidas = 0;

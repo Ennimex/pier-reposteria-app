@@ -2,7 +2,7 @@
 // lo que expone su ViewModel (MVVM, Fase 3), sin red.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_pasteleria/ui/public/view_model/legal_view_model.dart';
 import 'package:pier_pasteleria/ui/public/widgets/legal_screen.dart';
 
@@ -14,7 +14,7 @@ final String _endpoint = ApiConstants.configuracionSeccion('legales');
 Future<void> _montar(WidgetTester tester, FakeApiClient api) =>
     tester.pumpApp(
       LegalScreen(
-        viewModel: LegalViewModel(repo: ConfiguracionRepository(api: api)),
+        viewModel: LegalViewModel(repo: ConfiguracionRepositoryRemote(api: api)),
       ),
       api: api,
     );

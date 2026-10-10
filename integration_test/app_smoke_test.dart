@@ -3,17 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:pier_pasteleria/app.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/config/dependencies.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -58,15 +49,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MultiProvider(
-          providers: [
-            ChangeNotifierProvider(
-              create: (_) => AuthProvider(auth: AuthRepository(api: api)),
-            ),
-            ChangeNotifierProvider(
-              create: (_) =>
-                  TemaProvider(repo: ConfiguracionRepository(api: api)),
-            ),
-          ],
+          providers: dependencias(api),
           child: const MyApp(initialLocation: AppRoutes.login),
         ),
       );
@@ -87,33 +70,10 @@ void main() {
     testWidgets('el catálogo obtiene datos usando repositorios fake', (
       tester,
     ) async {
-      final productosRepo = ProductosRepository(api: api);
-      final favoritosRepo = FavoritosRepository(api: api);
-
       await tester.pumpWidget(
         MultiProvider(
-          providers: [
-            ChangeNotifierProvider(
-              create: (_) => AuthProvider(auth: AuthRepository(api: api)),
-            ),
-            ChangeNotifierProvider(
-              create: (_) => CartProvider(repo: CarritoRepository(api: api)),
-            ),
-            ChangeNotifierProvider(
-              create: (_) => ProductProvider(repo: productosRepo),
-            ),
-            ChangeNotifierProvider(create: (_) => NavigationProvider()),
-            ChangeNotifierProvider(
-              create: (_) =>
-                  TemaProvider(repo: ConfiguracionRepository(api: api)),
-            ),
-          ],
-          child: MaterialApp(
-            home: ProductsScreen(
-              productosRepository: productosRepo,
-              favoritosRepository: favoritosRepo,
-            ),
-          ),
+          providers: dependencias(api),
+          child: const MaterialApp(home: ProductsScreen()),
         ),
       );
 

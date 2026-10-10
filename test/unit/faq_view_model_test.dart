@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_pasteleria/ui/public/view_model/faq_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -21,7 +21,7 @@ FakeApiClient _backendCon(Object? preguntas) => FakeApiClient(
     );
 
 FaqViewModel _vm(FakeApiClient api) =>
-    FaqViewModel(repo: ConfiguracionRepository(api: api));
+    FaqViewModel(repo: ConfiguracionRepositoryRemote(api: api));
 
 void main() {
   group('ConfiguracionRepository.faq', () {
@@ -35,7 +35,7 @@ void main() {
         '"no es mapa"]',
       );
 
-      final lista = await ConfiguracionRepository(api: api).faq();
+      final lista = await ConfiguracionRepositoryRemote(api: api).faq();
 
       expect(lista.map((p) => (p.categoria, p.pregunta, p.respuesta)), [
         ('Envíos', '¿Llegan?', 'Sí'),
@@ -46,14 +46,14 @@ void main() {
 
     test('sin preguntas capturadas devuelve lista vacía', () async {
       final lista =
-          await ConfiguracionRepository(api: _backendCon(null)).faq();
+          await ConfiguracionRepositoryRemote(api: _backendCon(null)).faq();
       expect(lista, isEmpty);
     });
 
     test('si el backend falla lanza ApiException', () async {
       final api = FakeApiClient()..fallar(_endpoint, 'Sección no encontrada');
       await expectLater(
-        ConfiguracionRepository(api: api).faq(),
+        ConfiguracionRepositoryRemote(api: api).faq(),
         throwsA(isA<ApiException>()),
       );
     });

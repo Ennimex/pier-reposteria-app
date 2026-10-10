@@ -56,8 +56,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final FavoritesViewModel _vm = widget.viewModel ??
       FavoritesViewModel(
-        favoritosRepo: FavoritosRepository(),
-        productosRepo: ProductosRepository(),
+        favoritosRepo: context.read<FavoritosRepository>(),
+        productosRepo: context.read<ProductosRepository>(),
       );
   final TextEditingController _searchController = TextEditingController();
 

@@ -7,8 +7,7 @@ import 'package:pier_pasteleria/utils/logger.dart';
 class OrderProvider extends ChangeNotifier {
   final PedidosRepository _repo;
 
-  OrderProvider({PedidosRepository? repo})
-      : _repo = repo ?? PedidosRepository();
+  OrderProvider({required PedidosRepository repo}) : _repo = repo;
 
   List<Order> _orders = [];
   bool _isLoading = false;

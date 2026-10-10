@@ -7,8 +7,7 @@ import 'package:pier_pasteleria/utils/logger.dart';
 class ProductProvider with ChangeNotifier {
   final ProductosRepository _repo;
 
-  ProductProvider({ProductosRepository? repo})
-      : _repo = repo ?? ProductosRepository();
+  ProductProvider({required ProductosRepository repo}) : _repo = repo;
 
   List<Product> _productos = [];
   bool _isLoading = false;

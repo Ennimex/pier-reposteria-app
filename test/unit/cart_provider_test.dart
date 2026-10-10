@@ -2,7 +2,7 @@
 // backend es un FakeApiClient y se afirma qué se le pidió.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
+import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 
@@ -60,7 +60,7 @@ FakeApiClient _backendQueAceptaSinRecargar() => FakeApiClient(respuestas: {
 Future<CartProvider> _cargado(FakeApiClient api, {int cantidadFresa = 2}) async {
   api.responder(
       ApiConstants.carrito, _carritoDelBackend(cantidadFresa: cantidadFresa));
-  final cart = CartProvider(repo: CarritoRepository(api: api));
+  final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
   await cart.cargarDesdeBackend();
   return cart;
 }
@@ -102,7 +102,7 @@ void main() {
   group('CartProvider: agregar', () {
     test('envía producto, cantidad y tamaño al backend', () async {
       final api = _backendQueAceptaSinRecargar();
-      final cart = CartProvider(repo: CarritoRepository(api: api));
+      final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
 
       await cart.addItem(_producto(), 2, 'grande', 180);
 
@@ -115,7 +115,7 @@ void main() {
     test('el mismo producto suma cantidad; otro tamaño es otra línea',
         () async {
       final cart =
-          CartProvider(repo: CarritoRepository(api: _backendQueAceptaSinRecargar()));
+          CartProvider(repo: CarritoRepositoryRemote(api: _backendQueAceptaSinRecargar()));
 
       await cart.addItem(_producto());
       await cart.addItem(_producto());
@@ -133,7 +133,7 @@ void main() {
             ? {'success': true}
             : _carritoDelBackend(),
       });
-      final cart = CartProvider(repo: CarritoRepository(api: api));
+      final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
 
       await cart.addItem(_producto());
 
@@ -145,7 +145,7 @@ void main() {
     test('si el backend rechaza, revierte lo agregado en local', () async {
       final api = FakeApiClient()
         ..fallar(ApiConstants.carrito, 'Producto agotado');
-      final cart = CartProvider(repo: CarritoRepository(api: api));
+      final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
       var avisos = 0;
       cart.addListener(() => avisos++);
 

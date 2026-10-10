@@ -24,7 +24,7 @@ class FAQScreen extends StatefulWidget {
 class _FAQScreenState extends State<FAQScreen> {
   // El State solo es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final FaqViewModel _vm =
-      widget.viewModel ?? FaqViewModel(repo: ConfiguracionRepository());
+      widget.viewModel ?? FaqViewModel(repo: context.read<ConfiguracionRepository>());
 
   @override
   void initState() {

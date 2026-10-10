@@ -4,8 +4,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/more/view_model/profile_view_model.dart';
 
@@ -32,8 +32,8 @@ final Map<String, dynamic> _conDatos = {
 };
 
 ProfileViewModel _vm(FakeApiClient api) => ProfileViewModel(
-      favoritosRepo: FavoritosRepository(api: api),
-      pedidosRepo: PedidosRepository(api: api),
+      favoritosRepo: FavoritosRepositoryRemote(api: api),
+      pedidosRepo: PedidosRepositoryRemote(api: api),
     );
 
 /// Carrito falso: registra (id, cantidad, tamaño, precio).
@@ -52,7 +52,7 @@ void main() {
         () async {
       final api = FakeApiClient(respuestas: _conDatos);
 
-      final lista = await FavoritosRepository(api: api).listarProductos();
+      final lista = await FavoritosRepositoryRemote(api: api).listarProductos();
 
       expect(lista.map((p) => p.id), ['36']);
       expect(lista.first.disponible, isTrue);
@@ -62,7 +62,7 @@ void main() {
     test('listarProductos lanza ApiException si el backend falla', () async {
       final api = FakeApiClient()..fallar(_favoritos, 'Token expirado');
       await expectLater(
-        FavoritosRepository(api: api).listarProductos(),
+        FavoritosRepositoryRemote(api: api).listarProductos(),
         throwsA(isA<ApiException>()),
       );
     });
@@ -85,7 +85,7 @@ void main() {
         },
       );
 
-      final items = await PedidosRepository(api: api).itemsDelPedido('9');
+      final items = await PedidosRepositoryRemote(api: api).itemsDelPedido('9');
 
       expect(items.single.productoId, '36');
       expect(items.single.cantidad, 2);
@@ -95,7 +95,7 @@ void main() {
     test('itemsDelPedido lanza ApiException si el backend falla', () async {
       final api = FakeApiClient()..fallar(_detalle9, 'Pedido no encontrado');
       await expectLater(
-        PedidosRepository(api: api).itemsDelPedido('9'),
+        PedidosRepositoryRemote(api: api).itemsDelPedido('9'),
         throwsA(isA<ApiException>()),
       );
     });

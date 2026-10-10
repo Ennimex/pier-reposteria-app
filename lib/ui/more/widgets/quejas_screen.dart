@@ -42,8 +42,8 @@ class _QuejasScreenState extends State<QuejasScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final QuejasViewModel _vm = widget.viewModel ??
       QuejasViewModel(
-        quejasRepo: QuejasRepository(),
-        pedidosRepo: PedidosRepository(),
+        quejasRepo: context.read<QuejasRepository>(),
+        pedidosRepo: context.read<PedidosRepository>(),
       );
 
   @override

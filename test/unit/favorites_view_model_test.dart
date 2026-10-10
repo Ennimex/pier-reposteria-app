@@ -4,8 +4,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
 import 'package:pier_pasteleria/ui/favorites/view_model/favorites_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -40,8 +40,8 @@ final Map<String, dynamic> _conDatos = {
 
 FavoritesViewModel _vm(FakeApiClient api, {List<String>? avisos}) =>
     FavoritesViewModel(
-      favoritosRepo: FavoritosRepository(api: api),
-      productosRepo: ProductosRepository(api: api),
+      favoritosRepo: FavoritosRepositoryRemote(api: api),
+      productosRepo: ProductosRepositoryRemote(api: api),
       registrarInteres: avisos?.add ?? (_) {},
     );
 
@@ -50,7 +50,7 @@ void main() {
     test('quitarFavorito llama DELETE autenticado', () async {
       final api = FakeApiClient(respuestas: _conDatos);
 
-      await FavoritosRepository(api: api).quitarFavorito('36');
+      await FavoritosRepositoryRemote(api: api).quitarFavorito('36');
 
       expect(api.llamo(_quitar36, metodo: 'DELETE-Auth'), isTrue);
     });
@@ -60,7 +60,7 @@ void main() {
       final api = FakeApiClient()..fallar(_quitar36, 'No autorizado');
 
       expect(
-        () => FavoritosRepository(api: api).quitarFavorito('36'),
+        () => FavoritosRepositoryRemote(api: api).quitarFavorito('36'),
         throwsA(isA<ApiException>()
             .having((e) => e.message, 'message', 'No autorizado')),
       );
@@ -70,7 +70,7 @@ void main() {
         () async {
       final api = FakeApiClient(respuestas: _conDatos);
 
-      final nombres = await ProductosRepository(api: api).nombresDeCategorias();
+      final nombres = await ProductosRepositoryRemote(api: api).nombresDeCategorias();
 
       expect(nombres, ['Pasteles', 'Roscas', 'Pays', 'Postres', 'Bebidas']);
     });
@@ -85,14 +85,14 @@ void main() {
         },
       });
 
-      expect(await ProductosRepository(api: api).nombresDeCategorias(),
+      expect(await ProductosRepositoryRemote(api: api).nombresDeCategorias(),
           ['Panes']);
     });
 
     test('nombresDeCategorias lanza ApiException si falla', () async {
       final api = FakeApiClient()..fallar(_categorias, 'Caído');
 
-      expect(() => ProductosRepository(api: api).nombresDeCategorias(),
+      expect(() => ProductosRepositoryRemote(api: api).nombresDeCategorias(),
           throwsA(isA<ApiException>()));
     });
   });

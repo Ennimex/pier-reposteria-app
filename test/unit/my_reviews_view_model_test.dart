@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/mi_resena.dart';
 import 'package:pier_pasteleria/ui/reviews/view_model/my_reviews_view_model.dart';
 
@@ -41,7 +41,7 @@ FakeApiClient _backendCon(List<Object> resenas) => FakeApiClient(
     );
 
 MyReviewsViewModel _vm(FakeApiClient api) =>
-    MyReviewsViewModel(repo: ResenasRepository(api: api));
+    MyReviewsViewModel(repo: ResenasRepositoryRemote(api: api));
 
 void main() {
   group('MiResena.fromJson', () {
@@ -73,7 +73,7 @@ void main() {
     test('listarMisResenas tipa e ignora lo que no es objeto', () async {
       final api = _backendCon([..._dos, 'basura']);
 
-      final lista = await ResenasRepository(api: api).listarMisResenas();
+      final lista = await ResenasRepositoryRemote(api: api).listarMisResenas();
 
       expect(lista.map((r) => r.id), ['7', '8']);
       expect(api.llamo(_lista, metodo: 'GET-Auth'), isTrue);
@@ -82,7 +82,7 @@ void main() {
     test('listarMisResenas lanza ApiException si el backend falla', () async {
       final api = FakeApiClient()..fallar(_lista, 'Token expirado');
       await expectLater(
-        ResenasRepository(api: api).listarMisResenas(),
+        ResenasRepositoryRemote(api: api).listarMisResenas(),
         throwsA(isA<ApiException>()),
       );
     });
@@ -94,7 +94,7 @@ void main() {
         },
       );
 
-      final mensaje = await ResenasRepository(api: api).editarResena(
+      final mensaje = await ResenasRepositoryRemote(api: api).editarResena(
         id: '7',
         rating: 5,
         titulo: 'Riquísimo',
@@ -115,7 +115,7 @@ void main() {
         () async {
       final api = FakeApiClient()..fallar(_editar7, 'No es tu reseña');
       await expectLater(
-        ResenasRepository(api: api)
+        ResenasRepositoryRemote(api: api)
             .editarResena(id: '7', rating: 3, titulo: '', comentario: 'x'),
         throwsA(
           isA<ApiException>().having((e) => e.message, 'message', 'No es tu reseña'),

@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_pasteleria/ui/reviews/view_model/create_review_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -21,14 +21,14 @@ FakeApiClient _backend({bool autoAprobada = true}) => FakeApiClient(
     );
 
 CreateReviewViewModel _vm(FakeApiClient api) =>
-    CreateReviewViewModel(repo: ResenasRepository(api: api), productoId: '36');
+    CreateReviewViewModel(repo: ResenasRepositoryRemote(api: api), productoId: '36');
 
 void main() {
   group('ResenasRepository.crearResena', () {
     test('manda el cuerpo autenticado y devuelve auto_aprobada', () async {
       final api = _backend();
 
-      final publicada = await ResenasRepository(api: api).crearResena(
+      final publicada = await ResenasRepositoryRemote(api: api).crearResena(
         productoId: '36',
         rating: 5,
         titulo: '',
@@ -48,7 +48,7 @@ void main() {
 
     test('en revisión devuelve false', () async {
       final publicada =
-          await ResenasRepository(api: _backend(autoAprobada: false))
+          await ResenasRepositoryRemote(api: _backend(autoAprobada: false))
               .crearResena(
         productoId: '36',
         rating: 4,
@@ -62,7 +62,7 @@ void main() {
       final api = FakeApiClient()
         ..fallar(_endpoint, 'Ya dejaste una reseña para este producto');
       await expectLater(
-        ResenasRepository(api: api).crearResena(
+        ResenasRepositoryRemote(api: api).crearResena(
           productoId: '36',
           rating: 5,
           titulo: '',

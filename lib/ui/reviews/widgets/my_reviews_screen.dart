@@ -25,7 +25,7 @@ class MyReviewsScreen extends StatefulWidget {
 class _MyReviewsScreenState extends State<MyReviewsScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final MyReviewsViewModel _vm =
-      widget.viewModel ?? MyReviewsViewModel(repo: ResenasRepository());
+      widget.viewModel ?? MyReviewsViewModel(repo: context.read<ResenasRepository>());
 
   @override
   void initState() {

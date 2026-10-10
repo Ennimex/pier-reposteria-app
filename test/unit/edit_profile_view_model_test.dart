@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
 import 'package:pier_pasteleria/ui/more/view_model/edit_profile_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -29,7 +29,7 @@ FakeApiClient _backendOk() => FakeApiClient(
     );
 
 EditProfileViewModel _vm(FakeApiClient api) => EditProfileViewModel(
-      repo: CuentaRepository(api: api),
+      repo: CuentaRepositoryRemote(api: api),
       usuario: _sesion,
     );
 
@@ -38,7 +38,7 @@ void main() {
     test('manda los 3 campos autenticado y devuelve el user', () async {
       final api = _backendOk();
 
-      final user = await CuentaRepository(api: api)
+      final user = await CuentaRepositoryRemote(api: api)
           .actualizarPerfil(nombre: 'Ana María', apellido: 'López');
 
       expect(user['nombre'], 'Ana María');
@@ -54,7 +54,7 @@ void main() {
     test('si el backend falla lanza ApiException con su mensaje', () async {
       final api = FakeApiClient()..fallar(_endpoint, 'Token inválido');
       await expectLater(
-        CuentaRepository(api: api)
+        CuentaRepositoryRemote(api: api)
             .actualizarPerfil(nombre: 'Ana', apellido: ''),
         throwsA(
           isA<ApiException>().having((e) => e.message, 'message', 'Token inválido'),

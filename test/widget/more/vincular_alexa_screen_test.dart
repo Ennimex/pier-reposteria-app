@@ -2,7 +2,7 @@
 // Alexa» pinta lo que expone su ViewModel (MVVM, Fase 3), sin red.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
 import 'package:pier_pasteleria/ui/more/view_model/vincular_alexa_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/vincular_alexa_screen.dart';
 
@@ -12,7 +12,7 @@ import '../../helpers/pump_app.dart';
 Future<void> _montar(WidgetTester tester, FakeApiClient api) =>
     tester.pumpApp(
       VincularAlexaScreen(
-        viewModel: VincularAlexaViewModel(repo: CuentaRepository(api: api)),
+        viewModel: VincularAlexaViewModel(repo: CuentaRepositoryRemote(api: api)),
       ),
       api: api,
     );

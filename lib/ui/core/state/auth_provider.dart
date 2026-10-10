@@ -6,7 +6,7 @@ import 'package:pier_pasteleria/utils/logger.dart';
 class AuthProvider with ChangeNotifier {
   final AuthRepository _authService;
 
-  AuthProvider({AuthRepository? auth}) : _authService = auth ?? AuthRepository();
+  AuthProvider({required AuthRepository auth}) : _authService = auth;
 
   bool _isAuthenticated = false;
   bool _isLoading = false;

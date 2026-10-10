@@ -3,76 +3,32 @@
 // Única puerta a los datos de la configuración pública del panel (contacto, personalización, inicio, faq, nosotros, legales). En esta fase (2 de MVVM) cada
 // método devuelve la respuesta cruda del backend ({success, ...}) tal como la
 // consumen hoy las pantallas; el tipado a modelos llega con cada ViewModel.
-// Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
-// FakeApiClient (test/fakes/).
+// Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
+// clase abstracta; la implementación HTTP es ConfiguracionRepositoryRemote, registrada
+// una sola vez en lib/config/dependencies.dart.
 //
 // Fase 3: las secciones que ya tienen ViewModel tienen su método tipado
 // (contacto, nosotros, faq, legales) y lanzan ApiException si el backend
 // falla.
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/domain/models/info_contacto.dart';
 import 'package:pier_pasteleria/domain/models/info_nosotros.dart';
 import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
 import 'package:pier_pasteleria/domain/models/textos_legales.dart';
 
-class ConfiguracionRepository {
-  ConfiguracionRepository({ApiClient? api}) : _api = api ?? ApiService();
-
-  final ApiClient _api;
-
+abstract class ConfiguracionRepository {
   /// GET /configuracion/:seccion -> {success, config: {clave: valor}}.
   /// Solo secciones de la whitelist pública del backend; el resto da 403.
-  Future<Map<String, dynamic>> seccion(String nombre) =>
-      _api.get(ApiConstants.configuracionSeccion(nombre));
+  Future<Map<String, dynamic>> seccion(String nombre);
 
   /// GET /configuracion/contacto. Sin `config` devuelve todo null.
-  Future<InfoContacto> contacto() async {
-    final r = await seccion('contacto');
-    if (r['success'] != true) {
-      throw ApiException(
-        r['message']?.toString() ?? 'No se pudieron cargar los datos de contacto',
-      );
-    }
-    final cfg = r['config'];
-    return cfg is Map ? InfoContacto.fromConfig(cfg) : const InfoContacto();
-  }
+  Future<InfoContacto> contacto();
 
   /// GET /configuracion/nosotros. Sin `config` devuelve todo vacío.
-  Future<InfoNosotros> nosotros() async {
-    final r = await seccion('nosotros');
-    if (r['success'] != true) {
-      throw ApiException(
-        r['message']?.toString() ?? 'No se pudo cargar «Nosotros»',
-      );
-    }
-    final cfg = r['config'];
-    return cfg is Map ? InfoNosotros.fromConfig(cfg) : const InfoNosotros();
-  }
+  Future<InfoNosotros> nosotros();
 
   /// GET /configuracion/faq. Sin preguntas capturadas devuelve lista vacía.
-  Future<List<PreguntaFrecuente>> faq() async {
-    final r = await seccion('faq');
-    if (r['success'] != true) {
-      throw ApiException(
-        r['message']?.toString() ?? 'No se pudieron cargar las preguntas',
-      );
-    }
-    final cfg = r['config'];
-    return cfg is Map ? PreguntaFrecuente.listaDesdeConfig(cfg) : const [];
-  }
+  Future<List<PreguntaFrecuente>> faq();
 
   /// GET /configuracion/legales. Sin `config` devuelve todo null.
-  Future<TextosLegales> legales() async {
-    final r = await seccion('legales');
-    if (r['success'] != true) {
-      throw ApiException(
-        r['message']?.toString() ?? 'No se pudieron cargar los textos legales',
-      );
-    }
-    final cfg = r['config'];
-    return cfg is Map ? TextosLegales.fromConfig(cfg) : const TextosLegales();
-  }
+  Future<TextosLegales> legales();
 }

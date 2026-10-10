@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_pasteleria/ui/public/view_model/about_us_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -18,7 +18,7 @@ FakeApiClient _backendCon(Map<String, dynamic> config) => FakeApiClient(
     );
 
 AboutUsViewModel _vm(FakeApiClient api) => AboutUsViewModel(
-      repo: ConfiguracionRepository(api: api),
+      repo: ConfiguracionRepositoryRemote(api: api),
       anioActual: 2026,
     );
 
@@ -38,7 +38,7 @@ void main() {
         ],
       });
 
-      final info = await ConfiguracionRepository(api: api).nosotros();
+      final info = await ConfiguracionRepositoryRemote(api: api).nosotros();
 
       expect(info.historiaTitulo, 'Desde 2015');
       expect(info.historia, 'Hornear es lo nuestro');
@@ -51,7 +51,7 @@ void main() {
     });
 
     test('historia como texto plano va al contenido', () async {
-      final info = await ConfiguracionRepository(
+      final info = await ConfiguracionRepositoryRemote(
         api: _backendCon({'historia': 'Solo texto'}),
       ).nosotros();
       expect(info.historia, 'Solo texto');
@@ -61,7 +61,7 @@ void main() {
     test('si el backend falla lanza ApiException', () async {
       final api = FakeApiClient()..fallar(_endpoint, 'Sección no encontrada');
       await expectLater(
-        ConfiguracionRepository(api: api).nosotros(),
+        ConfiguracionRepositoryRemote(api: api).nosotros(),
         throwsA(isA<ApiException>()),
       );
     });

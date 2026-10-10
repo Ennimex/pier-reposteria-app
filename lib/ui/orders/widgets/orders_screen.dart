@@ -34,7 +34,7 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final OrdersViewModel _vm =
-      widget.viewModel ?? OrdersViewModel(repo: PedidosRepository());
+      widget.viewModel ?? OrdersViewModel(repo: context.read<PedidosRepository>());
 
   @override
   void initState() {
