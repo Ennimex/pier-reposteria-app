@@ -67,4 +67,14 @@ class FavoritosRepositoryRemote implements FavoritosRepository {
       );
     }
   }
+
+  @override
+  Future<void> agregarFavorito(String productoId) async {
+    final r = await agregar(productoId);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'Error al actualizar favorito',
+      );
+    }
+  }
 }

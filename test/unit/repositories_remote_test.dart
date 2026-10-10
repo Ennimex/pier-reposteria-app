@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/demanda_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/notificaciones_repository_remote.dart';
@@ -24,6 +25,45 @@ FakeApiClient _apiOk(List<String> endpoints) =>
     FakeApiClient(respuestas: {for (final e in endpoints) e: _ok});
 
 void main() {
+  group('DemandaRepositoryRemote', () {
+    Future<void> esperar() => Future<void>.delayed(Duration.zero);
+
+    test('recorta la búsqueda a 120 caracteres e ignora las muy cortas',
+        () async {
+      final api = _apiOk([ApiConstants.busquedas]);
+      DemandaRepositoryRemote(api: api)
+        ..registrarBusqueda(' x ', 0)
+        ..registrarBusqueda('a' * 130, 0);
+      await esperar();
+
+      final llamadas =
+          api.llamadas.where((l) => l.endpoint == ApiConstants.busquedas);
+      expect(llamadas, hasLength(1));
+      expect((llamadas.single.body!['texto'] as String).length, 120);
+    });
+
+    test('el clic en agotado manda el id numérico e ignora los demás',
+        () async {
+      final api = _apiOk([ApiConstants.clicsAgotados]);
+      DemandaRepositoryRemote(api: api)
+        ..registrarClicAgotado('abc')
+        ..registrarClicAgotado('12');
+      await esperar();
+
+      expect(api.ultima(ApiConstants.clicsAgotados)!.body, {'producto_id': 12});
+      expect(api.llamadas, hasLength(1));
+    });
+
+    test('si el envío truena no se propaga el error', () async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.busquedas: (LlamadaApi _) => throw StateError('sin red'),
+      });
+      DemandaRepositoryRemote(api: api).registrarBusqueda('fresa', 2);
+      await esperar();
+      expect(api.llamo(ApiConstants.busquedas), isTrue);
+    });
+  });
+
   group('DireccionesRepositoryRemote', () {
     test('listar, crear, actualizar y eliminar van autenticados', () async {
       final api = _apiOk([
@@ -168,23 +208,19 @@ void main() {
   });
 
   group('ProductosRepositoryRemote', () {
-    test('detalle, opciones, recomendaciones y promociones son públicas',
+    test('detalle, recomendaciones y promociones son públicas',
         () async {
       final endpoints = [
         ApiConstants.productoById('8'),
-        ApiConstants.categoriaOpciones('2'),
         ApiConstants.recomendaciones('8'),
         ApiConstants.promocionesActivas,
-        ApiConstants.filtros,
       ];
       final api = _apiOk(endpoints);
       final repo = ProductosRepositoryRemote(api: api);
 
       await repo.detalle('8');
-      await repo.opcionesDeCategoria('2');
       await repo.recomendaciones('8');
       await repo.promocionesActivas();
-      await repo.filtros();
 
       for (final e in endpoints) {
         expect(api.llamo(e, metodo: 'GET'), isTrue, reason: e);

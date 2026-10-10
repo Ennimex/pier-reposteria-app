@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
+import 'package:pier_pasteleria/data/repositories/demanda_repository.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/data/services/demanda_service.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
@@ -215,7 +215,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   /// "Avísame" para producto agotado: registra el interés (demanda no
   /// atendida) y lo confirma. No requiere sesión, igual que en la web.
   void _avisarme() {
-    DemandaService.registrarClicAgotado(widget.product.id);
+    context.read<DemandaRepository>().registrarClicAgotado(widget.product.id);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(

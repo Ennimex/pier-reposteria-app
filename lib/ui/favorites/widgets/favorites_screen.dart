@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/data/repositories/demanda_repository.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
@@ -58,6 +59,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       FavoritesViewModel(
         favoritosRepo: context.read<FavoritosRepository>(),
         productosRepo: context.read<ProductosRepository>(),
+        registrarInteres: context.read<DemandaRepository>().registrarClicAgotado,
       );
   final TextEditingController _searchController = TextEditingController();
 

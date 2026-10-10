@@ -34,6 +34,10 @@ abstract class FavoritosRepository {
   Future<Map<String, dynamic>> quitar(String productoId);
 
   /// DELETE /favoritos/:id tipado: lanza ApiException si no se quitó.
-  /// quitar() crudo se queda para catálogo y detalle (aún sin ViewModel).
+  /// quitar() crudo se queda para el detalle (aún sin ViewModel).
   Future<void> quitarFavorito(String productoId);
+
+  /// POST /favoritos/:id tipado: lanza ApiException con el mensaje del backend
+  /// si no se pudo agregar. agregar() crudo se queda para el detalle.
+  Future<void> agregarFavorito(String productoId);
 }

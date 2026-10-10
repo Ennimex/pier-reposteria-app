@@ -1,7 +1,7 @@
 // lib/config/dependencies.dart
 //
 // Inyección de dependencias (MVVM, Fase 3.5). Registra una sola vez el
-// ApiClient, los 14 repositorios (contrato abstracto → implementación Remote)
+// ApiClient, los 15 repositorios (contrato abstracto → implementación Remote)
 // y los providers globales. Vistas y ViewModels piden su repositorio con
 // `context.read<XRepository>()` en vez de instanciarlo.
 //
@@ -15,6 +15,8 @@ import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart'
 import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/demanda_repository.dart';
+import 'package:pier_pasteleria/data/repositories/demanda_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/direcciones_repository.dart';
 import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/entregas_repository.dart';
@@ -63,6 +65,9 @@ List<SingleChildWidget> dependencias(ApiClient api) => [
       ),
       Provider<CuentaRepository>(
         create: (context) => CuentaRepositoryRemote(api: context.read()),
+      ),
+      Provider<DemandaRepository>(
+        create: (context) => DemandaRepositoryRemote(api: context.read()),
       ),
       Provider<DireccionesRepository>(
         create: (context) => DireccionesRepositoryRemote(api: context.read()),
