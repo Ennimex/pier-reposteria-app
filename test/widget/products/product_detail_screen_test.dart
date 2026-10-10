@@ -8,10 +8,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/product_reviews_screen.dart';
-import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';
@@ -120,10 +118,7 @@ Future<FakeApiClient> _montar(WidgetTester tester,
   final api = _backend(tipoPromo: tipoPromo);
   await tester.pumpApp(_Anfitrion(producto ?? _pastel), api: api);
   if (conSesion) {
-    await tester
-        .element(find.byType(_Anfitrion))
-        .read<AuthProvider>()
-        .login('ana@pier.mx', 'secreta');
+    await tester.iniciarSesion(find.byType(_Anfitrion));
   }
   await tester.tap(find.text('Abrir'));
   await tester.pumpAndSettle();

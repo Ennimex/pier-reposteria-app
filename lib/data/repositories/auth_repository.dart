@@ -4,10 +4,14 @@
 // Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
 // clase abstracta; la implementación HTTP es AuthRepositoryRemote, registrada
 // una sola vez en lib/config/dependencies.dart.
+//
+// Fase 5: los métodos que usan las pantallas de auth son tipados y lanzan
+// ApiException con el mensaje listo para el usuario; los que abren sesión
+// devuelven el usuario (ya guardado junto con el token).
 
 abstract class AuthRepository {
-  /// Registro
-  Future<Map<String, dynamic>> register({
+  /// Crea la cuenta; el backend manda el código de verificación por correo.
+  Future<void> registrar({
     required String nombre,
     required String apellido,
     required String email,
@@ -15,23 +19,23 @@ abstract class AuthRepository {
     required String password,
   });
 
-  /// Verificar email con código de 6 dígitos
-  Future<Map<String, dynamic>> verifyEmail({
+  /// Verifica el email con el código de 6 dígitos y abre sesión.
+  Future<Map<String, dynamic>> verificarEmail({
     required String email,
     required String codigo,
   });
 
-  /// Reenviar código de verificación
-  Future<Map<String, dynamic>> resendVerificationCode(String email);
+  /// Reenvía el código de verificación; devuelve el mensaje del backend.
+  Future<String> reenviarCodigo(String email);
 
-  /// Login
-  Future<Map<String, dynamic>> login({
+  /// Inicia sesión con correo y contraseña.
+  Future<Map<String, dynamic>> iniciarSesion({
     required String email,
     required String password,
   });
 
-  /// Google Sign-In (solo Android/iOS; en web devuelve success: false).
-  Future<Map<String, dynamic>> loginWithGoogle();
+  /// Google Sign-In (solo Android/iOS). Devuelve null si el usuario cancela.
+  Future<Map<String, dynamic>?> iniciarSesionConGoogle();
 
   /// Logout
   Future<void> logout();
@@ -42,11 +46,11 @@ abstract class AuthRepository {
   /// Actualizar perfil
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data);
 
-  /// Solicitar reset de contraseña
-  Future<Map<String, dynamic>> requestPasswordReset(String email);
+  /// Manda por correo el código para restablecer la contraseña.
+  Future<void> solicitarRestablecimiento(String email);
 
-  /// Restablecer contraseña con código
-  Future<Map<String, dynamic>> resetPassword({
+  /// Restablece la contraseña con el código recibido.
+  Future<void> restablecerPassword({
     required String email,
     required String codigo,
     required String nuevaPassword,

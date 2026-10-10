@@ -1,21 +1,21 @@
 // lib/ui/core/state/auth_provider.dart
+//
+// Sesión de la app (estado compartido): quién está dentro y con qué rol. El
+// router la escucha para redirigir. Desde la Fase 5 no habla con el backend
+// para entrar: los ViewModels de ui/auth/ llaman al AuthRepository y, con el
+// usuario que devuelve, la vista abre aquí la sesión con [abrirSesion].
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
 
 class AuthProvider with ChangeNotifier {
-  final AuthRepository _authService;
-
   AuthProvider({required AuthRepository auth}) : _authService = auth;
 
+  final AuthRepository _authService;
+
   bool _isAuthenticated = false;
-  bool _isLoading = false;
-  String? _errorMessage;
   Map<String, dynamic>? _currentUser;
 
   bool get isAuthenticated => _isAuthenticated;
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
   Map<String, dynamic>? get currentUser => _currentUser;
 
   // Rol del usuario autenticado (cliente, repartidor, empleado, etc.)
@@ -37,108 +37,12 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Login
-  Future<bool> login(String email, String password) async {
-    _isLoading = true;
-    _errorMessage = null;
+  /// Abre la sesión con el usuario que devolvió el repositorio (login,
+  /// Google o verificación de email; el token ya quedó guardado).
+  void abrirSesion(Map<String, dynamic> usuario) {
+    _isAuthenticated = true;
+    _currentUser = usuario;
     notifyListeners();
-
-    final result = await _authService.login(email: email, password: password);
-    _isLoading = false;
-
-    if (result['success'] == true) {
-      _isAuthenticated = true;
-      _currentUser = result['user'];
-      notifyListeners();
-      return true;
-    }
-
-    _errorMessage = result['message'] ?? 'Error al iniciar sesión';
-    notifyListeners();
-    return false;
-  }
-
-  // ========================================
-  // MÓVIL — Google Sign In
-  // ========================================
-
-  Future<bool> loginWithGoogle() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    PierLog.auth('loginWithGoogle iniciado');
-
-    final result = await _authService.loginWithGoogle();
-
-    PierLog.auth('resultado Google: $result');
-
-    _isLoading = false;
-
-    if (result['success'] == true) {
-      _isAuthenticated = true;
-      _currentUser = result['user'];
-      PierLog.auth('isAuthenticated = $_isAuthenticated, llamando notifyListeners()');
-      notifyListeners();
-      return true;
-    }
-
-    _errorMessage = result['message'] ?? 'Error al iniciar sesión con Google';
-    PierLog.error('$_errorMessage');
-    notifyListeners();
-    return false;
-  }
-
-  // ========================================
-
-  // Registro
-  Future<Map<String, dynamic>> register({
-    required String nombre,
-    required String apellido,
-    required String email,
-    required String telefono,
-    required String password,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    final result = await _authService.register(
-      nombre: nombre,
-      apellido: apellido,
-      email: email,
-      telefono: telefono,
-      password: password,
-    );
-
-    _isLoading = false;
-    notifyListeners();
-    return result;
-  }
-
-  // Verificar email
-  Future<bool> verifyEmail(String email, String codigo) async {
-    _isLoading = true;
-    notifyListeners();
-
-    final result = await _authService.verifyEmail(email: email, codigo: codigo);
-    _isLoading = false;
-
-    if (result['success'] == true) {
-      _isAuthenticated = true;
-      _currentUser = result['user'];
-      notifyListeners();
-      return true;
-    }
-
-    _errorMessage = result['message'];
-    notifyListeners();
-    return false;
-  }
-
-  // Reenviar código
-  Future<Map<String, dynamic>> resendVerificationCode(String email) async {
-    return await _authService.resendVerificationCode(email);
   }
 
   // Logout
@@ -149,24 +53,6 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Solicitar reset de contraseña
-  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
-    return await _authService.requestPasswordReset(email);
-  }
-
-  // Restablecer contraseña
-  Future<Map<String, dynamic>> resetPassword({
-    required String email,
-    required String codigo,
-    required String nuevaPassword,
-  }) async {
-    return await _authService.resetPassword(
-      email: email,
-      codigo: codigo,
-      nuevaPassword: nuevaPassword,
-    );
-  }
-
   // Actualizar datos del usuario en memoria después de editar perfil
   // No afecta el backend — solo refresca la UI sin necesidad de re-login
   void updateCurrentUser(Map<String, dynamic> updatedFields) {
@@ -175,11 +61,6 @@ class AuthProvider with ChangeNotifier {
       ..._currentUser!,
       ...updatedFields,
     };
-    notifyListeners();
-  }
-
-  void clearError() {
-    _errorMessage = null;
     notifyListeners();
   }
 }

@@ -4,12 +4,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
-import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';
@@ -138,10 +136,7 @@ Future<FakeApiClient> _montar(WidgetTester tester,
   final api = _backend(contacto: contacto);
   await tester.pumpApp(const HomeScreen(), api: api);
   if (conSesion) {
-    await tester
-        .element(find.byType(HomeScreen))
-        .read<AuthProvider>()
-        .login('ana@pier.mx', 'secreta');
+    await tester.iniciarSesion(find.byType(HomeScreen));
   }
   await tester.pump();
   await tester.pump(const Duration(seconds: 1));

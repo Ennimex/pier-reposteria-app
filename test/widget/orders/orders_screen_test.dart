@@ -3,7 +3,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/orders/view_model/orders_view_model.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/orders_screen.dart';
@@ -56,9 +55,11 @@ void main() {
       await _montar(tester, api);
       await tester.pump();
 
-      final contexto = tester.element(find.byType(OrdersScreen));
-      await contexto.read<AuthProvider>().login('ana@pier.mx', 'x');
-      contexto.read<NavigationProvider>().setSelectedIndex(3);
+      await tester.iniciarSesion(find.byType(OrdersScreen), password: 'x');
+      tester
+          .element(find.byType(OrdersScreen))
+          .read<NavigationProvider>()
+          .setSelectedIndex(3);
       await tester.pump();
       await tester.pump();
 
