@@ -3,7 +3,7 @@ set -euo pipefail
 
 baseline_errors=0
 baseline_warnings=1
-baseline_infos=463
+baseline_infos=292
 output_file="$(mktemp)"
 trap 'rm -f "$output_file"' EXIT
 
