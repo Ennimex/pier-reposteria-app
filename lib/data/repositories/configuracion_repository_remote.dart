@@ -69,4 +69,16 @@ class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
     final cfg = r['config'];
     return cfg is Map ? TextosLegales.fromConfig(cfg) : const TextosLegales();
   }
+
+  @override
+  Future<Map<String, dynamic>> configDe(String seccion) async {
+    final r = await this.seccion(seccion);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudo cargar la configuración',
+      );
+    }
+    final cfg = r['config'];
+    return cfg is Map ? Map<String, dynamic>.from(cfg) : {};
+  }
 }

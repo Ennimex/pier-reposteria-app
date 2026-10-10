@@ -11,6 +11,7 @@
 // ApiException si el
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
 import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 
 abstract class PedidosRepository {
   /// GET /pedidos/mis-pedidos
@@ -33,4 +34,8 @@ abstract class PedidosRepository {
 
   /// GET /pedidos/productos-comprados ("pide de nuevo")
   Future<Map<String, dynamic>> productosComprados();
+
+  /// GET /pedidos/productos-comprados tipado: lo que el cliente ya pidió,
+  /// con el precio que pagó (o el chico). Lanza ApiException si falla.
+  Future<List<Product>> listarProductosComprados();
 }

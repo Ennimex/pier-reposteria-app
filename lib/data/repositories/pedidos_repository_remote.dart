@@ -8,6 +8,7 @@ import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 
 /// Implementación de [PedidosRepository] contra el backend vía [ApiClient].
 class PedidosRepositoryRemote implements PedidosRepository {
@@ -60,4 +61,30 @@ class PedidosRepositoryRemote implements PedidosRepository {
   @override
   Future<Map<String, dynamic>> productosComprados() =>
       _api.getAuth(ApiConstants.productosComprados);
+
+  @override
+  Future<List<Product>> listarProductosComprados() async {
+    final r = await productosComprados();
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar tus compras',
+      );
+    }
+    final data = r['productos'];
+    if (data is! List) return const [];
+    return data.whereType<Map<String, dynamic>>().map((p) {
+      final precio = double.tryParse(
+              (p['precio_unitario'] ?? p['precio_chico'])?.toString() ??
+                  '0') ??
+          0;
+      return Product(
+        id: p['id']?.toString() ?? '',
+        nombre: p['nombre']?.toString() ?? '',
+        descripcion: '',
+        precio: precio,
+        categoria: p['categoria']?.toString() ?? '',
+        imagenUrl: p['imagen_url']?.toString() ?? '',
+      );
+    }).toList();
+  }
 }

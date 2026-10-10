@@ -108,4 +108,18 @@ class ResenasRepositoryRemote implements ResenasRepository {
     }
     return r['liked'] == true;
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> listarDestacadas() async {
+    final r = await destacadas();
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar las reseñas',
+      );
+    }
+    final data = r['resenas'];
+    return data is List
+        ? data.whereType<Map<String, dynamic>>().toList()
+        : const [];
+  }
 }
