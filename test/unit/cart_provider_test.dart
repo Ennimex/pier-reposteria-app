@@ -2,7 +2,9 @@
 // backend es un FakeApiClient y se afirma qué se le pidió.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 
@@ -58,8 +60,11 @@ FakeApiClient _backendQueAceptaSinRecargar() => FakeApiClient(respuestas: {
     });
 
 Future<CartProvider> _cargado(FakeApiClient api, {int cantidadFresa = 2}) async {
-  api.responder(
-      ApiConstants.carrito, _carritoDelBackend(cantidadFresa: cantidadFresa));
+  api
+    ..responder(
+        ApiConstants.carrito, _carritoDelBackend(cantidadFresa: cantidadFresa))
+    ..responder(ApiConstants.carritoItem('151'), {'success': true})
+    ..responder(ApiConstants.carritoItem('152'), {'success': true});
   final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
   await cart.cargarDesdeBackend();
   return cart;
@@ -88,14 +93,80 @@ void main() {
       expect(cart.items['12_grande']!.ahorroTotal, 0);
     });
 
-    test('si el backend falla, conserva lo que ya tenía', () async {
+    test('si el backend falla, lanza el motivo y conserva lo que ya tenía',
+        () async {
       final api = FakeApiClient();
       final cart = await _cargado(api);
 
       api.fallar(ApiConstants.carrito, 'Token expirado');
+
+      await expectLater(
+        cart.cargarDesdeBackend(),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', 'Token expirado')),
+      );
+      expect(cart.itemCount, 2);
+    });
+  });
+
+  group('CartItem.fromJson', () {
+    test('sin precio_original no hay descuento ni ahorro negativo', () {
+      final linea = CartItem.fromJson(const {
+        'producto_id': 36,
+        'nombre': 'Fresa Matcha Bliss',
+        'precio_unitario': '90.00',
+        'cantidad': 2,
+        'tiene_descuento': true,
+      });
+
+      expect(linea.precioOriginal, 90);
+      expect(linea.tieneDescuento, isFalse);
+      expect(linea.ahorroTotal, 0);
+    });
+
+    test('precio_original menor que el precio se ignora', () {
+      final linea = CartItem.fromJson(const {
+        'producto_id': 12,
+        'precio_unitario': 50,
+        'precio_original': 40,
+        'tiene_descuento': true,
+      });
+
+      expect(linea.precioOriginal, 50);
+      expect(linea.tieneDescuento, isFalse);
+    });
+
+    test('sin cantidad ni tamaño usa 1 y chico', () {
+      final linea = CartItem.fromJson(const {'producto_id': 7});
+
+      expect(linea.quantity, 1);
+      expect(linea.tamano, 'chico');
+      expect(linea.lineKey, '7_chico');
+      expect(linea.precio, 0);
+    });
+
+    test('un carrito sin precio_original no reporta ahorro', () async {
+      final api = FakeApiClient()
+        ..responder(ApiConstants.carrito, {
+          'success': true,
+          'carrito': {
+            'items': [
+              {
+                'producto_id': 36,
+                'precio_unitario': '90.00',
+                'cantidad': 2,
+                'tiene_descuento': true,
+              },
+            ],
+          },
+        });
+      final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
+
       await cart.cargarDesdeBackend();
 
-      expect(cart.itemCount, 2);
+      expect(cart.totalAmount, 180);
+      expect(cart.totalAhorro, 0);
+      expect(cart.tieneDescuentos, isFalse);
     });
   });
 
@@ -104,8 +175,9 @@ void main() {
       final api = _backendQueAceptaSinRecargar();
       final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
 
-      await cart.addItem(_producto(), 2, 'grande', 180);
+      final motivo = await cart.addItem(_producto(), 2, 'grande', 180);
 
+      expect(motivo, isNull);
       final post = api.llamadas.firstWhere((l) => l.metodo == 'POST-Auth');
       expect(post.endpoint, ApiConstants.carrito);
       expect(post.body, {'producto_id': 36, 'cantidad': 2, 'tamano': 'grande'});
@@ -142,17 +214,35 @@ void main() {
       expect(cart.totalAmount, 230);
     });
 
-    test('si el backend rechaza, revierte lo agregado en local', () async {
+    test('si el backend rechaza, revierte lo agregado y devuelve el motivo',
+        () async {
       final api = FakeApiClient()
         ..fallar(ApiConstants.carrito, 'Producto agotado');
       final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
       var avisos = 0;
       cart.addListener(() => avisos++);
 
-      await cart.addItem(_producto());
+      final motivo = await cart.addItem(_producto());
 
+      expect(motivo, 'Producto agotado');
       expect(cart.itemCount, 0);
       expect(avisos, 2); // optimista + reversión
+    });
+
+    test('si rechaza una unidad extra, regresa a la cantidad anterior',
+        () async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.carrito: (LlamadaApi l) => l.metodo == 'POST-Auth'
+            ? {'success': false, 'message': 'Solo quedan 2 unidades'}
+            : _carritoDelBackend(),
+      });
+      final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
+      await cart.cargarDesdeBackend();
+
+      final motivo = await cart.addItem(_producto());
+
+      expect(motivo, 'Solo quedan 2 unidades');
+      expect(cart.items['36_chico']!.quantity, 2);
     });
   });
 
@@ -161,18 +251,52 @@ void main() {
       final api = FakeApiClient();
       final cart = await _cargado(api, cantidadFresa: 3);
 
-      await cart.removeSingleItem('36_chico');
+      final motivo = await cart.cambiarCantidad('36_chico', 2);
 
+      expect(motivo, isNull);
       expect(cart.items['36_chico']!.quantity, 2);
       expect(api.ultima(ApiConstants.carritoItem('151'))?.metodo, 'PUT-Auth');
       expect(api.ultima(ApiConstants.carritoItem('151'))?.body, {'cantidad': 2});
+    });
+
+    test('subir la cantidad la manda al backend', () async {
+      final api = FakeApiClient();
+      final cart = await _cargado(api);
+
+      await cart.cambiarCantidad('36_chico', 3);
+
+      expect(cart.items['36_chico']!.quantity, 3);
+      expect(api.ultima(ApiConstants.carritoItem('151'))?.body, {'cantidad': 3});
+    });
+
+    test('si el backend rechaza la cantidad, vuelve a la anterior', () async {
+      final api = FakeApiClient();
+      final cart = await _cargado(api);
+      api.fallar(ApiConstants.carritoItem('151'), 'Solo quedan 2 unidades');
+
+      final motivo = await cart.cambiarCantidad('36_chico', 3);
+
+      expect(motivo, 'Solo quedan 2 unidades');
+      expect(cart.items['36_chico']!.quantity, 2);
+    });
+
+    test('una línea aún sin id del backend solo cambia en local', () async {
+      final api = _backendQueAceptaSinRecargar();
+      final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
+      await cart.addItem(_producto());
+
+      final motivo = await cart.cambiarCantidad('36_chico', 4);
+
+      expect(motivo, isNull);
+      expect(cart.items['36_chico']!.quantity, 4);
+      expect(api.llamadas.any((l) => l.metodo == 'PUT-Auth'), isFalse);
     });
 
     test('reducir la última unidad elimina la línea', () async {
       final api = FakeApiClient();
       final cart = await _cargado(api);
 
-      await cart.removeSingleItem('12_grande');
+      await cart.cambiarCantidad('12_grande', 0);
 
       expect(cart.items.containsKey('12_grande'), isFalse);
       expect(
@@ -195,12 +319,23 @@ void main() {
       );
     });
 
+    test('si el backend no la borra, la línea regresa', () async {
+      final api = FakeApiClient();
+      final cart = await _cargado(api);
+      api.fallar(ApiConstants.carritoItem('151'), 'Item no encontrado');
+
+      final motivo = await cart.removeItem('36_chico');
+
+      expect(motivo, 'Item no encontrado');
+      expect(cart.items['36_chico']!.quantity, 2);
+    });
+
     test('quitar una línea que no existe no hace nada', () async {
       final api = FakeApiClient();
       final cart = await _cargado(api);
       final llamadasAntes = api.llamadas.length;
 
-      await cart.removeSingleItem('99_chico');
+      await cart.cambiarCantidad('99_chico', 1);
       await cart.removeItem('99_chico');
 
       expect(cart.itemCount, 2);
@@ -216,6 +351,22 @@ void main() {
       expect(cart.itemCount, 0);
       expect(cart.totalAmount, 0);
       expect(api.llamo(ApiConstants.carrito, metodo: 'DELETE-Auth'), isTrue);
+    });
+
+    test('si no se pudo vaciar, recarga lo que quedó en el backend',
+        () async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.carrito: (LlamadaApi l) => l.metodo == 'DELETE-Auth'
+            ? {'success': false, 'message': 'Error al vaciar carrito'}
+            : _carritoDelBackend(),
+      });
+      final cart = CartProvider(repo: CarritoRepositoryRemote(api: api));
+      await cart.cargarDesdeBackend();
+
+      final motivo = await cart.clearCart();
+
+      expect(motivo, 'Error al vaciar carrito');
+      expect(cart.itemCount, 2);
     });
 
     test('limpiar en local (logout) no toca el carrito del backend', () async {

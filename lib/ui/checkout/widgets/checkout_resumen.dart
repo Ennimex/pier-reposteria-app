@@ -4,10 +4,12 @@
 // domicilio) y total a pagar.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
 import 'package:pier_pasteleria/ui/checkout/view_model/checkout_view_model.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/checkout_partes.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/precios_carrito.dart';
 import 'package:provider/provider.dart';
 
 class CheckoutResumen extends StatelessWidget {
@@ -32,41 +34,10 @@ class CheckoutResumen extends StatelessWidget {
           ...cart.items.values.map(_renglon),
           const Divider(height: 24),
           if (cart.tieneDescuentos) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Subtotal',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                Text(
-                  '\$${cart.totalOriginal.toStringAsFixed(0)}',
-                  style: TextStyle(
-                      color: AppColors.textSecondary.withValues(alpha: 0.5),
-                      fontSize: 14,
-                      decoration: TextDecoration.lineThrough),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(children: [
-                  Icon(LucideIcons.tag, size: 14, color: AppColors.pierVerde),
-                  const SizedBox(width: 6),
-                  Text('Descuentos aplicados',
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.pierVerde,
-                          fontWeight: FontWeight.w600)),
-                ]),
-                Text(
-                  '-\$${cart.totalAhorro.toStringAsFixed(0)}',
-                  style: TextStyle(
-                      color: AppColors.pierVerde,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14),
-                ),
-              ],
+            ResumenDescuentos(
+              subtotal: cart.totalOriginal,
+              ahorro: cart.totalAhorro,
+              etiqueta: 'Descuentos aplicados',
             ),
             ...divisor,
           ],
@@ -141,24 +112,7 @@ class CheckoutResumen extends StatelessWidget {
                         : item.nombre,
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w500)),
-                if (item.tieneDescuento)
-                  Row(children: [
-                    Text(
-                      '\$${item.precio.toStringAsFixed(0)} c/u',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.pierVerde,
-                          fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '\$${item.precioOriginal.toStringAsFixed(0)}',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary.withValues(alpha: 0.5),
-                          decoration: TextDecoration.lineThrough),
-                    ),
-                  ]),
+                if (item.tieneDescuento) PrecioUnitario(linea: item),
               ],
             ),
           ),
