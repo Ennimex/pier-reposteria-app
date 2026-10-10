@@ -7,6 +7,8 @@ import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
+import 'package:pier_pasteleria/domain/models/category_model.dart';
+import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
 
 /// Implementación de [ProductosRepository] contra el backend vía [ApiClient].
 class ProductosRepositoryRemote implements ProductosRepository {
@@ -41,11 +43,46 @@ class ProductosRepositoryRemote implements ProductosRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> filtros() => _api.get(ApiConstants.filtros);
+  Future<List<Categoria>> listarCategorias() async {
+    final r = await categorias();
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar las categorías',
+      );
+    }
+    final data = r['categorias'] ?? r['data'];
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<dynamic, dynamic>>()
+        .map(Categoria.fromJson)
+        .toList();
+  }
 
   @override
-  Future<Map<String, dynamic>> opcionesDeCategoria(String categoriaId) =>
-      _api.get(ApiConstants.categoriaOpciones(categoriaId));
+  Future<FiltrosCatalogo> filtrosDelCatalogo() async {
+    final r = await _api.get(ApiConstants.filtros);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar los filtros',
+      );
+    }
+    final filtros = r['filtros'];
+    return filtros is Map
+        ? FiltrosCatalogo.fromFiltros(filtros)
+        : const FiltrosCatalogo();
+  }
+
+  @override
+  Future<FiltrosCatalogo> opcionesDeLaCategoria(String categoriaId) async {
+    final r = await _api.get(ApiConstants.categoriaOpciones(categoriaId));
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ??
+            'No se pudieron cargar las opciones de la categoría',
+      );
+    }
+    return FiltrosCatalogo.fromOpcionesCategoria(r);
+  }
 
   @override
   Future<Map<String, dynamic>> recomendaciones(String productoId) =>

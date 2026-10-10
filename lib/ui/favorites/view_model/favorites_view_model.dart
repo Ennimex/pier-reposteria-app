@@ -9,7 +9,6 @@ import 'package:flutter/foundation.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/data/services/demanda_service.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 
 /// Registra el interés en un producto agotado (demanda no atendida).
@@ -19,11 +18,10 @@ class FavoritesViewModel extends ChangeNotifier {
   FavoritesViewModel({
     required FavoritosRepository favoritosRepo,
     required ProductosRepository productosRepo,
-    RegistrarInteres? registrarInteres,
+    required RegistrarInteres registrarInteres,
   })  : _favoritosRepo = favoritosRepo,
         _productosRepo = productosRepo,
-        _registrarInteres =
-            registrarInteres ?? DemandaService.registrarClicAgotado;
+        _registrarInteres = registrarInteres;
 
   /// Categorías del estado vacío si el backend no manda ninguna.
   static const List<String> categoriasDeRespaldo = [

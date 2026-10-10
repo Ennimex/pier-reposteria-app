@@ -1,23 +1,14 @@
 // test/app_widget_test.dart — pruebas de widget (sin red, con FakeApiClient) de
 // los puntos de entrada que el PR #77 hizo inyectables: MyApp.initialLocation,
-// AppRoutes.router(initialLocation:) y ProductsScreen con repositorios. Viven
+// AppRoutes.router(initialLocation:) y ProductsScreen con sus dependencias. Viven
 // en test/ para que entren en el lcov que lee SonarCloud.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pier_pasteleria/app.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_pasteleria/config/dependencies.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -49,24 +40,6 @@ FakeApiClient _apiConCatalogoVacio() => FakeApiClient()
     'config': <String, dynamic>{},
   });
 
-List<ChangeNotifierProvider> _providers(FakeApiClient api) => [
-      ChangeNotifierProvider<AuthProvider>(
-        create: (_) => AuthProvider(auth: AuthRepositoryRemote(api: api)),
-      ),
-      ChangeNotifierProvider<TemaProvider>(
-        create: (_) => TemaProvider(repo: ConfiguracionRepositoryRemote(api: api)),
-      ),
-      ChangeNotifierProvider<CartProvider>(
-        create: (_) => CartProvider(repo: CarritoRepositoryRemote(api: api)),
-      ),
-      ChangeNotifierProvider<ProductProvider>(
-        create: (_) => ProductProvider(repo: ProductosRepositoryRemote(api: api)),
-      ),
-      ChangeNotifierProvider<NavigationProvider>(
-        create: (_) => NavigationProvider(),
-      ),
-    ];
-
 void main() {
   group('MyApp', () {
     testWidgets('arranca en initialLocation y procesa un login inválido',
@@ -75,7 +48,7 @@ void main() {
 
       await tester.pumpWidget(
         MultiProvider(
-          providers: _providers(api),
+          providers: dependencias(api),
           child: MyApp(initialLocation: AppRoutes.login),
         ),
       );
@@ -102,7 +75,7 @@ void main() {
       late GoRouter router;
       await tester.pumpWidget(
         MultiProvider(
-          providers: _providers(api),
+          providers: dependencias(api),
           child: Builder(builder: (context) {
             router = AppRoutes.router(
               context,
@@ -140,19 +113,14 @@ void main() {
   });
 
   group('ProductsScreen', () {
-    testWidgets('usa los repositorios inyectados en lugar de la red',
+    testWidgets('pide catálogo, categorías y filtros al repositorio inyectado',
         (tester) async {
       final api = _apiConCatalogoVacio();
 
       await tester.pumpWidget(
         MultiProvider(
-          providers: _providers(api),
-          child: MaterialApp(
-            home: ProductsScreen(
-              productosRepository: ProductosRepositoryRemote(api: api),
-              favoritosRepository: FavoritosRepositoryRemote(api: api),
-            ),
-          ),
+          providers: dependencias(api),
+          child: const MaterialApp(home: ProductsScreen()),
         ),
       );
       await tester.pump();
