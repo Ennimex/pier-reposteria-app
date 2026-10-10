@@ -94,13 +94,16 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   // Categoría pedida desde el home (chips de Categorías): al entrar a la
-  // pestaña del catálogo con una pendiente, se aplica igual que si se
-  // hubiera tocado su chip.
+  // pestaña del catálogo con una pendiente, se cierra lo que hubiera quedado
+  // abierto encima en esta pestaña (p. ej. un detalle) y se aplica igual que
+  // si se hubiera tocado su chip.
   void _onNavChanged() {
     if (!mounted) return;
     if (_navRef?.selectedIndex != 1) return;
     final cat = _navRef?.consumirCategoriaPendiente();
-    if (cat == null || cat == _vm.categoria) return;
+    if (cat == null) return;
+    Navigator.of(context).popUntil((ruta) => ruta.isFirst);
+    if (cat == _vm.categoria) return;
     unawaited(_vm.seleccionarCategoria(cat));
   }
 
