@@ -4,8 +4,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/reembolsos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/reembolsos_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/reembolso.dart';
 import 'package:pier_pasteleria/ui/refunds/view_model/refunds_view_model.dart';
 
@@ -45,8 +45,8 @@ final Map<String, dynamic> _conDatos = {
 };
 
 RefundsViewModel _vm(FakeApiClient api) => RefundsViewModel(
-      reembolsosRepo: ReembolsosRepository(api: api),
-      pedidosRepo: PedidosRepository(api: api),
+      reembolsosRepo: ReembolsosRepositoryRemote(api: api),
+      pedidosRepo: PedidosRepositoryRemote(api: api),
     );
 
 void main() {
@@ -55,7 +55,7 @@ void main() {
         () async {
       final api = FakeApiClient(respuestas: _conDatos);
 
-      final lista = await ReembolsosRepository(api: api).listarMisReembolsos();
+      final lista = await ReembolsosRepositoryRemote(api: api).listarMisReembolsos();
 
       expect(lista, hasLength(2));
       final r = lista.first;
@@ -76,7 +76,7 @@ void main() {
     test('listarMisReembolsos lanza ApiException si falla', () async {
       final api = FakeApiClient()..fallar(_mis, 'Token expirado');
 
-      expect(() => ReembolsosRepository(api: api).listarMisReembolsos(),
+      expect(() => ReembolsosRepositoryRemote(api: api).listarMisReembolsos(),
           throwsA(isA<ApiException>()));
     });
 
@@ -84,7 +84,7 @@ void main() {
         () async {
       final api = FakeApiClient()
         ..fallar(_crear, 'Solo se pueden reembolsar pedidos completados');
-      final repo = ReembolsosRepository(api: api);
+      final repo = ReembolsosRepositoryRemote(api: api);
 
       await expectLater(
         repo.solicitar(

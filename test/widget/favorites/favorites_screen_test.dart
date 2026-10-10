@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
 import 'package:pier_pasteleria/ui/favorites/view_model/favorites_view_model.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,8 +22,8 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pumpApp(
     FavoritesScreen(
       viewModel: FavoritesViewModel(
-        favoritosRepo: FavoritosRepository(api: api),
-        productosRepo: ProductosRepository(api: api),
+        favoritosRepo: FavoritosRepositoryRemote(api: api),
+        productosRepo: ProductosRepositoryRemote(api: api),
         registrarInteres: (_) {},
       ),
     ),

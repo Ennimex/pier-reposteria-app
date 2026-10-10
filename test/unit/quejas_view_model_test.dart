@@ -4,8 +4,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/quejas_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/queja.dart';
 import 'package:pier_pasteleria/ui/more/view_model/quejas_view_model.dart';
 
@@ -48,8 +48,8 @@ final Map<String, dynamic> _conDatos = {
 };
 
 QuejasViewModel _vm(FakeApiClient api) => QuejasViewModel(
-      quejasRepo: QuejasRepository(api: api),
-      pedidosRepo: PedidosRepository(api: api),
+      quejasRepo: QuejasRepositoryRemote(api: api),
+      pedidosRepo: PedidosRepositoryRemote(api: api),
     );
 
 void main() {
@@ -57,7 +57,7 @@ void main() {
     test('listarMisQuejas tipa, tolera faltantes e ignora basura', () async {
       final api = FakeApiClient(respuestas: _conDatos);
 
-      final lista = await QuejasRepository(api: api).listarMisQuejas();
+      final lista = await QuejasRepositoryRemote(api: api).listarMisQuejas();
 
       expect(lista, hasLength(2));
       final q = lista.first;
@@ -81,7 +81,7 @@ void main() {
     test('listarMisQuejas lanza ApiException si falla', () async {
       final api = FakeApiClient()..fallar(_mis, 'Token expirado');
 
-      expect(() => QuejasRepository(api: api).listarMisQuejas(),
+      expect(() => QuejasRepositoryRemote(api: api).listarMisQuejas(),
           throwsA(isA<ApiException>()));
     });
 
@@ -89,7 +89,7 @@ void main() {
         () async {
       final api = FakeApiClient(respuestas: _conDatos);
 
-      final ticket = await QuejasRepository(api: api).crearQueja(
+      final ticket = await QuejasRepositoryRemote(api: api).crearQueja(
         tipo: TipoQueja.comentario,
         categoria: CategoriaQueja.plataforma,
         asunto: 'App',
@@ -110,7 +110,7 @@ void main() {
     test('crearQueja sin pedido no manda pedido_id', () async {
       final api = FakeApiClient(respuestas: _conDatos);
 
-      await QuejasRepository(api: api).crearQueja(
+      await QuejasRepositoryRemote(api: api).crearQueja(
         tipo: TipoQueja.queja,
         categoria: CategoriaQueja.producto,
         asunto: 'A',

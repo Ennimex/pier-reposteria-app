@@ -2,12 +2,12 @@
 // reciben (aquí el falso): endpoint, método y body correctos, y devuelven la
 // respuesta tal cual. Ninguna prueba toca la red.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
 
 import 'fakes/fake_api_client.dart';
 
@@ -22,7 +22,7 @@ void main() {
           ],
         },
       });
-      final repo = PedidosRepository(api: api);
+      final repo = PedidosRepositoryRemote(api: api);
 
       final r = await repo.misPedidos();
 
@@ -35,13 +35,13 @@ void main() {
       final api = FakeApiClient(respuestas: {
         '/pedidos/7/cancelar': {'success': true, 'message': 'Cancelado'},
       });
-      await PedidosRepository(api: api).cancelar('7');
+      await PedidosRepositoryRemote(api: api).cancelar('7');
       expect(api.llamo('/pedidos/7/cancelar', metodo: 'PUT-Auth'), true);
     });
 
     test('un error del backend se devuelve, no se lanza', () async {
       final api = FakeApiClient()..fallar('/pedidos/mis-pedidos', 'Token expirado');
-      final r = await PedidosRepository(api: api).misPedidos();
+      final r = await PedidosRepositoryRemote(api: api).misPedidos();
       expect(r['success'], false);
       expect(r['message'], 'Token expirado');
     });
@@ -52,7 +52,7 @@ void main() {
       final api = FakeApiClient(respuestas: {
         '/carrito': {'success': true},
       });
-      await CarritoRepository(api: api)
+      await CarritoRepositoryRemote(api: api)
           .agregar(productoId: 15, cantidad: 2, tamano: 'grande');
 
       final llamada = api.ultima('/carrito')!;
@@ -68,7 +68,7 @@ void main() {
       final api = FakeApiClient(respuestas: {
         '/carrito/99': {'success': true},
       });
-      final repo = CarritoRepository(api: api);
+      final repo = CarritoRepositoryRemote(api: api);
       await repo.actualizarCantidad('99', 3);
       await repo.eliminarItem('99');
 
@@ -84,7 +84,7 @@ void main() {
       final api = FakeApiClient(respuestas: {
         '/favoritos/15': {'success': true},
       });
-      final repo = FavoritosRepository(api: api);
+      final repo = FavoritosRepositoryRemote(api: api);
       await repo.agregar('15');
       await repo.quitar('15');
       expect(api.llamo('/favoritos/15', metodo: 'POST-Auth'), true);
@@ -97,7 +97,7 @@ void main() {
       final api = FakeApiClient(respuestas: {
         '/contacto': {'success': true},
       });
-      final repo = CuentaRepository(api: api);
+      final repo = CuentaRepositoryRemote(api: api);
       Future<void> enviar({required bool conSesion}) => repo.enviarContacto(
             nombre: 'Ana',
             email: 'ana@pier.mx',
@@ -121,7 +121,7 @@ void main() {
           'imagen': {'url': 'https://cdn/x.jpg'},
         },
       });
-      final r = await EntregasRepository(api: api).subirEvidencia('/tmp/f.jpg');
+      final r = await EntregasRepositoryRemote(api: api).subirEvidencia('/tmp/f.jpg');
       final llamada = api.ultima('/upload/imagen')!;
       expect(llamada.metodo, 'UPLOAD');
       expect(llamada.body, {'filePath': '/tmp/f.jpg', 'tipo': 'entrega'});
@@ -137,7 +137,7 @@ void main() {
           'config': {'privacidad': 'texto'},
         },
       });
-      final r = await ConfiguracionRepository(api: api).seccion('legales');
+      final r = await ConfiguracionRepositoryRemote(api: api).seccion('legales');
       expect((r['config'] as Map)['privacidad'], 'texto');
       expect(api.llamo('/configuracion/legales', metodo: 'GET'), true);
     });

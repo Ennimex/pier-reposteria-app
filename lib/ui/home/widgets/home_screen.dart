@@ -49,10 +49,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
-  final _productosRepo = ProductosRepository();
-  final _resenasRepo = ResenasRepository();
-  final _configRepo = ConfiguracionRepository();
-  final _pedidosRepo = PedidosRepository();
+  late final ProductosRepository _productosRepo;
+  late final ResenasRepository _resenasRepo;
+  late final ConfiguracionRepository _configRepo;
+  late final PedidosRepository _pedidosRepo;
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _timer;
@@ -120,6 +120,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _productosRepo = context.read();
+    _resenasRepo = context.read();
+    _configRepo = context.read();
+    _pedidosRepo = context.read();
     PierLog.nav('→ HomeScreen');
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;

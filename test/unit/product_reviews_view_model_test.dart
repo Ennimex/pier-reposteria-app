@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_pasteleria/ui/reviews/view_model/product_reviews_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -36,7 +36,7 @@ Map<String, dynamic> _conDatos() => {
     };
 
 ProductReviewsViewModel _vm(FakeApiClient api) => ProductReviewsViewModel(
-      repo: ResenasRepository(api: api),
+      repo: ResenasRepositoryRemote(api: api),
       productoId: '36',
     );
 
@@ -45,7 +45,7 @@ void main() {
     test('listarDeProducto tipa, tolera faltantes e ignora basura', () async {
       final api = FakeApiClient(respuestas: _conDatos());
 
-      final lista = await ResenasRepository(api: api).listarDeProducto('36');
+      final lista = await ResenasRepositoryRemote(api: api).listarDeProducto('36');
 
       expect(lista, hasLength(3));
       final r = lista.first;
@@ -63,7 +63,7 @@ void main() {
     test('listarDeProducto lanza ApiException si falla', () async {
       final api = FakeApiClient()..fallar(_lista, 'Caído');
 
-      expect(() => ResenasRepository(api: api).listarDeProducto('36'),
+      expect(() => ResenasRepositoryRemote(api: api).listarDeProducto('36'),
           throwsA(isA<ApiException>()));
     });
 
@@ -72,7 +72,7 @@ void main() {
         _like1: {'success': true, 'liked': false},
       });
 
-      expect(await ResenasRepository(api: api).alternarUtil('1'), isFalse);
+      expect(await ResenasRepositoryRemote(api: api).alternarUtil('1'), isFalse);
       expect(api.llamo(_like1, metodo: 'POST-Auth'), isTrue);
     });
   });

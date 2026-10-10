@@ -33,8 +33,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ProfileViewModel _vm = widget.viewModel ??
       ProfileViewModel(
-        favoritosRepo: FavoritosRepository(),
-        pedidosRepo: PedidosRepository(),
+        favoritosRepo: context.read<FavoritosRepository>(),
+        pedidosRepo: context.read<PedidosRepository>(),
       );
 
   @override

@@ -21,8 +21,7 @@ class TemaProvider extends ChangeNotifier {
   TemaPier get tema => _tema;
   bool get modoAuto => _modoAuto;
 
-  TemaProvider({ConfiguracionRepository? repo})
-      : _repo = repo ?? ConfiguracionRepository() {
+  TemaProvider({required ConfiguracionRepository repo}) : _repo = repo {
     resolverTema();
     _timer =
         Timer.periodic(const Duration(seconds: 60), (_) => resolverTema());

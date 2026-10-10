@@ -2,7 +2,7 @@
 // pinta lo que expone su ViewModel (MVVM, Fase 3), sin red.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/orders/view_model/orders_view_model.dart';
@@ -16,7 +16,7 @@ import '../../helpers/pump_app.dart';
 Future<void> _montar(WidgetTester tester, FakeApiClient api) =>
     tester.pumpApp(
       OrdersScreen(
-        viewModel: OrdersViewModel(repo: PedidosRepository(api: api)),
+        viewModel: OrdersViewModel(repo: PedidosRepositoryRemote(api: api)),
       ),
       api: api,
     );

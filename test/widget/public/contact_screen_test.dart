@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
 import 'package:pier_pasteleria/ui/public/view_model/contact_view_model.dart';
 import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,8 +18,8 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pumpApp(
     ContactScreen(
       viewModel: ContactViewModel(
-        configRepo: ConfiguracionRepository(api: api),
-        cuentaRepo: CuentaRepository(api: api),
+        configRepo: ConfiguracionRepositoryRemote(api: api),
+        cuentaRepo: CuentaRepositoryRemote(api: api),
       ),
     ),
     api: api,

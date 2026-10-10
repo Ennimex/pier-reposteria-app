@@ -28,7 +28,7 @@ class _LegalScreenState extends State<LegalScreen>
 
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final LegalViewModel _vm =
-      widget.viewModel ?? LegalViewModel(repo: ConfiguracionRepository());
+      widget.viewModel ?? LegalViewModel(repo: context.read<ConfiguracionRepository>());
 
   @override
   void initState() {

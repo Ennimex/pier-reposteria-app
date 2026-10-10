@@ -33,8 +33,8 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen>
     with TickerProviderStateMixin {
-  final _favoritosRepo = FavoritosRepository();
-  final _productosRepo = ProductosRepository();
+  late final FavoritosRepository _favoritosRepo;
+  late final ProductosRepository _productosRepo;
 
   int _quantity = 1;
   bool _isFavorite = false;
@@ -68,6 +68,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   @override
   void initState() {
     super.initState();
+    _favoritosRepo = context.read();
+    _productosRepo = context.read();
     PierLog.nav('→ ProductDetailScreen: ${widget.product.nombre}');
     _images = widget.product.imagenes.isNotEmpty
         ? widget.product.imagenes
@@ -1356,7 +1358,7 @@ class ReviewItemWidget extends StatefulWidget {
 }
 
 class _ReviewItemWidgetState extends State<ReviewItemWidget> {
-  final _resenasRepo = ResenasRepository();
+  late final ResenasRepository _resenasRepo;
   late int _likes;
   late bool _hasLiked;
   bool _isLoading = false;
@@ -1364,6 +1366,7 @@ class _ReviewItemWidgetState extends State<ReviewItemWidget> {
   @override
   void initState() {
     super.initState();
+    _resenasRepo = context.read();
     _likes = widget.likesCount;
     _hasLiked = widget.hasLiked;
   }

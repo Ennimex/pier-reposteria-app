@@ -45,10 +45,10 @@ class _MoreScreenState extends State<MoreScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final MoreViewModel _vm = widget.viewModel ??
       MoreViewModel(
-        configRepo: ConfiguracionRepository(),
-        pedidosRepo: PedidosRepository(),
-        favoritosRepo: FavoritosRepository(),
-        resenasRepo: ResenasRepository(),
+        configRepo: context.read<ConfiguracionRepository>(),
+        pedidosRepo: context.read<PedidosRepository>(),
+        favoritosRepo: context.read<FavoritosRepository>(),
+        resenasRepo: context.read<ResenasRepository>(),
       );
 
   @override

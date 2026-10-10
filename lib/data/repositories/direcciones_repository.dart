@@ -3,31 +3,23 @@
 // Única puerta a los datos de direcciones de entrega y zonas de envío. En esta fase (2 de MVVM) cada
 // método devuelve la respuesta cruda del backend ({success, ...}) tal como la
 // consumen hoy las pantallas; el tipado a modelos llega con cada ViewModel.
-// Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
-// FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+// Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
+// clase abstracta; la implementación HTTP es DireccionesRepositoryRemote, registrada
+// una sola vez en lib/config/dependencies.dart.
 
-class DireccionesRepository {
-  final ApiClient _api;
-  DireccionesRepository({ApiClient? api}) : _api = api ?? ApiService();
-
+abstract class DireccionesRepository {
   /// GET /direcciones (del cliente, con tarifa/cobertura por colonia)
-  Future<Map<String, dynamic>> listar() => _api.getAuth(ApiConstants.direcciones);
+  Future<Map<String, dynamic>> listar();
 
   /// POST /direcciones
-  Future<Map<String, dynamic>> crear(Map<String, dynamic> body) =>
-      _api.postAuth(ApiConstants.direcciones, body);
+  Future<Map<String, dynamic>> crear(Map<String, dynamic> body);
 
   /// PUT /direcciones/:id
-  Future<Map<String, dynamic>> actualizar(String id, Map<String, dynamic> body) =>
-      _api.putAuth(ApiConstants.direccionById(id), body);
+  Future<Map<String, dynamic>> actualizar(String id, Map<String, dynamic> body);
 
   /// DELETE /direcciones/:id
-  Future<Map<String, dynamic>> eliminar(String id) =>
-      _api.deleteAuth(ApiConstants.direccionById(id));
+  Future<Map<String, dynamic>> eliminar(String id);
 
   /// GET /zonas-envio/colonias (público): colonias con cobertura y tarifa.
-  Future<Map<String, dynamic>> colonias() => _api.get(ApiConstants.zonasColonias);
+  Future<Map<String, dynamic>> colonias();
 }

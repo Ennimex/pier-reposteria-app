@@ -3,23 +3,16 @@
 // Única puerta a los datos de la cuenta del cliente (perfil, Alexa, contacto). En esta fase (2 de MVVM) cada
 // método devuelve la respuesta cruda del backend ({success, ...}) tal como la
 // consumen hoy las pantallas; el tipado a modelos llega con cada ViewModel.
-// Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
-// FakeApiClient (test/fakes/).
+// Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
+// clase abstracta; la implementación HTTP es CuentaRepositoryRemote, registrada
+// una sola vez en lib/config/dependencies.dart.
 //
 // Fase 3: los métodos que ya tienen ViewModel devuelven modelos tipados y
 // lanzan ApiException si el backend falla (generarCodigoAlexa,
 // actualizarPerfil, enviarContacto).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
 import 'package:pier_pasteleria/domain/models/codigo_alexa.dart';
 
-class CuentaRepository {
-  CuentaRepository({ApiClient? api}) : _api = api ?? ApiService();
-
-  final ApiClient _api;
-
+abstract class CuentaRepository {
   /// PUT /usuarios/perfil/actualizar -> {user: {id, nombre, apellido, email,
   /// telefono, avatar_url, rol}}. Devuelve ese `user` crudo porque
   /// AuthProvider guarda la sesión como Map (se tipa al adelgazar providers,
@@ -29,31 +22,10 @@ class CuentaRepository {
     required String nombre,
     required String apellido,
     String? telefono,
-  }) async {
-    final result = await _api.putAuth(ApiConstants.updateProfileData, {
-      'nombre': nombre,
-      'apellido': apellido,
-      'telefono': telefono,
-    });
-    final user = result['user'];
-    if (result['success'] != true || user is! Map) {
-      throw ApiException(
-        result['message']?.toString() ?? 'No se pudo guardar el perfil',
-      );
-    }
-    return Map<String, dynamic>.from(user);
-  }
+  });
 
   /// POST /auth/alexa/generar-codigo -> {codigo, expira_en_segundos}
-  Future<CodigoAlexa> generarCodigoAlexa() async {
-    final result = await _api.postAuth(ApiConstants.alexaGenerarCodigo, {});
-    if (result['success'] != true || result['codigo'] == null) {
-      throw ApiException(
-        result['message']?.toString() ?? 'No se pudo generar el código',
-      );
-    }
-    return CodigoAlexa.fromJson(result);
-  }
+  Future<CodigoAlexa> generarCodigoAlexa();
 
   /// POST /contacto: con sesión va autenticado (queda ligado al usuario).
   /// [telefono] vacío se manda como null. Lanza ApiException con el mensaje
@@ -65,19 +37,5 @@ class CuentaRepository {
     required String tipoProducto,
     required String mensaje,
     required bool conSesion,
-  }) async {
-    final body = {
-      'nombre': nombre,
-      'email': email,
-      'telefono': telefono.isEmpty ? null : telefono,
-      'tipo_producto': tipoProducto,
-      'mensaje': mensaje,
-    };
-    final r = conSesion
-        ? await _api.postAuth(ApiConstants.enviarContacto, body)
-        : await _api.post(ApiConstants.enviarContacto, body);
-    if (r['success'] != true) {
-      throw ApiException(r['message']?.toString() ?? 'Error al enviar');
-    }
-  }
+  });
 }

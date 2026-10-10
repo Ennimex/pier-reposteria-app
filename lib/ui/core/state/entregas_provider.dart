@@ -9,8 +9,7 @@ import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 class EntregasProvider with ChangeNotifier {
   final EntregasRepository _repo;
 
-  EntregasProvider({EntregasRepository? repo})
-      : _repo = repo ?? EntregasRepository();
+  EntregasProvider({required EntregasRepository repo}) : _repo = repo;
 
   List<EntregaRepartidor> _entregas = [];
   List<PedidoDisponible> _disponibles = [];

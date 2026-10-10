@@ -7,11 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pier_pasteleria/app.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
@@ -51,16 +51,16 @@ FakeApiClient _apiConCatalogoVacio() => FakeApiClient()
 
 List<ChangeNotifierProvider> _providers(FakeApiClient api) => [
       ChangeNotifierProvider<AuthProvider>(
-        create: (_) => AuthProvider(auth: AuthRepository(api: api)),
+        create: (_) => AuthProvider(auth: AuthRepositoryRemote(api: api)),
       ),
       ChangeNotifierProvider<TemaProvider>(
-        create: (_) => TemaProvider(repo: ConfiguracionRepository(api: api)),
+        create: (_) => TemaProvider(repo: ConfiguracionRepositoryRemote(api: api)),
       ),
       ChangeNotifierProvider<CartProvider>(
-        create: (_) => CartProvider(repo: CarritoRepository(api: api)),
+        create: (_) => CartProvider(repo: CarritoRepositoryRemote(api: api)),
       ),
       ChangeNotifierProvider<ProductProvider>(
-        create: (_) => ProductProvider(repo: ProductosRepository(api: api)),
+        create: (_) => ProductProvider(repo: ProductosRepositoryRemote(api: api)),
       ),
       ChangeNotifierProvider<NavigationProvider>(
         create: (_) => NavigationProvider(),
@@ -149,8 +149,8 @@ void main() {
           providers: _providers(api),
           child: MaterialApp(
             home: ProductsScreen(
-              productosRepository: ProductosRepository(api: api),
-              favoritosRepository: FavoritosRepository(api: api),
+              productosRepository: ProductosRepositoryRemote(api: api),
+              favoritosRepository: FavoritosRepositoryRemote(api: api),
             ),
           ),
         ),

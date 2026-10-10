@@ -2,8 +2,8 @@
 // pinta lo que expone su ViewModel (MVVM, Fase 3), sin red.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/reembolsos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/reembolsos_repository_remote.dart';
 import 'package:pier_pasteleria/ui/refunds/view_model/refunds_view_model.dart';
 import 'package:pier_pasteleria/ui/refunds/widgets/refunds_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,8 +15,8 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pumpApp(
     RefundsScreen(
       viewModel: RefundsViewModel(
-        reembolsosRepo: ReembolsosRepository(api: api),
-        pedidosRepo: PedidosRepository(api: api),
+        reembolsosRepo: ReembolsosRepositoryRemote(api: api),
+        pedidosRepo: PedidosRepositoryRemote(api: api),
       ),
     ),
     api: api,

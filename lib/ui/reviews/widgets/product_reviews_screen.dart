@@ -35,7 +35,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ProductReviewsViewModel _vm = widget.viewModel ??
       ProductReviewsViewModel(
-        repo: ResenasRepository(),
+        repo: context.read<ResenasRepository>(),
         productoId: widget.product.id,
       );
 

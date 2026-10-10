@@ -4,7 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/textos_legales.dart';
 import 'package:pier_pasteleria/ui/public/view_model/legal_view_model.dart';
 
@@ -19,7 +19,7 @@ FakeApiClient _backendCon(Map<String, dynamic> config) => FakeApiClient(
     );
 
 LegalViewModel _vm(FakeApiClient api) =>
-    LegalViewModel(repo: ConfiguracionRepository(api: api));
+    LegalViewModel(repo: ConfiguracionRepositoryRemote(api: api));
 
 List<(String, String)> _pares(List<SeccionLegal> s) =>
     s.map((x) => (x.titulo, x.contenido)).toList();
@@ -65,7 +65,7 @@ void main() {
         'reembolsos': 'Mismo día.',
       });
 
-      final t = await ConfiguracionRepository(api: api).legales();
+      final t = await ConfiguracionRepositoryRemote(api: api).legales();
 
       expect(t.privacidad, 'Cuidamos tus datos.');
       expect(t.terminos, isNull);
@@ -76,7 +76,7 @@ void main() {
     test('si el backend falla lanza ApiException', () async {
       final api = FakeApiClient()..fallar(_endpoint, 'Sección no encontrada');
       await expectLater(
-        ConfiguracionRepository(api: api).legales(),
+        ConfiguracionRepositoryRemote(api: api).legales(),
         throwsA(isA<ApiException>()),
       );
     });

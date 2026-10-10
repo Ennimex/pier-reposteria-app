@@ -24,9 +24,9 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  final _configRepo = ConfiguracionRepository();
-  final _direccionesRepo = DireccionesRepository();
-  final _pagosRepo = PagosRepository();
+  late final ConfiguracionRepository _configRepo;
+  late final DireccionesRepository _direccionesRepo;
+  late final PagosRepository _pagosRepo;
 
   // pickup | domicilio
   String _tipoEntrega = 'pickup';
@@ -78,6 +78,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
+    _configRepo = context.read();
+    _direccionesRepo = context.read();
+    _pagosRepo = context.read();
     _cargarConfiguracion();
     _cargarDirecciones();
   }
@@ -1263,7 +1266,7 @@ class _AgregarDireccionSheet extends StatefulWidget {
 }
 
 class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
-  final _direccionesRepo = DireccionesRepository();
+  late final DireccionesRepository _direccionesRepo;
   final _aliasCtrl = TextEditingController();
   final _calleCtrl = TextEditingController();
   final _refCtrl = TextEditingController();
@@ -1279,6 +1282,7 @@ class _AgregarDireccionSheetState extends State<_AgregarDireccionSheet> {
   @override
   void initState() {
     super.initState();
+    _direccionesRepo = context.read();
     final e = widget.editar;
     if (e != null) {
       _aliasCtrl.text = e.alias;

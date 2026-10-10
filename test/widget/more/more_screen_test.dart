@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_pasteleria/ui/more/view_model/more_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/more_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,10 +23,10 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pumpApp(
     MoreScreen(
       viewModel: MoreViewModel(
-        configRepo: ConfiguracionRepository(api: api),
-        pedidosRepo: PedidosRepository(api: api),
-        favoritosRepo: FavoritosRepository(api: api),
-        resenasRepo: ResenasRepository(api: api),
+        configRepo: ConfiguracionRepositoryRemote(api: api),
+        pedidosRepo: PedidosRepositoryRemote(api: api),
+        favoritosRepo: FavoritosRepositoryRemote(api: api),
+        resenasRepo: ResenasRepositoryRemote(api: api),
       ),
     ),
     api: api,

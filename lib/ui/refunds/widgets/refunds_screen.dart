@@ -27,8 +27,8 @@ class _RefundsScreenState extends State<RefundsScreen>
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final RefundsViewModel _vm = widget.viewModel ??
       RefundsViewModel(
-        reembolsosRepo: ReembolsosRepository(),
-        pedidosRepo: PedidosRepository(),
+        reembolsosRepo: context.read<ReembolsosRepository>(),
+        pedidosRepo: context.read<PedidosRepository>(),
       );
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();

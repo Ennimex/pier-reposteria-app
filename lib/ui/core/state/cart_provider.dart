@@ -66,8 +66,7 @@ class CartItem {
 class CartProvider with ChangeNotifier {
   final CarritoRepository _repo;
 
-  CartProvider({CarritoRepository? repo})
-      : _repo = repo ?? CarritoRepository();
+  CartProvider({required CarritoRepository repo}) : _repo = repo;
   Map<String, CartItem> _items = {};
   bool _synced = false;
 

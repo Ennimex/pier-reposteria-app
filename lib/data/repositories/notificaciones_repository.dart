@@ -3,24 +3,17 @@
 // Única puerta a los datos de notificaciones del usuario. En esta fase (2 de MVVM) cada
 // método devuelve la respuesta cruda del backend ({success, ...}) tal como la
 // consumen hoy las pantallas; el tipado a modelos llega con cada ViewModel.
-// Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
-// FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+// Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
+// clase abstracta; la implementación HTTP es NotificacionesRepositoryRemote, registrada
+// una sola vez en lib/config/dependencies.dart.
 
-class NotificacionesRepository {
-  final ApiClient _api;
-  NotificacionesRepository({ApiClient? api}) : _api = api ?? ApiService();
-
+abstract class NotificacionesRepository {
   /// GET /notificaciones
-  Future<Map<String, dynamic>> listar() => _api.getAuth(ApiConstants.notificaciones);
+  Future<Map<String, dynamic>> listar();
 
   /// PUT /notificaciones/:id/leer
-  Future<Map<String, dynamic>> marcarLeida(String id) =>
-      _api.putAuth(ApiConstants.marcarNotificacionLeida(id), {});
+  Future<Map<String, dynamic>> marcarLeida(String id);
 
   /// PUT /notificaciones/leer-todas
-  Future<Map<String, dynamic>> marcarTodasLeidas() =>
-      _api.putAuth(ApiConstants.notificacionesLeerTodas, {});
+  Future<Map<String, dynamic>> marcarTodasLeidas();
 }
