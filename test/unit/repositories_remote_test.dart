@@ -1,0 +1,297 @@
+// test/unit/repositories_remote_test.dart — implementaciones Remote que no
+// tenían pruebas propias (MVVM, Fase 3.5): cada método pega al endpoint con
+// el método y body correctos y devuelve la respuesta del ApiClient tal cual.
+// Sin red: FakeApiClient registra cada llamada.
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/notificaciones_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/pagos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../fakes/fake_api_client.dart';
+
+const _ok = {'success': true};
+
+/// Fake que contesta `{success: true}` en todos los [endpoints].
+FakeApiClient _apiOk(List<String> endpoints) =>
+    FakeApiClient(respuestas: {for (final e in endpoints) e: _ok});
+
+void main() {
+  group('DireccionesRepositoryRemote', () {
+    test('listar, crear, actualizar y eliminar van autenticados', () async {
+      final api = _apiOk([
+        ApiConstants.direcciones,
+        ApiConstants.direccionById('3'),
+      ]);
+      final repo = DireccionesRepositoryRemote(api: api);
+      final body = {'calle': 'Hidalgo 12', 'colonia': 'Centro'};
+
+      expect((await repo.listar())['success'], isTrue);
+      await repo.crear(body);
+      await repo.actualizar('3', body);
+      await repo.eliminar('3');
+
+      expect(api.llamo(ApiConstants.direcciones, metodo: 'GET-Auth'), isTrue);
+      expect(api.llamo(ApiConstants.direcciones, metodo: 'POST-Auth'), isTrue);
+      expect(api.ultima(ApiConstants.direcciones)!.body, body);
+      expect(
+        api.llamo(ApiConstants.direccionById('3'), metodo: 'PUT-Auth'),
+        isTrue,
+      );
+      expect(
+        api.llamo(ApiConstants.direccionById('3'), metodo: 'DELETE-Auth'),
+        isTrue,
+      );
+    });
+
+    test('colonias es pública', () async {
+      final api = _apiOk([ApiConstants.zonasColonias]);
+      await DireccionesRepositoryRemote(api: api).colonias();
+      expect(api.llamo(ApiConstants.zonasColonias, metodo: 'GET'), isTrue);
+    });
+  });
+
+  group('EntregasRepositoryRemote', () {
+    test('consultas del repartidor van con GET autenticado', () async {
+      final api = _apiOk([
+        ApiConstants.misEntregas,
+        ApiConstants.disponibilidad,
+        ApiConstants.entregasDisponibles,
+      ]);
+      final repo = EntregasRepositoryRemote(api: api);
+
+      await repo.misEntregas();
+      await repo.disponibilidad();
+      await repo.disponibles();
+
+      for (final e in [
+        ApiConstants.misEntregas,
+        ApiConstants.disponibilidad,
+        ApiConstants.entregasDisponibles,
+      ]) {
+        expect(api.llamo(e, metodo: 'GET-Auth'), isTrue, reason: e);
+      }
+    });
+
+    test('cambiar disponibilidad, aceptar, estado y llegada mandan su body',
+        () async {
+      final api = _apiOk([
+        ApiConstants.disponibilidad,
+        ApiConstants.entregasAceptar,
+        ApiConstants.entregaEstado('9'),
+        ApiConstants.entregaLlegue('9'),
+      ]);
+      final repo = EntregasRepositoryRemote(api: api);
+
+      await repo.cambiarDisponibilidad(true);
+      await repo.aceptar('41');
+      await repo.cambiarEstado('9', {'estado': 'en_camino'});
+      await repo.avisarLlegada('9');
+
+      final disp = api.ultima(ApiConstants.disponibilidad)!;
+      expect(disp.metodo, 'PUT-Auth');
+      expect(disp.body, {'disponible': true});
+      expect(api.ultima(ApiConstants.entregasAceptar)!.body, {'pedido_id': '41'});
+      expect(
+        api.ultima(ApiConstants.entregaEstado('9'))!.body,
+        {'estado': 'en_camino'},
+      );
+      expect(
+        api.llamo(ApiConstants.entregaLlegue('9'), metodo: 'POST-Auth'),
+        isTrue,
+      );
+    });
+
+    test('subirEvidencia sube la foto marcada como entrega', () async {
+      final api = _apiOk([ApiConstants.uploadImagen]);
+      await EntregasRepositoryRemote(api: api).subirEvidencia('/tmp/foto.jpg');
+
+      final subida = api.ultima(ApiConstants.uploadImagen)!;
+      expect(subida.metodo, 'UPLOAD');
+      expect(subida.body, {'filePath': '/tmp/foto.jpg', 'tipo': 'entrega'});
+    });
+  });
+
+  group('PagosRepositoryRemote', () {
+    test('config es pública; intent y confirmación van autenticados',
+        () async {
+      final api = _apiOk([
+        ApiConstants.stripeConfig,
+        ApiConstants.crearPaymentIntent,
+        ApiConstants.confirmarPago,
+      ]);
+      final repo = PagosRepositoryRemote(api: api);
+
+      await repo.config();
+      await repo.crearIntent({'monto': 350});
+      await repo.confirmar({'payment_intent_id': 'pi_1'});
+
+      expect(api.llamo(ApiConstants.stripeConfig, metodo: 'GET'), isTrue);
+      expect(api.ultima(ApiConstants.crearPaymentIntent)!.body, {'monto': 350});
+      expect(
+        api.ultima(ApiConstants.confirmarPago)!.body,
+        {'payment_intent_id': 'pi_1'},
+      );
+    });
+  });
+
+  group('NotificacionesRepositoryRemote', () {
+    test('listar y marcar leídas', () async {
+      final api = _apiOk([
+        ApiConstants.notificaciones,
+        ApiConstants.marcarNotificacionLeida('5'),
+        ApiConstants.notificacionesLeerTodas,
+      ]);
+      final repo = NotificacionesRepositoryRemote(api: api);
+
+      await repo.listar();
+      await repo.marcarLeida('5');
+      await repo.marcarTodasLeidas();
+
+      expect(api.llamo(ApiConstants.notificaciones, metodo: 'GET-Auth'), isTrue);
+      expect(
+        api.llamo(ApiConstants.marcarNotificacionLeida('5'), metodo: 'PUT-Auth'),
+        isTrue,
+      );
+      expect(
+        api.llamo(ApiConstants.notificacionesLeerTodas, metodo: 'PUT-Auth'),
+        isTrue,
+      );
+    });
+  });
+
+  group('ProductosRepositoryRemote', () {
+    test('detalle, opciones, recomendaciones y promociones son públicas',
+        () async {
+      final endpoints = [
+        ApiConstants.productoById('8'),
+        ApiConstants.categoriaOpciones('2'),
+        ApiConstants.recomendaciones('8'),
+        ApiConstants.promocionesActivas,
+        ApiConstants.filtros,
+      ];
+      final api = _apiOk(endpoints);
+      final repo = ProductosRepositoryRemote(api: api);
+
+      await repo.detalle('8');
+      await repo.opcionesDeCategoria('2');
+      await repo.recomendaciones('8');
+      await repo.promocionesActivas();
+      await repo.filtros();
+
+      for (final e in endpoints) {
+        expect(api.llamo(e, metodo: 'GET'), isTrue, reason: e);
+      }
+    });
+  });
+
+  group('PedidosRepositoryRemote', () {
+    test('detalle y productos comprados van autenticados', () async {
+      final api = _apiOk([
+        ApiConstants.pedidoById('7'),
+        ApiConstants.productosComprados,
+      ]);
+      final repo = PedidosRepositoryRemote(api: api);
+
+      await repo.detalle('7');
+      await repo.productosComprados();
+
+      expect(api.llamo(ApiConstants.pedidoById('7'), metodo: 'GET-Auth'), isTrue);
+      expect(
+        api.llamo(ApiConstants.productosComprados, metodo: 'GET-Auth'),
+        isTrue,
+      );
+    });
+  });
+
+  group('AuthRepositoryRemote', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    const usuario = {'id': 1, 'nombre': 'Ana', 'rol': 'cliente'};
+
+    test('login exitoso guarda token y usuario', () async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.login: {'success': true, 'token': 'jwt', 'user': usuario},
+      });
+      final repo = AuthRepositoryRemote(api: api);
+
+      await repo.login(email: 'ana@pier.mx', password: 'secreta');
+
+      expect(api.ultima(ApiConstants.login)!.body,
+          {'email': 'ana@pier.mx', 'password': 'secreta'});
+      expect(await repo.isAuthenticated(), isTrue);
+      expect(await repo.getCurrentUser(), usuario);
+    });
+
+    test('sin sesión guardada no hay usuario actual', () async {
+      final repo = AuthRepositoryRemote(api: FakeApiClient());
+      expect(await repo.isAuthenticated(), isFalse);
+      expect(await repo.getCurrentUser(), isNull);
+    });
+
+    test('getProfile y updateProfile refrescan el usuario guardado', () async {
+      final actualizado = {...usuario, 'nombre': 'Ana María'};
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.profile: {'success': true, 'user': usuario},
+        ApiConstants.updateProfile: {'success': true, 'user': actualizado},
+      });
+      final repo = AuthRepositoryRemote(api: api);
+
+      await repo.getProfile();
+      expect(await repo.getCurrentUser(), usuario);
+
+      await repo.updateProfile({'nombre': 'Ana María'});
+      expect(api.ultima(ApiConstants.updateProfile)!.metodo, 'PUT-Auth');
+      expect(await repo.getCurrentUser(), actualizado);
+    });
+
+    test('un perfil fallido no toca el usuario guardado', () async {
+      SharedPreferences.setMockInitialValues({
+        'pierreposteria_current_user': jsonEncode(usuario),
+      });
+      final api = FakeApiClient()..fallar(ApiConstants.profile, 'Token expirado');
+      final repo = AuthRepositoryRemote(api: api);
+
+      final r = await repo.getProfile();
+
+      expect(r['message'], 'Token expirado');
+      expect(await repo.getCurrentUser(), usuario);
+    });
+
+    test('reenviar código y restablecer contraseña mandan su body', () async {
+      final api = _apiOk([
+        ApiConstants.resendVerification,
+        ApiConstants.requestPasswordReset,
+        ApiConstants.resetPassword,
+      ]);
+      final repo = AuthRepositoryRemote(api: api);
+
+      await repo.resendVerificationCode('ana@pier.mx');
+      await repo.requestPasswordReset('ana@pier.mx');
+      await repo.resetPassword(
+        email: 'ana@pier.mx',
+        codigo: '123456',
+        nuevaPassword: 'nueva',
+      );
+
+      expect(api.ultima(ApiConstants.resendVerification)!.body,
+          {'email': 'ana@pier.mx'});
+      expect(api.ultima(ApiConstants.requestPasswordReset)!.body,
+          {'email': 'ana@pier.mx'});
+      final reset = api.ultima(ApiConstants.resetPassword)!;
+      expect(reset.metodo, 'POST');
+      expect(reset.body, {
+        'email': 'ana@pier.mx',
+        'codigo': '123456',
+        'nuevaPassword': 'nueva',
+      });
+    });
+  });
+}
