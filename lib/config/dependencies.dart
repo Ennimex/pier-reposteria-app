@@ -38,6 +38,8 @@ import 'package:pier_pasteleria/data/repositories/reembolsos_repository_remote.d
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
+import 'package:pier_pasteleria/data/services/pasarela_pago.dart';
+import 'package:pier_pasteleria/data/services/pasarela_stripe.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
@@ -100,6 +102,8 @@ List<SingleChildWidget> dependencias(ApiClient api) => [
       Provider<ResenasRepository>(
         create: (context) => ResenasRepositoryRemote(api: context.read()),
       ),
+      // ── Servicios
+      Provider<PasarelaPago>(create: (_) => PasarelaStripe()),
       // ── Providers globales (estado compartido entre pantallas)
       ChangeNotifierProvider(
         create: (context) => AuthProvider(auth: context.read()),

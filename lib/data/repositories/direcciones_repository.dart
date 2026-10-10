@@ -7,6 +7,9 @@
 // clase abstracta; la implementación HTTP es DireccionesRepositoryRemote, registrada
 // una sola vez en lib/config/dependencies.dart.
 
+import 'package:pier_pasteleria/domain/models/direccion_model.dart';
+import 'package:pier_pasteleria/domain/models/zona_colonia.dart';
+
 abstract class DireccionesRepository {
   /// GET /direcciones (del cliente, con tarifa/cobertura por colonia)
   Future<Map<String, dynamic>> listar();
@@ -22,4 +25,20 @@ abstract class DireccionesRepository {
 
   /// GET /zonas-envio/colonias (público): colonias con cobertura y tarifa.
   Future<Map<String, dynamic>> colonias();
+
+  /// GET /direcciones tipado. Lanza ApiException si falla.
+  Future<List<DireccionCliente>> listarDirecciones();
+
+  /// Crea la dirección o, con [id], la actualiza; devuelve la guardada.
+  /// Lanza ApiException con el mensaje del backend si no se guardó.
+  Future<DireccionCliente> guardarDireccion(
+    Map<String, dynamic> datos, {
+    String? id,
+  });
+
+  /// DELETE /direcciones/:id tipado. Lanza ApiException si falla.
+  Future<void> eliminarDireccion(String id);
+
+  /// GET /zonas-envio/colonias tipado. Lanza ApiException si falla.
+  Future<List<ZonaColonia>> listarColonias();
 }
