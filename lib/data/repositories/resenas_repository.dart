@@ -57,4 +57,9 @@ abstract class ResenasRepository {
   /// POST /resenas/:id/like tipado. El backend alterna (si ya era «útil»
   /// lo quita); devuelve cómo quedó: true = marcada. Lanza ApiException.
   Future<bool> alternarUtil(String id);
+
+  /// GET /resenas/destacadas tipado a la lista (cada reseña como la manda
+  /// el backend: autor, producto, rating, comentario). Lanza ApiException si
+  /// falla.
+  Future<List<Map<String, dynamic>>> listarDestacadas();
 }

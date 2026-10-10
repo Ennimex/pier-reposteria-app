@@ -2,12 +2,17 @@
 // expone su ViewModel (MVVM, Fase 4) sobre el catálogo de ProductProvider,
 // sin red: tarjetas en cuadrícula y lista, badges de promoción, categorías,
 // hojas de filtros y orden, estado vacío y acciones sin sesión.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
+
+import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';
@@ -227,6 +232,24 @@ void main() {
 
       expect(find.textContaining('Anotamos tu interés'), findsOneWidget);
       expect(api.ultima(ApiConstants.clicsAgotados)!.body, {'producto_id': 3});
+    });
+
+    testWidgets('una categoría pedida desde el inicio cierra lo apilado y '
+        'filtra', (tester) async {
+      await _montar(tester);
+      final contexto = tester.element(find.byType(ProductsScreen));
+      // Como dejar un detalle abierto en la pestaña del catálogo.
+      unawaited(Navigator.of(contexto).push(MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('Detalle abierto')))));
+      await tester.pumpAndSettle();
+      expect(find.text('Detalle abierto'), findsOneWidget);
+
+      contexto.read<NavigationProvider>().goCatalogo(categoria: 'Pays');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Detalle abierto'), findsNothing);
+      expect(find.text('Cheesecake'), findsOneWidget);
+      expect(find.text('Chocoflan'), findsNothing);
     });
 
     testWidgets('sin sesión, el corazón manda a iniciar sesión', (tester) async {

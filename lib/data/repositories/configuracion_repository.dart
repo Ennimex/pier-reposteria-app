@@ -31,4 +31,8 @@ abstract class ConfiguracionRepository {
 
   /// GET /configuracion/legales. Sin `config` devuelve todo null.
   Future<TextosLegales> legales();
+
+  /// GET /configuracion/:seccion: solo su `config` ({clave: valor}); vacío
+  /// si no trae. Lanza ApiException si falla.
+  Future<Map<String, dynamic>> configDe(String seccion);
 }

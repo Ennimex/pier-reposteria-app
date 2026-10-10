@@ -11,6 +11,7 @@ import 'package:pier_pasteleria/domain/models/category_model.dart';
 import 'package:pier_pasteleria/domain/models/detalle_producto.dart';
 import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/domain/models/promociones_inicio.dart';
 
 /// Implementación de [ProductosRepository] contra el backend vía [ApiClient].
 class ProductosRepositoryRemote implements ProductosRepository {
@@ -120,4 +121,18 @@ class ProductosRepositoryRemote implements ProductosRepository {
 
   @override
   Future<Map<String, dynamic>> promocionesActivas() => _api.get(ApiConstants.promocionesActivas);
+
+  @override
+  Future<PromocionesInicio> promocionesDelInicio() async {
+    final r = await promocionesActivas();
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar las promociones',
+      );
+    }
+    final lista = r['promociones'];
+    return lista is List
+        ? PromocionesInicio.fromLista(lista)
+        : const PromocionesInicio();
+  }
 }

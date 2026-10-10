@@ -14,6 +14,7 @@ import 'package:pier_pasteleria/domain/models/category_model.dart';
 import 'package:pier_pasteleria/domain/models/detalle_producto.dart';
 import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/domain/models/promociones_inicio.dart';
 
 abstract class ProductosRepository {
   /// GET /productos: catálogo activo con precios y stock_online.
@@ -56,4 +57,8 @@ abstract class ProductosRepository {
 
   /// GET /promociones/activas
   Future<Map<String, dynamic>> promocionesActivas();
+
+  /// GET /promociones/activas separadas por tipo para el inicio. Lanza
+  /// ApiException si falla.
+  Future<PromocionesInicio> promocionesDelInicio();
 }
