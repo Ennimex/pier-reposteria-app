@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/demanda_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
@@ -17,6 +18,7 @@ import 'package:pier_pasteleria/data/repositories/productos_repository_remote.da
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../fakes/fake_api_client.dart';
+import '../fakes/fake_google_sign_in.dart';
 
 const _ok = {'success': true};
 
@@ -258,12 +260,90 @@ void main() {
       });
       final repo = AuthRepositoryRemote(api: api);
 
-      await repo.login(email: 'ana@pier.mx', password: 'secreta');
+      final u = await repo.iniciarSesion(email: 'ana@pier.mx', password: 'secreta');
 
+      expect(u, usuario);
       expect(api.ultima(ApiConstants.login)!.body,
           {'email': 'ana@pier.mx', 'password': 'secreta'});
       expect(await repo.isAuthenticated(), isTrue);
       expect(await repo.getCurrentUser(), usuario);
+    });
+
+    test('login rechazado lanza ApiException y no guarda sesión', () async {
+      final api = FakeApiClient()
+        ..fallar(ApiConstants.login, 'Credenciales inválidas');
+      final repo = AuthRepositoryRemote(api: api);
+
+      await expectLater(
+        repo.iniciarSesion(email: 'ana@pier.mx', password: 'mala'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', 'Credenciales inválidas')),
+      );
+      expect(await repo.isAuthenticated(), isFalse);
+    });
+
+    test('sin mensaje ni usuario, usa el mensaje genérico', () async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.login: {'success': false},
+        ApiConstants.verifyEmail: {'success': true},
+      });
+      final repo = AuthRepositoryRemote(api: api);
+
+      await expectLater(
+        repo.iniciarSesion(email: 'ana@pier.mx', password: 'x'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', 'Error al iniciar sesión')),
+      );
+      await expectLater(
+        repo.verificarEmail(email: 'ana@pier.mx', codigo: '123456'),
+        throwsA(isA<ApiException>().having(
+            (e) => e.message, 'message', 'Código inválido o expirado')),
+      );
+    });
+
+    test('registrar manda los datos y verificar abre sesión', () async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.register: _ok,
+        ApiConstants.verifyEmail: {
+          'success': true,
+          'token': 'jwt',
+          'user': usuario,
+        },
+      });
+      final repo = AuthRepositoryRemote(api: api);
+
+      await repo.registrar(
+        nombre: 'Ana',
+        apellido: 'López',
+        email: 'ana@pier.mx',
+        telefono: '7711234567',
+        password: 'pastel123',
+      );
+      expect(api.ultima(ApiConstants.register)!.body?['telefono'],
+          '7711234567');
+      expect(await repo.isAuthenticated(), isFalse);
+
+      final u = await repo.verificarEmail(email: 'ana@pier.mx', codigo: '123456');
+      expect(u, usuario);
+      expect(await repo.isAuthenticated(), isTrue);
+    });
+
+    test('registro rechazado lanza el mensaje del backend', () async {
+      final api = FakeApiClient()
+        ..fallar(ApiConstants.register, 'El correo ya está registrado');
+      final repo = AuthRepositoryRemote(api: api);
+
+      await expectLater(
+        repo.registrar(
+          nombre: 'Ana',
+          apellido: 'López',
+          email: 'ana@pier.mx',
+          telefono: '7711234567',
+          password: 'pastel123',
+        ),
+        throwsA(isA<ApiException>().having(
+            (e) => e.message, 'message', 'El correo ya está registrado')),
+      );
     });
 
     test('sin sesión guardada no hay usuario actual', () async {
@@ -309,9 +389,9 @@ void main() {
       ]);
       final repo = AuthRepositoryRemote(api: api);
 
-      await repo.resendVerificationCode('ana@pier.mx');
-      await repo.requestPasswordReset('ana@pier.mx');
-      await repo.resetPassword(
+      expect(await repo.reenviarCodigo('ana@pier.mx'), 'Código reenviado');
+      await repo.solicitarRestablecimiento('ana@pier.mx');
+      await repo.restablecerPassword(
         email: 'ana@pier.mx',
         codigo: '123456',
         nuevaPassword: 'nueva',
@@ -328,6 +408,94 @@ void main() {
         'codigo': '123456',
         'nuevaPassword': 'nueva',
       });
+    });
+
+    group('con Google', () {
+      AuthRepositoryRemote repoGoogle(FakeApiClient api, FakeGoogleSignIn g) =>
+          AuthRepositoryRemote(api: api, google: g);
+
+      test('manda el idToken al backend y guarda la sesión', () async {
+        final api = FakeApiClient(respuestas: {
+          ApiConstants.googleMobile: {
+            'success': true,
+            'token': 'jwt',
+            'user': usuario,
+          },
+        });
+        final repo =
+            repoGoogle(api, FakeGoogleSignIn(idToken: 'id-token'));
+
+        final u = await repo.iniciarSesionConGoogle();
+
+        expect(u, usuario);
+        expect(api.ultima(ApiConstants.googleMobile)!.body,
+            {'idToken': 'id-token'});
+        expect(await repo.isAuthenticated(), isTrue);
+      });
+
+      test('si el usuario cierra el selector devuelve null', () async {
+        final api = FakeApiClient();
+        final repo = repoGoogle(api, FakeGoogleSignIn());
+
+        expect(await repo.iniciarSesionConGoogle(), isNull);
+        expect(api.llamo(ApiConstants.googleMobile), isFalse);
+      });
+
+      test('sin idToken o con error del plugin lanza ApiException', () async {
+        final sinToken =
+            repoGoogle(FakeApiClient(), FakeGoogleSignIn(conCuenta: true));
+        final conError = repoGoogle(
+            FakeApiClient(), FakeGoogleSignIn(error: Exception('sin red')));
+
+        await expectLater(
+          sinToken.iniciarSesionConGoogle(),
+          throwsA(isA<ApiException>().having((e) => e.message, 'message',
+              'No se pudo obtener el token de Google')),
+        );
+        await expectLater(
+          conError.iniciarSesionConGoogle(),
+          throwsA(isA<ApiException>().having((e) => e.message, 'message',
+              contains('Error al iniciar sesión con Google'))),
+        );
+      });
+
+      test('si el backend rechaza el token lanza su mensaje', () async {
+        final api = FakeApiClient()
+          ..fallar(ApiConstants.googleMobile, 'Cuenta deshabilitada');
+        final repo =
+            repoGoogle(api, FakeGoogleSignIn(idToken: 'id-token'));
+
+        await expectLater(
+          repo.iniciarSesionConGoogle(),
+          throwsA(isA<ApiException>()
+              .having((e) => e.message, 'message', 'Cuenta deshabilitada')),
+        );
+        expect(await repo.isAuthenticated(), isFalse);
+      });
+    });
+
+    test('reenviar y restablecer fallidos lanzan ApiException', () async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.resendVerification: {'success': false},
+        ApiConstants.requestPasswordReset: {'success': false},
+        ApiConstants.resetPassword: {
+          'success': false,
+          'message': 'Código expirado',
+        },
+      });
+      final repo = AuthRepositoryRemote(api: api);
+
+      Matcher conMensaje(String m) =>
+          throwsA(isA<ApiException>().having((e) => e.message, 'message', m));
+      await expectLater(repo.reenviarCodigo('ana@pier.mx'),
+          conMensaje('No se pudo reenviar el código'));
+      await expectLater(repo.solicitarRestablecimiento('ana@pier.mx'),
+          conMensaje('No se pudo enviar el correo'));
+      await expectLater(
+        repo.restablecerPassword(
+            email: 'ana@pier.mx', codigo: '000000', nuevaPassword: 'nueva1'),
+        conMensaje('Código expirado'),
+      );
     });
   });
 }

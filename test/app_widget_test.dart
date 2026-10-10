@@ -9,10 +9,14 @@ import 'package:pier_pasteleria/app.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/config/dependencies.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
+import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_pasteleria/ui/auth/widgets/verify_email_screen.dart';
+import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'fakes/fake_api_client.dart';
+import 'helpers/pump_app.dart';
 
 FakeApiClient _apiConCatalogoVacio() => FakeApiClient()
   ..responder(ApiConstants.login, {
@@ -49,7 +53,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: dependencias(api),
-          child: MyApp(initialLocation: AppRoutes.login),
+          child: const MyApp(initialLocation: AppRoutes.login),
         ),
       );
       await tester.pumpAndSettle();
@@ -63,6 +67,55 @@ void main() {
 
       expect(find.text('Credenciales inválidas'), findsOneWidget);
       expect(api.llamo(ApiConstants.login, metodo: 'POST'), isTrue);
+    });
+
+    testWidgets('un login correcto abre la sesión y sale del login',
+        (tester) async {
+      final api = _apiConCatalogoVacio()
+        ..responder(ApiConstants.login, {
+          'success': true,
+          'token': 'jwt',
+          'user': {'id': 9, 'nombre': 'Ana', 'rol': 'cliente'},
+        });
+      await tester.pumpMyApp(api: api, initialLocation: AppRoutes.login);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.byType(TextFormField).at(0), 'cliente@example.com');
+      await tester.enterText(find.byType(TextFormField).at(1), 'pastel123');
+      await tester.ensureVisible(find.text('Iniciar Sesión'));
+      await tester.tap(find.text('Iniciar Sesión'));
+      // El inicio tiene animaciones continuas: se avanza el reloj a mano.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      final contexto = tester.element(find.byType(MyApp));
+      expect(contexto.read<AuthProvider>().isAuthenticated, isTrue);
+      expect(find.byType(LoginScreen), findsNothing);
+    });
+
+    testWidgets('un registro correcto pasa a verificar el correo',
+        (tester) async {
+      final api = _apiConCatalogoVacio()
+        ..responder(ApiConstants.register, {'success': true});
+      await tester.pumpMyApp(api: api, initialLocation: AppRoutes.registro);
+      await tester.pumpAndSettle();
+
+      final datos = [
+        'Ana', 'López', 'ana@example.com', '7711234567', 'pastel123',
+        'pastel123', //
+      ];
+      for (var i = 0; i < datos.length; i++) {
+        await tester.enterText(find.byType(TextFormField).at(i), datos[i]);
+      }
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.tap(find.byType(Checkbox));
+      await tester.ensureVisible(find.text('Registrarse'));
+      await tester.tap(find.text('Registrarse'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VerifyEmailScreen), findsOneWidget);
+      expect(find.text('ana@example.com'), findsOneWidget);
     });
   });
 

@@ -1,109 +1,70 @@
 // lib/ui/auth/widgets/verify_email_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
 import 'package:pier_pasteleria/routing/app_routes.dart';
+import 'package:pier_pasteleria/ui/auth/view_model/verify_email_view_model.dart';
+import 'package:pier_pasteleria/ui/auth/widgets/auth_partes.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const VerifyEmailScreen({required this.email, this.viewModel, super.key});
+
   final String email;
-  const VerifyEmailScreen({super.key, required this.email});
+  final VerifyEmailViewModel? viewModel;
 
   @override
   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
 }
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
-  final List<TextEditingController> _controllers = List.generate(
-    6,
-    (_) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final _codigo = CodigoController();
 
-  bool _isLoading = false;
-  bool _isResending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Refrescar UI cuando cambia el foco (para el borde activo)
-    for (final f in _focusNodes) {
-      f.addListener(() => setState(() {}));
-    }
-  }
+  // El State es dueño del ViewModel y de las cajas del código.
+  late final VerifyEmailViewModel _vm = widget.viewModel ??
+      VerifyEmailViewModel(
+        repo: context.read<AuthRepository>(),
+        email: widget.email,
+      );
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
+    _codigo.dispose();
+    _vm.dispose();
     super.dispose();
   }
 
-  String get _codigo => _controllers.map((c) => c.text).join();
-
   Future<void> _handleVerify() async {
-    if (_codigo.length < 6) {
-      _showSnack('Ingresa el código completo de 6 dígitos', AppColors.error);
+    final codigo = _codigo.codigo;
+    final usuario = await _vm.verificar(codigo);
+    if (!mounted) return;
+    if (usuario != null) {
+      context.read<AuthProvider>().abrirSesion(usuario);
+      context.go(AppRoutes.main);
       return;
     }
-    setState(() => _isLoading = true);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await auth.verifyEmail(widget.email, _codigo);
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    if (success) {
-      context.go(AppRoutes.main);
-    } else {
-      for (final c in _controllers) {
-        c.clear();
-      }
-      _focusNodes[0].requestFocus();
-      _showSnack(
-        auth.errorMessage ?? 'Código inválido o expirado',
-        AppColors.error,
-      );
-    }
+    final error = _vm.error;
+    if (error == null) return; // ya había una verificación en curso
+    // Un código completo rechazado se borra para volver a capturarlo.
+    if (codigo.length == 6) _codigo.limpiar();
+    mostrarAvisoAuth(context, error);
   }
 
   Future<void> _handleResend() async {
-    setState(() => _isResending = true);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final result = await auth.resendVerificationCode(widget.email);
+    final mensaje = await _vm.reenviar();
     if (!mounted) return;
-    setState(() => _isResending = false);
-    _showSnack(
-      result['message'] ?? 'Código reenviado',
-      result['success'] == true ? AppColors.pierVerde : AppColors.error,
-    );
-  }
-
-  void _onDigitChanged(String value, int index) {
-    if (value.length == 1 && index < 5) {
-      _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
+    if (mensaje != null) {
+      mostrarAvisoAuth(context, mensaje, color: AppColors.pierVerde);
+    } else if (_vm.error != null) {
+      mostrarAvisoAuth(context, _vm.error!);
     }
-    if (_codigo.length == 6) _handleVerify();
-  }
-
-  void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
   }
 
   @override
@@ -123,224 +84,120 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: IntrinsicHeight(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
+                child: ListenableBuilder(
+                  listenable: _vm,
+                  builder: (context, _) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 20),
+                      const BotonAtrasAuth(),
+                      const Spacer(),
 
-                    // ── BOTÓN BACK ───────────────────────────────────
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
+                      // ── ÍCONO EMAIL ──────────────────────────────────
+                      Center(
                         child: Container(
-                          width: 44,
-                          height: 44,
+                          width: 100,
+                          height: 100,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color:
+                                AppColors.textSecondary.withValues(alpha: 0.12),
                             shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
                           ),
-                          child: const Icon(
-                            LucideIcons.chevronLeft,
-                            size: 16,
-                            color: AppColors.textPrimary,
+                          child: Icon(
+                            LucideIcons.mail,
+                            size: 48,
+                            color:
+                                AppColors.textSecondary.withValues(alpha: 0.7),
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 28),
 
-                    const Spacer(),
+                      // ── TÍTULO ───────────────────────────────────────
+                      const Text(
+                        'Verifica tu correo',
+                        style: TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Ingresa el código de 6 dígitos que enviamos a',
+                        style: TextStyle(
+                            fontSize: 14, color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.email,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.pierVerde,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 40),
 
-                    // ── ÍCONO EMAIL ──────────────────────────────────
-                    Center(
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: AppColors.textSecondary.withValues(
-                            alpha: 0.12,
+                      // ── CAMPOS CÓDIGO (al completar, verifica solo) ──
+                      CampoCodigo(
+                        controller: _codigo,
+                        ancho: 50,
+                        alto: 58,
+                        tamanoLetra: 24,
+                        onChanged: (codigo) {
+                          if (codigo.length == 6) unawaited(_handleVerify());
+                        },
+                      ),
+                      const SizedBox(height: 32),
+
+                      BotonPrincipalAuth(
+                        texto: 'Verificar',
+                        cargando: _vm.verificando,
+                        onPressed: _handleVerify,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── REENVIAR ─────────────────────────────────────
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            '¿No recibiste el código?  ',
+                            style: TextStyle(
+                                color: AppColors.textSecondary, fontSize: 13),
                           ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          LucideIcons.mail,
-                          size: 48,
-                          color: AppColors.textSecondary.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // ── TÍTULO ───────────────────────────────────────
-                    const Text(
-                      'Verifica tu correo',
-                      style: TextStyle(
-                        fontFamily: 'Playfair Display',
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Ingresa el código de 6 dígitos que enviamos a',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.email,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.pierVerde,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // ── CAMPOS CÓDIGO ────────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(6, (i) {
-                        final isFocused = _focusNodes[i].hasFocus;
-                        final hasValue = _controllers[i].text.isNotEmpty;
-
-                        return SizedBox(
-                          width: 50,
-                          height: 58,
-                          child: TextFormField(
-                            controller: _controllers[i],
-                            focusNode: _focusNodes[i],
-                            textAlign: TextAlign.center,
-                            keyboardType: TextInputType.number,
-                            maxLength: 1,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                            decoration: InputDecoration(
-                              counterText: '',
-                              contentPadding: EdgeInsets.zero,
-                              filled: true,
-                              fillColor: isFocused || hasValue
-                                  ? Colors.white
-                                  : AppColors.textSecondary.withValues(
-                                      alpha: 0.15,
+                          GestureDetector(
+                            onTap: _vm.reenviando ? null : _handleResend,
+                            child: _vm.reenviando
+                                ? SizedBox(
+                                    height: 14,
+                                    width: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.pierVerde,
                                     ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: hasValue
-                                      ? AppColors.pierVerde.withValues(
-                                          alpha: 0.4,
-                                        )
-                                      : Colors.transparent,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: AppColors.pierVerde,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            onChanged: (v) => _onDigitChanged(v, i),
+                                  )
+                                : Text(
+                                    'Reenviar',
+                                    style: TextStyle(
+                                      color: AppColors.pierVerde,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
-                        );
-                      }),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // ── BOTÓN VERIFICAR ──────────────────────────────
-                    SizedBox(
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleVerify,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.pierVerde,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Verificar',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                        ],
                       ),
-                    ),
 
-                    const SizedBox(height: 20),
-
-                    // ── REENVIAR ─────────────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '¿No recibiste el código?  ',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _isResending ? null : _handleResend,
-                          child: _isResending
-                              ? SizedBox(
-                                  height: 14,
-                                  width: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.pierVerde,
-                                  ),
-                                )
-                              : Text(
-                                  'Reenviar',
-                                  style: TextStyle(
-                                    color: AppColors.pierVerde,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-
-                    const Spacer(),
-                    const SizedBox(height: 20),
-                  ],
+                      const Spacer(),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),
