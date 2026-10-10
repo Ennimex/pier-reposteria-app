@@ -1,4 +1,6 @@
 // lib/ui/more/widgets/more_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -16,6 +18,7 @@ import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
+import 'package:pier_pasteleria/ui/more/view_model/more_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
 import 'package:pier_pasteleria/ui/more/widgets/quejas_screen.dart'; // ✅ NUEVO
 import 'package:pier_pasteleria/ui/more/widgets/vincular_alexa_screen.dart';
@@ -26,101 +29,55 @@ import 'package:pier_pasteleria/ui/public/widgets/faq_screen.dart';
 import 'package:pier_pasteleria/ui/public/widgets/legal_screen.dart';
 import 'package:pier_pasteleria/ui/refunds/widgets/refunds_screen.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/my_reviews_screen.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:provider/provider.dart';
 
 class MoreScreen extends StatefulWidget {
-  const MoreScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const MoreScreen({super.key, this.viewModel});
+
+  final MoreViewModel? viewModel;
 
   @override
   State<MoreScreen> createState() => _MoreScreenState();
 }
 
 class _MoreScreenState extends State<MoreScreen> {
-  final _configRepo = ConfiguracionRepository();
-  final _pedidosRepo = PedidosRepository();
-  final _favoritosRepo = FavoritosRepository();
-  final _resenasRepo = ResenasRepository();
-
-  int _totalPedidos   = 0;
-  int _totalFavoritos = 0;
-  int _totalResenas   = 0;
-  bool _loadingStats  = true;
-
-  Map<String, dynamic> _configContacto = {};
-  bool _loadingConfig = true;
-
-  String? _lastUserEmail;
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final MoreViewModel _vm = widget.viewModel ??
+      MoreViewModel(
+        configRepo: ConfiguracionRepository(),
+        pedidosRepo: PedidosRepository(),
+        favoritosRepo: FavoritosRepository(),
+        resenasRepo: ResenasRepository(),
+      );
 
   @override
   void initState() {
     super.initState();
-    _cargarConfiguracion();
+    unawaited(_vm.cargarContacto());
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Cada cambio de AuthProvider llega aquí; el ViewModel solo recarga los
+    // contadores si cambió la cuenta. Tras el frame: aquí no se puede
+    // notificar (el árbol se está construyendo).
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final userEmail = auth.currentUser?['email']?.toString();
-
-    if (userEmail != _lastUserEmail) {
-      _lastUserEmail = userEmail;
-      if (auth.isAuthenticated && userEmail != null) {
-        _cargarStats();
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              _totalPedidos   = 0;
-              _totalFavoritos = 0;
-              _totalResenas   = 0;
-              _loadingStats   = false;
-            });
-          }
-        });
+    final autenticado = auth.isAuthenticated;
+    final email = auth.currentUser?['email']?.toString();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(
+            _vm.actualizarSesion(autenticado: autenticado, email: email));
       }
-    }
-  }
-
-  Future<void> _cargarConfiguracion() async {
-    // El horario vive dentro de 'contacto' (clave 'horarios'); no hay seccion
-    // 'horarios' publica.
-    final result =
-        await _configRepo.seccion('contacto');
-
-    if (!mounted) return;
-    setState(() {
-      if (result['success'] == true) {
-        _configContacto = Map<String, dynamic>.from(result['config'] ?? {});
-      }
-      _loadingConfig = false;
     });
   }
 
-  Future<void> _cargarStats() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) {
-      if (mounted) setState(() => _loadingStats = false);
-      return;
-    }
-
-    final results = await Future.wait([
-      _pedidosRepo.misPedidos(),
-      _favoritosRepo.ids(),
-      _resenasRepo.misResenas(),
-    ]);
-
-    if (!mounted) return;
-    setState(() {
-      _totalPedidos = results[0]['success'] == true
-          ? ((results[0]['pedidos'] ?? []) as List).length : 0;
-      _totalFavoritos = results[1]['success'] == true
-          ? ((results[1]['ids'] ?? []) as List).length : 0;
-      _totalResenas = results[2]['success'] == true
-          ? ((results[2]['resenas'] ?? []) as List).length : 0;
-      _loadingStats = false;
-    });
+  @override
+  void dispose() {
+    _vm.dispose();
+    super.dispose();
   }
 
   void _goProtected(Widget screen) {
@@ -133,7 +90,7 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   void _showLogoutDialog(AuthProvider auth) {
-    showDialog(
+    unawaited(showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Cerrar sesión'),
@@ -144,7 +101,7 @@ class _MoreScreenState extends State<MoreScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Cancelar',
+            child: const Text('Cancelar',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
@@ -169,13 +126,20 @@ class _MoreScreenState extends State<MoreScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildContenido(),
+    );
+  }
+
+  Widget _buildContenido() {
     final auth     = Provider.of<AuthProvider>(context);
     final isAuth   = auth.isAuthenticated;
     final user     = auth.currentUser;
@@ -218,12 +182,15 @@ class _MoreScreenState extends State<MoreScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Mi Cuenta',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Playfair Display')),
+                // Flexible: con el texto del sistema grande no desborda.
+                const Flexible(
+                  child: Text('Mi Cuenta',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Playfair Display')),
+                ),
                 if (!isAuth)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -277,7 +244,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: LucideIcons.messageCircle,
                 iconColor: AppColors.pierDoradoOscuro,
                 title: 'Quejas y Sugerencias',
-                onTap: () => _goProtected(QuejasScreen()),
+                onTap: () => _goProtected(const QuejasScreen()),
               ),
               _buildDivider(),
               _buildTile(
@@ -431,14 +398,11 @@ class _MoreScreenState extends State<MoreScreen> {
 
   // ── ENCUÉNTRANOS ─────────────────────────────────────────────────
   Widget _buildEncuentranos() {
-    final direccion = formatearDireccion(_configContacto['direccion'],
-        fallback: BusinessInfo.direccion);
-    final telefono =
-        _configContacto['telefono']?.toString() ?? BusinessInfo.telefono;
-    final emailContacto =
-        _configContacto['email']?.toString() ?? BusinessInfo.email;
-    final horario = formatearHorario(_configContacto['horarios'],
-        fallback: BusinessInfo.horario);
+    final contacto = _vm.contacto;
+    final direccion = contacto.direccion ?? BusinessInfo.direccion;
+    final telefono = contacto.telefono ?? BusinessInfo.telefono;
+    final emailContacto = contacto.email ?? BusinessInfo.email;
+    final horario = contacto.horario ?? BusinessInfo.horario;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -452,8 +416,8 @@ class _MoreScreenState extends State<MoreScreen> {
                   color: AppColors.textPrimary,
                   fontFamily: 'Playfair Display')),
           const SizedBox(height: 12),
-          _loadingConfig
-              ? Container(
+          if (_vm.cargandoContacto)
+              Container(
                   height: 100,
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -464,7 +428,8 @@ class _MoreScreenState extends State<MoreScreen> {
                         color: AppColors.pierVerde, strokeWidth: 2),
                   ),
                 )
-              : Container(
+          else
+              Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: AppColors.pierVerdeOscuro,
@@ -680,7 +645,7 @@ class _MoreScreenState extends State<MoreScreen> {
           Image.network(
             'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&fit=crop',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => ColoredBox(
               color: AppColors.pierVerdeOscuro,
               child: const Icon(LucideIcons.croissant,
                   color: Colors.white54, size: 60),
@@ -774,7 +739,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       fotoUrl,
                       width: 52, height: 52,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
+                      errorBuilder: (_, _, _) => Center(
                         child: Text(
                             iniciales.isNotEmpty ? iniciales : 'U',
                             style: TextStyle(
@@ -835,14 +800,15 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   Widget _buildStatsRow() {
+    final cargando = _vm.cargandoStats;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(children: [
-        _statCard(_loadingStats ? '—' : '$_totalPedidos',   'Pedidos'),
+        _statCard(cargando ? '—' : '${_vm.totalPedidos}',   'Pedidos'),
         const SizedBox(width: 10),
-        _statCard(_loadingStats ? '—' : '$_totalFavoritos', 'Favoritos'),
+        _statCard(cargando ? '—' : '${_vm.totalFavoritos}', 'Favoritos'),
         const SizedBox(width: 10),
-        _statCard(_loadingStats ? '—' : '$_totalResenas',   'Reseñas'),
+        _statCard(cargando ? '—' : '${_vm.totalResenas}',   'Reseñas'),
       ]),
     );
   }
@@ -862,19 +828,20 @@ class _MoreScreenState extends State<MoreScreen> {
           ],
         ),
         child: Column(children: [
-          _loadingStats
-              ? SizedBox(
+          if (_vm.cargandoStats)
+              SizedBox(
                   height: 20, width: 20,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: AppColors.pierVerde))
-              : Text(value,
+          else
+              Text(value,
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.pierVerde)),
           const SizedBox(height: 4),
           Text(label,
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ]),
       ),
     );
@@ -910,7 +877,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 color: AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(sub,
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ]),
     );
   }

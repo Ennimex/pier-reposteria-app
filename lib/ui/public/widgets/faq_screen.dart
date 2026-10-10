@@ -1,151 +1,55 @@
 // lib/ui/public/widgets/faq_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/public/view_model/faq_view_model.dart';
 import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
 import 'package:provider/provider.dart';
 
 class FAQScreen extends StatefulWidget {
-  const FAQScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const FAQScreen({super.key, this.viewModel});
+
+  final FaqViewModel? viewModel;
 
   @override
   State<FAQScreen> createState() => _FAQScreenState();
 }
 
 class _FAQScreenState extends State<FAQScreen> {
-  String _categoriaSeleccionada = 'Todas';
-  final _configRepo = ConfiguracionRepository();
-
-  /// 'Todas' + categorías presentes en las preguntas. Las conocidas van en
-  /// su orden de siempre; las que capture el panel se agregan al final.
-  List<String> get _categorias {
-    const conocidas = ['Pedidos', 'Pagos', 'Devoluciones', 'Seguridad', 'Ubicación'];
-    final presentes = _faqs
-        .map((f) => f['categoria'] ?? '')
-        .where((c) => c.isNotEmpty)
-        .toSet();
-    return [
-      'Todas',
-      ...conocidas.where(presentes.contains),
-      ...presentes.where((c) => !conocidas.contains(c)),
-    ];
-  }
-
-  // Preguntas por defecto de la app. Si Dirección captura preguntas en el
-  // panel (configuracion/faq, clave `preguntas`, misma fuente que FAQ.tsx de
-  // la web), se reemplazan por esas.
-  static final List<Map<String, String>> _faqsDefault = [
-    {
-      'categoria': 'Pedidos',
-      'question': '¿Ofrecen servicio de entrega a domicilio?',
-      'answer':
-          'Sí. Al finalizar tu pedido puedes elegir recoger en nuestra sucursal de ${BusinessInfo.ciudad} o envío a domicilio en las colonias con cobertura. El costo de envío se calcula automáticamente según tu colonia.',
-    },
-    {
-      'categoria': 'Pedidos',
-      'question': '¿Puedo cancelar mi pedido después de pagarlo?',
-      'answer':
-          'Puedes solicitar cancelación únicamente ANTES de que el producto comience a elaborarse. Si el proceso ya inició, no es posible cancelar.',
-    },
-    {
-      'categoria': 'Pedidos',
-      'question': '¿Con cuánto tiempo de anticipación debo pedir?',
-      'answer':
-          'Recomendamos un mínimo de 24 horas de anticipación. Nuestros productos son artesanales y elaborados el mismo día para garantizar su frescura.',
-    },
-    {
-      'categoria': 'Devoluciones',
-      'question': '¿Cuál es su política de devoluciones?',
-      'answer':
-          'Las devoluciones aplican únicamente el MISMO DÍA de la compra. Es requisito presentar al menos el 50% del producto en buenas condiciones.',
-    },
-    {
-      'categoria': 'Devoluciones',
-      'question': '¿Cuánto tardan en realizar un reembolso?',
-      'answer':
-          'Si tu devolución es aprobada, el reembolso se gestiona en un máximo de 3 horas hábiles posteriores a la validación.',
-    },
-    {
-      'categoria': 'Devoluciones',
-      'question': '¿Qué cubre la garantía del producto?',
-      'answer':
-          'Garantizamos frescura y calidad el día de la compra. No cubre daños por mal manejo, falta de refrigeración o transporte del cliente.',
-    },
-    {
-      'categoria': 'Seguridad',
-      'question': '¿Es seguro ingresar mis datos en la app?',
-      'answer':
-          'Sí. Implementamos cifrado TLS/SSL. Pier NO almacena datos financieros sensibles. Todas las transacciones se procesan mediante pasarelas seguras.',
-    },
-    {
-      'categoria': 'Pagos',
-      'question': '¿Qué métodos de pago aceptan?',
-      'answer':
-          'Aceptamos pagos en efectivo (solo en sucursal) y pagos electrónicos en la app mediante tarjeta de crédito o débito.',
-    },
-    {
-      'categoria': 'Ubicación',
-      'question': '¿Dónde están ubicados?',
-      'answer':
-          '${BusinessInfo.direccionCompleta}. Abierto ${BusinessInfo.horario}.',
-    },
-  ];
-
-  List<Map<String, String>> _faqs = _faqsDefault;
+  // El State solo es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final FaqViewModel _vm =
+      widget.viewModel ?? FaqViewModel(repo: ConfiguracionRepository());
 
   @override
   void initState() {
     super.initState();
-    _cargarFaqs();
+    unawaited(_vm.cargar());
   }
 
-  /// Espejo de FAQ.tsx: GET /configuracion/faq → config.preguntas
-  /// [{categoria, pregunta, respuesta}]. Sin datos o con error se conservan
-  /// las preguntas por defecto.
-  Future<void> _cargarFaqs() async {
-    final r = await _configRepo.seccion('faq');
-    if (!mounted || r['success'] != true) return;
-    final cfg = r['config'];
-    if (cfg is! Map) return;
-    final preguntas = parseConfigValor(cfg['preguntas']);
-    if (preguntas is! List) return;
-    final lista = <Map<String, String>>[];
-    for (final item in preguntas) {
-      if (item is! Map) continue;
-      final q = (item['pregunta'] ?? '').toString().trim();
-      final a = (item['respuesta'] ?? '').toString().trim();
-      if (q.isEmpty || a.isEmpty) continue;
-      final cat = (item['categoria'] ?? '').toString().trim();
-      lista.add({
-        'categoria': cat.isEmpty ? 'General' : cat,
-        'question': q,
-        'answer': a,
-      });
-    }
-    if (lista.isEmpty) return;
-    setState(() {
-      _faqs = lista;
-      if (!_categorias.contains(_categoriaSeleccionada)) {
-        _categoriaSeleccionada = 'Todas';
-      }
-    });
-  }
-
-  List<Map<String, String>> get _filtradas {
-    if (_categoriaSeleccionada == 'Todas') return _faqs;
-    return _faqs
-        .where((f) => f['categoria'] == _categoriaSeleccionada)
-        .toList();
+  @override
+  void dispose() {
+    _vm.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(context),
+    );
+  }
+
+  Widget _buildPantalla(BuildContext context) {
+    final categorias = _vm.categorias;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -193,14 +97,13 @@ class _FAQScreenState extends State<FAQScreen> {
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
-                itemCount: _categorias.length,
+                itemCount: categorias.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, i) {
-                  final cat = _categorias[i];
-                  final sel = _categoriaSeleccionada == cat;
+                  final cat = categorias[i];
+                  final sel = _vm.categoriaSeleccionada == cat;
                   return GestureDetector(
-                    onTap: () =>
-                        setState(() => _categoriaSeleccionada = cat),
+                    onTap: () => _vm.seleccionarCategoria(cat),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
@@ -234,7 +137,7 @@ class _FAQScreenState extends State<FAQScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                 children: [
-                  ..._filtradas.map((faq) => Padding(
+                  ..._vm.filtradas.map((faq) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _buildFAQCard(faq),
                       )),
@@ -249,7 +152,7 @@ class _FAQScreenState extends State<FAQScreen> {
     );
   }
 
-  Widget _buildFAQCard(Map<String, String> faq) {
+  Widget _buildFAQCard(PreguntaFrecuente faq) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -261,41 +164,48 @@ class _FAQScreenState extends State<FAQScreen> {
               offset: const Offset(0, 3))
         ],
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-            dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding:
-              const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          iconColor: AppColors.pierVerde,
-          collapsedIconColor:
-              AppColors.textSecondary.withValues(alpha: 0.6),
-          title: Text(
-            faq['question']!,
-            style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: AppColors.textPrimary),
-          ),
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.pierArena,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                faq['answer']!,
-                style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    height: 1.5),
-              ),
+      // Material propio: sin él la onda del ExpansionTile queda tapada por el
+      // fondo blanco del Container (aserción de ListTile en debug).
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+              dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            childrenPadding:
+                const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            iconColor: AppColors.pierVerde,
+            collapsedIconColor:
+                AppColors.textSecondary.withValues(alpha: 0.6),
+            title: Text(
+              faq.pregunta,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary),
             ),
-          ],
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.pierArena,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  faq.respuesta,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      height: 1.5),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

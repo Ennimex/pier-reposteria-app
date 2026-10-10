@@ -1,90 +1,87 @@
 // lib/ui/reviews/widgets/my_reviews_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_pasteleria/domain/models/mi_resena.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_dimensions.dart';
+import 'package:pier_pasteleria/ui/reviews/view_model/my_reviews_view_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class MyReviewsScreen extends StatefulWidget {
-  const MyReviewsScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const MyReviewsScreen({super.key, this.viewModel});
+
+  final MyReviewsViewModel? viewModel;
 
   @override
   State<MyReviewsScreen> createState() => _MyReviewsScreenState();
 }
 
 class _MyReviewsScreenState extends State<MyReviewsScreen> {
-  final _resenasRepo = ResenasRepository();
-  List<Map<String, dynamic>> _resenas = [];
-  bool _isLoading = true;
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final MyReviewsViewModel _vm =
+      widget.viewModel ?? MyReviewsViewModel(repo: ResenasRepository());
 
   @override
   void initState() {
     super.initState();
     PierLog.nav('→ MyReviewsScreen');
-    _cargarResenas();
+    unawaited(_vm.cargar());
   }
 
-  Future<void> _cargarResenas() async {
-    setState(() => _isLoading = true);
-    final result = await _resenasRepo.misResenas();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final lista =
-          List<Map<String, dynamic>>.from(result['resenas'] ?? []);
-      setState(() => _resenas = lista);
-      PierLog.info('✅ Mis reseñas cargadas: ${lista.length}');
-    } else {
-      PierLog.error('Error al cargar mis reseñas: ${result['message']}');
-    }
-    setState(() => _isLoading = false);
+  @override
+  void dispose() {
+    _vm.dispose();
+    super.dispose();
   }
 
-  Future<void> _editarResena(Map<String, dynamic> r) async {
-    final result = await showModalBottomSheet<Map<String, dynamic>>(
+  Future<void> _editarResena(MiResena r) async {
+    final cambios = await showModalBottomSheet<_CambiosResena>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _EditarResenaSheet(resena: r),
     );
-    if (result == null || !mounted) return;
-    final resp = await _resenasRepo.editar(
-      r['id'].toString(),
-      {
-        'rating': result['rating'],
-        'titulo': result['titulo'],
-        'comentario': result['comentario'],
-      },
+    if (cambios == null || !mounted) return;
+    final mensaje = await _vm.editar(
+      r,
+      rating: cambios.rating,
+      titulo: cambios.titulo,
+      comentario: cambios.comentario,
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(
-              resp['message']?.toString() ?? 'Reseña actualizada')),
+      SnackBar(content: Text(mensaje)),
     );
-    if (resp['success'] == true) _cargarResenas();
   }
 
-  String _formatFecha(dynamic fecha) {
-    if (fecha == null) return '';
-    try {
-      final dt = DateTime.parse(fecha.toString()).toLocal();
-      const months = [
-        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-      ];
-      return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
-    } catch (_) {
-      return '';
-    }
+  String _formatFecha(DateTime? dt) {
+    if (dt == null) return '';
+    const months = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    ];
+    return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(context),
+    );
+  }
+
+  Widget _buildPantalla(BuildContext context) {
+    final resenas = _vm.resenas;
+    final cargando = _vm.cargando;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -121,7 +118,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary)),
                   const Spacer(),
-                  if (!_isLoading && _resenas.isNotEmpty)
+                  if (!cargando && resenas.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
@@ -129,7 +126,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                         color: AppColors.pierVerde.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text('${_resenas.length}',
+                      child: Text('${resenas.length}',
                           style: TextStyle(
                               fontSize: 13,
                               color: AppColors.pierVerde,
@@ -142,23 +139,23 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             const SizedBox(height: 16),
 
             Expanded(
-              child: _isLoading
+              child: cargando
                   ? Center(
                       child: CircularProgressIndicator(
                           color: AppColors.pierVerde))
-                  : _resenas.isEmpty
+                  : resenas.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
-                          onRefresh: _cargarResenas,
+                          onRefresh: () => _vm.cargar(silenciosa: true),
                           color: AppColors.pierVerde,
                           child: ListView.separated(
                             padding:
                                 const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                            itemCount: _resenas.length,
-                            separatorBuilder: (_, __) =>
+                            itemCount: resenas.length,
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 12),
                             itemBuilder: (context, i) =>
-                                _buildCard(_resenas[i]),
+                                _buildCard(resenas[i]),
                           ),
                         ),
             ),
@@ -168,34 +165,32 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 
-  Widget _buildCard(Map<String, dynamic> r) {
-    final rating =
-        double.tryParse(r['rating']?.toString() ?? '0') ?? 0.0;
-    final titulo = r['titulo']?.toString() ?? '';
-    final comentario = r['comentario']?.toString() ?? '';
-    final estado = r['estado']?.toString() ?? 'pendiente';
-    final productoNombre = r['producto_nombre']?.toString() ?? '';
-    final productoImagen = r['producto_imagen']?.toString() ?? '';
+  Widget _buildCard(MiResena r) {
+    final rating = r.rating;
+    final titulo = r.titulo;
+    final comentario = r.comentario;
+    final productoNombre = r.productoNombre;
+    final productoImagen = r.productoImagen;
+    final respuesta = r.respuestaNegocio;
+    final motivo = r.motivoRechazo;
 
-    Color estadoColor;
-    String estadoLabel;
-    IconData estadoIcon;
-    switch (estado) {
-      case 'aprobada':
-        estadoColor = AppColors.pierVerde;
-        estadoLabel = 'Publicada';
-        estadoIcon = Icons.check_circle_rounded;
-        break;
-      case 'rechazada':
-        estadoColor = Colors.red.shade400;
-        estadoLabel = 'Rechazada';
-        estadoIcon = LucideIcons.circleX;
-        break;
-      default:
-        estadoColor = Colors.orange.shade400;
-        estadoLabel = 'En revisión';
-        estadoIcon = LucideIcons.hourglass;
-    }
+    final (estadoColor, estadoLabel, estadoIcon) = switch (r.estado) {
+      EstadoResena.aprobada => (
+          AppColors.pierVerde,
+          'Publicada',
+          Icons.check_circle_rounded,
+        ),
+      EstadoResena.rechazada => (
+          Colors.red.shade400,
+          'Rechazada',
+          LucideIcons.circleX,
+        ),
+      EstadoResena.enRevision => (
+          Colors.orange.shade400,
+          'En revisión',
+          LucideIcons.hourglass,
+        ),
+    };
 
     return Container(
       decoration: BoxDecoration(
@@ -223,7 +218,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           productoImagen,
                           width: 52, height: 52,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorBuilder: (_, _, _) =>
                               _productoPlaceholder(),
                         )
                       : _productoPlaceholder(),
@@ -241,7 +236,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 3),
-                      Text(_formatFecha(r['created_at']),
+                      Text(_formatFecha(r.creadaEn),
                           style: TextStyle(
                               fontSize: 11, color: Colors.grey[500])),
                     ],
@@ -267,7 +262,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 GestureDetector(
                   onTap: () => _editarResena(r),
                   child: Padding(
-                    padding: EdgeInsets.only(left: 4, top: 4, bottom: 4),
+                    padding: const EdgeInsets.only(left: 4, top: 4, bottom: 4),
                     child: Icon(LucideIcons.pencil,
                         size: 18, color: AppColors.pierVerde),
                   ),
@@ -319,8 +314,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                         height: 1.4)),
 
                 // Respuesta del negocio
-                if (r['respuesta_negocio'] != null &&
-                    r['respuesta_negocio'].toString().isNotEmpty) ...[
+                if (respuesta != null) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -346,7 +340,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                   color: AppColors.pierDoradoOscuro)),
                         ]),
                         const SizedBox(height: 4),
-                        Text(r['respuesta_negocio'].toString(),
+                        Text(respuesta,
                             style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[700],
@@ -357,9 +351,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 ],
 
                 // Motivo de rechazo
-                if (estado == 'rechazada' &&
-                    r['motivo_rechazo'] != null &&
-                    r['motivo_rechazo'].toString().isNotEmpty) ...[
+                if (r.estado == EstadoResena.rechazada &&
+                    motivo != null) ...[
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -376,7 +369,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                             size: 14, color: Colors.red.shade400),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: Text(r['motivo_rechazo'].toString(),
+                          child: Text(motivo,
                               style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.red.shade400,
@@ -439,9 +432,13 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 }
 
 // ── HOJA DE EDICIÓN DE RESEÑA ──────────────────────────────────────
+/// Lo capturado en la hoja; null si se canceló.
+typedef _CambiosResena = ({int rating, String titulo, String comentario});
+
 class _EditarResenaSheet extends StatefulWidget {
-  final Map<String, dynamic> resena;
   const _EditarResenaSheet({required this.resena});
+
+  final MiResena resena;
 
   @override
   State<_EditarResenaSheet> createState() => _EditarResenaSheetState();
@@ -455,12 +452,9 @@ class _EditarResenaSheetState extends State<_EditarResenaSheet> {
   @override
   void initState() {
     super.initState();
-    final r = double.tryParse(widget.resena['rating']?.toString() ?? '5') ?? 5;
-    _rating = r.round().clamp(1, 5);
-    _tituloCtrl = TextEditingController(
-        text: widget.resena['titulo']?.toString() ?? '');
-    _comentarioCtrl = TextEditingController(
-        text: widget.resena['comentario']?.toString() ?? '');
+    _rating = widget.resena.estrellas.clamp(1, 5);
+    _tituloCtrl = TextEditingController(text: widget.resena.titulo);
+    _comentarioCtrl = TextEditingController(text: widget.resena.comentario);
   }
 
   @override
@@ -478,17 +472,16 @@ class _EditarResenaSheetState extends State<_EditarResenaSheet> {
       );
       return;
     }
-    Navigator.pop(context, {
-      'rating': _rating,
-      'titulo': _tituloCtrl.text.trim(),
-      'comentario': comentario,
-    });
+    Navigator.pop<_CambiosResena>(context, (
+      rating: _rating,
+      titulo: _tituloCtrl.text.trim(),
+      comentario: comentario,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final productoNombre =
-        widget.resena['producto_nombre']?.toString() ?? '';
+    final productoNombre = widget.resena.productoNombre;
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),

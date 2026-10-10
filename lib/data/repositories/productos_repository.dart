@@ -6,6 +6,7 @@
 // Recibe un ApiClient por constructor: en la app es ApiService, en pruebas
 // FakeApiClient (test/fakes/).
 import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/data/services/api_service.dart';
 
@@ -21,6 +22,25 @@ class ProductosRepository {
 
   /// GET /categorias
   Future<Map<String, dynamic>> categorias() => _api.get(ApiConstants.categorias);
+
+  /// GET /categorias tipado a solo los nombres (`nombre` o `name`), en el
+  /// orden del backend; ignora los vacíos y lo que no sea objeto. Lanza
+  /// ApiException si falla. categorias() crudo sigue para home y catálogo.
+  Future<List<String>> nombresDeCategorias() async {
+    final r = await categorias();
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudieron cargar las categorías',
+      );
+    }
+    final data = r['categorias'] ?? r['data'];
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<dynamic, dynamic>>()
+        .map((c) => (c['nombre'] ?? c['name'] ?? '').toString())
+        .where((n) => n.isNotEmpty)
+        .toList();
+  }
 
   /// GET /filtros: sabores/tamaños/tipos globales.
   Future<Map<String, dynamic>> filtros() => _api.get(ApiConstants.filtros);

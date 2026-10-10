@@ -1,14 +1,22 @@
 // lib/ui/refunds/widgets/refunds_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/reembolsos_repository.dart';
+import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/domain/models/reembolso.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/refunds/view_model/refunds_view_model.dart';
 import 'package:provider/provider.dart';
 
 class RefundsScreen extends StatefulWidget {
-  const RefundsScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const RefundsScreen({super.key, this.viewModel});
+
+  final RefundsViewModel? viewModel;
 
   @override
   State<RefundsScreen> createState() => _RefundsScreenState();
@@ -16,111 +24,42 @@ class RefundsScreen extends StatefulWidget {
 
 class _RefundsScreenState extends State<RefundsScreen>
     with SingleTickerProviderStateMixin {
-  final _reembolsosRepo = ReembolsosRepository();
-  final _pedidosRepo = PedidosRepository();
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final RefundsViewModel _vm = widget.viewModel ??
+      RefundsViewModel(
+        reembolsosRepo: ReembolsosRepository(),
+        pedidosRepo: PedidosRepository(),
+      );
   late TabController _tabController;
-
-  // ── MIS REEMBOLSOS ──────────────────────────────────────────────
-  List<Map<String, dynamic>> _reembolsos = [];
-  bool _loadingReembolsos = true;
-
-  // ── NUEVA SOLICITUD ─────────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
   final _descripcionCtrl = TextEditingController();
-  List<Map<String, dynamic>> _pedidosCompletados = [];
-  Map<String, dynamic>? _pedidoSeleccionado;
-  String? _motivoSeleccionado;
-  bool _enviando = false;
-
-  final List<String> _motivos = [
-    'Producto dañado',
-    'No corresponde al pedido',
-    'Producto en mal estado',
-    'Calidad no satisfactoria',
-    'Pedido incompleto',
-    'Error en sabor',
-    'Otro',
-  ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _cargarReembolsos();
-    _cargarPedidosCompletados();
+    unawaited(_vm.cargar());
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _descripcionCtrl.dispose();
+    _vm.dispose();
     super.dispose();
-  }
-
-  Future<void> _cargarReembolsos() async {
-    setState(() => _loadingReembolsos = true);
-    final result = await _reembolsosRepo.misReembolsos();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      setState(() {
-        _reembolsos = List<Map<String, dynamic>>.from(
-            result['reembolsos'] ?? []);
-      });
-    }
-    setState(() => _loadingReembolsos = false);
-  }
-
-  Future<void> _cargarPedidosCompletados() async {
-    final result = await _pedidosRepo.misPedidos();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final todos = List<Map<String, dynamic>>.from(
-          result['pedidos'] ?? []);
-      setState(() {
-        _pedidosCompletados =
-            todos.where((p) => p['estado'] == 'completado').toList();
-      });
-    }
   }
 
   Future<void> _enviarSolicitud() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_pedidoSeleccionado == null) {
-      _showSnack('Selecciona un pedido', AppColors.error);
+    final error = await _vm.enviar(descripcion: _descripcionCtrl.text);
+    if (!mounted) return;
+    if (error != null) {
+      _showSnack(error, AppColors.error);
       return;
     }
-
-    setState(() => _enviando = true);
-
-    final monto = double.tryParse(
-            _pedidoSeleccionado!['total']?.toString() ?? '0') ??
-        0.0;
-
-    final result = await _reembolsosRepo.crear(
-      {
-        'pedido_id': _pedidoSeleccionado!['id'],
-        'monto': monto,
-        'motivo': _motivoSeleccionado,
-        'descripcion': _descripcionCtrl.text.trim(),
-      },
-    );
-
-    if (!mounted) return;
-    setState(() => _enviando = false);
-
-    if (result['success'] == true) {
-      _showSnack('Solicitud enviada con éxito', AppColors.pierVerde);
-      setState(() {
-        _descripcionCtrl.clear();
-        _pedidoSeleccionado = null;
-        _motivoSeleccionado = null;
-        _tabController.animateTo(0);
-      });
-      await _cargarReembolsos();
-    } else {
-      _showSnack(
-          result['message'] ?? 'Error al enviar solicitud', AppColors.error);
-    }
+    _showSnack('Solicitud enviada con éxito', AppColors.pierVerde);
+    _descripcionCtrl.clear();
+    _tabController.animateTo(0);
   }
 
   void _showSnack(String msg, Color color) {
@@ -255,8 +194,14 @@ class _RefundsScreenState extends State<RefundsScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildMisSolicitudes(),
-                  _buildNuevaSolicitud(),
+                  ListenableBuilder(
+                    listenable: _vm,
+                    builder: (_, _) => _buildMisSolicitudes(),
+                  ),
+                  ListenableBuilder(
+                    listenable: _vm,
+                    builder: (_, _) => _buildNuevaSolicitud(),
+                  ),
                 ],
               ),
             ),
@@ -286,24 +231,25 @@ class _RefundsScreenState extends State<RefundsScreen>
 
   // ── TAB 1: MIS SOLICITUDES ──────────────────────────────────────
   Widget _buildMisSolicitudes() {
-    if (_loadingReembolsos) {
+    final reembolsos = _vm.reembolsos;
+    if (_vm.cargandoReembolsos) {
       return Center(
           child: CircularProgressIndicator(color: AppColors.pierVerde));
     }
-    if (_reembolsos.isEmpty) {
+    if (reembolsos.isEmpty) {
       return _buildEmptyState();
     }
     return RefreshIndicator(
-      onRefresh: _cargarReembolsos,
+      onRefresh: _vm.cargarReembolsos,
       color: AppColors.pierVerde,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-        itemCount: _reembolsos.length + 1,
+        itemCount: reembolsos.length + 1,
         itemBuilder: (context, i) {
           // Índice 0 = título de sección
           if (i == 0) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 16),
               child: Text('Historial de solicitudes',
                   style: TextStyle(
                       fontSize: 15,
@@ -313,41 +259,26 @@ class _RefundsScreenState extends State<RefundsScreen>
           }
           return Padding(
             padding: const EdgeInsets.only(bottom: 14),
-            child: _buildReembolsoCard(_reembolsos[i - 1]),
+            child: _buildReembolsoCard(reembolsos[i - 1]),
           );
         },
       ),
     );
   }
 
-  Widget _buildReembolsoCard(Map<String, dynamic> r) {
-    final estado = r['estado']?.toString() ?? 'pendiente';
-    final monto =
-        double.tryParse(r['monto']?.toString() ?? '0') ?? 0.0;
-    final tieneRespuesta = r['respuesta_admin'] != null &&
-        r['respuesta_admin'].toString().isNotEmpty;
+  Widget _buildReembolsoCard(Reembolso r) {
+    final monto = r.monto;
+    final respuesta = r.respuestaAdmin;
 
     // Estado visual
-    Color statusColor;
-    String statusLabel;
-    switch (estado) {
-      case 'aprobado':
-      case 'procesado':
-        statusColor = AppColors.pierVerde;
-        statusLabel = estado == 'procesado' ? 'Procesado' : 'Aprobado';
-        break;
-      case 'rechazado':
-        statusColor = AppColors.estadoCancelado;
-        statusLabel = 'Rechazado';
-        break;
-      case 'en_revision':
-        statusColor = AppColors.estadoPreparacion;
-        statusLabel = 'En revisión';
-        break;
-      default:
-        statusColor = AppColors.estadoPendiente;
-        statusLabel = 'Pendiente';
-    }
+    final (statusColor, statusLabel) = switch (r.estado) {
+      EstadoReembolso.aprobado => (AppColors.pierVerde, 'Aprobado'),
+      EstadoReembolso.procesado => (AppColors.pierVerde, 'Procesado'),
+      EstadoReembolso.rechazado => (AppColors.estadoCancelado, 'Rechazado'),
+      EstadoReembolso.enRevision =>
+        (AppColors.estadoPreparacion, 'En revisión'),
+      EstadoReembolso.pendiente => (AppColors.estadoPendiente, 'Pendiente'),
+    };
 
     return Container(
       decoration: BoxDecoration(
@@ -383,7 +314,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Pedido #${r['pedido_numero'] ?? r['pedido_id'] ?? ''}',
+                        'Pedido #${r.pedidoNumero}',
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -391,8 +322,8 @@ class _RefundsScreenState extends State<RefundsScreen>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _formatFecha(r['created_at']),
-                        style: TextStyle(
+                        _formatFecha(r.creadoEn),
+                        style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
@@ -434,7 +365,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                               color: AppColors.textSecondary.withValues(alpha: 0.5),
                               fontWeight: FontWeight.w500)),
                       const SizedBox(height: 4),
-                      Text(r['motivo'] ?? '—',
+                      Text(r.motivo ?? '—',
                           style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -463,7 +394,7 @@ class _RefundsScreenState extends State<RefundsScreen>
           ),
 
           // ── RESPUESTA DE PIER ─────────────────────────────────
-          if (tieneRespuesta)
+          if (respuesta != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Container(
@@ -491,8 +422,8 @@ class _RefundsScreenState extends State<RefundsScreen>
                     ]),
                     const SizedBox(height: 6),
                     Text(
-                      r['respuesta_admin'].toString(),
-                      style: TextStyle(
+                      respuesta,
+                      style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                           height: 1.4),
@@ -510,6 +441,7 @@ class _RefundsScreenState extends State<RefundsScreen>
 
   // ── TAB 2: NUEVA SOLICITUD ──────────────────────────────────────
   Widget _buildNuevaSolicitud() {
+    final pedidos = _vm.pedidos;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
       child: Form(
@@ -561,50 +493,38 @@ class _RefundsScreenState extends State<RefundsScreen>
                 border: Border.all(
                     color: AppColors.textSecondary.withValues(alpha: 0.2)),
               ),
-              child: _pedidosCompletados.isEmpty
+              child: pedidos.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(children: [
                         Icon(LucideIcons.info,
                             color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                         const SizedBox(width: 10),
-                        Text('No tienes pedidos completados',
+                        const Text('No tienes pedidos completados',
                             style: TextStyle(
                                 color: AppColors.textSecondary, fontSize: 13)),
                       ]),
                     )
                   : DropdownButtonHideUnderline(
-                      child: DropdownButton<Map<String, dynamic>>(
+                      child: DropdownButton<Order>(
                         isExpanded: true,
-                        value: _pedidoSeleccionado,
-                        hint: Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            _pedidosCompletados.isNotEmpty
-                                ? '#${_pedidosCompletados.first['numero']} — \$${double.tryParse(_pedidosCompletados.first['total']?.toString() ?? '0')?.toStringAsFixed(2)}'
-                                : 'Selecciona un pedido',
-                            style: TextStyle(
-                                color: _pedidosCompletados.isNotEmpty
-                                    ? AppColors.textPrimary
-                                    : AppColors.textSecondary.withValues(alpha: 0.5),
-                                fontSize: 14),
-                          ),
-                        ),
+                        // Sin elegir, va el primero (antes solo se mostraba
+                        // como pista y el envío pedía elegirlo).
+                        value: _vm.pedidoSeleccionado,
                         icon: Padding(
-                          padding: EdgeInsets.only(right: 14),
+                          padding: const EdgeInsets.only(right: 14),
                           child: Icon(
                               LucideIcons.chevronDown,
                               color: AppColors.pierVerde),
                         ),
-                        items: _pedidosCompletados
+                        items: pedidos
                             .map((p) => DropdownMenuItem(
                                   value: p,
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 16),
                                     child: Text(
-                                      '#${p['numero']} — \$${double.tryParse(p['total']?.toString() ?? '0')?.toStringAsFixed(2)}',
+                                      '#${p.numero} — \$${p.total.toStringAsFixed(2)}',
                                       style: const TextStyle(
                                           fontSize: 14,
                                           color: AppColors.textPrimary),
@@ -612,8 +532,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                                   ),
                                 ))
                             .toList(),
-                        onChanged: (val) =>
-                            setState(() => _pedidoSeleccionado = val),
+                        onChanged: _vm.seleccionarPedido,
                       ),
                     ),
             ),
@@ -639,13 +558,13 @@ class _RefundsScreenState extends State<RefundsScreen>
                       border: InputBorder.none,
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 16)),
-                  initialValue: _motivoSeleccionado,
+                  initialValue: _vm.motivo,
                   hint: Text('Selecciona un motivo',
                       style: TextStyle(
                           color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
                   icon: Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
-                  items: _motivos
+                  items: RefundsViewModel.motivos
                       .map((m) => DropdownMenuItem(
                           value: m,
                           child: Text(m,
@@ -653,8 +572,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                                   fontSize: 14,
                                   color: AppColors.textPrimary))))
                       .toList(),
-                  onChanged: (val) =>
-                      setState(() => _motivoSeleccionado = val),
+                  onChanged: _vm.seleccionarMotivo,
                   validator: (val) =>
                       val == null ? 'Selecciona un motivo' : null,
                 ),
@@ -704,10 +622,10 @@ class _RefundsScreenState extends State<RefundsScreen>
               width: double.infinity,
               height: 54,
               child: ElevatedButton.icon(
-                onPressed: (_enviando || _pedidosCompletados.isEmpty)
+                onPressed: (_vm.enviando || pedidos.isEmpty)
                     ? null
                     : _enviarSolicitud,
-                icon: _enviando
+                icon: _vm.enviando
                     ? const SizedBox(
                         height: 18, width: 18,
                         child: CircularProgressIndicator(
@@ -715,7 +633,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     : const Icon(LucideIcons.send,
                         color: Colors.white, size: 18),
                 label: Text(
-                    _enviando ? 'Enviando...' : 'Enviar Solicitud',
+                    _vm.enviando ? 'Enviando...' : 'Enviar Solicitud',
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -762,7 +680,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Aún no tienes solicitudes. Si tuviste un problema con un pedido, puedes crear una aquí.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -776,15 +694,10 @@ class _RefundsScreenState extends State<RefundsScreen>
     );
   }
 
-  String _formatFecha(dynamic fecha) {
-    if (fecha == null) return '';
-    try {
-      final dt = DateTime.parse(fecha.toString()).toLocal();
-      final months = ['Ene','Feb','Mar','Abr','May','Jun',
-                      'Jul','Ago','Sep','Oct','Nov','Dic'];
-      return '${dt.day.toString().padLeft(2, '0')} ${months[dt.month - 1]}, ${dt.year}';
-    } catch (_) {
-      return '';
-    }
+  String _formatFecha(DateTime? dt) {
+    if (dt == null) return '';
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+                    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return '${dt.day.toString().padLeft(2, '0')} ${months[dt.month - 1]}, ${dt.year}';
   }
 }

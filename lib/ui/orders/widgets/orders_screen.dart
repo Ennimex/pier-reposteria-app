@@ -1,4 +1,6 @@
 // lib/ui/orders/widgets/orders_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -10,11 +12,15 @@ import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
+import 'package:pier_pasteleria/ui/orders/view_model/orders_view_model.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
 import 'package:provider/provider.dart';
 
 class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const OrdersScreen({super.key, this.viewModel});
+
+  final OrdersViewModel? viewModel;
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -22,19 +28,18 @@ class OrdersScreen extends StatefulWidget {
 
 class _OrdersScreenState extends State<OrdersScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final _pedidosRepo = PedidosRepository();
+  late final TabController _tabController =
+      TabController(length: 2, vsync: this);
   NavigationProvider? _nav;
 
-  List<Order> _activeOrders = [];
-  List<Order> _completedOrders = [];
-  bool _isLoading = true;
+  // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
+  late final OrdersViewModel _vm =
+      widget.viewModel ?? OrdersViewModel(repo: PedidosRepository());
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _cargarPedidos();
+    unawaited(_cargarPedidos());
   }
 
   @override
@@ -52,7 +57,7 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   void _onNavChanged() {
     if (mounted && _nav?.selectedIndex == 3) {
-      _cargarPedidos(silent: true);
+      unawaited(_cargarPedidos(silent: true));
     }
   }
 
@@ -60,41 +65,27 @@ class _OrdersScreenState extends State<OrdersScreen>
   void dispose() {
     _nav?.removeListener(_onNavChanged);
     _tabController.dispose();
+    _vm.dispose();
     super.dispose();
   }
 
-  Future<void> _cargarPedidos({bool silent = false}) async {
-    // Sin sesión no hay pedidos que mostrar: limpiar lo del usuario
-    // anterior (la pestaña vive en el IndexedStack y conserva estado;
-    // sin esto el historial viejo seguía visible como invitado).
-    if (!context.read<AuthProvider>().isAuthenticated) {
-      setState(() {
-        _activeOrders = [];
-        _completedOrders = [];
-        _isLoading = false;
-      });
-      return;
-    }
-    if (!silent) setState(() => _isLoading = true);
-    final result = await _pedidosRepo.misPedidos();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final data = result['pedidos'] ?? result['data'] ?? [];
-      final all = (data as List)
-          .map((json) => Order.fromJson(json as Map<String, dynamic>))
-          .toList();
-      setState(() {
-        _activeOrders = all.where((o) => !o.esFinalizado).toList();
-        _completedOrders = all.where((o) => o.esFinalizado).toList();
-      });
-    }
-    if (!silent) setState(() => _isLoading = false);
-  }
+  Future<void> _cargarPedidos({bool silent = false}) => _vm.cargar(
+        conSesion: context.read<AuthProvider>().isAuthenticated,
+        silenciosa: silent,
+      );
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(context),
+    );
+  }
+
+  Widget _buildPantalla(BuildContext context) {
+    final activos = _vm.activos;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -113,7 +104,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                           color: AppColors.textPrimary)),
                   const Spacer(),
                   // Badge total activos
-                  if (_activeOrders.isNotEmpty)
+                  if (activos.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
@@ -121,7 +112,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                         color: AppColors.pierVerde,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text('${_activeOrders.length} activo${_activeOrders.length == 1 ? '' : 's'}',
+                      child: Text('${activos.length} activo${activos.length == 1 ? '' : 's'}',
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -172,7 +163,7 @@ class _OrdersScreenState extends State<OrdersScreen>
 
             // ── CONTENIDO ────────────────────────────────────────
             Expanded(
-              child: _isLoading
+              child: _vm.cargando
                   ? ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                       itemCount: 5,
@@ -187,13 +178,13 @@ class _OrdersScreenState extends State<OrdersScreen>
                         children: context.watch<AuthProvider>().isAuthenticated
                             ? [
                                 _buildOrdersList(
-                                  _activeOrders,
+                                  activos,
                                   'No tienes pedidos activos',
                                   'Cuando realices un pedido\naparecerá aquí.',
                                   LucideIcons.receiptText,
                                 ),
                                 _buildOrdersList(
-                                  _completedOrders,
+                                  _vm.finalizados,
                                   'Sin historial aún',
                                   'Tus pedidos completados\naparecerán aquí.',
                                   LucideIcons.history,
@@ -410,39 +401,30 @@ class _OrdersScreenState extends State<OrdersScreen>
       case OrderStatus.pending:
         color = AppColors.estadoPendiente;
         label = order.porConfirmar ? 'Por confirmar' : 'Pendiente';
-        break;
       case OrderStatus.preparing:
         color = AppColors.estadoPreparacion;
         label = 'Preparando';
-        break;
       case OrderStatus.ready:
         color = AppColors.estadoListo;
         label = 'Listo ✓';
-        break;
       case OrderStatus.completed:
         color = AppColors.estadoCompletado;
         label = 'Completado';
-        break;
       case OrderStatus.cancelled:
         color = AppColors.estadoCancelado;
         label = 'Cancelado';
-        break;
       case OrderStatus.assigned:
         color = AppColors.estadoAsignada;
         label = 'Asignado';
-        break;
       case OrderStatus.onTheWay:
         color = AppColors.estadoEnCamino;
         label = 'En camino';
-        break;
       case OrderStatus.delivered:
         color = AppColors.estadoEntregada;
         label = 'Entregado';
-        break;
       case OrderStatus.deliveryFailed:
         color = AppColors.estadoFallida;
         label = 'Entrega fallida';
-        break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

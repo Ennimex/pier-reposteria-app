@@ -1,4 +1,6 @@
 // lib/ui/reviews/widgets/create_review_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
@@ -7,25 +9,36 @@ import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/reviews/view_model/create_review_view_model.dart';
 import 'package:pier_pasteleria/ui/reviews/widgets/my_reviews_screen.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class CreateReviewScreen extends StatefulWidget {
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
+  const CreateReviewScreen({
+    required this.product,
+    super.key,
+    this.viewModel,
+  });
+
   final Product product;
-  const CreateReviewScreen({super.key, required this.product});
+  final CreateReviewViewModel? viewModel;
 
   @override
   State<CreateReviewScreen> createState() => _CreateReviewScreenState();
 }
 
 class _CreateReviewScreenState extends State<CreateReviewScreen> {
-  final _resenasRepo = ResenasRepository();
   final _comentarioCtrl = TextEditingController();
   final _tituloCtrl = TextEditingController();
 
-  int _rating = 0;
-  bool _enviando = false;
+  // El State es dueño del ViewModel (lo crea y lo libera).
+  late final CreateReviewViewModel _vm = widget.viewModel ??
+      CreateReviewViewModel(
+        repo: ResenasRepository(),
+        productoId: widget.product.id,
+      );
 
   final List<String> _ratingLabels = [
     'Selecciona una calificación',
@@ -46,6 +59,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
   void dispose() {
     _comentarioCtrl.dispose();
     _tituloCtrl.dispose();
+    _vm.dispose();
     super.dispose();
   }
 
@@ -58,36 +72,15 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
       return;
     }
 
-    if (_rating == 0) {
-      _showSnack('Selecciona una calificación', AppColors.error);
-      return;
-    }
-    if (_comentarioCtrl.text.trim().length < 10) {
-      _showSnack('El comentario debe tener al menos 10 caracteres',
-          AppColors.error);
-      return;
-    }
-
-    setState(() => _enviando = true);
-    final result = await _resenasRepo.crear(
-      {
-        'producto_id': widget.product.id,
-        'rating': _rating,
-        'titulo': _tituloCtrl.text.trim(),
-        'comentario': _comentarioCtrl.text.trim(),
-      },
-    );
-
+    final autoAprobada = await _vm.enviar(titulo: _tituloCtrl.text);
     if (!mounted) return;
-    setState(() => _enviando = false);
 
-    if (result['success'] == true) {
-      final autoAprobada = result['resena']?['auto_aprobada'] == true;
+    if (autoAprobada != null) {
       PierLog.info('✅ Reseña enviada — auto_aprobada: $autoAprobada');
       _showSuccessDialog(autoAprobada);
-    } else {
-      PierLog.error('Error al enviar reseña: ${result['message']}');
-      _showSnack(result['message'] ?? 'Error al enviar', AppColors.error);
+    } else if (_vm.error != null) {
+      PierLog.error('Reseña no enviada: ${_vm.error}');
+      _showSnack(_vm.error!, AppColors.error);
     }
   }
 
@@ -105,7 +98,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
     // Capturamos el navigator de la pantalla ANTES de mostrar el diálogo,
     // para no usar el context del State después de que se desmonte al cerrar.
     final navigator = Navigator.of(context);
-    showDialog(
+    unawaited(showDialog<void>(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.5),
@@ -155,7 +148,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                 autoAprobada
                     ? 'Tu reseña ha sido publicada. ¡Otros clientes podrán verla y disfrutar de nuestras delicias!'
                     : 'Tu reseña está en revisión y será publicada pronto. ¡Gracias por tomarte el tiempo!',
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
                     height: 1.5),
@@ -222,13 +215,22 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildPantalla(context),
+    );
+  }
+
+  Widget _buildPantalla(BuildContext context) {
+    final rating = _vm.rating;
+    final enviando = _vm.enviando;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -298,7 +300,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                               widget.product.imagenUrl,
                               width: 90, height: 90,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              errorBuilder: (_, _, _) => Container(
                                 width: 90, height: 90,
                                 color: AppColors.pierArena,
                                 child: Icon(LucideIcons.cake,
@@ -375,10 +377,10 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(5, (i) {
-                              final selected = i < _rating;
+                              final selected = i < rating;
                               return GestureDetector(
                                 onTap: () {
-                                  setState(() => _rating = i + 1);
+                                  _vm.calificar(i + 1);
                                   PierLog.debug(
                                       'Rating seleccionado: ${i + 1}');
                                 },
@@ -403,22 +405,22 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
                             child: Container(
-                              key: ValueKey(_rating),
+                              key: ValueKey(rating),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 7),
                               decoration: BoxDecoration(
-                                color: _rating == 0
+                                color: rating == 0
                                     ? Colors.transparent
                                     : AppColors.textSecondary
                                         .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(50),
                               ),
                               child: Text(
-                                _ratingLabels[_rating],
+                                _ratingLabels[rating],
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: _rating == 0
+                                    color: rating == 0
                                         ? AppColors.textSecondary
                                             .withValues(alpha: 0.6)
                                         : AppColors.textPrimary),
@@ -471,7 +473,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                     TextField(
                       controller: _comentarioCtrl,
                       maxLines: 5,
-                      onChanged: (_) => setState(() {}),
+                      onChanged: _vm.editarComentario,
                       decoration: InputDecoration(
                         hintText:
                             'Cuéntanos qué te gustó más de este past...',
@@ -492,10 +494,10 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                                 color: AppColors.pierVerde, width: 1.5)),
                         contentPadding: const EdgeInsets.all(14),
                         suffixText:
-                            '${_comentarioCtrl.text.trim().length} / mín. 10',
+                            '${_vm.largoComentario} / mín. ${CreateReviewViewModel.minimoComentario}',
                         suffixStyle: TextStyle(
                             fontSize: 11,
-                            color: _comentarioCtrl.text.trim().length >= 10
+                            color: _vm.comentarioValido
                                 ? AppColors.pierVerde
                                 : AppColors.textSecondary
                                     .withValues(alpha: 0.6)),
@@ -514,12 +516,12 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             color: AppColors.textSecondary
                                 .withValues(alpha: 0.15)),
                       ),
-                      child: Row(
+                      child: const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(LucideIcons.info,
                               size: 16, color: AppColors.textSecondary),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Solo puedes reseñar productos que hayas comprado. Las reseñas con calificación ≥ 4 se publican automáticamente.',
@@ -539,8 +541,8 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton.icon(
-                        onPressed: _enviando ? null : _enviar,
-                        icon: _enviando
+                        onPressed: enviando ? null : _enviar,
+                        icon: enviando
                             ? const SizedBox(
                                 height: 18, width: 18,
                                 child: CircularProgressIndicator(
@@ -549,7 +551,7 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             : const Icon(LucideIcons.send,
                                 color: Colors.white, size: 18),
                         label: Text(
-                            _enviando
+                            enviando
                                 ? 'Publicando...'
                                 : 'Publicar Opinión',
                             style: const TextStyle(
