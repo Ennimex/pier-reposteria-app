@@ -8,7 +8,9 @@ import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/domain/models/category_model.dart';
+import 'package:pier_pasteleria/domain/models/detalle_producto.dart';
 import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 
 /// Implementación de [ProductosRepository] contra el backend vía [ApiClient].
 class ProductosRepositoryRemote implements ProductosRepository {
@@ -85,8 +87,36 @@ class ProductosRepositoryRemote implements ProductosRepository {
   }
 
   @override
+  Future<DetalleProducto> detalleDelProducto(String id) async {
+    final r = await detalle(id);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudo cargar el producto',
+      );
+    }
+    return DetalleProducto.fromJson(r);
+  }
+
+  @override
   Future<Map<String, dynamic>> recomendaciones(String productoId) =>
       _api.get(ApiConstants.recomendaciones(productoId));
+
+  @override
+  Future<List<Product>> recomendacionesDe(String productoId) async {
+    final r = await recomendaciones(productoId);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'Sin recomendaciones',
+      );
+    }
+    final data = r['recomendaciones'];
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .where((p) => p.id.isNotEmpty)
+        .toList();
+  }
 
   @override
   Future<Map<String, dynamic>> promocionesActivas() => _api.get(ApiConstants.promocionesActivas);

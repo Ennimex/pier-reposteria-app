@@ -8,9 +8,12 @@
 // una sola vez en lib/config/dependencies.dart.
 //
 // Fase 4: el catálogo usa listarCategorias, filtrosDelCatalogo y
-// opcionesDeLaCategoria, tipados y con ApiException si el backend falla.
+// opcionesDeLaCategoria, y el detalle usa detalleDelProducto y
+// recomendacionesDe; todos tipados y con ApiException si el backend falla.
 import 'package:pier_pasteleria/domain/models/category_model.dart';
+import 'package:pier_pasteleria/domain/models/detalle_producto.dart';
 import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 
 abstract class ProductosRepository {
   /// GET /productos: catálogo activo con precios y stock_online.
@@ -39,8 +42,17 @@ abstract class ProductosRepository {
   /// (sin tamaños). Lanza ApiException si falla.
   Future<FiltrosCatalogo> opcionesDeLaCategoria(String categoriaId);
 
+  /// GET /productos/:id tipado: imágenes, reseñas, total y promedio.
+  /// Lanza ApiException si falla.
+  Future<DetalleProducto> detalleDelProducto(String id);
+
   /// GET /recomendaciones/:productoId: top 3 por co-compra (público).
   Future<Map<String, dynamic>> recomendaciones(String productoId);
+
+  /// GET /recomendaciones/:productoId tipado. El payload es reducido (id,
+  /// nombre, precios, imagen, stock, categoría); omite los que no traen id.
+  /// Lanza ApiException si falla.
+  Future<List<Product>> recomendacionesDe(String productoId);
 
   /// GET /promociones/activas
   Future<Map<String, dynamic>> promocionesActivas();

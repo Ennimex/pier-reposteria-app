@@ -126,14 +126,4 @@ class ProductProvider with ChangeNotifier {
     _promociones = {};
     await cargarProductos();
   }
-
-  Future<Map<String, dynamic>?> cargarDetalle(String id) async {
-    final result = await _repo.detalle(id);
-    if (result['success'] == true) {
-      PierLog.info('✅ Detalle del producto $id cargado');
-      return result;
-    }
-    PierLog.error('Error al cargar detalle del producto $id');
-    return null;
-  }
 }

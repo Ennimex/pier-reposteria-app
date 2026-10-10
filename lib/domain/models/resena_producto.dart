@@ -3,7 +3,8 @@
 // Una reseña aprobada de un producto («Opiniones»). Fuente: GET
 // /resenas/producto/:id (público) -> resenas[{id, rating, titulo,
 // comentario, util_count, verificada, created_at, autor_nombre,
-// autor_apellido, respuesta_negocio}].
+// autor_apellido, respuesta_negocio}]. El detalle del producto (GET
+// /productos/:id) las manda con `likes_count` y `user_has_liked`.
 class ResenaProducto {
   const ResenaProducto({
     required this.id,
@@ -15,6 +16,7 @@ class ResenaProducto {
     required this.autorNombre,
     required this.autorApellido,
     this.creadaEn,
+    this.marcadaUtil = false,
   });
 
   /// Tolera números como texto, faltantes y fechas inválidas.
@@ -24,11 +26,16 @@ class ResenaProducto {
         titulo: j['titulo']?.toString() ?? '',
         comentario: j['comentario']?.toString() ?? '',
         verificada: j['verificada'] == true,
-        utilCount: int.tryParse(j['util_count']?.toString() ?? '') ?? 0,
+        utilCount: int.tryParse(
+                (j['util_count'] ?? j['likes_count'])?.toString() ?? '') ??
+            0,
         autorNombre: j['autor_nombre']?.toString() ?? '',
         autorApellido: j['autor_apellido']?.toString() ?? '',
         creadaEn:
             DateTime.tryParse(j['created_at']?.toString() ?? '')?.toLocal(),
+        marcadaUtil: j['user_has_liked'] == true ||
+            j['user_has_liked'] == 1 ||
+            j['has_liked'] == 1,
       );
 
   final String id;
@@ -43,6 +50,9 @@ class ResenaProducto {
   final String autorApellido;
   final DateTime? creadaEn;
 
+  /// ¿El cliente con sesión ya la marcó útil? (solo lo manda el detalle).
+  final bool marcadaUtil;
+
   /// Estrellas redondeadas (para filtrar y la distribución).
   int get estrellas => rating.round();
 
@@ -51,7 +61,8 @@ class ResenaProducto {
           '${autorApellido.isNotEmpty ? '${autorApellido[0]}.' : ''}'
       .trim();
 
-  ResenaProducto copyWith({int? utilCount}) => ResenaProducto(
+  ResenaProducto copyWith({int? utilCount, bool? marcadaUtil}) =>
+      ResenaProducto(
         id: id,
         rating: rating,
         titulo: titulo,
@@ -61,5 +72,6 @@ class ResenaProducto {
         autorNombre: autorNombre,
         autorApellido: autorApellido,
         creadaEn: creadaEn,
+        marcadaUtil: marcadaUtil ?? this.marcadaUtil,
       );
 }
