@@ -8,7 +8,6 @@ import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/notifications/widgets/notifications_screen.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
@@ -253,8 +252,7 @@ class HomeBuscador extends StatelessWidget {
   }
 }
 
-/// Hasta 5 categorías con cuántos productos disponibles tiene cada una;
-/// tocar una abre el catálogo ya filtrado.
+/// Hasta 5 categorías; tocar una abre el catálogo ya filtrado.
 class HomeCategorias extends StatelessWidget {
   const HomeCategorias({required this.nombres, super.key});
 
@@ -262,15 +260,6 @@ class HomeCategorias extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Conteo por categoría (mismo dato que la web) calculado del catálogo ya
-    // cargado; sin productos aún no se pinta el badge.
-    final conteos = <String, int>{};
-    for (final p in context.read<ProductProvider>().productos) {
-      if (p.disponible) {
-        conteos[p.categoria] = (conteos[p.categoria] ?? 0) + 1;
-      }
-    }
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
@@ -286,7 +275,6 @@ class HomeCategorias extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: nombres.take(5).map((nombre) {
-              final total = conteos[nombre] ?? 0;
               return GestureDetector(
                 // Abre el catálogo YA filtrado por la categoría tocada
                 onTap: () => context
@@ -294,42 +282,18 @@ class HomeCategorias extends StatelessWidget {
                     .goCatalogo(categoria: nombre),
                 child: Column(
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 56, height: 56,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.07),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4))],
-                          ),
-                          child: Icon(_iconoDeCategoria(nombre),
-                              color: AppColors.pierVerde, size: 26),
-                        ),
-                        if (total > 0)
-                          Positioned(
-                            top: -2, right: -4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.pierVerde,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: Colors.white, width: 1.5),
-                              ),
-                              child: Text('$total',
-                                  style: const TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white)),
-                            ),
-                          ),
-                      ],
+                    Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.07),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4))],
+                      ),
+                      child: Icon(_iconoDeCategoria(nombre),
+                          color: AppColors.pierVerde, size: 26),
                     ),
                     const SizedBox(height: 6),
                     Text(nombre,
