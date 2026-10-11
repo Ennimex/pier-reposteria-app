@@ -365,7 +365,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                               color: AppColors.textSecondary.withValues(alpha: 0.5),
                               fontWeight: FontWeight.w500)),
                       const SizedBox(height: 4),
-                      Text(r.motivo ?? '—',
+                      Text(r.motivoTexto ?? '—',
                           style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -564,10 +564,10 @@ class _RefundsScreenState extends State<RefundsScreen>
                           color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
                   icon: Icon(LucideIcons.chevronDown,
                       color: AppColors.pierVerde),
-                  items: RefundsViewModel.motivos
+                  items: RefundsViewModel.motivos.entries
                       .map((m) => DropdownMenuItem(
-                          value: m,
-                          child: Text(m,
+                          value: m.key,
+                          child: Text(m.value,
                               style: const TextStyle(
                                   fontSize: 14,
                                   color: AppColors.textPrimary))))

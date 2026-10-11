@@ -54,7 +54,7 @@ void main() {
                 'id': 3,
                 'pedido_numero': 'PIER-9',
                 'monto': '640',
-                'motivo': 'Producto dañado',
+                'motivo': 'producto_danado',
                 'estado': 'procesado',
                 'respuesta_admin': 'Ya se devolvió a tu tarjeta',
                 'created_at': '2026-10-01T18:00:00',

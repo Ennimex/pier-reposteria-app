@@ -42,11 +42,28 @@ class Reembolso {
   final String pedidoNumero;
   final EstadoReembolso estado;
   final double monto;
+
+  /// Código del motivo (ver [motivos]).
   final String? motivo;
+
+  /// El motivo para mostrar; un código desconocido se muestra tal cual.
+  String? get motivoTexto => motivo == null ? null : motivos[motivo] ?? motivo;
 
   /// null si Pier no ha respondido.
   final String? respuestaAdmin;
   final DateTime? creadoEn;
+
+  /// Motivos válidos: el ENUM `motivo_reembolso` de la base (código → texto,
+  /// los mismos que la web y el panel del personal). El backend rechaza
+  /// cualquier otro valor (#118).
+  static const Map<String, String> motivos = {
+    'producto_danado': 'Producto dañado',
+    'no_satisfecho': 'No satisfecho con el producto',
+    'pedido_incorrecto': 'Pedido incorrecto',
+    'tardanza': 'Tardanza en preparación',
+    'cantidad_incorrecta': 'Cantidad incorrecta',
+    'otro': 'Otro motivo',
+  };
 
   static String? _textoOpcional(Object? v) {
     final s = v?.toString() ?? '';

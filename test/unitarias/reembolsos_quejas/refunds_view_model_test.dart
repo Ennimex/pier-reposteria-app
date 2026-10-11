@@ -24,7 +24,7 @@ final Map<String, dynamic> _conDatos = {
         'pedido_id': 9,
         'pedido_numero': 'PIER-9',
         'monto': '640.00',
-        'motivo': 'Producto dañado',
+        'motivo': 'producto_danado',
         'estado': 'en_revision',
         'respuesta_admin': 'Lo estamos revisando',
         'created_at': '2026-10-01T18:00:00Z',
@@ -50,6 +50,27 @@ RefundsViewModel _vm(FakeApiClient api) => RefundsViewModel(
     );
 
 void main() {
+  group('Motivos (#118)', () {
+    test('son los códigos del ENUM motivo_reembolso, como en la web', () {
+      expect(RefundsViewModel.motivos.keys, [
+        'producto_danado',
+        'no_satisfecho',
+        'pedido_incorrecto',
+        'tardanza',
+        'cantidad_incorrecta',
+        'otro',
+      ]);
+      expect(RefundsViewModel.motivos['tardanza'], 'Tardanza en preparación');
+    });
+
+    test('el texto traduce el código; uno desconocido se muestra tal cual',
+        () {
+      // El reembolso automático de una cancelación llega con 'otro'.
+      expect(Reembolso.fromJson({'motivo': 'otro'}).motivoTexto, 'Otro motivo');
+      expect(Reembolso.fromJson({'motivo': 'raro'}).motivoTexto, 'raro');
+    });
+  });
+
   group('Reembolso y repositorio', () {
     test('listarMisReembolsos tipa, tolera faltantes e ignora basura',
         () async {
@@ -64,12 +85,15 @@ void main() {
       expect(r.estado, EstadoReembolso.enRevision);
       expect(r.respuestaAdmin, 'Lo estamos revisando');
       expect(r.creadoEn, isNotNull);
+      expect(r.motivo, 'producto_danado');
+      expect(r.motivoTexto, 'Producto dañado');
       // Sin número usa el id del pedido; estado desconocido = pendiente;
       // respuesta vacía = sin respuesta.
       expect(lista[1].pedidoNumero, '12');
       expect(lista[1].estado, EstadoReembolso.pendiente);
       expect(lista[1].respuestaAdmin, isNull);
       expect(lista[1].motivo, isNull);
+      expect(lista[1].motivoTexto, isNull);
       expect(api.llamo(_mis, metodo: 'GET-Auth'), isTrue);
     });
 
@@ -90,7 +114,7 @@ void main() {
         repo.solicitar(
           pedidoId: '9',
           monto: 640,
-          motivo: 'Otro',
+          motivo: 'otro',
           descripcion: 'Llegó aplastado',
         ),
         throwsA(isA<ApiException>().having((e) => e.message, 'message',
@@ -99,7 +123,7 @@ void main() {
       expect(api.ultima(_crear)?.body, {
         'pedido_id': 9,
         'monto': 640.0,
-        'motivo': 'Otro',
+        'motivo': 'otro',
         'descripcion': 'Llegó aplastado',
       });
     });
@@ -134,7 +158,7 @@ void main() {
       });
       final vm = _vm(api);
       await vm.cargar();
-      vm.seleccionarMotivo('Otro');
+      vm.seleccionarMotivo('otro');
 
       expect(vm.pedidoSeleccionado, isNull);
       expect(await vm.enviar(descripcion: 'Llegó aplastado'),
@@ -149,7 +173,7 @@ void main() {
       await vm.cargar();
       vm
         ..seleccionarPedido(vm.pedidos[1])
-        ..seleccionarMotivo('Pedido incompleto');
+        ..seleccionarMotivo('cantidad_incorrecta');
       final antes = api.llamadas.where((l) => l.endpoint == _mis).length;
 
       final error = await vm.enviar(descripcion: '  Faltó un pay  ');
@@ -159,7 +183,7 @@ void main() {
       expect(api.ultima(_crear)?.body, {
         'pedido_id': 11,
         'monto': 150.0,
-        'motivo': 'Pedido incompleto',
+        'motivo': 'cantidad_incorrecta',
         'descripcion': 'Faltó un pay',
       });
       expect(vm.enviando, isFalse);
@@ -174,13 +198,13 @@ void main() {
         ..fallar(_crear, 'Pedido no encontrado');
       final vm = _vm(api);
       await vm.cargar();
-      vm.seleccionarMotivo('Otro');
+      vm.seleccionarMotivo('otro');
 
       final error = await vm.enviar(descripcion: 'Llegó aplastado');
 
       expect(error, 'Pedido no encontrado');
       expect(vm.enviando, isFalse);
-      expect(vm.motivo, 'Otro');
+      expect(vm.motivo, 'otro');
     });
 
     test('si falla la recarga se queda el historial anterior', () async {
