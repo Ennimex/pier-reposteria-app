@@ -173,7 +173,7 @@ class _ProductsScreenState extends State<ProductsScreen>
       ));
   }
 
-  void _addToCart(Product p) {
+  Future<void> _addToCart(Product p) async {
     // Agotado: el botón es "Avísame" (registra interés; sin sesión, como web)
     if (p.agotado) {
       _vm.avisarme(p);
@@ -186,7 +186,12 @@ class _ProductsScreenState extends State<ProductsScreen>
       return;
     }
     PierLog.info('🛒 Agregando al carrito desde catálogo: ${p.nombre}');
-    context.read<CartProvider>().addItem(p);
+    final error = await context.read<CartProvider>().addItem(p);
+    if (!mounted) return;
+    if (error != null) {
+      _error(error);
+      return;
+    }
     _getCartController(p.id).forward(from: 0);
     _aviso('${p.nombre} agregado',
         icono: Icons.check_circle_rounded, color: AppColors.pierVerde);
@@ -198,9 +203,12 @@ class _ProductsScreenState extends State<ProductsScreen>
       return;
     }
     final error = await _vm.alternarFavorito(id);
-    if (error == null || !mounted) return;
+    if (error != null && mounted) _error(error);
+  }
+
+  void _error(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error),
+      content: Text(mensaje),
       backgroundColor: AppColors.error,
     ));
   }
