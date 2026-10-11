@@ -2,7 +2,8 @@
 //
 // Una solicitud de reembolso del propio cliente («Reembolsos»). Fuente: GET
 // /reembolsos/mis-reembolsos -> reembolsos[{id, pedido_id, pedido_numero,
-// monto, motivo, descripcion, estado, respuesta_admin, created_at}].
+// monto, motivo, descripcion, estado, respuesta_admin, fotos_evidencia,
+// created_at}].
 
 /// Estado de la solicitud en el backend.
 enum EstadoReembolso { pendiente, enRevision, aprobado, procesado, rechazado }
@@ -16,6 +17,7 @@ class Reembolso {
     this.motivo,
     this.respuestaAdmin,
     this.creadoEn,
+    this.fotos = const [],
   });
 
   /// Tolera números como texto y fechas inválidas; un estado desconocido se
@@ -36,6 +38,12 @@ class Reembolso {
         respuestaAdmin: _textoOpcional(j['respuesta_admin']),
         creadoEn:
             DateTime.tryParse(j['created_at']?.toString() ?? '')?.toLocal(),
+        fotos: [
+          for (final f in j['fotos_evidencia'] is List
+              ? j['fotos_evidencia'] as List
+              : const [])
+            if (f is String && f.isNotEmpty) f,
+        ],
       );
 
   final String id;
@@ -52,6 +60,9 @@ class Reembolso {
   /// null si Pier no ha respondido.
   final String? respuestaAdmin;
   final DateTime? creadoEn;
+
+  /// URLs de las fotos de evidencia (#117); vacía si no adjuntó.
+  final List<String> fotos;
 
   /// Motivos válidos: el ENUM `motivo_reembolso` de la base (código → texto,
   /// los mismos que la web y el panel del personal). El backend rechaza
