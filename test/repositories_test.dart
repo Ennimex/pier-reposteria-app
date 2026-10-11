@@ -236,11 +236,11 @@ void main() {
           'imagen': {'url': 'https://cdn/x.jpg'},
         },
       });
-      final r = await EntregasRepositoryRemote(api: api).subirEvidencia('/tmp/f.jpg');
+      final url = await EntregasRepositoryRemote(api: api).subirEvidencia('/tmp/f.jpg');
       final llamada = api.ultima('/upload/imagen')!;
       expect(llamada.metodo, 'UPLOAD');
       expect(llamada.body, {'filePath': '/tmp/f.jpg', 'tipo': 'entrega'});
-      expect((r['imagen'] as Map)['url'], 'https://cdn/x.jpg');
+      expect(url, 'https://cdn/x.jpg');
     });
   });
 

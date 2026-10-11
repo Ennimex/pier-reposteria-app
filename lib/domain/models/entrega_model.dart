@@ -37,23 +37,25 @@ extension EstadoEntregaX on EstadoEntrega {
       case EstadoEntrega.enCamino:  return 'en_camino';
       case EstadoEntrega.entregada: return 'entregada';
       case EstadoEntrega.fallida:   return 'fallida';
-      default:                      return '';
+      case EstadoEntrega.asignada:
+      case EstadoEntrega.desconocido:
+        return '';
     }
   }
+}
+
+/// Iniciales en mayúsculas de un nombre y apellido («AL»); «?» si no hay.
+String inicialesDe(String nombre, String apellido) {
+  final n = nombre.trim();
+  final a = apellido.trim();
+  final ini = '${n.isNotEmpty ? n[0] : ''}${a.isNotEmpty ? a[0] : ''}'
+      .toUpperCase();
+  return ini.isEmpty ? '?' : ini;
 }
 
 /// Snapshot de la dirección de entrega guardado en el pedido.
 /// El backend la guarda como JSON (JSON.stringify) del row de tbldirecciones.
 class DireccionEntrega {
-  final String? alias;
-  final String? calleNumero;
-  final String? colonia;
-  final String? referencias;
-  final String? telefonoContacto;
-  // Coordenadas GPS (migración 004; null si la dirección no las tiene)
-  final double? lat;
-  final double? lng;
-
   const DireccionEntrega({
     this.alias,
     this.calleNumero,
@@ -66,27 +68,30 @@ class DireccionEntrega {
 
   /// Acepta un Map, un String JSON (posiblemente doble-serializado) o null.
   factory DireccionEntrega.parse(dynamic raw) {
-    dynamic value = raw;
-    // Puede venir como texto JSON (una o dos veces serializado).
+    var value = raw;
+    // Puede venir como texto JSON (una o dos veces serializado; la segunda
+    // vez llega entre comillas).
     for (var i = 0; i < 2 && value is String; i++) {
       final t = value.trim();
       if (t.isEmpty) return const DireccionEntrega();
-      if (!(t.startsWith('{') || t.startsWith('['))) break;
+      if (!(t.startsWith('{') || t.startsWith('[') || t.startsWith('"'))) {
+        break;
+      }
       try {
         value = jsonDecode(t);
-      } catch (_) {
+      } on FormatException {
         break;
       }
     }
     if (value is! Map) return const DireccionEntrega();
+    final mapa = value;
 
     String? s(String k) {
-      final v = value[k];
-      final str = v?.toString().trim();
+      final str = mapa[k]?.toString().trim();
       return (str == null || str.isEmpty) ? null : str;
     }
 
-    double? numOrNull(String k) => double.tryParse(value[k]?.toString() ?? '');
+    double? numOrNull(String k) => double.tryParse(mapa[k]?.toString() ?? '');
 
     return DireccionEntrega(
       alias: s('alias'),
@@ -98,6 +103,15 @@ class DireccionEntrega {
       lng: numOrNull('lng'),
     );
   }
+
+  final String? alias;
+  final String? calleNumero;
+  final String? colonia;
+  final String? referencias;
+  final String? telefonoContacto;
+  // Coordenadas GPS (migración 004; null si la dirección no las tiene)
+  final double? lat;
+  final double? lng;
 
   bool get isEmpty =>
       (calleNumero == null || calleNumero!.isEmpty) &&
@@ -114,9 +128,42 @@ class DireccionEntrega {
           .join(', ');
 }
 
+double _numero(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0.0;
+
+String? _texto(dynamic v) {
+  final s = v?.toString().trim();
+  return (s == null || s.isEmpty) ? null : s;
+}
+
 /// Pedido a domicilio listo y sin repartidor, del pool que el repartidor puede
 /// tomar. Fuente: GET /api/entregas/disponibles (routes/entregasRoutes.js).
 class PedidoDisponible {
+  const PedidoDisponible({
+    required this.pedidoId,
+    required this.numero,
+    required this.total,
+    required this.costoEnvio,
+    required this.direccion,
+    required this.clienteNombre,
+    required this.clienteApellido,
+    this.notas,
+    this.horarioEntrega,
+  });
+
+  factory PedidoDisponible.fromJson(Map<String, dynamic> json) {
+    return PedidoDisponible(
+      pedidoId: json['pedido_id']?.toString() ?? '',
+      numero: json['numero']?.toString() ?? '',
+      total: _numero(json['total']),
+      costoEnvio: _numero(json['costo_envio']),
+      notas: _texto(json['notas']),
+      horarioEntrega: _texto(json['horario_entrega']),
+      direccion: DireccionEntrega.parse(json['direccion_entrega']),
+      clienteNombre: json['cliente_nombre']?.toString() ?? '',
+      clienteApellido: json['cliente_apellido']?.toString() ?? '',
+    );
+  }
+
   final String pedidoId;
   final String numero;
   final double total;
@@ -127,43 +174,60 @@ class PedidoDisponible {
   final String clienteNombre;
   final String clienteApellido;
 
-  const PedidoDisponible({
-    required this.pedidoId,
-    required this.numero,
-    required this.total,
-    required this.costoEnvio,
-    this.notas,
-    this.horarioEntrega,
-    required this.direccion,
-    required this.clienteNombre,
-    required this.clienteApellido,
-  });
-
-  factory PedidoDisponible.fromJson(Map<String, dynamic> json) {
-    double d(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0.0;
-    String? str(dynamic v) {
-      final s = v?.toString().trim();
-      return (s == null || s.isEmpty) ? null : s;
-    }
-
-    return PedidoDisponible(
-      pedidoId: json['pedido_id']?.toString() ?? '',
-      numero: json['numero']?.toString() ?? '',
-      total: d(json['total']),
-      costoEnvio: d(json['costo_envio']),
-      notas: str(json['notas']),
-      horarioEntrega: str(json['horario_entrega']),
-      direccion: DireccionEntrega.parse(json['direccion_entrega']),
-      clienteNombre: json['cliente_nombre']?.toString() ?? '',
-      clienteApellido: json['cliente_apellido']?.toString() ?? '',
-    );
-  }
-
   String get clienteNombreCompleto =>
       '$clienteNombre $clienteApellido'.trim();
 }
 
 class EntregaRepartidor {
+  const EntregaRepartidor({
+    required this.id,
+    required this.pedidoId,
+    required this.estado,
+    required this.numero,
+    required this.total,
+    required this.costoEnvio,
+    required this.direccion,
+    required this.clienteNombre,
+    required this.clienteApellido,
+    this.metodoPago,
+    this.notas,
+    this.horarioEntrega,
+    this.clienteTelefono,
+    this.recibioNombre,
+    this.motivoFallo,
+    this.evidenciaUrl,
+    this.asignadoAt,
+    this.salioAt,
+    this.finalizadoAt,
+  });
+
+  factory EntregaRepartidor.fromJson(Map<String, dynamic> json) {
+    DateTime? dt(dynamic v) =>
+        v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
+
+    return EntregaRepartidor(
+      id: json['id']?.toString() ?? '',
+      pedidoId: json['pedido_id']?.toString() ?? '',
+      estado: parseEstado(json['estado']),
+      numero: json['numero']?.toString() ?? '',
+      total: _numero(json['total']),
+      costoEnvio: _numero(json['costo_envio']),
+      metodoPago: _texto(json['metodo_pago']),
+      notas: _texto(json['notas']),
+      horarioEntrega: _texto(json['horario_entrega']),
+      direccion: DireccionEntrega.parse(json['direccion_entrega']),
+      clienteNombre: json['cliente_nombre']?.toString() ?? '',
+      clienteApellido: json['cliente_apellido']?.toString() ?? '',
+      clienteTelefono: _texto(json['cliente_telefono']),
+      recibioNombre: _texto(json['recibio_nombre']),
+      motivoFallo: _texto(json['motivo_fallo']),
+      evidenciaUrl: _texto(json['evidencia_url']),
+      asignadoAt: dt(json['asignado_at']),
+      salioAt: dt(json['salio_at']),
+      finalizadoAt: dt(json['finalizado_at']),
+    );
+  }
+
   final String id;
   final String pedidoId;
   final EstadoEntrega estado;
@@ -190,60 +254,6 @@ class EntregaRepartidor {
   final DateTime? salioAt;
   final DateTime? finalizadoAt;
 
-  const EntregaRepartidor({
-    required this.id,
-    required this.pedidoId,
-    required this.estado,
-    required this.numero,
-    required this.total,
-    required this.costoEnvio,
-    this.metodoPago,
-    this.notas,
-    this.horarioEntrega,
-    required this.direccion,
-    required this.clienteNombre,
-    required this.clienteApellido,
-    this.clienteTelefono,
-    this.recibioNombre,
-    this.motivoFallo,
-    this.evidenciaUrl,
-    this.asignadoAt,
-    this.salioAt,
-    this.finalizadoAt,
-  });
-
-  factory EntregaRepartidor.fromJson(Map<String, dynamic> json) {
-    double d(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0.0;
-    DateTime? dt(dynamic v) =>
-        v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
-    String? str(dynamic v) {
-      final s = v?.toString().trim();
-      return (s == null || s.isEmpty) ? null : s;
-    }
-
-    return EntregaRepartidor(
-      id: json['id']?.toString() ?? '',
-      pedidoId: json['pedido_id']?.toString() ?? '',
-      estado: parseEstado(json['estado']),
-      numero: json['numero']?.toString() ?? '',
-      total: d(json['total']),
-      costoEnvio: d(json['costo_envio']),
-      metodoPago: str(json['metodo_pago']),
-      notas: str(json['notas']),
-      horarioEntrega: str(json['horario_entrega']),
-      direccion: DireccionEntrega.parse(json['direccion_entrega']),
-      clienteNombre: json['cliente_nombre']?.toString() ?? '',
-      clienteApellido: json['cliente_apellido']?.toString() ?? '',
-      clienteTelefono: str(json['cliente_telefono']),
-      recibioNombre: str(json['recibio_nombre']),
-      motivoFallo: str(json['motivo_fallo']),
-      evidenciaUrl: str(json['evidencia_url']),
-      asignadoAt: dt(json['asignado_at']),
-      salioAt: dt(json['salio_at']),
-      finalizadoAt: dt(json['finalizado_at']),
-    );
-  }
-
   static EstadoEntrega parseEstado(dynamic raw) {
     switch (raw?.toString().toLowerCase()) {
       case 'asignada':  return EstadoEntrega.asignada;
@@ -257,12 +267,7 @@ class EntregaRepartidor {
   String get clienteNombreCompleto =>
       '$clienteNombre $clienteApellido'.trim();
 
-  String get iniciales {
-    final n = clienteNombre.isNotEmpty ? clienteNombre[0] : '';
-    final a = clienteApellido.isNotEmpty ? clienteApellido[0] : '';
-    final ini = '$n$a'.toUpperCase();
-    return ini.isEmpty ? '?' : ini;
-  }
+  String get iniciales => inicialesDe(clienteNombre, clienteApellido);
 
   bool get esEfectivo => (metodoPago ?? '').toLowerCase() == 'efectivo';
 

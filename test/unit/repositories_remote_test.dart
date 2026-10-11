@@ -11,6 +11,7 @@ import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/demanda_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/data/repositories/notificaciones_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/pagos_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
@@ -132,9 +133,9 @@ void main() {
       ]);
       final repo = EntregasRepositoryRemote(api: api);
 
-      await repo.cambiarDisponibilidad(true);
+      await repo.cambiarDisponibilidad(disponible: true);
       await repo.aceptar('41');
-      await repo.cambiarEstado('9', {'estado': 'en_camino'});
+      await repo.cambiarEstado('9', EstadoEntrega.enCamino);
       await repo.avisarLlegada('9');
 
       final disp = api.ultima(ApiConstants.disponibilidad)!;
@@ -152,7 +153,12 @@ void main() {
     });
 
     test('subirEvidencia sube la foto marcada como entrega', () async {
-      final api = _apiOk([ApiConstants.uploadImagen]);
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.uploadImagen: {
+          'success': true,
+          'imagen': {'url': 'https://cdn/foto.jpg'},
+        },
+      });
       await EntregasRepositoryRemote(api: api).subirEvidencia('/tmp/foto.jpg');
 
       final subida = api.ultima(ApiConstants.uploadImagen)!;
