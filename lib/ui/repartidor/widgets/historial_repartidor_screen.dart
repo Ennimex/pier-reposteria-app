@@ -1,77 +1,95 @@
 // lib/ui/repartidor/widgets/historial_repartidor_screen.dart
 //
-// "Historial": entregas finalizadas hoy (entregadas y fallidas) + total del día.
+// Pestaña «Historial» (MVVM, Fase 5): entregas finalizadas hoy (entregadas y
+// fallidas) y el total del día. Los datos vienen del RepartidorViewModel
+// del shell.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/entrega_detail_screen.dart';
+import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/entregas_tarjetas.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:provider/provider.dart';
 
 class HistorialRepartidorScreen extends StatelessWidget {
-  const HistorialRepartidorScreen({super.key});
+  const HistorialRepartidorScreen({required this.viewModel, super.key});
+
+  final RepartidorViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
-    final provider = context.watch<EntregasProvider>();
-    final historial = provider.historial;
-
-    return Column(
-      children: [
-        // ── HEADER ──────────────────────────────────────────────
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Historial',
-                style: TextStyle(
-                  fontFamily: 'Playfair Display',
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+    return ListenableBuilder(
+      listenable: viewModel,
+      builder: (context, _) {
+        final historial = viewModel.historial;
+        return Column(
+          children: [
+            // ── HEADER ──────────────────────────────────────────────
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Historial',
+                    style: TextStyle(
+                      fontFamily: 'Playfair Display',
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Entregas finalizadas hoy',
+                    style:
+                        TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  ),
+                ],
               ),
-              SizedBox(height: 2),
-              Text(
-                'Entregas finalizadas hoy',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: provider.isLoading
-              ? Center(
-                  child: CircularProgressIndicator(color: AppColors.pierVerde))
-              : RefreshIndicator(
-                  color: AppColors.pierVerde,
-                  onRefresh: () => provider.cargar(silent: true),
-                  child: historial.isEmpty
-                      ? _empty()
-                      : ListView.separated(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                          itemCount: historial.length,
-                          separatorBuilder: (_, _) => const Divider(height: 28),
-                          itemBuilder: (_, i) =>
-                              _HistorialItem(entrega: historial[i]),
-                        ),
-                ),
-        ),
-        if (historial.isNotEmpty) _TotalDiaBar(provider: provider),
-      ],
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: viewModel.cargando
+                  ? Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.pierVerde))
+                  : RefreshIndicator(
+                      color: AppColors.pierVerde,
+                      onRefresh: viewModel.recargar,
+                      child: historial.isEmpty
+                          ? const _SinHistorial()
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                              itemCount: historial.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 28),
+                              itemBuilder: (_, i) => _HistorialItem(
+                                entrega: historial[i],
+                                viewModel: viewModel,
+                              ),
+                            ),
+                    ),
+            ),
+            if (historial.isNotEmpty) _TotalDiaBar(viewModel: viewModel),
+          ],
+        );
+      },
     );
   }
+}
 
-  Widget _empty() {
+class _SinHistorial extends StatelessWidget {
+  const _SinHistorial();
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, c) => SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -83,7 +101,8 @@ class HistorialRepartidorScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(LucideIcons.history, size: 60, color: AppColors.textSecondary),
+                  Icon(LucideIcons.history,
+                      size: 60, color: AppColors.textSecondary),
                   SizedBox(height: 16),
                   Text(
                     'Aún no hay entregas finalizadas hoy',
@@ -104,21 +123,18 @@ class HistorialRepartidorScreen extends StatelessWidget {
 }
 
 class _HistorialItem extends StatelessWidget {
+  const _HistorialItem({required this.entrega, required this.viewModel});
+
   final EntregaRepartidor entrega;
-  const _HistorialItem({required this.entrega});
+  final RepartidorViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
     final entregada = entrega.estado == EstadoEntrega.entregada;
-    final barColor = entregada ? AppColors.pierVerde : AppColors.error;
+    final color = entregada ? AppColors.pierVerde : AppColors.error;
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => EntregaDetailScreen(entrega: entrega),
-        ),
-      ),
+      onTap: () => abrirEntrega(context, entrega, viewModel),
       behavior: HitTestBehavior.opaque,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,7 +155,7 @@ class _HistorialItem extends StatelessWidget {
                 width: 64,
                 height: 10,
                 decoration: BoxDecoration(
-                  color: barColor,
+                  color: color,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -155,44 +171,28 @@ class _HistorialItem extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(LucideIcons.mapPin,
-                  size: 16, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  entrega.direccion.colonia ?? 'Sin colonia',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
+          IconoTexto(
+            icono: LucideIcons.mapPin,
+            texto: entrega.direccion.colonia ?? 'Sin colonia',
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(LucideIcons.clock,
-                  size: 16, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(
-                entrega.finalizadoAt != null
-                    ? formatHora(entrega.finalizadoAt!)
-                    : '—',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+              Expanded(
+                child: IconoTexto(
+                  icono: LucideIcons.clock,
+                  texto: entrega.finalizadoAt != null
+                      ? formatHora(entrega.finalizadoAt!)
+                      : '—',
+                  tamanoTexto: 13,
                 ),
               ),
-              const Spacer(),
               Text(
                 entregada ? formatMoneyMxn(entrega.total) : 'Fallida',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: entregada ? AppColors.pierVerde : AppColors.error,
+                  color: color,
                 ),
               ),
             ],
@@ -204,11 +204,14 @@ class _HistorialItem extends StatelessWidget {
 }
 
 class _TotalDiaBar extends StatelessWidget {
-  final EntregasProvider provider;
-  const _TotalDiaBar({required this.provider});
+  const _TotalDiaBar({required this.viewModel});
+
+  final RepartidorViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
+    final entregas = viewModel.entregadasCount;
+    final fallos = viewModel.fallidasCount;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.all(20),
@@ -217,36 +220,36 @@ class _TotalDiaBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Total del día',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.85),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total del día',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                formatMoneyMxn(provider.totalDia),
-                style: const TextStyle(
-                  fontFamily: 'Playfair Display',
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                const SizedBox(height: 2),
+                Text(
+                  formatMoneyMxn(viewModel.totalDia),
+                  style: const TextStyle(
+                    fontFamily: 'Playfair Display',
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Spacer(),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${provider.entregadasCount} entrega${provider.entregadasCount == 1 ? '' : 's'}',
+                '$entregas entrega${entregas == 1 ? '' : 's'}',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -255,7 +258,7 @@ class _TotalDiaBar extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${provider.fallidasCount} fallo${provider.fallidasCount == 1 ? '' : 's'}',
+                '$fallos fallo${fallos == 1 ? '' : 's'}',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withValues(alpha: 0.85),

@@ -1,5 +1,5 @@
 // test/app_test.dart — prueba de arranque (#15): monta la app completa, con
-// los 7 providers globales sobre FakeApiClient, y comprueba que el splash se
+// los 6 providers globales sobre FakeApiClient, y comprueba que el splash se
 // pinta y luego navega sin excepciones.
 //
 // Ojo: tras el splash, las pantallas del shell todavía crean sus propios
@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
@@ -57,7 +56,7 @@ void main() {
   });
 
   group('pumpApp', () {
-    testWidgets('expone los 7 providers globales al widget montado',
+    testWidgets('expone los 6 providers globales al widget montado',
         (tester) async {
       late BuildContext ctx;
       await tester.pumpApp(Builder(builder: (context) {
@@ -70,7 +69,6 @@ void main() {
       expect(ctx.read<ProductProvider>(), isNotNull);
       expect(ctx.read<NavigationProvider>(), isNotNull);
       expect(ctx.read<NotificationProvider>(), isNotNull);
-      expect(ctx.read<EntregasProvider>(), isNotNull);
       expect(ctx.read<TemaProvider>(), isNotNull);
     });
 

@@ -1,34 +1,45 @@
 // lib/data/repositories/entregas_repository.dart
 //
-// Única puerta a los datos de entregas del repartidor. En esta fase (2 de MVVM) cada
-// método devuelve la respuesta cruda del backend ({success, ...}) tal como la
-// consumen hoy las pantallas; el tipado a modelos llega con cada ViewModel.
-// Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
-// clase abstracta; la implementación HTTP es EntregasRepositoryRemote, registrada
-// una sola vez en lib/config/dependencies.dart.
+// Única puerta a los datos de entregas del repartidor. Tipado en la Fase 5 de
+// MVVM: devuelve modelos y lanza ApiException con el mensaje del backend
+// (p. ej. «Otro repartidor ya tomó este pedido»).
+// Contrato (Fase 3.5): vistas y ViewModels dependen de esta clase abstracta;
+// la implementación HTTP es EntregasRepositoryRemote, registrada una sola vez
+// en lib/config/dependencies.dart.
+import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 
 abstract class EntregasRepository {
-  /// GET /entregas/mis-entregas (asignadas / en camino)
-  Future<Map<String, dynamic>> misEntregas();
+  /// GET /entregas/mis-entregas: las entregas del repartidor (en curso y las
+  /// finalizadas hoy).
+  Future<List<EntregaRepartidor>> misEntregas();
 
-  /// GET /entregas/disponibilidad
-  Future<Map<String, dynamic>> disponibilidad();
+  /// GET /entregas/disponibilidad: si el repartidor recibe entregas.
+  Future<bool> disponibilidad();
 
-  /// PUT /entregas/disponibilidad
-  Future<Map<String, dynamic>> cambiarDisponibilidad(bool disponible);
+  /// PUT /entregas/disponibilidad. Devuelve el valor que quedó guardado.
+  Future<bool> cambiarDisponibilidad({required bool disponible});
 
   /// GET /entregas/disponibles: pool de pedidos 'listo' a domicilio.
-  Future<Map<String, dynamic>> disponibles();
+  Future<List<PedidoDisponible>> disponibles();
 
   /// POST /entregas/aceptar: el primero que acepta gana (409 si ya se tomó).
-  Future<Map<String, dynamic>> aceptar(String pedidoId);
+  /// Devuelve el mensaje del backend («Tomaste el pedido #…»).
+  Future<String> aceptar(String pedidoId);
 
-  /// PUT /entregas/:id/estado: body {estado, evidencia_url?, motivo_fallo?}
-  Future<Map<String, dynamic>> cambiarEstado(String entregaId, Map<String, dynamic> body);
+  /// PUT /entregas/:id/estado. El backend exige [recibioNombre] al entregar
+  /// y [motivoFallo] al reportar un fallo.
+  Future<void> cambiarEstado(
+    String entregaId,
+    EstadoEntrega nuevo, {
+    String? evidenciaUrl,
+    String? recibioNombre,
+    String? motivoFallo,
+  });
 
   /// POST /entregas/:id/llegue: avisa al cliente sin cambiar estado.
-  Future<Map<String, dynamic>> avisarLlegada(String entregaId);
+  /// Devuelve el mensaje del backend.
+  Future<String> avisarLlegada(String entregaId);
 
-  /// POST /upload/imagen (tipo entrega): evidencia de la entrega.
-  Future<Map<String, dynamic>> subirEvidencia(String filePath);
+  /// POST /upload/imagen (tipo entrega): sube la evidencia y devuelve su URL.
+  Future<String> subirEvidencia(String filePath);
 }
