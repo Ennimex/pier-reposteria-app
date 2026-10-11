@@ -14,6 +14,14 @@ import 'package:pier_pasteleria/utils/logger.dart';
 class ApiService implements ApiClient {
   final StorageService _storage = StorageService();
 
+  /// Lo que ve el cliente cuando la petición no llega al backend (sin red,
+  /// DNS, servidor caído). El detalle técnico queda solo en el log de debug.
+  static const mensajeSinConexion =
+      'No pudimos conectar con Pier. Revisa tu internet e intenta de nuevo.';
+
+  static Map<String, dynamic> get _sinConexion =>
+      {'success': false, 'message': mensajeSinConexion};
+
   // Anuncia una sola vez a qué backend apunta (PierLog solo imprime en debug).
   static bool _ambienteAnunciado = false;
 
@@ -52,7 +60,7 @@ class ApiService implements ApiClient {
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error GET $endpoint: $e');
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return _sinConexion;
     }
   }
 
@@ -68,7 +76,7 @@ class ApiService implements ApiClient {
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error GET-Auth $endpoint: $e');
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return _sinConexion;
     }
   }
 
@@ -86,7 +94,7 @@ class ApiService implements ApiClient {
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error POST $endpoint: $e');
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return _sinConexion;
     }
   }
 
@@ -104,7 +112,7 @@ class ApiService implements ApiClient {
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error POST-Auth $endpoint: $e');
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return _sinConexion;
     }
   }
 
@@ -122,7 +130,7 @@ class ApiService implements ApiClient {
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error PUT-Auth $endpoint: $e');
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return _sinConexion;
     }
   }
 
@@ -138,7 +146,7 @@ class ApiService implements ApiClient {
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error DELETE-Auth $endpoint: $e');
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return _sinConexion;
     }
   }
 
@@ -198,7 +206,10 @@ class ApiService implements ApiClient {
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error UPLOAD-Auth $endpoint: $e');
-      return {'success': false, 'message': 'Error al subir la imagen: $e'};
+      return {
+        'success': false,
+        'message': 'No se pudo subir la imagen. Intenta de nuevo.',
+      };
     }
   }
 }

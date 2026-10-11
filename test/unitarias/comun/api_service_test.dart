@@ -117,15 +117,26 @@ void main() {
       expect(r['message'], 'Error al procesar la respuesta');
     });
 
-    test('sin conexión devuelve success:false en lugar de lanzar', () async {
-      final cliente =
-          MockClient((_) async => throw http.ClientException('sin red'));
+    test('sin conexión devuelve un mensaje amigable en lugar de lanzar',
+        () async {
+      final cliente = MockClient((_) async => throw http.ClientException(
+          "SocketException: Failed host lookup: 'pier.onrender.com'"));
+      final llamadas = <Future<Map<String, dynamic>> Function(ApiService)>[
+        (api) => api.get('/productos'),
+        (api) => api.getAuth('/carrito'),
+        (api) => api.post('/auth/login', {}),
+        (api) => api.postAuth('/carrito', {}),
+        (api) => api.putAuth('/carrito/1', {}),
+        (api) => api.deleteAuth('/carrito/1'),
+      ];
 
-      final r = await http.runWithClient(
-          () => ApiService().get('/productos'), () => cliente);
+      for (final llamada in llamadas) {
+        final r = await http.runWithClient(
+            () => llamada(ApiService()), () => cliente);
 
-      expect(r['success'], isFalse);
-      expect(r['message'], startsWith('Error de conexión'));
+        expect(r['success'], isFalse);
+        expect(r['message'], ApiService.mensajeSinConexion);
+      }
     });
   });
 
@@ -165,7 +176,7 @@ void main() {
           .uploadImageAuth('/resenas/7/foto', 'no/existe.jpg', {});
 
       expect(r['success'], isFalse);
-      expect(r['message'], startsWith('Error al subir la imagen'));
+      expect(r['message'], 'No se pudo subir la imagen. Intenta de nuevo.');
     });
   });
 }
