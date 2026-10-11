@@ -6,6 +6,7 @@
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/reembolsos_repository.dart';
+import 'package:pier_pasteleria/data/repositories/subir_imagen.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/domain/models/reembolso.dart';
 
@@ -44,12 +45,14 @@ class ReembolsosRepositoryRemote implements ReembolsosRepository {
     required double monto,
     required String motivo,
     required String descripcion,
+    List<String> fotos = const [],
   }) async {
     final r = await crear({
       'pedido_id': int.tryParse(pedidoId) ?? pedidoId,
       'monto': monto,
       'motivo': motivo,
       'descripcion': descripcion,
+      if (fotos.isNotEmpty) 'fotos_evidencia': fotos,
     });
     if (r['success'] != true) {
       throw ApiException(
@@ -57,4 +60,8 @@ class ReembolsosRepositoryRemote implements ReembolsosRepository {
       );
     }
   }
+
+  @override
+  Future<String> subirEvidencia(String filePath) =>
+      subirImagen(_api, filePath, tipo: 'reembolso');
 }

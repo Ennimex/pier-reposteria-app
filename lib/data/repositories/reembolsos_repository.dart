@@ -19,15 +19,22 @@ abstract class ReembolsosRepository {
   /// objetos.
   Future<List<Reembolso>> listarMisReembolsos();
 
-  /// POST /reembolsos: {pedido_id, monto, motivo, descripcion, ...}
+  /// POST /reembolsos: {pedido_id, monto, motivo, descripcion,
+  /// fotos_evidencia?, ...}
   Future<Map<String, dynamic>> crear(Map<String, dynamic> body);
 
   /// POST /reembolsos tipado. El backend solo acepta pedidos propios en
   /// estado 'completado'; lanza ApiException con su mensaje si lo rechaza.
+  /// [fotos] son URLs ya subidas con [subirEvidencia] (#117).
   Future<void> solicitar({
     required String pedidoId,
     required double monto,
     required String motivo,
     required String descripcion,
+    List<String> fotos = const [],
   });
+
+  /// POST /upload/imagen (tipo reembolso): sube una foto de evidencia y
+  /// devuelve su URL.
+  Future<String> subirEvidencia(String filePath);
 }

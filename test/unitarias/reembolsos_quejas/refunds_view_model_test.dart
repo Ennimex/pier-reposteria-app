@@ -14,6 +14,7 @@ import '../../fakes/fake_api_client.dart';
 const String _mis = ApiConstants.misReembolsos;
 const String _crear = ApiConstants.crearReembolso;
 const String _pedidos = ApiConstants.misPedidos;
+const String _subir = ApiConstants.uploadImagen;
 
 final Map<String, dynamic> _conDatos = {
   _mis: {
@@ -43,6 +44,15 @@ final Map<String, dynamic> _conDatos = {
   },
   _crear: {'success': true, 'reembolso': {'id': 5}},
 };
+
+/// Sube cada archivo a `https://cdn/` + su nombre.
+Map<String, dynamic> _subida(LlamadaApi l) {
+  final ruta = l.body!['filePath'].toString();
+  return {
+    'success': true,
+    'imagen': {'url': 'https://cdn/${ruta.split('/').last}'},
+  };
+}
 
 RefundsViewModel _vm(FakeApiClient api) => RefundsViewModel(
       reembolsosRepo: ReembolsosRepositoryRemote(api: api),
@@ -126,6 +136,134 @@ void main() {
         'motivo': 'otro',
         'descripcion': 'Llegó aplastado',
       });
+    });
+  });
+
+  group('Fotos de evidencia: modelo y repositorio (#117)', () {
+    test('el historial trae las fotos guardadas; sin fotos queda vacío', () {
+      final con = Reembolso.fromJson({
+        'id': 1,
+        'fotos_evidencia': ['https://cdn/a.jpg', 7, '', 'https://cdn/b.jpg'],
+      });
+      final sin = Reembolso.fromJson({'id': 2, 'fotos_evidencia': null});
+
+      expect(con.fotos, ['https://cdn/a.jpg', 'https://cdn/b.jpg']);
+      expect(sin.fotos, isEmpty);
+    });
+
+    test('subirEvidencia sube como «reembolso» y devuelve la URL', () async {
+      final api = FakeApiClient()
+        ..responder(_subir, {
+          'success': true,
+          'imagen': {'url': 'https://cdn/f.jpg'},
+        });
+      final repo = ReembolsosRepositoryRemote(api: api);
+
+      expect(await repo.subirEvidencia('/tmp/f.jpg'), 'https://cdn/f.jpg');
+      expect(api.ultima(_subir)!.body,
+          {'filePath': '/tmp/f.jpg', 'tipo': 'reembolso'});
+
+      api.responder(_subir, {'success': true});
+      await expectLater(repo.subirEvidencia('/tmp/f.jpg'),
+          throwsA(isA<ApiException>()));
+    });
+
+    test('solicitar manda fotos_evidencia solo si hay fotos', () async {
+      final api = FakeApiClient(respuestas: _conDatos);
+      final repo = ReembolsosRepositoryRemote(api: api);
+
+      await repo.solicitar(
+        pedidoId: '9',
+        monto: 640,
+        motivo: 'producto_danado',
+        descripcion: 'Llegó aplastado',
+        fotos: const ['https://cdn/a.jpg', 'https://cdn/b.jpg'],
+      );
+
+      expect(api.ultima(_crear)?.body, {
+        'pedido_id': 9,
+        'monto': 640.0,
+        'motivo': 'producto_danado',
+        'descripcion': 'Llegó aplastado',
+        'fotos_evidencia': ['https://cdn/a.jpg', 'https://cdn/b.jpg'],
+      });
+    });
+  });
+
+  group('RefundsViewModel: fotos de evidencia (#117)', () {
+    test('admite hasta 3 fotos y se pueden quitar', () {
+      final vm = _vm(FakeApiClient())
+        ..agregarFoto('/fotos/1.jpg')
+        ..agregarFoto('/fotos/2.jpg')
+        ..agregarFoto('/fotos/3.jpg');
+      expect(vm.puedeAgregarFoto, isFalse);
+
+      vm.agregarFoto('/fotos/4.jpg');
+      expect(vm.fotos, ['/fotos/1.jpg', '/fotos/2.jpg', '/fotos/3.jpg']);
+
+      vm.quitarFoto('/fotos/2.jpg');
+      expect(vm.fotos, ['/fotos/1.jpg', '/fotos/3.jpg']);
+      expect(vm.puedeAgregarFoto, isTrue);
+    });
+
+    test('sube cada foto, la manda con la solicitud y limpia', () async {
+      final api = FakeApiClient(respuestas: {..._conDatos, _subir: _subida});
+      final vm = _vm(api);
+      await vm.cargar();
+      vm
+        ..seleccionarMotivo('producto_danado')
+        ..agregarFoto('/fotos/1.jpg')
+        ..agregarFoto('/fotos/2.jpg');
+
+      final error = await vm.enviar(descripcion: 'Llegó aplastado');
+
+      expect(error, isNull);
+      expect(
+          api.llamadas
+              .where((l) => l.endpoint == _subir)
+              .map((l) => l.body!['tipo']),
+          ['reembolso', 'reembolso']);
+      expect(api.ultima(_crear)?.body?['fotos_evidencia'],
+          ['https://cdn/1.jpg', 'https://cdn/2.jpg']);
+      expect(vm.fotos, isEmpty);
+    });
+
+    test('si una foto no sube no manda la solicitud y conserva las fotos',
+        () async {
+      final api = FakeApiClient(respuestas: _conDatos)
+        ..fallar(_subir, 'Error al subir imagen');
+      final vm = _vm(api);
+      await vm.cargar();
+      vm
+        ..seleccionarMotivo('otro')
+        ..agregarFoto('/fotos/1.jpg');
+
+      final error = await vm.enviar(descripcion: 'Llegó aplastado');
+
+      expect(error, 'No se pudo subir una de las fotos. Intenta de nuevo.');
+      expect(api.llamo(_crear), isFalse);
+      expect(vm.fotos, ['/fotos/1.jpg']);
+      expect(vm.enviando, isFalse);
+    });
+
+    test('al reintentar no vuelve a subir las fotos que ya subieron',
+        () async {
+      final api = FakeApiClient(respuestas: {..._conDatos, _subir: _subida})
+        ..fallar(_crear, 'Pedido no encontrado');
+      final vm = _vm(api);
+      await vm.cargar();
+      vm
+        ..seleccionarMotivo('otro')
+        ..agregarFoto('/fotos/1.jpg');
+
+      expect(await vm.enviar(descripcion: 'Llegó aplastado'),
+          'Pedido no encontrado');
+      api.responder(_crear, {'success': true});
+      expect(await vm.enviar(descripcion: 'Llegó aplastado'), isNull);
+
+      expect(api.llamadas.where((l) => l.endpoint == _subir).length, 1);
+      expect(api.ultima(_crear)?.body?['fotos_evidencia'],
+          ['https://cdn/1.jpg']);
     });
   });
 
