@@ -1,4 +1,9 @@
 // lib/routing/app_routes.dart
+//
+// Los builders leen `extra` tal como lo manda quien navega (el mismo parseo
+// de siempre): si faltara, el cast falla igual que antes, así que se dejan
+// los casts directos en lugar de agregar `!`.
+// ignore_for_file: cast_nullable_to_non_nullable
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
@@ -11,6 +16,7 @@ import 'package:pier_pasteleria/ui/auth/widgets/verify_email_screen.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/checkout_screen.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/rutas.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
 // Shell cliente (BottomNavBar)
 import 'package:pier_pasteleria/ui/main/widgets/main_screen.dart';
@@ -74,6 +80,15 @@ class AppRoutes {
     return main;
   }
 
+  /// Página raíz de Pier para una ruta (paginaRaiz): fondo opaco y
+  /// revelado en vez del deslizamiento sobre un lienzo vacío. El builder
+  /// corre dentro de la ruta, igual que con `builder:`.
+  static GoRouterPageBuilder _raiz(GoRouterWidgetBuilder constructor) =>
+      (_, state) => paginaRaiz(
+            state,
+            Builder(builder: (context) => constructor(context, state)),
+          );
+
   static GoRouter router(
     BuildContext context, {
     String initialLocation = splash,
@@ -126,38 +141,38 @@ class AppRoutes {
         return null;
       },
       routes: [
-        GoRoute(path: splash, builder: (c, s) => const SplashScreen()),
+        GoRoute(path: splash, pageBuilder: _raiz((c, s) => const SplashScreen())),
 
-        GoRoute(path: login,               builder: (c, s) => const LoginScreen()),
-        GoRoute(path: registro,            builder: (c, s) => const RegisterScreen()),
-        GoRoute(path: recuperarContrasena, builder: (c, s) => ForgotPasswordScreen()),
+        GoRoute(path: login,               pageBuilder: _raiz((c, s) => const LoginScreen())),
+        GoRoute(path: registro,            pageBuilder: _raiz((c, s) => const RegisterScreen())),
+        GoRoute(path: recuperarContrasena, pageBuilder: _raiz((c, s) => const ForgotPasswordScreen())),
 
         GoRoute(
           path: verificarEmail,
-          builder: (c, s) {
+          pageBuilder: _raiz((c, s) {
             final args = s.extra as Map<String, dynamic>;
             return VerifyEmailScreen(email: args['email'] as String);
-          },
+          }),
         ),
 
-        GoRoute(path: main,        builder: (c, s) => const MainScreen()),
-        GoRoute(path: repartidor,  builder: (c, s) => const RepartidorMainScreen()),
-        GoRoute(path: panelWeb,    builder: (c, s) => const PanelWebScreen()),
-        GoRoute(path: nosotros, builder: (c, s) => const AboutUsScreen()),
-        GoRoute(path: contacto, builder: (c, s) => const ContactScreen()),
-        GoRoute(path: faq,      builder: (c, s) => const FAQScreen()),
-        GoRoute(path: legales,  builder: (c, s) => const LegalScreen()),
+        GoRoute(path: main,        pageBuilder: _raiz((c, s) => const MainScreen())),
+        GoRoute(path: repartidor,  pageBuilder: _raiz((c, s) => const RepartidorMainScreen())),
+        GoRoute(path: panelWeb,    pageBuilder: _raiz((c, s) => const PanelWebScreen())),
+        GoRoute(path: nosotros, pageBuilder: _raiz((c, s) => const AboutUsScreen())),
+        GoRoute(path: contacto, pageBuilder: _raiz((c, s) => const ContactScreen())),
+        GoRoute(path: faq,      pageBuilder: _raiz((c, s) => const FAQScreen())),
+        GoRoute(path: legales,  pageBuilder: _raiz((c, s) => const LegalScreen())),
 
         GoRoute(
           path: '/producto/:id',
-          builder: (c, s) => ProductDetailScreen(product: s.extra as Product),
+          pageBuilder: _raiz((c, s) => ProductDetailScreen(product: s.extra as Product)),
         ),
 
-        GoRoute(path: checkout, builder: (c, s) => const CheckoutScreen()),
+        GoRoute(path: checkout, pageBuilder: _raiz((c, s) => const CheckoutScreen())),
 
         GoRoute(
           path: orderSuccess,
-          builder: (c, s) {
+          pageBuilder: _raiz((c, s) {
             final args = s.extra as Map<String, dynamic>;
             return OrderSuccessScreen(
               orderId:    args['orderId']    as String,
@@ -165,33 +180,33 @@ class AppRoutes {
               pickupTime: args['pickupTime'] as String,
               total:      args['total']      as double,
             );
-          },
+          }),
         ),
 
         GoRoute(
           path: '/cliente/pedido/:id',
-          builder: (c, s) => OrderDetailScreen(order: s.extra as Order),
+          pageBuilder: _raiz((c, s) => OrderDetailScreen(order: s.extra as Order)),
         ),
 
-        GoRoute(path: favoritos,      builder: (c, s) => const FavoritesScreen()),
-        GoRoute(path: notificaciones, builder: (c, s) => const NotificationsScreen()),
-        GoRoute(path: reembolsos,     builder: (c, s) => const RefundsScreen()),
+        GoRoute(path: favoritos,      pageBuilder: _raiz((c, s) => const FavoritesScreen())),
+        GoRoute(path: notificaciones, pageBuilder: _raiz((c, s) => const NotificationsScreen())),
+        GoRoute(path: reembolsos,     pageBuilder: _raiz((c, s) => const RefundsScreen())),
 
         GoRoute(
           path: crearResena,
-          builder: (c, s) =>
-              CreateReviewScreen(product: s.extra as Product),
+          pageBuilder: _raiz((c, s) =>
+              CreateReviewScreen(product: s.extra as Product)),
         ),
 
         GoRoute(
           path: opiniones,
-          builder: (c, s) =>
-              ProductReviewsScreen(product: s.extra as Product),
+          pageBuilder: _raiz((c, s) =>
+              ProductReviewsScreen(product: s.extra as Product)),
         ),
 
-        GoRoute(path: clienteContacto, builder: (c, s) => const ContactScreen()),
-        GoRoute(path: perfil,          builder: (c, s) => const ProfileScreen()),
-        GoRoute(path: editarPerfil,    builder: (c, s) => const EditProfileScreen()),
+        GoRoute(path: clienteContacto, pageBuilder: _raiz((c, s) => const ContactScreen())),
+        GoRoute(path: perfil,          pageBuilder: _raiz((c, s) => const ProfileScreen())),
+        GoRoute(path: editarPerfil,    pageBuilder: _raiz((c, s) => const EditProfileScreen())),
       ],
     );
   }

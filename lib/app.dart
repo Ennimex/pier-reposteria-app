@@ -7,12 +7,12 @@ import 'package:pier_pasteleria/ui/core/themes/app_theme.dart';
 import 'package:provider/provider.dart';
 
 class MyApp extends StatefulWidget {
-  final String initialLocation;
-
   const MyApp({
     super.key,
     this.initialLocation = AppRoutes.splash,
   });
+
+  final String initialLocation;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -39,8 +39,12 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp.router(
       title: 'Pier Repostería',
       theme: AppTheme.lightTheme,
+      // El cambio de paleta de temporada se aplica en un solo cuadro: sin
+      // esto el ThemeData se interpola 200 ms mientras los widgets que leen
+      // AppColors cambian al instante (el color cambiaba en dos pasos).
+      themeAnimationStyle: AnimationStyle.noAnimation,
       debugShowCheckedModeBanner: false,
-      routerConfig: _router!,
+      routerConfig: _router,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
