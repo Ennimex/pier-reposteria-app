@@ -210,6 +210,24 @@ void main() {
       expect(alta.body, {'producto_id': 7, 'cantidad': 1, 'tamano': 'grande'});
     });
 
+    testWidgets('si el backend rechaza el alta muestra el error, no «agregado»',
+        (tester) async {
+      final api = await _montar(tester, conSesion: true);
+      api.fallar(ApiConstants.carrito, 'No hay stock suficiente');
+
+      await tester.tap(find.byIcon(LucideIcons.plus).last);
+      await tester.pumpAndSettle();
+      expect(find.text('Pay de queso agregado'), findsNothing);
+      expect(find.text('No hay stock suficiente'), findsOneWidget);
+
+      // El detalle sigue abierto para que pueda ajustar la cantidad.
+      await tester.tap(find.text('Añadir'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductDetailScreen), findsOneWidget);
+      expect(find.textContaining('agregado'), findsNothing);
+      expect(find.text('No hay stock suficiente'), findsOneWidget);
+    });
+
     testWidgets('un agotado ofrece Avísame y lo registra', (tester) async {
       final api = await _montar(tester,
           producto: Product.fromJson(_json(7, 'Chocoflan', agotado: true)),

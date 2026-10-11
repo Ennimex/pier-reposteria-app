@@ -57,6 +57,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   late final AnimationController _cartAnimController;
   late final Animation<double> _cartAnim;
   bool _compartiendo = false;
+  bool _agregando = false; // evita doble alta mientras responde el backend
 
   // Rebote del botón de carrito en las tarjetas de recomendados
   final Map<String, AnimationController> _relatedCartControllers = {};
@@ -148,31 +149,46 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         segundos: 3);
   }
 
-  void _addToCart() {
+  /// Solo confirma y cierra si el backend aceptó el alta; si la rechaza
+  /// (p. ej. stock) muestra el motivo y deja el detalle abierto.
+  Future<void> _addToCart() async {
     if (!_autenticado) {
       _irALogin();
       return;
     }
-    if (_producto.agotado) return; // el botón ya es "Avísame"; doble guard
+    if (_producto.agotado || _agregando) return; // agotado: el botón ya es "Avísame"
     final tamano = _vm.tamanoParaCarrito;
-    PierLog.info('🛒 Agregando: ${_producto.nombre} ($tamano) x${_vm.cantidad}');
-    context
-        .read<CartProvider>()
-        .addItem(_producto, _vm.cantidad, tamano, _vm.precioBase);
+    final cantidad = _vm.cantidad;
+    PierLog.info('🛒 Agregando: ${_producto.nombre} ($tamano) x$cantidad');
+    _agregando = true;
     _cartAnimController.forward(from: 0);
+    final error = await context
+        .read<CartProvider>()
+        .addItem(_producto, cantidad, tamano, _vm.precioBase);
+    _agregando = false;
+    if (!mounted) return;
+    if (error != null) {
+      _error(error);
+      return;
+    }
     final sufijoTam = tamano == 'grande' ? ' (Grande)' : '';
-    _aviso('${_vm.cantidad} × ${_producto.nombre}$sufijoTam agregado',
+    _aviso('$cantidad × ${_producto.nombre}$sufijoTam agregado',
         icono: Icons.check_circle_rounded, color: AppColors.pierVerde);
     Navigator.pop(context);
   }
 
-  void _addRelatedToCart(Product p) {
+  Future<void> _addRelatedToCart(Product p) async {
     if (!_autenticado) {
       _irALogin();
       return;
     }
     PierLog.info('🛒 Agregando relacionado: ${p.nombre}');
-    context.read<CartProvider>().addItem(p);
+    final error = await context.read<CartProvider>().addItem(p);
+    if (!mounted) return;
+    if (error != null) {
+      _error(error);
+      return;
+    }
     _relatedCartControllers.putIfAbsent(p.id, () {
       final c = AnimationController(
           vsync: this, duration: const Duration(milliseconds: 500));
