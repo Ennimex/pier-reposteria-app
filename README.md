@@ -145,9 +145,9 @@ MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
 | Tipo | Qué comprueba | Dónde vive | Cuándo corre |
 |---|---|---|---|
-| Unitarias | Validadores, providers y repositorios, sin red, con `FakeApiClient` | `test/` | Cada Pull Request (`ci.yml`) |
+| Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Cada Pull Request (`ci.yml`) |
 | Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`ci.yml`) |
-| Aceptación | Escenarios Gherkin automatizados como pruebas de widget | `test/` | Cada Pull Request (`ci.yml`) |
+| Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`ci.yml`) |
 | Integración | Smoke tests del login y catálogo en emulador Android, con `FakeApiClient` y sin backend | `integration_test/app_smoke_test.dart` | Pull Requests que tocan código de app (`integracion.yml`) |
 | Regresión | Toda la suite acumulada sobre la rama o tag | `test/` e `integration_test/` | Martes 08:00 UTC, cada tag y a mano (`regresion.yml`) |
 | Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
@@ -155,11 +155,14 @@ MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
 Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarCloud,
 `reactivecircus/android-emulator-runner` y GitHub Actions. Las pruebas unitarias
-existentes viven en `test/`; el smoke test de integración también usa
-`FakeApiClient`, por lo que no contacta el backend ni requiere credenciales.
+viven en `test/unitarias/`, con una carpeta por épica (`auth`, `catalogo`,
+`carrito_checkout`, `pedidos`, `resenas`, `reembolsos_quejas`, `repartidor`,
+`alexa` y `comun` para lo transversal); las de widget de cada pantalla, en
+`test/widget/`. El smoke test de integración también usa `FakeApiClient`, por
+lo que no contacta el backend ni requiere credenciales.
 El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
 están en `analysis_options.yaml`. El workflow de CI compara el resultado con el
-baseline de `tool/check_analysis.sh` (0 errores, 1 warning y 648 infos, medido
+baseline de `tool/check_analysis.sh` (0 errores, 0 warnings y 151 infos, medido
 con Flutter 3.44.4, la versión del CI) y falla si empeora; al corregir avisos,
 el baseline se baja en el mismo Pull Request.
 Para ejecutar localmente:
