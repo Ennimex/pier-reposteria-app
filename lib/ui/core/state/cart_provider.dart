@@ -1,74 +1,22 @@
 // lib/ui/core/state/cart_provider.dart
+//
+// Carrito compartido de la app (catálogo, detalle, badge, checkout y la
+// pantalla del carrito). Los cambios se ven al instante y se confirman con el
+// backend vía CarritoRepository; si el backend los rechaza se revierten y la
+// acción devuelve el motivo («Solo quedan 2 unidades») para que la vista lo
+// muestre. Devuelve null cuando todo salió bien.
 import 'package:flutter/material.dart';
+import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
+import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 
-class CartItem {
-  final String id;              // producto_id
-  final String? carritoItemId;  // id en tblcarrito_items
-  final String nombre;
-  final int quantity;
-  final double precio;          // precio con descuento ya aplicado (precio_unitario del backend)
-  final double precioOriginal;  // precio sin descuento (precio_original del backend)
-  final String imagenUrl;
-  final bool tieneDescuento;
-  final String? promoNombre;    // nombre_temporada de la promoción
-  final String tamano;          // 'chico' | 'grande' — el backend cobra según esto
-
-  CartItem({
-    required this.id,
-    this.carritoItemId,
-    required this.nombre,
-    required this.quantity,
-    required this.precio,
-    double? precioOriginal,
-    required this.imagenUrl,
-    this.tieneDescuento = false,
-    this.promoNombre,
-    this.tamano = 'chico',
-  }) : precioOriginal = precioOriginal ?? precio;
-
-  // Clave única de línea: un mismo producto en chico y grande son dos líneas.
-  String get lineKey => '${id}_$tamano';
-
-  CartItem copyWith({
-    int? quantity,
-    String? carritoItemId,
-    double? precio,
-    double? precioOriginal,
-    bool? tieneDescuento,
-    String? promoNombre,
-    String? tamano,
-  }) {
-    return CartItem(
-      id: id,
-      carritoItemId: carritoItemId ?? this.carritoItemId,
-      nombre: nombre,
-      precio: precio ?? this.precio,
-      precioOriginal: precioOriginal ?? this.precioOriginal,
-      quantity: quantity ?? this.quantity,
-      imagenUrl: imagenUrl,
-      tieneDescuento: tieneDescuento ?? this.tieneDescuento,
-      promoNombre: promoNombre ?? this.promoNombre,
-      tamano: tamano ?? this.tamano,
-    );
-  }
-
-  // ✅ Subtotal calculado con precio ya descontado
-  double get subtotal => precio * quantity;
-
-  // ✅ Ahorro total en este item
-  double get ahorroTotal =>
-      tieneDescuento ? (precioOriginal - precio) * quantity : 0.0;
-}
-
 class CartProvider with ChangeNotifier {
-  final CarritoRepository _repo;
-
   CartProvider({required CarritoRepository repo}) : _repo = repo;
+
+  final CarritoRepository _repo;
   Map<String, CartItem> _items = {};
-  bool _synced = false;
 
   Map<String, CartItem> get items => {..._items};
   int get itemCount => _items.length;
@@ -77,11 +25,11 @@ class CartProvider with ChangeNotifier {
 
   // ✅ Total con descuentos ya aplicados
   double get totalAmount =>
-      _items.values.fold(0.0, (sum, item) => sum + item.subtotal);
+      _items.values.fold<double>(0, (sum, item) => sum + item.subtotal);
 
   // ✅ Total original sin descuentos (para mostrar tachado)
   double get totalOriginal =>
-      _items.values.fold(0.0, (sum, item) => sum + item.precioOriginal * item.quantity);
+      _items.values.fold<double>(0, (sum, item) => sum + item.precioOriginal * item.quantity);
 
   // ✅ Ahorro total del carrito
   double get totalAhorro => totalOriginal - totalAmount;
@@ -95,42 +43,12 @@ class CartProvider with ChangeNotifier {
       _items.values.any((item) => item.id == productId);
 
   // ── Cargar carrito desde el backend ──────────────────────────────
+  /// Trae las líneas del backend (precios ya con descuento). Si falla lanza
+  /// ApiException y conserva lo que ya tenía.
   Future<void> cargarDesdeBackend() async {
-    final result = await _repo.obtener();
-    if (result['success'] != true) return;
-
-    final carrito = result['carrito'] as Map<String, dynamic>?;
-    final items = List<Map<String, dynamic>>.from(carrito?['items'] ?? []);
-
-    _items = {};
-    for (final item in items) {
-      final productoId = item['producto_id']?.toString() ?? '';
-      final tamano = item['tamano']?.toString() ?? 'chico';
-
-      // ✅ NUEVO: precio_unitario ya viene con descuento del backend
-      final precioFinal = double.tryParse(
-              item['precio_unitario']?.toString() ?? '0') ?? 0;
-
-      // ✅ NUEVO: precio_original es el precio sin descuento
-      final precioOriginal = double.tryParse(
-              item['precio_original']?.toString() ?? '0') ?? precioFinal;
-
-      // Key por línea (producto + tamaño): chico y grande coexisten.
-      _items['${productoId}_$tamano'] = CartItem(
-        id: productoId,
-        carritoItemId: item['carrito_item_id']?.toString(),
-        nombre: item['nombre'] ?? '',
-        precio: precioFinal,
-        precioOriginal: precioOriginal,
-        quantity: int.tryParse(item['cantidad']?.toString() ?? '1') ?? 1,
-        imagenUrl: item['imagen_url'] ?? '',
-        // ✅ NUEVO: tiene_descuento del backend
-        tieneDescuento: item['tiene_descuento'] == true,
-        promoNombre: item['promo_nombre']?.toString(),
-        tamano: tamano,
-      );
-    }
-    _synced = true;
+    final lineas = await _repo.obtener();
+    // Key por línea (producto + tamaño): chico y grande coexisten.
+    _items = {for (final linea in lineas) linea.lineKey: linea};
     notifyListeners();
     PierLog.info('Carrito cargado: ${_items.length} items');
   }
@@ -138,7 +56,7 @@ class CartProvider with ChangeNotifier {
   // ── Agregar al carrito (local + backend) ─────────────────────────
   // [tamano] 'chico'|'grande'; [precioUnitario] precio base del tamaño elegido
   // (solo para el optimista local; el backend recalcula con descuento al recargar).
-  Future<void> addItem(Product product,
+  Future<String?> addItem(Product product,
       [int quantity = 1,
       String tamano = 'chico',
       double? precioUnitario]) async {
@@ -158,7 +76,6 @@ class CartProvider with ChangeNotifier {
         id: product.id,
         nombre: product.nombre,
         precio: precio,
-        precioOriginal: precio,
         quantity: quantity,
         imagenUrl: product.imagenUrl,
         tamano: tamano,
@@ -166,15 +83,14 @@ class CartProvider with ChangeNotifier {
     }
     notifyListeners();
 
-    final result = await _repo.agregar(
-      productoId: int.tryParse(product.id) ?? product.id,
-      cantidad: quantity,
-      tamano: tamano,
-    );
-
-    if (result['success'] != true) {
-      PierLog.error(
-          'Error al agregar al carrito backend: ${result['message']}');
+    try {
+      await _repo.agregar(
+        productoId: int.tryParse(product.id) ?? product.id,
+        cantidad: quantity,
+        tamano: tamano,
+      );
+    } on ApiException catch (e) {
+      PierLog.error('Error al agregar al carrito backend: ${e.message}');
       // Revertir si falló
       final current = _items[key];
       if (current != null) {
@@ -188,55 +104,75 @@ class CartProvider with ChangeNotifier {
         }
       }
       notifyListeners();
-    } else {
-      // Recargar para obtener carritoItemId + descuentos actualizados
-      await cargarDesdeBackend();
+      return e.message;
     }
+    // Recargar para obtener carritoItemId + descuentos actualizados
+    await _recargar();
+    return null;
   }
 
-  // ── Reducir cantidad (local + backend) ───────────────────────────
-  // [lineKey] es item.lineKey (producto + tamaño).
-  Future<void> removeSingleItem(String lineKey) async {
-    if (!_items.containsKey(lineKey)) return;
-    final item = _items[lineKey]!;
-    PierLog.info('Reduciendo cantidad: $lineKey');
+  // ── Cambiar cantidad (local + backend) ───────────────────────────
+  /// Deja la línea [lineKey] (item.lineKey: producto + tamaño) en [cantidad];
+  /// menos de 1 la elimina. Si el backend la rechaza (stock) vuelve a la
+  /// cantidad anterior.
+  Future<String?> cambiarCantidad(String lineKey, int cantidad) async {
+    final item = _items[lineKey];
+    if (item == null) return null;
+    if (cantidad < 1) return removeItem(lineKey);
+    PierLog.info('Cambiando cantidad: $lineKey -> $cantidad');
 
-    if (item.quantity > 1) {
-      _items.update(
-          lineKey, (e) => e.copyWith(quantity: e.quantity - 1));
-      notifyListeners();
+    _items[lineKey] = item.copyWith(quantity: cantidad);
+    notifyListeners();
 
-      if (item.carritoItemId != null) {
-        await _repo.actualizarCantidad(
-            item.carritoItemId!, item.quantity - 1);
+    final itemId = item.carritoItemId;
+    if (itemId == null) return null;
+    try {
+      await _repo.actualizarCantidad(itemId, cantidad);
+      return null;
+    } on ApiException catch (e) {
+      if (_items.containsKey(lineKey)) {
+        _items[lineKey] = item;
+        notifyListeners();
       }
-    } else {
-      await removeItem(lineKey);
+      return e.message;
     }
   }
 
   // ── Eliminar item (local + backend) ──────────────────────────────
   // [lineKey] es item.lineKey (producto + tamaño).
-  Future<void> removeItem(String lineKey) async {
+  Future<String?> removeItem(String lineKey) async {
     final item = _items[lineKey];
-    if (item == null) return;
+    if (item == null) return null;
     PierLog.info('Eliminando del carrito: $lineKey');
 
     _items.remove(lineKey);
     notifyListeners();
 
-    if (item.carritoItemId != null) {
-      await _repo.eliminarItem(item.carritoItemId!);
+    final itemId = item.carritoItemId;
+    if (itemId == null) return null;
+    try {
+      await _repo.eliminarItem(itemId);
+      return null;
+    } on ApiException catch (e) {
+      _items[lineKey] = item;
+      notifyListeners();
+      return e.message;
     }
   }
 
   // ── Vaciar carrito (local + backend) ─────────────────────────────
-  Future<void> clearCart() async {
+  /// Si el backend no lo vacía, recarga lo que de verdad quedó.
+  Future<String?> clearCart() async {
     PierLog.info('Vaciando carrito');
     _items = {};
-    _synced = false;
     notifyListeners();
-    await _repo.vaciar();
+    try {
+      await _repo.vaciar();
+      return null;
+    } on ApiException catch (e) {
+      await _recargar();
+      return e.message;
+    }
   }
 
   // ── Limpiar solo en memoria (logout) ─────────────────────────────
@@ -245,7 +181,15 @@ class CartProvider with ChangeNotifier {
   // deja de mostrar en el dispositivo.
   void limpiarLocal() {
     _items = {};
-    _synced = false;
     notifyListeners();
+  }
+
+  /// Recarga sin fallar: si el backend no responde se queda lo que hay.
+  Future<void> _recargar() async {
+    try {
+      await cargarDesdeBackend();
+    } on ApiException catch (e) {
+      PierLog.error('No se pudo recargar el carrito: ${e.message}');
+    }
   }
 }

@@ -1,7 +1,9 @@
 // test/repositories_test.dart — los repositorios hablan con el ApiClient que
 // reciben (aquí el falso): endpoint, método y body correctos, y devuelven la
-// respuesta tal cual. Ninguna prueba toca la red.
+// respuesta tal cual (o, los ya tipados, el modelo o ApiException). Ninguna
+// prueba toca la red.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
@@ -75,6 +77,53 @@ void main() {
       expect(api.llamadas.map((l) => l.metodo).toList(),
           ['PUT-Auth', 'DELETE-Auth']);
       expect(api.llamadas.first.body, {'cantidad': 3});
+    });
+
+    test('obtener convierte las líneas del carrito', () async {
+      final api = FakeApiClient(respuestas: {
+        '/carrito': {
+          'success': true,
+          'carrito': {
+            'items': [
+              {'producto_id': 15, 'cantidad': 2, 'precio_unitario': '80.00'},
+              'basura',
+            ],
+          },
+        },
+      });
+
+      final lineas = await CarritoRepositoryRemote(api: api).obtener();
+
+      expect(lineas, hasLength(1));
+      expect(lineas.single.lineKey, '15_chico');
+      expect(lineas.single.subtotal, 160);
+    });
+
+    test('obtener sin carrito devuelve una lista vacía', () async {
+      final api = FakeApiClient(respuestas: {
+        '/carrito': {'success': true},
+      });
+
+      expect(await CarritoRepositoryRemote(api: api).obtener(), isEmpty);
+    });
+
+    test('si el backend rechaza, lanza ApiException con su mensaje', () async {
+      final api = FakeApiClient()
+        ..fallar('/carrito', 'Solo quedan 2 unidades')
+        ..responder('/carrito/99', {'success': false});
+      final repo = CarritoRepositoryRemote(api: api);
+
+      await expectLater(
+        repo.agregar(productoId: 15, cantidad: 3, tamano: 'chico'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', 'Solo quedan 2 unidades')),
+      );
+      await expectLater(repo.vaciar(), throwsA(isA<ApiException>()));
+      await expectLater(
+        repo.eliminarItem('99'),
+        throwsA(isA<ApiException>().having(
+            (e) => e.message, 'message', 'No se pudo quitar el producto')),
+      );
     });
   });
 
