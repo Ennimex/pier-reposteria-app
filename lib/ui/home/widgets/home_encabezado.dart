@@ -134,9 +134,16 @@ class HomeEncabezado extends StatelessWidget {
 
 /// Aviso del pedido en curso; tocarlo abre su detalle.
 class PedidoActivoBanner extends StatelessWidget {
-  const PedidoActivoBanner({required this.pedido, super.key});
+  const PedidoActivoBanner({
+    required this.pedido,
+    required this.alCambiar,
+    super.key,
+  });
 
   final Order pedido;
+
+  /// El pedido cambió de estado en su detalle (p. ej. se canceló).
+  final ValueChanged<Order> alCambiar;
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +175,9 @@ class PedidoActivoBanner extends StatelessWidget {
       onTap: () {
         PierLog.nav('→ OrderDetailScreen');
         Navigator.push(context,
-            MaterialPageRoute<void>(builder: (_) => OrderDetailScreen(order: pedido)));
+            MaterialPageRoute<void>(
+                builder: (_) =>
+                    OrderDetailScreen(order: pedido, alCambiar: alCambiar)));
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),

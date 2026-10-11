@@ -3,7 +3,8 @@
 // Estado de «Mis Pedidos» (MVVM, Fase 3): pedidos activos y finalizados del
 // cliente. Si el backend falla se conserva la última lista (la pantalla no
 // muestra error, como antes). La vista decide cuándo recargar (al entrar a la
-// pestaña, al jalar para refrescar) y le dice si hay sesión.
+// pestaña, al jalar para refrescar) y le dice si hay sesión. Si un pedido
+// cambia en su detalle (p. ej. se cancela), se reacomoda aquí sin recargar.
 import 'package:flutter/foundation.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
@@ -52,6 +53,18 @@ class OrdersViewModel extends ChangeNotifier {
     }
     if (_cerrado) return;
     if (!silenciosa) _cargando = false;
+    notifyListeners();
+  }
+
+  /// Pone [pedido] en lugar de su versión anterior y lo mueve entre activos
+  /// y finalizados si hace falta, sin ir al backend.
+  void actualizarPedido(Order pedido) {
+    if (_cerrado) return;
+    final todos = [..._activos, ..._finalizados]
+        .map((o) => o.id == pedido.id ? pedido : o)
+        .toList();
+    _activos = todos.where((o) => !o.esFinalizado).toList();
+    _finalizados = todos.where((o) => o.esFinalizado).toList();
     notifyListeners();
   }
 

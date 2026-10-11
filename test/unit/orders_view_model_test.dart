@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/orders/view_model/orders_view_model.dart';
 
 import '../fakes/fake_api_client.dart';
@@ -105,6 +106,37 @@ void main() {
       expect(vm.activos, hasLength(1));
       expect(vm.finalizados, hasLength(2));
       expect(vm.cargando, isFalse);
+    });
+
+    test('un pedido cancelado en su detalle pasa al historial sin recargar',
+        () async {
+      final api = _backendCon(_tres);
+      final vm = _vm(api);
+      await vm.cargar(conSesion: true);
+      final llamadas = api.llamadas.length;
+
+      vm.actualizarPedido(Order.fromJson(const {
+        'id': 1,
+        'numero': 'PIER-1',
+        'estado': 'cancelado',
+        'total': '150',
+      }));
+
+      expect(vm.activos, isEmpty);
+      expect(vm.finalizados.map((o) => o.numero),
+          ['PIER-1', 'PIER-2', 'PIER-3']);
+      expect(vm.finalizados.first.status, OrderStatus.cancelled);
+      expect(api.llamadas.length, llamadas);
+    });
+
+    test('cerrado ya no reacomoda', () async {
+      final vm = _vm(_backendCon(_tres));
+      await vm.cargar(conSesion: true);
+      vm
+        ..dispose()
+        ..actualizarPedido(Order.fromJson(const {'id': 1, 'estado': 'cancelado'}));
+
+      expect(vm.activos, hasLength(1));
     });
   });
 }

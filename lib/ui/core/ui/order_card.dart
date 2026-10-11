@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/utils/formatters.dart';
 
 class OrderCard extends StatelessWidget {
   final Order order;
@@ -85,7 +86,7 @@ class OrderCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _formatDate(order.createdAt),
+                          fechaCorta(order.createdAt),
                           style: const TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 13),
                         ),
@@ -117,13 +118,5 @@ class OrderCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime dt) {
-    final months = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }

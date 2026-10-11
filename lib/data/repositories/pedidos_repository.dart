@@ -7,7 +7,8 @@
 // clase abstracta; la implementación HTTP es PedidosRepositoryRemote, registrada
 // una sola vez en lib/config/dependencies.dart.
 //
-// Fase 3: los métodos tipados (listarMisPedidos, itemsDelPedido) lanzan
+// Fase 3 y 5: los métodos tipados (listarMisPedidos, itemsDelPedido,
+// obtenerPedido, cancelarPedido) lanzan
 // ApiException si el
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
 import 'package:pier_pasteleria/domain/models/order_model.dart';
@@ -29,8 +30,14 @@ abstract class PedidosRepository {
   /// objetos; lanza ApiException si el backend falla.
   Future<List<OrderItem>> itemsDelPedido(String id);
 
-  /// PUT /pedidos/:id/cancelar (solo pendiente/listo sin repartidor asignado)
-  Future<Map<String, dynamic>> cancelar(String id);
+  /// GET /pedidos/:id tipado: el pedido con sus productos (el backend los
+  /// manda aparte, en `items`). Lanza ApiException si falla (404, 403).
+  Future<Order> obtenerPedido(String id);
+
+  /// PUT /pedidos/:id/cancelar (solo pendiente/listo sin repartidor
+  /// asignado). Devuelve el mensaje del backend; lanza ApiException si la
+  /// rechaza.
+  Future<String> cancelarPedido(String id);
 
   /// GET /pedidos/productos-comprados ("pide de nuevo")
   Future<Map<String, dynamic>> productosComprados();

@@ -131,7 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   onVolverDeNotificaciones: () => unawaited(_cargarDatosUsuario()),
                 ))),
                 if (pedido != null)
-                  _sliver(_entrada(1, PedidoActivoBanner(pedido: pedido))),
+                  _sliver(_entrada(1, PedidoActivoBanner(
+                    pedido: pedido,
+                    alCambiar: (_) => unawaited(_vm.actualizarPedidoActivo()),
+                  ))),
                 _sliver(_entrada(1, const HomeBuscador())),
                 _sliver(_entrada(2, HomeCarrusel(slides: _vm.slides))),
                 if (promos.banner != null)
