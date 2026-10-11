@@ -20,15 +20,8 @@ class RefundsViewModel extends ChangeNotifier {
   })  : _reembolsosRepo = reembolsosRepo,
         _pedidosRepo = pedidosRepo;
 
-  static const List<String> motivos = [
-    'Producto dañado',
-    'No corresponde al pedido',
-    'Producto en mal estado',
-    'Calidad no satisfactoria',
-    'Pedido incompleto',
-    'Error en sabor',
-    'Otro',
-  ];
+  /// Código → texto; se envía el código ([Reembolso.motivos]).
+  static const Map<String, String> motivos = Reembolso.motivos;
 
   final ReembolsosRepository _reembolsosRepo;
   final PedidosRepository _pedidosRepo;
