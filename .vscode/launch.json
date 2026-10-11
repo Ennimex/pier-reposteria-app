@@ -1,0 +1,28 @@
+{
+  // Un lanzador por ambiente (#12). Cada flavor se instala como app aparte y
+  // apunta a su backend (lib/config/api_constants.dart).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Pier (prod)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--flavor", "prod"]
+    },
+    {
+      "name": "Pier DEV",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--flavor", "dev"]
+    },
+    {
+      "name": "Pier STAGING",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--flavor", "staging"]
+    }
+  ]
+}

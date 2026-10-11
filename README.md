@@ -107,20 +107,32 @@ flutter run -d <device-id>
 
 ### Ambientes
 
-La app apunta al backend de producción salvo que se indique otro ambiente al
-compilar con `--dart-define`:
+Hay un *flavor* por ambiente. Cada uno se instala como una app aparte (los tres
+pueden convivir en el mismo teléfono) y apunta a su backend:
 
-| Ambiente | Comando | Backend |
-|---|---|---|
-| prod (por defecto) | `flutter run` | `https://pier-reposteria-backend.onrender.com/api` |
-| dev | `flutter run --dart-define=AMBIENTE=dev` | Backend local, `http://10.0.2.2:3000/api` (localhost de la PC visto desde el emulador) |
-| staging | `flutter run --dart-define=AMBIENTE=staging` | Producción, mientras no exista un backend de staging |
+| Ambiente | Comando | Paquete | Nombre en el launcher | Backend |
+|---|---|---|---|---|
+| prod (por defecto) | `flutter run` (o `--flavor prod`) | `com.example.pier_pasteleria` | Pier Repostería | `https://pier-reposteria-backend.onrender.com/api` |
+| dev | `flutter run --flavor dev` | `com.example.pier_pasteleria.dev` | Pier DEV | Backend local, `http://10.0.2.2:3000/api` (localhost de la PC visto desde el emulador) |
+| staging | `flutter run --flavor staging` | `com.example.pier_pasteleria.staging` | Pier STAGING | Producción, mientras no exista un backend de staging |
+
+Sin `--flavor` se compila prod (`default-flavor` en `pubspec.yaml`), así que
+`flutter run`, `flutter build apk` y el CI funcionan igual que antes; el APK sale
+como `build/app/outputs/flutter-apk/app-<flavor>-<modo>.apk`. En VS Code hay un
+lanzador por ambiente en `.vscode/launch.json`.
+
+El inicio con Google valida el paquete: en dev y staging solo funciona cuando
+sus paquetes están registrados en Google Cloud (ver #12). Los flavors son solo
+para Android; iOS necesitaría sus *schemes* en Xcode.
+
+`--dart-define=AMBIENTE=dev|staging|prod` también elige el backend y tiene
+prioridad sobre el flavor.
 
 En un celular físico, `10.0.2.2` no llega a la PC: usa la IP de la PC en la red
 con `--dart-define=API_BASE_URL`, que tiene prioridad sobre el ambiente:
 
 ```bash
-flutter run --dart-define=AMBIENTE=dev --dart-define=API_BASE_URL=http://192.168.1.50:3000/api
+flutter run --flavor dev --dart-define=API_BASE_URL=http://192.168.1.50:3000/api
 ```
 
 El backend local usa http, que Android solo permite en los builds debug. Al
