@@ -294,6 +294,10 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
+  /// Vuelve a buscar el pedido activo (el que había cambió de estado en su
+  /// detalle, p. ej. se canceló).
+  Future<void> actualizarPedidoActivo() => _cargarPedidoActivo();
+
   Future<void> _cargarPedidoActivo() async {
     const activos = {
       OrderStatus.pending,

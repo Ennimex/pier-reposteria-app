@@ -13,7 +13,9 @@ import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
 import 'package:pier_pasteleria/ui/orders/view_model/orders_view_model.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/estado_pedido.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
+import 'package:pier_pasteleria/utils/formatters.dart';
 import 'package:provider/provider.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -301,7 +303,8 @@ class _OrdersScreenState extends State<OrdersScreen>
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => OrderDetailScreen(order: order)),
+            builder: (_) => OrderDetailScreen(
+                order: order, alCambiar: _vm.actualizarPedido)),
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -341,7 +344,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
                                 color: AppColors.textPrimary)),
-                        Text(_formatDate(order.createdAt),
+                        Text(fechaCorta(order.createdAt),
                             style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[500])),
@@ -349,7 +352,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                     ),
                   ),
                   // Chip de estado
-                  _buildStatusChip(order),
+                  EstadoPedidoChip(pedido: order),
                 ],
               ),
             ),
@@ -391,58 +394,5 @@ class _OrdersScreenState extends State<OrdersScreen>
         ),
       ),
     );
-  }
-
-  Widget _buildStatusChip(Order order) {
-    final status = order.status;
-    Color color;
-    String label;
-    switch (status) {
-      case OrderStatus.pending:
-        color = AppColors.estadoPendiente;
-        label = order.porConfirmar ? 'Por confirmar' : 'Pendiente';
-      case OrderStatus.preparing:
-        color = AppColors.estadoPreparacion;
-        label = 'Preparando';
-      case OrderStatus.ready:
-        color = AppColors.estadoListo;
-        label = 'Listo ✓';
-      case OrderStatus.completed:
-        color = AppColors.estadoCompletado;
-        label = 'Completado';
-      case OrderStatus.cancelled:
-        color = AppColors.estadoCancelado;
-        label = 'Cancelado';
-      case OrderStatus.assigned:
-        color = AppColors.estadoAsignada;
-        label = 'Asignado';
-      case OrderStatus.onTheWay:
-        color = AppColors.estadoEnCamino;
-        label = 'En camino';
-      case OrderStatus.delivered:
-        color = AppColors.estadoEntregada;
-        label = 'Entregado';
-      case OrderStatus.deliveryFailed:
-        color = AppColors.estadoFallida;
-        label = 'Entrega fallida';
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11,
-              color: color,
-              fontWeight: FontWeight.bold)),
-    );
-  }
-
-  String _formatDate(DateTime dt) {
-    final months = ['Ene','Feb','Mar','Abr','May','Jun',
-                    'Jul','Ago','Sep','Oct','Nov','Dic'];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }

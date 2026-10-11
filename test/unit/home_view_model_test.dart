@@ -170,6 +170,18 @@ void main() {
       expect(vm.pedidoActivo, isNull);
     });
 
+    test('si el pedido activo cambió, lo vuelve a buscar', () async {
+      final api = _backend();
+      final vm = _vm(api);
+      await vm.cargarDatosUsuario();
+      expect(vm.pedidoActivo, isNotNull);
+
+      api.responder(ApiConstants.misPedidos, {'success': true, 'pedidos': []});
+      await vm.actualizarPedidoActivo();
+
+      expect(vm.pedidoActivo, isNull);
+    });
+
     test('si el backend falla se queda como estaba', () async {
       final api = FakeApiClient()
         ..fallar(ApiConstants.productosComprados, 'x')

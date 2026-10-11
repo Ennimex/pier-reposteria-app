@@ -33,12 +33,78 @@ void main() {
       expect(api.llamo('/pedidos/mis-pedidos', metodo: 'GET-Auth'), true);
     });
 
-    test('cancelar hace PUT a /pedidos/:id/cancelar', () async {
+    test('cancelarPedido hace PUT a /pedidos/:id/cancelar', () async {
       final api = FakeApiClient(respuestas: {
         '/pedidos/7/cancelar': {'success': true, 'message': 'Cancelado'},
       });
-      await PedidosRepositoryRemote(api: api).cancelar('7');
+      final mensaje =
+          await PedidosRepositoryRemote(api: api).cancelarPedido('7');
+      expect(mensaje, 'Cancelado');
       expect(api.llamo('/pedidos/7/cancelar', metodo: 'PUT-Auth'), true);
+    });
+
+    test('cancelarPedido sin mensaje usa el de reembolso en proceso',
+        () async {
+      final api = FakeApiClient(respuestas: {
+        '/pedidos/7/cancelar': {'success': true},
+      });
+      expect(
+        await PedidosRepositoryRemote(api: api).cancelarPedido('7'),
+        'Pedido cancelado; tu reembolso ya está en proceso',
+      );
+    });
+
+    test('cancelarPedido rechazado lanza ApiException con el motivo',
+        () async {
+      final api = FakeApiClient()
+        ..fallar('/pedidos/7/cancelar',
+            'Un repartidor ya tomó tu pedido; ya no es posible cancelarlo');
+      await expectLater(
+        PedidosRepositoryRemote(api: api).cancelarPedido('7'),
+        throwsA(isA<ApiException>().having((e) => e.message, 'message',
+            'Un repartidor ya tomó tu pedido; ya no es posible cancelarlo')),
+      );
+    });
+
+    test('obtenerPedido junta el pedido con sus items', () async {
+      final api = FakeApiClient(respuestas: {
+        '/pedidos/7': {
+          'success': true,
+          'pedido': {'id': 7, 'numero': 'PIER-1', 'estado': 'listo'},
+          'items': [
+            {'nombre_producto': 'Chocoflan', 'cantidad': 2, 'subtotal': 300},
+            'basura',
+          ],
+        },
+      });
+
+      final pedido = await PedidosRepositoryRemote(api: api).obtenerPedido('7');
+
+      expect(pedido.numero, 'PIER-1');
+      expect(pedido.items.single.nombre, 'Chocoflan');
+      expect(pedido.items.single.subtotal, 300);
+    });
+
+    test('obtenerPedido sin items devuelve el pedido sin productos', () async {
+      final api = FakeApiClient(respuestas: {
+        '/pedidos/7': {
+          'success': true,
+          'pedido': {'id': 7, 'numero': 'PIER-1'},
+        },
+      });
+
+      final pedido = await PedidosRepositoryRemote(api: api).obtenerPedido('7');
+
+      expect(pedido.items, isEmpty);
+    });
+
+    test('obtenerPedido de otro usuario lanza ApiException', () async {
+      final api = FakeApiClient()..fallar('/pedidos/7', 'Sin permiso');
+      await expectLater(
+        PedidosRepositoryRemote(api: api).obtenerPedido('7'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', 'Sin permiso')),
+      );
     });
 
     test('un error del backend se devuelve, no se lanza', () async {

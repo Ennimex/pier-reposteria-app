@@ -14,7 +14,6 @@ import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
@@ -109,13 +108,12 @@ class _MoreScreenState extends State<MoreScreen> {
               Navigator.of(dialogContext).pop();
               // Limpiar el estado en memoria del usuario que se va:
               // las pestañas viven en el IndexedStack y sin esto
-              // seguirían mostrando sus pedidos/carrito/notificaciones
-              // como invitado (o al entrar con otra cuenta).
-              final orders = context.read<OrderProvider>();
+              // seguirían mostrando su carrito/notificaciones como
+              // invitado (o al entrar con otra cuenta). Los pedidos los
+              // vacía «Mis Pedidos» al ver que ya no hay sesión.
               final cart = context.read<CartProvider>();
               final notifs = context.read<NotificationProvider>();
               await auth.logout();
-              orders.limpiar();
               cart.limpiarLocal(); // solo local: el backend lo conserva
               notifs.stopPolling(); // detiene polling y limpia lista/badge
             },

@@ -170,6 +170,21 @@ class Order {
     }
   }
 
+  /// Estado en una o dos palabras, para los chips de las listas y el detalle.
+  String get estadoCorto {
+    switch (status) {
+      case OrderStatus.pending:    return porConfirmar ? 'Por confirmar' : 'Pendiente';
+      case OrderStatus.preparing:  return 'Preparando';
+      case OrderStatus.ready:      return 'Listo';
+      case OrderStatus.completed:  return 'Completado';
+      case OrderStatus.cancelled:  return 'Cancelado';
+      case OrderStatus.assigned:       return 'Asignado';
+      case OrderStatus.onTheWay:       return 'En camino';
+      case OrderStatus.delivered:      return 'Entregado';
+      case OrderStatus.deliveryFailed: return 'Entrega fallida';
+    }
+  }
+
   Color get statusColor {
     switch (status) {
       case OrderStatus.pending:    return AppColors.estadoPendiente;

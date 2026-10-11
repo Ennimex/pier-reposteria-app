@@ -55,8 +55,37 @@ class PedidosRepositoryRemote implements PedidosRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> cancelar(String id) =>
-      _api.putAuth(ApiConstants.pedidoCancelar(id), {});
+  Future<Order> obtenerPedido(String id) async {
+    final r = await detalle(id);
+    final pedido = r['pedido'];
+    if (r['success'] != true || pedido is! Map) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudo cargar el pedido',
+      );
+    }
+    final items = r['items'] ?? pedido['items'];
+    return Order.fromJson({
+      ...Map<String, dynamic>.from(pedido),
+      'items': items is List
+          ? items
+              .whereType<Map<dynamic, dynamic>>()
+              .map(Map<String, dynamic>.from)
+              .toList()
+          : const <Map<String, dynamic>>[],
+    });
+  }
+
+  @override
+  Future<String> cancelarPedido(String id) async {
+    final r = await _api.putAuth(ApiConstants.pedidoCancelar(id), {});
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudo cancelar el pedido',
+      );
+    }
+    return r['message']?.toString() ??
+        'Pedido cancelado; tu reembolso ya está en proceso';
+  }
 
   @override
   Future<Map<String, dynamic>> productosComprados() =>

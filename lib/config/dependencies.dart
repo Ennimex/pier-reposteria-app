@@ -45,7 +45,6 @@ import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/entregas_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/order_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:provider/provider.dart';
@@ -110,9 +109,6 @@ List<SingleChildWidget> dependencias(ApiClient api) => [
       ),
       ChangeNotifierProvider(
         create: (context) => CartProvider(repo: context.read()),
-      ),
-      ChangeNotifierProvider(
-        create: (context) => OrderProvider(repo: context.read()),
       ),
       ChangeNotifierProvider(
         create: (context) => ProductProvider(repo: context.read()),
