@@ -112,7 +112,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ));
   }
 
-  void _addToCart(Product p) {
+  Future<void> _addToCart(Product p) async {
     // Agotado: el botón es "Avísame" (registra interés)
     if (p.agotado) {
       _avisarme(p);
@@ -125,7 +125,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       return;
     }
     final cart = Provider.of<CartProvider>(context, listen: false);
-    unawaited(cart.addItem(p));
+    final error = await cart.addItem(p);
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: AppColors.error));
+      return;
+    }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(

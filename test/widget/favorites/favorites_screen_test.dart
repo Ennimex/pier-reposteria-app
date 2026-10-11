@@ -2,6 +2,7 @@
 // Favoritos» pinta lo que expone su ViewModel (MVVM, Fase 3), sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
@@ -86,6 +87,38 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sin resultados para "brownie"'), findsOneWidget);
+    });
+
+    testWidgets('confirma «agregado» solo si el backend acepta el alta',
+        (tester) async {
+      final api = FakeApiClient(
+        respuestas: {
+          ApiConstants.favoritos: {
+            'success': true,
+            'favoritos': [
+              {'id': 36, 'nombre': 'Fresa Matcha Bliss', 'categoria': 'Pasteles'},
+            ],
+          },
+          ApiConstants.login: {
+            'success': true,
+            'token': 'jwt',
+            'user': {'id': 1, 'email': 'ana@pier.mx', 'rol': 'cliente'},
+          },
+        },
+      );
+      await _montar(tester, api);
+      await tester.iniciarSesion(find.byType(FavoritesScreen));
+
+      api.fallar(ApiConstants.carrito, 'No hay stock suficiente');
+      await tester.tap(find.byIcon(LucideIcons.plus));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('agregado'), findsNothing);
+      expect(find.text('No hay stock suficiente'), findsOneWidget);
+
+      api.responder(ApiConstants.carrito, {'success': true});
+      await tester.tap(find.byIcon(LucideIcons.plus));
+      await tester.pumpAndSettle();
+      expect(find.text('Fresa Matcha Bliss agregado al carrito'), findsOneWidget);
     });
   });
 }
