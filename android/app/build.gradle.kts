@@ -28,6 +28,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Pruebas instrumentadas para Firebase Test Lab (#75). androidx.test
+        // (runner, rules, espresso) ya lo trae el plugin integration_test.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // Ambientes (#12): cada flavor se instala aparte (sufijo en el paquete) y
