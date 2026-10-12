@@ -72,14 +72,38 @@ gcloud firebase test android run \
 La terminal imprime el enlace al reporte en la consola de Firebase (video,
 logcat y resultado por dispositivo).
 
-## Resultados del piloto (#75)
+## Resultados del piloto (#75), 11-oct-2026
 
-Llenar al terminar la primera corrida:
+Proyecto `pier-reposteria-test-lab` (plan Spark), prueba
+`integration_test/app_smoke_test.dart` (2 casos: login con credenciales
+inválidas y catálogo), flavor prod, `locale=es_MX`, vertical.
 
-| Modelo | Android (API) | Resultado | Notas |
+| Dispositivo | Tipo | Android (API) | Resultado |
 |---|---|---|---|
-| | | | |
+| Medium Phone 6.4" (`MediumPhone.arm`) | Virtual | 14 (34) | 2/2 ✅ (validación previa) |
+| Samsung Galaxy A10 (`a10`) | Físico | 10 (29) | 1/2 ❌ → 2/2 ✅ tras corregir la prueba |
+| Samsung Galaxy A15 (`a15`) | Físico | 14 (34) | 2/2 ✅ |
+| Samsung Galaxy S24 (`SC-51E`) | Físico | 16 (36) | 2/2 ✅ |
 
-- Pruebas consumidas de la cuota diaria:
-- Costo: $0 (plan Spark)
-- Fallos o incompatibilidades encontradas:
+- **Fallo encontrado (fragmentación):** en el Galaxy A10, de pantalla chica,
+  el teclado real tapaba el botón «Iniciar Sesión» y el toque de la prueba
+  caía en la lista de atrás (`tap() ... would not hit test` en el logcat). La
+  prueba ahora cierra el teclado y espera antes de tocar. No es un fallo de la
+  app: la persona cierra el teclado o hace scroll.
+- **Cuota usada:** 4 de 5 pruebas físicas del día (3 del piloto + 1 de la
+  repetición en el A10) y 1 de 10 virtuales.
+- **Tiempos:** unos 7 min por corrida en virtual y de 10 a 15 min en físicos
+  (incluye la fila); cada prueba tarda segundos.
+- **Costo:** $0 (plan Spark, sin facturación).
+- **Resultados en crudo** (video, logcat y XML por dispositivo): bucket de
+  Cloud Storage que imprime `gcloud` al lanzar la corrida.
+
+### Aviso: Test Lab se cierra el 30-sep-2027
+
+Firebase Test Lab está descontinuado; funciona (también con la cuota gratis
+de Spark) hasta el **30 de septiembre de 2027**. Su reemplazo, *Developer
+Device Platform* de Google Cloud, **exige facturación activa** y cambia a pago
+por uso o suscripción desde el 30 de abril de 2027. Para #81 (Sprint 5) no
+cambia nada; después de esa fecha habrá que decidir si se paga o se
+sustituye por emuladores y los celulares del equipo.
+Ver <https://firebase.google.com/docs/test-lab/migrate-faq>.

@@ -59,7 +59,13 @@ void main() {
         'cliente@example.com',
       );
       await tester.enterText(find.byType(TextFormField).at(1), 'incorrecta');
+      // En un celular real de pantalla chica (Galaxy A10 en Test Lab, #75) el
+      // teclado tapa el botón: se cierra y se espera a que la vista se
+      // acomode antes de tocar.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Iniciar Sesión'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Iniciar Sesión'));
       await tester.pumpAndSettle();
 
