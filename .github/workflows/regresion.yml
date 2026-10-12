@@ -80,6 +80,7 @@ jobs:
         run: flutter test --coverage
 
       - name: Build debug APK
+        # Sin --flavor compila prod (default-flavor del pubspec, #12).
         run: flutter build apk --debug
 
       - name: Upload regression artifacts
@@ -87,7 +88,7 @@ jobs:
         with:
           name: regression-${{ github.run_number }}
           path: |
-            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/app-prod-debug.apk
             coverage/lcov.info
           if-no-files-found: error
           retention-days: 30

@@ -1,6 +1,7 @@
 // test/unitarias/comun/ambiente_test.dart — URL del backend según el ambiente (#13).
-// El ambiente llega por --dart-define=AMBIENTE=dev|staging|prod y la URL se
-// puede forzar con --dart-define=API_BASE_URL=...
+// El ambiente llega por --dart-define=AMBIENTE=dev|staging|prod o, si no, por
+// el flavor (--flavor dev, #12); la URL se puede forzar con
+// --dart-define=API_BASE_URL=...
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 
@@ -15,6 +16,21 @@ void main() {
     test('un valor vacío o desconocido es prod', () {
       expect(ApiConstants.ambienteDesde(''), Ambiente.prod);
       expect(ApiConstants.ambienteDesde('qa'), Ambiente.prod);
+    });
+
+    // Flavors (#12): `flutter run --flavor dev` basta para apuntar a dev.
+    test('sin AMBIENTE usa el flavor con el que se compiló', () {
+      expect(ApiConstants.ambienteDesde('', flavor: 'dev'), Ambiente.dev);
+      expect(ApiConstants.ambienteDesde('', flavor: 'staging'),
+          Ambiente.staging);
+    });
+
+    test('AMBIENTE gana sobre el flavor', () {
+      expect(ApiConstants.ambienteDesde('prod', flavor: 'dev'), Ambiente.prod);
+    });
+
+    test('sin AMBIENTE ni flavor es prod', () {
+      expect(ApiConstants.ambienteDesde('  '), Ambiente.prod);
     });
   });
 
