@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 
 /// Tarjeta blanca con sombra suave.
@@ -52,18 +53,29 @@ class ClienteCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              // Número y estado aterrizan aquí volando desde la tarjeta de
+              // la lista (ceñidos a su tamaño).
               Expanded(
-                child: Text(
-                  entrega.numero,
-                  style: const TextStyle(
-                    fontFamily: 'Playfair Display',
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: HeroEntrega(
+                    etiqueta: HeroEntrega.numero(entrega.id),
+                    child: Text(
+                      entrega.numero,
+                      style: const TextStyle(
+                        fontFamily: 'Playfair Display',
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              EstadoEntregaChip(estado: estado),
+              HeroEntrega(
+                etiqueta: HeroEntrega.estado(entrega.id),
+                child: EstadoEntregaChip(estado: estado),
+              ),
             ],
           ),
           const Divider(height: 28),

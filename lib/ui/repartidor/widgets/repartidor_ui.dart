@@ -6,7 +6,9 @@
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
 
 /// Formatea un monto a "$1,250 MXN" (sin decimales, con separador de miles).
 String formatMoneyMxn(double value) {
@@ -56,7 +58,9 @@ void mostrarAviso(BuildContext context, String mensaje, {bool ok = false}) {
   );
 }
 
-/// Chip de estado de una entrega, con punto de color.
+/// Chip de estado de una entrega, con punto de color. Al cambiar de estado
+/// (salir en camino) el fondo y el punto pasan al color nuevo, el ancho se
+/// ajusta con suavidad y la etiqueta sube en su lugar.
 class EstadoEntregaChip extends StatelessWidget {
   const EstadoEntregaChip({required this.estado, super.key});
 
@@ -65,30 +69,52 @@ class EstadoEntregaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = estado.color;
-    return Container(
+    // Cero si no se ve o con movimiento reducido: el chip ya llega resuelto.
+    final duracion =
+        conMovimiento(context) ? AppMovimiento.corta : Duration.zero;
+    return AnimatedContainer(
+      duration: duracion,
+      curve: AppMovimiento.curvaEstandar,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(50),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            estado.label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: color == const Color(0xFF5B7BA5) ? color : _darken(color),
+      child: TamanoSuave(
+        alineacion: AlignmentDirectional.centerStart,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: duracion,
+              curve: AppMovimiento.curvaEstandar,
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            // La ventanita de la etiqueta: la que entra y la que sale no se
+            // pintan fuera del renglón.
+            ClipRect(
+              child: CambioEnVista(
+                clave: estado,
+                tipo: TipoCambio.subir,
+                child: Text(
+                  estado.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    // Del estado de destino, nunca de un color a medio
+                    // camino: el azul de «En camino» se compara tal cual.
+                    color: color == const Color(0xFF5B7BA5)
+                        ? color
+                        : _darken(color),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -197,11 +223,19 @@ class IconoCargando extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!cargando) return Icon(icono, size: tamano);
-    return SizedBox(
-      width: 18,
-      height: 18,
-      child: CircularProgressIndicator(strokeWidth: 2, color: color),
+    // Ícono e indicador ocupan la misma caja de [tamano] (antes el indicador
+    // medía 18 siempre y el botón brincaba 2 px): el cambio es un pop en su
+    // lugar.
+    return SizedBox.square(
+      dimension: tamano,
+      child: CambioEnVista(
+        clave: cargando,
+        tipo: TipoCambio.escalar,
+        alineacion: Alignment.center,
+        child: cargando
+            ? CircularProgressIndicator(strokeWidth: 2, color: color)
+            : Icon(icono, size: tamano),
+      ),
     );
   }
 }

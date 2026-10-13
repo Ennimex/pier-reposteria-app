@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/entrega_detail_screen.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 
 /// Abre el detalle de [entrega]; lo que cambie ahí recarga el panel.
@@ -86,43 +88,165 @@ class TituloSeccion extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        if (count > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.pierVerde.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '$count',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.pierVerde,
-              ),
-            ),
-          ),
+        _PildoraConteo(cantidad: count),
       ],
     );
   }
 }
 
-/// Entrega en curso; al tocarla abre su detalle.
+/// Píldora con la cantidad de una sección (sin nada en 0): aparece
+/// creciendo, se va encogiéndose y da un salto solo cuando la cantidad SUBE
+/// (una entrega nueva en curso). El número nunca cuenta: cambia de golpe.
+/// Montarse con una cantidad no anima, y lo que cambia sin que se vea
+/// tampoco.
+class _PildoraConteo extends StatefulWidget {
+  const _PildoraConteo({required this.cantidad});
+
+  final int cantidad;
+
+  @override
+  State<_PildoraConteo> createState() => _PildoraConteoState();
+}
+
+class _PildoraConteoState extends State<_PildoraConteo>
+    with TickerProviderStateMixin {
+  static final Animatable<double> _salto = TweenSequence<double>(
+    <TweenSequenceItem<double>>[
+      TweenSequenceItem<double>(
+        tween: Tween<double>(
+          begin: 1,
+          end: 1.25,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 35,
+      ),
+      TweenSequenceItem<double>(
+        tween: Tween<double>(
+          begin: 1.25,
+          end: 1,
+        ).chain(CurveTween(curve: AppMovimiento.curvaRebote)),
+        weight: 65,
+      ),
+    ],
+  );
+
+  late final AnimationController _presencia;
+  late final CurvedAnimation _escalaPresencia;
+  late final AnimationController _rebote;
+
+  // La píldora que se va conserva su último número (no muestra «0»).
+  late int _numero = widget.cantidad;
+
+  @override
+  void initState() {
+    super.initState();
+    _presencia = AnimationController(
+      vsync: this,
+      duration: AppMovimiento.media,
+      reverseDuration: AppMovimiento.rapida,
+      value: widget.cantidad > 0 ? 1 : 0,
+    )..addStatusListener(_alCambiarPresencia);
+    _escalaPresencia = CurvedAnimation(
+      parent: _presencia,
+      curve: AppMovimiento.curvaRebote,
+      reverseCurve: Curves.easeIn,
+    );
+    _rebote = AnimationController(vsync: this, duration: AppMovimiento.enfasis);
+  }
+
+  @override
+  void didUpdateWidget(_PildoraConteo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nueva = widget.cantidad;
+    final vieja = oldWidget.cantidad;
+    if (nueva == vieja) return;
+    if (nueva > 0) _numero = nueva;
+    final animar = conMovimiento(context);
+    if (nueva > 0 && vieja <= 0) {
+      if (animar) {
+        _presencia.forward().ignore();
+      } else {
+        _presencia.value = 1;
+      }
+    } else if (nueva <= 0 && vieja > 0) {
+      if (animar) {
+        _presencia.reverse().ignore();
+      } else {
+        _presencia.value = 0;
+      }
+    } else if (nueva > vieja && animar) {
+      _rebote.forward(from: 0).ignore();
+    }
+  }
+
+  void _alCambiarPresencia(AnimationStatus estado) {
+    // Al terminar de encogerse sale del árbol.
+    if (estado.isDismissed && mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _escalaPresencia.dispose();
+    _presencia.dispose();
+    _rebote.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_presencia.isDismissed) return const SizedBox.shrink();
+    return ScaleTransition(
+      scale: _escalaPresencia,
+      child: ScaleTransition(
+        scale: _rebote.drive(_salto),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppColors.pierVerde.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '$_numero',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: AppColors.pierVerde,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Entrega en curso; al tocarla abre su detalle. Se hunde al tocarla, su
+/// número y su estado vuelan al detalle y, si acaba de llegar ([nueva]: la
+/// entrega recién tomada), un contorno dorado brilla una vez.
 class EntregaCard extends StatelessWidget {
   const EntregaCard({
     required this.entrega,
     required this.viewModel,
+    this.nueva = false,
     super.key,
   });
 
   final EntregaRepartidor entrega;
   final RepartidorViewModel viewModel;
 
+  /// Llegó a «En curso» después de la primera carga (solo cuenta al
+  /// montarse la tarjeta).
+  final bool nueva;
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => abrirEntrega(context, entrega, viewModel),
-      child: Container(
+    return PresionEscala(
+      child: GestureDetector(
+        onTap: () => abrirEntrega(context, entrega, viewModel),
+        child: ContornoDorado(activo: nueva, child: _tarjeta()),
+      ),
+    );
+  }
+
+  Widget _tarjeta() => Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.pierDorado.withValues(alpha: 0.10),
@@ -133,8 +257,20 @@ class EntregaCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(child: NumeroPedido(entrega.numero)),
-                EstadoEntregaChip(estado: entrega.estado),
+                // Ceñido al texto: el Hero vuela del tamaño del número.
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: HeroEntrega(
+                      etiqueta: HeroEntrega.numero(entrega.id),
+                      child: NumeroPedido(entrega.numero),
+                    ),
+                  ),
+                ),
+                HeroEntrega(
+                  etiqueta: HeroEntrega.estado(entrega.id),
+                  child: EstadoEntregaChip(estado: entrega.estado),
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -176,9 +312,7 @@ class EntregaCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
 }
 
 class _MetodoPago extends StatelessWidget {
