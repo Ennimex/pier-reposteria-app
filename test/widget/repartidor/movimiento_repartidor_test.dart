@@ -798,6 +798,48 @@ void main() {
       expect(find.text('PIER-1'), findsOneWidget);
     });
 
+    testWidgets('si el estado cambió con el detalle encima, el chip aterriza '
+        'con su ancho nuevo', (tester) async {
+      final api = await _montar(
+        tester,
+        api: _backend(entregas: [_entrega('1', 'asignada')], pool: []),
+      );
+      await tester.pumpAndSettle();
+      // El chip de la tarjeta de la lista (también su lugar mientras vuela).
+      final chip = find.descendant(
+        of: find.byType(EntregaCard, skipOffstage: false),
+        matching: find.byWidgetPredicate(
+          (w) => w is Hero && w.tag == HeroEntrega.estado('1'),
+          skipOffstage: false,
+        ),
+      );
+      final anchoAsignada = tester.getSize(chip).width;
+
+      api
+        ..responder(ApiConstants.entregaEstado('1'), {'success': true})
+        ..responder(
+          ApiConstants.misEntregas,
+          _misEntregas([_entrega('1', 'en_camino')]),
+        );
+      await tester.tap(find.text('PIER-1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Salir en camino'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // De regreso, el lugar del chip ya mide «En camino»: el vuelo no
+      // aterriza con el ancho de «Asignada» para luego saltar.
+      await tester.pageBack();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final enVuelo = tester.getSize(chip);
+      await tester.pumpAndSettle();
+      expect(find.text('En camino'), findsOneWidget);
+      expect(tester.getSize(chip), enVuelo);
+      expect(enVuelo.width, isNot(anchoAsignada));
+    });
+
     testWidgets('con movimiento reducido el panel llega quieto y sin vuelos', (
       tester,
     ) async {

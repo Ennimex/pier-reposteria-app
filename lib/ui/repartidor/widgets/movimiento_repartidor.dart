@@ -757,10 +757,30 @@ class HeroEntrega extends StatelessWidget {
         curve: AppMovimiento.curvaPagina,
         transitionOnUserGestures: true,
         flightShuttleBuilder: _vuelo,
+        placeholderBuilder: _marcador,
         child: child,
       ),
     );
   }
+
+  // Lo que ocupa el lugar del Hero mientras vuela y, en la tarjeta de la
+  // lista, mientras el detalle sigue encima. El de Flutter es una caja con
+  // el tamaño del despegue: si la entrega cambia con el detalle encima
+  // («Salir en camino» ensancha el chip), el regreso aterrizaba con el ancho
+  // viejo y el chip saltaba al final. Aquí es una copia invisible y quieta
+  // del contenido de ahora, que mide lo que medirá. Se monta de nuevo con
+  // cada contenido nuevo para que su tamaño no herede una animación.
+  static Widget _marcador(BuildContext context, Size tamano, Widget hijo) =>
+      TickerMode(
+        enabled: false,
+        child: Visibility(
+          visible: false,
+          maintainState: true,
+          maintainAnimation: true,
+          maintainSize: true,
+          child: KeyedSubtree(key: ObjectKey(hijo), child: hijo),
+        ),
+      );
 
   static Widget _vuelo(
     BuildContext contextoVuelo,
