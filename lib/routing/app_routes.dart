@@ -64,15 +64,17 @@ class AppRoutes {
   static const String editarPerfil        = '/cliente/perfil/editar';
 
   /// Ruta de inicio según el rol del usuario autenticado.
-  /// Los roles internos (empleado/gerencia/dirección) no operan en la app:
-  /// se les manda al aviso de panel web. El resto es cliente.
+  /// Los roles internos (empleado/gerencia/dirección/hornos/decoración) no
+  /// operan en la app: se les manda al aviso de panel web. El resto es cliente.
   static String homeForRole(String? rol) {
     if (rol == 'repartidor') return repartidor;
-    if (rol == 'empleado' || rol == 'gerencia' || rol == 'direccion_general') {
-      return panelWeb;
-    }
+    if (_rolesInternos.contains(rol)) return panelWeb;
     return main;
   }
+
+  static const _rolesInternos = {
+    'empleado', 'gerencia', 'direccion_general', 'hornos', 'decoracion',
+  };
 
   static GoRouter router(
     BuildContext context, {
