@@ -1,11 +1,15 @@
 // lib/ui/cart/widgets/cart_resumen.dart
 //
 // Pie de «Mi Carrito»: subtotal tachado y descuentos (si los hay), total con
-// IVA incluido y el botón para pasar al pago.
+// IVA incluido y el botón para pasar al pago. Al cambiar una cantidad los
+// montos cuentan hasta su nuevo valor, y el bloque de descuentos entra o sale
+// abriendo y cerrando su espacio (el panel crece o se encoge sin saltos).
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/cart/view_model/cart_view_model.dart';
+import 'package:pier_pasteleria/ui/checkout/widgets/tamano_animado.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/core/ui/precios_carrito.dart';
 
 class CartResumen extends StatelessWidget {
@@ -31,16 +35,35 @@ class CartResumen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          if (vm.tieneDescuentos) ...[
-            ResumenDescuentos(
-              subtotal: vm.totalOriginal,
-              ahorro: vm.ahorro,
-              sufijo: ' MXN',
+          // El bloque que sale conserva sus montos (el switcher lo congela)
+          // mientras se desvanece; después el espacio se cierra.
+          TamanoAnimado(
+            child: CambioAnimado(
+              child: vm.tieneDescuentos
+                  ? KeyedSubtree(
+                      key: const ValueKey('descuentos'),
+                      child: Column(
+                        children: [
+                          ResumenDescuentos(
+                            subtotal: vm.totalOriginal,
+                            ahorro: vm.ahorro,
+                            sufijo: ' MXN',
+                          ),
+                          const SizedBox(height: 10),
+                          Divider(
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.2)),
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+                    )
+                  // Ancho completo y alto cero: solo se anima el alto.
+                  : const SizedBox(
+                      key: ValueKey('sin-descuentos'),
+                      width: double.infinity,
+                    ),
             ),
-            const SizedBox(height: 10),
-            Divider(color: AppColors.textSecondary.withValues(alpha: 0.2)),
-            const SizedBox(height: 10),
-          ],
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -49,9 +72,10 @@ class CartResumen extends StatelessWidget {
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary)),
-              Text(
-                '\$${vm.total.toStringAsFixed(0)} MXN',
-                style: TextStyle(
+              MontoAnimado(
+                valor: vm.total,
+                formato: (v) => '\$${v.toStringAsFixed(0)} MXN',
+                estilo: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: AppColors.pierVerde),

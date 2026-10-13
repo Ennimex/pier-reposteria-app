@@ -6,7 +6,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
+import 'package:pier_pasteleria/ui/checkout/widgets/tamano_animado.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 
 /// Fondo blanco redondeado con sombra suave de las secciones.
 BoxDecoration decoracionTarjeta() => BoxDecoration(
@@ -94,7 +96,9 @@ class AvisoFueraDeServicio extends StatelessWidget {
   }
 }
 
-/// Los pedidos especiales requieren anticipación y número de pedido.
+/// Los pedidos especiales requieren anticipación y número de pedido. Al
+/// cambiar entre recoger y domicilio la frase se funde con la nueva y el
+/// recuadro ajusta su alto sin saltar.
 class NotaPedidosEspeciales extends StatelessWidget {
   const NotaPedidosEspeciales({required this.esDomicilio, super.key});
 
@@ -116,20 +120,27 @@ class NotaPedidosEspeciales extends StatelessWidget {
           Icon(LucideIcons.info, color: AppColors.pierDoradoOscuro, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    color: AppColors.pierDoradoOscuro),
-                children: [
-                  const TextSpan(
-                      text: 'Nota importante: ',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(
-                      text: 'Los pedidos especiales requieren realizarse con 3 días '
-                          'de anticipación. ${esDomicilio ? 'Ten a la mano tu número de pedido al recibir.' : 'Presenta tu número de pedido al recoger.'}'),
-                ],
+            child: TamanoAnimado(
+              alineacion: AlignmentDirectional.topStart,
+              child: CambioAnimado(
+                alineacion: AlignmentDirectional.topStart,
+                child: RichText(
+                  key: ValueKey(esDomicilio),
+                  text: TextSpan(
+                    style: TextStyle(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: AppColors.pierDoradoOscuro),
+                    children: [
+                      const TextSpan(
+                          text: 'Nota importante: ',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      TextSpan(
+                          text: 'Los pedidos especiales requieren realizarse con 3 días '
+                              'de anticipación. ${esDomicilio ? 'Ten a la mano tu número de pedido al recibir.' : 'Presenta tu número de pedido al recoger.'}'),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

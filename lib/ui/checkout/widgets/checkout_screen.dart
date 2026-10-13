@@ -4,6 +4,13 @@
 // reacciona al Command del pago. Aquí solo quedan los diálogos (calendario,
 // borrar dirección, pedido "por confirmar"), la hoja de dirección, los
 // avisos y la navegación al pedido confirmado.
+//
+// Movimiento: al llegar, los bloques suben en cascada mientras la página
+// termina de deslizarse; recoger ↔ domicilio es un eje compartido (cada
+// sección entra desde el lado de su tarjeta) y el alto se acomoda sin
+// saltos; los totales cuentan, los avisos abren su espacio, la sección a la
+// que le falta un dato se sacude junto con el aviso y el pedido pagado
+// florece en su propia ruta de celebración.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -16,9 +23,11 @@ import 'package:pier_pasteleria/ui/checkout/widgets/checkout_partes.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/checkout_resumen.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/direccion_form_sheet.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
+import 'package:pier_pasteleria/ui/checkout/widgets/tamano_animado.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:provider/provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -42,6 +51,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         totalCarrito: () => context.read<CartProvider>().totalAmount,
         confirmarPorConfirmar: _avisarPedidoPorConfirmar,
       );
+
+  // Contadores que sacuden la sección a la que le falta un dato al pagar
+  // (o el recuadro del error, si el mismo error se repite).
+  int _sacudidaFecha = 0;
+  int _sacudidaDireccion = 0;
+  int _sacudidaError = 0;
+
+  // El recuadro del error conserva su mensaje mientras se cierra.
+  String _ultimoErrorPago = '';
+  bool _errorMostrado = false;
+
+  // Tras un pago exitoso el carrito se vacía ANTES de navegar: el checkout
+  // que la ruta de celebración tapa se queda con lo que se pagó.
+  bool _congelado = false;
+  double _totalCongelado = 0;
 
   @override
   void initState() {
@@ -82,12 +106,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
     switch (resultado!) {
       case PagoInterrumpido(:final aviso):
-        if (aviso != null) _aviso(aviso, error: true);
+        if (aviso != null) {
+          _sacudirSeccion();
+          _aviso(aviso, error: true);
+        }
       case PagoExitoso(:final pedido, :final total):
+        // Se congela antes de vaciar el carrito (mismo orden de siempre:
+        // vaciar y luego navegar).
+        _congelado = true;
+        _totalCongelado = _vm.totalConEnvio;
         unawaited(context.read<CartProvider>().clearCart());
+        // La página de éxito florece sobre un fondo blanco que tapa el
+        // checkout desde el primer cuadro.
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute<void>(
+          RutaCelebracion<void>(
             builder: (_) => OrderSuccessScreen(
               orderId: pedido.numero,
               pickupDate: DateFormat('dd/MM/yyyy').format(_vm.fecha!),
@@ -98,7 +131,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               porConfirmar: pedido.porConfirmar,
             ),
           ),
-        );
+        ).ignore();
+    }
+  }
+
+  /// Si el pago se detuvo porque falta un dato, sacude la sección que lo
+  /// pide (se deduce de lo que el ViewModel ya expone, en el mismo orden en
+  /// que valida). Si el mismo error del pago se repite, sacude su recuadro.
+  void _sacudirSeccion() {
+    if (!_vm.abierto) return;
+    final direccion = _vm.direccion;
+    if (_vm.esDomicilio && (direccion == null || !direccion.tieneCobertura)) {
+      setState(() => _sacudidaDireccion++);
+    } else if (_vm.fecha == null || _vm.hora == null) {
+      setState(() => _sacudidaFecha++);
+    } else if (_errorMostrado && _vm.errorPago != null) {
+      setState(() => _sacudidaError++);
     }
   }
 
@@ -115,7 +163,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         data: Theme.of(ctx).copyWith(
           colorScheme: ColorScheme.light(
             primary: AppColors.pierVerde,
-            onPrimary: Colors.white,
             onSurface: AppColors.textPrimary,
           ),
         ),
@@ -133,23 +180,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _eliminarDireccion(DireccionCliente d) async {
     final confirmar = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Eliminar dirección'),
-        content: Text('¿Eliminar "${d.alias}"? Esta acción no se puede deshacer.'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error, elevation: 0),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      animationStyle: AppMovimiento.estiloDialogo(context),
+      builder: (dialogContext) => EntradaDialogo(
+        child: AlertDialog(
+          title: const Text('Eliminar dirección'),
+          content:
+              Text('¿Eliminar "${d.alias}"? Esta acción no se puede deshacer.'),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error, elevation: 0),
+              child:
+                  const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmar != true || !mounted) return;
@@ -168,48 +221,54 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<bool> _avisarPedidoPorConfirmar(List<String> faltantes) async {
     final continuar = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(LucideIcons.clock, color: AppColors.pierDoradoOscuro),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text('Pedido sujeto a confirmación',
-                  style: TextStyle(fontSize: 17)),
+      animationStyle: AppMovimiento.estiloDialogo(context),
+      builder: (dialogContext) => EntradaDialogo(
+        child: AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(LucideIcons.clock, color: AppColors.pierDoradoOscuro),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text('Pedido sujeto a confirmación',
+                    style: TextStyle(fontSize: 17)),
+              ),
+            ],
+          ),
+          content: Text(
+            'Tu pedido es para otra fecha y hoy no hay existencias de: '
+            '${faltantes.join(', ')}.\n\n'
+            'Nuestro personal confirmará si podrá prepararlo para ese día. '
+            'Si no fuera posible, tu pago se reembolsa completo.',
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            FilledButton(
+              style:
+                  FilledButton.styleFrom(backgroundColor: AppColors.pierVerde),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Continuar y pagar'),
             ),
           ],
         ),
-        content: Text(
-          'Tu pedido es para otra fecha y hoy no hay existencias de: '
-          '${faltantes.join(', ')}.\n\n'
-          'Nuestro personal confirmará si podrá prepararlo para ese día. '
-          'Si no fuera posible, tu pago se reembolsa completo.',
-          style: const TextStyle(fontSize: 14, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.pierVerde),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Continuar y pagar'),
-          ),
-        ],
       ),
     );
-    return continuar == true;
+    return continuar ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Observa el tema de temporada: repinta la pantalla si cambia la paleta
-    context.watch<TemaProvider>();
-    // El total del botón cambia si cambia el carrito.
-    context.select<CartProvider, double>((c) => c.totalAmount);
+    // Observa el tema de temporada (repinta la pantalla si cambia la paleta)
+    // y el total del carrito (el del botón cambia si cambia el carrito).
+    context
+      ..watch<TemaProvider>()
+      ..select<CartProvider, double>((c) => c.totalAmount);
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -225,57 +284,143 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
       body: ListenableBuilder(
         listenable: Listenable.merge([_vm, _vm.pagar]),
-        builder: (context, _) => SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!_vm.abierto) const AvisoFueraDeServicio(),
-              const TituloSeccion('Resumen del pedido'),
-              CheckoutResumen(viewModel: _vm),
-              const SizedBox(height: 24),
-              const TituloSeccion('¿Cómo lo quieres?'),
-              CheckoutModalidad(viewModel: _vm),
-              const SizedBox(height: 24),
-              if (_vm.esDomicilio)
-                CheckoutDomicilio(
+        builder: (context, _) {
+          final errorPago = _vm.errorPago;
+          if (errorPago != null) _ultimoErrorPago = errorPago;
+          _errorMostrado = errorPago != null;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _bloque(
+                  0,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Fuera de horario el aviso abre su espacio arriba.
+                      Aparicion(
+                        visible: !_vm.abierto,
+                        child: const AvisoFueraDeServicio(),
+                      ),
+                      const TituloSeccion('Resumen del pedido'),
+                      CheckoutResumen(viewModel: _vm, congelado: _congelado),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _bloque(
+                  1,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const TituloSeccion('¿Cómo lo quieres?'),
+                      CheckoutModalidad(viewModel: _vm),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _bloque(2, _entrega()),
+                const SizedBox(height: 24),
+                _bloque(
+                  3,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const TituloSeccion('Método de pago'),
+                      const CheckoutMetodoPago(),
+                      // Un solo recuadro: abre su espacio al fallar el pago y
+                      // lo cierra al reintentar.
+                      Aparicion(
+                        visible: errorPago != null,
+                        child: Sacudida(
+                          disparo: _sacudidaError,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: AvisoErrorPago(_ultimoErrorPago),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _bloque(4, NotaPedidosEspeciales(esDomicilio: _vm.esDomicilio)),
+                const SizedBox(height: 24),
+                _bloque(
+                  5,
+                  Column(
+                    children: [
+                      _botonPagar(),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(LucideIcons.lock,
+                                size: 13,
+                                color: AppColors.textSecondary
+                                    .withValues(alpha: 0.5)),
+                            const SizedBox(width: 4),
+                            const Text('Pago cifrado y seguro con Stripe',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Un bloque de la cascada de llegada: sube un poco y aparece una sola
+  /// vez, cuando la página ya casi terminó de deslizarse.
+  Widget _bloque(int orden, Widget hijo) => EntradaSuave(
+        key: ValueKey('bloque-$orden'),
+        orden: orden,
+        retraso: AppMovimiento.trasEmpuje,
+        child: hijo,
+      );
+
+  /// Recoger ↔ domicilio: eje compartido horizontal (domicilio llega desde
+  /// la derecha, como su tarjeta; recoger desde la izquierda). El alto se
+  /// acomoda sin empujar de golpe lo de abajo; la holgura deja ver las
+  /// sombras y el deslizamiento lateral.
+  Widget _entrega() {
+    final domicilio = _vm.esDomicilio;
+    return TamanoAnimado(
+      duracion: AppMovimiento.media,
+      holgura: AppMovimiento.distanciaLarga,
+      child: CambioAnimado(
+        tipo: TipoCambio.ejeX,
+        direccion: domicilio ? 1 : -1,
+        duracion: AppMovimiento.media,
+        alineacion: AlignmentDirectional.topStart,
+        child: KeyedSubtree(
+          key: ValueKey(domicilio),
+          child: domicilio
+              ? CheckoutDomicilio(
                   viewModel: _vm,
                   onElegirFecha: _elegirFecha,
                   onAgregar: _abrirFormulario,
                   onEditar: _abrirFormulario,
                   onEliminar: _eliminarDireccion,
+                  sacudidaFecha: _sacudidaFecha,
+                  sacudidaDireccion: _sacudidaDireccion,
                 )
-              else
-                CheckoutRecoger(viewModel: _vm, onElegirFecha: _elegirFecha),
-              const SizedBox(height: 24),
-              const TituloSeccion('Método de pago'),
-              const CheckoutMetodoPago(),
-              if (_vm.errorPago != null) ...[
-                const SizedBox(height: 12),
-                AvisoErrorPago(_vm.errorPago!),
-              ],
-              const SizedBox(height: 24),
-              NotaPedidosEspeciales(esDomicilio: _vm.esDomicilio),
-              const SizedBox(height: 24),
-              _botonPagar(),
-              const SizedBox(height: 12),
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(LucideIcons.lock,
-                        size: 13,
-                        color: AppColors.textSecondary.withValues(alpha: 0.5)),
-                    const SizedBox(width: 4),
-                    const Text('Pago cifrado y seguro con Stripe',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
-                  ],
+              : CheckoutRecoger(
+                  viewModel: _vm,
+                  onElegirFecha: _elegirFecha,
+                  sacudidaFecha: _sacudidaFecha,
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
-          ),
         ),
       ),
     );
@@ -284,6 +429,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _botonPagar() {
     final corriendo = _vm.pagar.corriendo;
     final abierto = _vm.abierto;
+    final total = _congelado ? _totalCongelado : _vm.totalConEnvio;
+    const estilo = TextStyle(
+        fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white);
+    final Widget contenido;
+    if (corriendo) {
+      contenido = const SizedBox(
+          key: ValueKey('pagando'),
+          height: 24,
+          width: 24,
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2));
+    } else if (abierto) {
+      // El monto cuenta cuando cambia (p. ej. al sumar el envío); el texto
+      // final es el de siempre, con sus dos espacios.
+      contenido = MontoAnimado(
+        key: const ValueKey('pagar'),
+        valor: total,
+        formato: (v) => 'Pagar  \$${v.toStringAsFixed(0)} MXN',
+        estilo: estilo,
+      );
+    } else {
+      contenido = const Text('Fuera de servicio',
+          key: ValueKey('cerrado'), style: estilo);
+    }
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -296,17 +464,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 4,
         ),
-        child: corriendo
-            ? const SizedBox(
-                height: 24, width: 24,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : Text(
-                abierto
-                    ? 'Pagar  \$${_vm.totalConEnvio.toStringAsFixed(0)} MXN'
-                    : 'Fuera de servicio',
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
+        // Etiqueta ↔ indicador dentro del MISMO botón: se cruzan con un pop.
+        child: CambioAnimado(
+          tipo: TipoCambio.escalar,
+          alineacion: Alignment.center,
+          child: contenido,
+        ),
       ),
     );
   }
