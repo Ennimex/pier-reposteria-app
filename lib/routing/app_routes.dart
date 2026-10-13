@@ -10,6 +10,8 @@ import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/verify_email_screen.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/checkout_screen.dart';
 import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
+// Producción (hornos / decoración)
+import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
 // Shell cliente (BottomNavBar)
@@ -46,6 +48,7 @@ class AppRoutes {
   static const String main                = '/main';
   static const String repartidor          = '/repartidor';
   static const String panelWeb            = '/panel-web';
+  static const String produccion          = '/produccion';
   static const String nosotros            = '/nosotros';
   static const String contacto            = '/contacto';
   static const String faq                 = '/faq';
@@ -64,17 +67,17 @@ class AppRoutes {
   static const String editarPerfil        = '/cliente/perfil/editar';
 
   /// Ruta de inicio según el rol del usuario autenticado.
-  /// Los roles internos (empleado/gerencia/dirección/hornos/decoración) no
-  /// operan en la app: se les manda al aviso de panel web. El resto es cliente.
+  /// Hornos y decoración trabajan en su agenda de comandas; empleado,
+  /// gerencia y dirección aún operan en el panel web (aviso). El resto es
+  /// cliente.
   static String homeForRole(String? rol) {
     if (rol == 'repartidor') return repartidor;
+    if (rol == 'hornos' || rol == 'decoracion') return produccion;
     if (_rolesInternos.contains(rol)) return panelWeb;
     return main;
   }
 
-  static const _rolesInternos = {
-    'empleado', 'gerencia', 'direccion_general', 'hornos', 'decoracion',
-  };
+  static const _rolesInternos = {'empleado', 'gerencia', 'direccion_general'};
 
   static GoRouter router(
     BuildContext context, {
@@ -102,7 +105,8 @@ class AppRoutes {
         final isProtected = protectedRoutes.contains(loc) ||
             loc.startsWith('/cliente/pedido') ||
             loc == repartidor ||
-            loc == panelWeb;
+            loc == panelWeb ||
+            loc == produccion;
 
         if (isProtected && !isAuth) return login;
 
@@ -110,6 +114,12 @@ class AppRoutes {
         // (p. ej. desde el splash), lo mandamos a su panel de entregas.
         if (isAuth && authProvider.isRepartidor && loc == main) {
           return repartidor;
+        }
+
+        // Producción tiene su agenda de comandas: si cae en el shell de
+        // cliente, se le manda ahí (antes que al aviso de panel web).
+        if (isAuth && authProvider.isProduccion && loc == main) {
+          return produccion;
         }
 
         // Los roles internos no tienen vistas en la app: si aterrizan en el
@@ -145,6 +155,7 @@ class AppRoutes {
         GoRoute(path: main,        builder: (c, s) => const MainScreen()),
         GoRoute(path: repartidor,  builder: (c, s) => const RepartidorMainScreen()),
         GoRoute(path: panelWeb,    builder: (c, s) => const PanelWebScreen()),
+        GoRoute(path: produccion,  builder: (c, s) => const AgendaComandasScreen()),
         GoRoute(path: nosotros, builder: (c, s) => const AboutUsScreen()),
         GoRoute(path: contacto, builder: (c, s) => const ContactScreen()),
         GoRoute(path: faq,      builder: (c, s) => const FAQScreen()),

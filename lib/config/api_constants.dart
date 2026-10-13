@@ -157,6 +157,13 @@ class ApiConstants {
   // Aviso "llegué al domicilio": notifica al cliente sin cambiar estado
   static String entregaLlegue(String id)   => '/entregas/$id/llegue';
 
+  // ── COMANDAS (personal y producción; rol releído de la base) ──────
+  // Agenda: ?vista=proximas|activas|entregadas|canceladas&busqueda=folio|nombre
+  static const String comandas = '/comandas';
+  static String agendaComandas(String vista, {String busqueda = ''}) =>
+      '$comandas?vista=$vista'
+      '${busqueda.isEmpty ? '' : '&busqueda=${Uri.encodeQueryComponent(busqueda)}'}';
+
   // ── DEMANDA NO ATENDIDA (público, registro silencioso) ────────────
   // Espejo de src/utils/demandaNoAtendida.ts de la web. Alimentan el reporte
   // "qué buscó la gente y no tuvimos" del panel de Dirección.
