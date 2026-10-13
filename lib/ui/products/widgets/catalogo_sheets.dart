@@ -218,7 +218,9 @@ class _GrupoFiltro extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () => onTap(o),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
+                    // Mismo ritmo que el texto: fondo y letra cambian juntos.
+                    duration: AppMovimiento.duracion(context, AppMovimiento.corta),
+                    curve: AppMovimiento.curvaEstandar,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: sel ? AppColors.pierVerde : AppColors.textSecondary.withValues(alpha: 0.08),

@@ -4,6 +4,7 @@
 // categoría y estado vacío. Pintan lo que expone el ProductsViewModel; la
 // pantalla las repinta cuando cambia.
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
@@ -185,17 +186,34 @@ class CatalogoCategorias extends StatefulWidget {
 }
 
 class _CatalogoCategoriasState extends State<CatalogoCategorias> {
-  late String _categoria = widget.viewModel.categoria;
+  // Lo que había en el cuadro anterior. Se toma al montar: el ViewModel es el
+  // mismo objeto en cada cuadro, así que solo esta copia sabe qué había antes.
+  late String _categoria;
+  late String _fila;
 
   // El chip elegido en el último cuadro, si la fila lo construyó.
   BuildContext? _chipElegido;
+
+  /// Los chips de la fila, en orden.
+  String _chips() => widget.viewModel.nombresCategorias.join('|');
+
+  @override
+  void initState() {
+    super.initState();
+    _categoria = widget.viewModel.categoria;
+    _fila = _chips();
+  }
 
   @override
   void didUpdateWidget(CatalogoCategorias oldWidget) {
     super.didUpdateWidget(oldWidget);
     final categoria = widget.viewModel.categoria;
-    if (categoria == _categoria) return;
+    // También cuando llegan las categorías (antes se ven las de respaldo):
+    // el chip elegido pudo cambiar de lugar o apenas tener chip.
+    final fila = _chips();
+    if (categoria == _categoria && fila == _fila) return;
     _categoria = categoria;
+    _fila = fila;
     // Después del cuadro: el chip ya se pintó como elegido.
     WidgetsBinding.instance.addPostFrameCallback((_) => _centrarElegido());
   }
@@ -223,6 +241,10 @@ class _CatalogoCategoriasState extends State<CatalogoCategorias> {
         height: 36,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
+          // Todos los chips quedan construidos (son pocos y ligeros): el
+          // elegido desde el inicio puede estar varios chips más allá de lo
+          // que se ve y, sin construir, no habría a quién llevar a la vista.
+          scrollCacheExtent: const ScrollCacheExtent.viewport(10),
           itemCount: categorias.length,
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (context, i) {
@@ -237,7 +259,11 @@ class _CatalogoCategoriasState extends State<CatalogoCategorias> {
                 child: GestureDetector(
                   onTap: () => viewModel.seleccionarCategoria(nombre),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    // Mismo ritmo que el ícono y el texto: los tres cambian
+                    // juntos (con otra curva el texto se aclaraba antes que
+                    // el fondo).
+                    duration: AppMovimiento.duracion(chip, AppMovimiento.corta),
+                    curve: AppMovimiento.curvaEstandar,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
                       color: sel ? AppColors.pierVerde : Colors.white,

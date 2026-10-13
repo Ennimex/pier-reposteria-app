@@ -51,7 +51,10 @@ class DetalleSelectorTamano extends StatelessWidget {
                 duration: AppMovimiento.duracion(context, AppMovimiento.corta),
                 curve: AppMovimiento.curvaRebote,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  // Mismo ritmo que los textos: con otra curva el blanco
+                  // llegaba antes que el verde del fondo.
+                  duration: AppMovimiento.duracion(context, AppMovimiento.corta),
+                  curve: AppMovimiento.curvaEstandar,
                   margin: EdgeInsets.only(right: i < tamanos.length - 1 ? 10 : 0),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(

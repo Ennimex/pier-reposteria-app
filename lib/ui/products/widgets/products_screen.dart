@@ -415,7 +415,9 @@ class _ProductsScreenState extends State<ProductsScreen>
   Widget _quitarFiltros() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      // Píldora: se hunde como los chips.
       child: PresionEscala(
+        escala: AppMovimiento.escalaPresionChica,
         child: GestureDetector(
           onTap: _limpiarTodo,
           child: Container(

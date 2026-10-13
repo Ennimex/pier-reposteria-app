@@ -1,28 +1,32 @@
 // test/widget/products/movimiento_catalogo_test.dart — el movimiento del
 // catálogo y del detalle de producto: las tarjetas entran en cascada una sola
-// vez por tanda (buscar no las repite, cambiar de categoría sí), el estado
-// vacío entra y termina quieto, el «+» rebota, vuelve a su tamaño y pasa a
-// palomita, el detalle arma su hoja después del push, el total rueda hasta el
-// valor exacto, «−» en 1 sacude la píldora, «Añadir» rechazado no se queda
-// agrandado y la foto de un recomendado comparte ámbito con el detalle que
-// abre; con movimiento reducido todo queda en su lugar. En el shell, la
-// primera tanda del catálogo espera a que se abra su pestaña, el «+» lanza la
-// miniatura al carrito y la foto de la tarjeta vuela al detalle, cuyo
-// «Añadir» también la lanza. También las piezas de movimiento_catalogo.dart.
-// Sin red.
+// vez por tanda (buscar no las repite, cambiar de categoría sí), el chip de
+// una categoría pedida desde el inicio llega a la vista aunque esté al fondo
+// de la fila, el estado vacío entra y termina quieto, el «+» rebota, vuelve a
+// su tamaño y pasa a palomita, el detalle arma su hoja después del push, el
+// total rueda hasta el valor exacto, «−» en 1 sacude la píldora, «Añadir»
+// rechazado no se queda agrandado y la foto de un recomendado comparte ámbito
+// con el detalle que abre; con movimiento reducido todo queda en su lugar. En
+// el shell, la primera tanda del catálogo espera a que se abra su pestaña, el
+// «+» lanza la miniatura al carrito y la foto de la tarjeta vuela al detalle,
+// cuyo «Añadir» también la lanza. También las piezas de
+// movimiento_catalogo.dart. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/core/ui/tarjeta_producto_angosta.dart';
 import 'package:pier_pasteleria/ui/main/widgets/main_screen.dart';
+import 'package:pier_pasteleria/ui/products/widgets/catalogo_secciones.dart';
 import 'package:pier_pasteleria/ui/products/widgets/detalle_galeria.dart';
 import 'package:pier_pasteleria/ui/products/widgets/movimiento_catalogo.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
+import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/movimiento.dart';
@@ -113,6 +117,40 @@ FakeApiClient _backendCatalogo({_Carrito? carrito}) => FakeApiClient(
     },
     ApiConstants.favoritosIds: {'success': true, 'ids': <int>[]},
     ApiConstants.carrito: (carrito ?? _Carrito()).responder,
+  },
+);
+
+/// Una fila de categorías mucho más ancha que el celular: «Cafetería» queda
+/// al fondo, varios chips más allá de lo que se ve.
+const List<String> _filaLarga = [
+  'Pasteles',
+  'Pays',
+  'Roscas',
+  'Postres',
+  'Gelatinas',
+  'Galletas',
+  'Panadería',
+  'Bebidas',
+  'Temporada',
+  'Cafetería',
+];
+
+FakeApiClient _backendFilaLarga() => FakeApiClient(
+  respuestas: {
+    ApiConstants.productos: {
+      'success': true,
+      'productos': [
+        _producto(1, 'Chocoflan'),
+        _producto(2, 'Capuchino', categoria: 'Cafetería'),
+      ],
+    },
+    ApiConstants.categorias: {
+      'success': true,
+      'categorias': [
+        for (final (i, nombre) in _filaLarga.indexed)
+          {'id': i + 1, 'nombre': nombre},
+      ],
+    },
   },
 );
 
@@ -509,6 +547,40 @@ void main() {
         expect(find.byIcon(LucideIcons.check), findsOneWidget);
         expect(find.text('Chocoflan agregado'), findsOneWidget);
         expect(carrito.lineas, hasLength(1));
+      },
+    );
+
+    testWidgets(
+      'una categoría pedida desde el inicio fuera de la vista llega a la fila',
+      (tester) async {
+        // El celular de main_screen_test: la fila de chips mide casi el triple
+        // de la pantalla.
+        tester.view
+          ..physicalSize = const Size(1440, 3040)
+          ..devicePixelRatio = 2.5;
+        addTearDown(tester.view.reset);
+        await tester.pumpApp(const ProductsScreen(), api: _backendFilaLarga());
+        await tester.pumpAndSettle();
+        final chip = find.descendant(
+          of: find.byType(CatalogoCategorias),
+          matching: find.text('Cafetería'),
+        );
+        // Al fondo de la fila: no se ve.
+        expect(chip, findsNothing);
+
+        tester
+            .element(find.byType(ProductsScreen))
+            .read<NavigationProvider>()
+            .goCatalogo(categoria: 'Cafetería');
+        await tester.pumpAndSettle();
+
+        // La fila se deslizó hasta el chip elegido y quedó completo a la vista.
+        expect(chip, findsOneWidget);
+        final fila = tester.getRect(find.byType(CatalogoCategorias));
+        final elegido = tester.getRect(chip);
+        expect(elegido.left, greaterThanOrEqualTo(fila.left));
+        expect(elegido.right, lessThanOrEqualTo(fila.right));
+        expect(find.text('Capuchino'), findsOneWidget);
       },
     );
 
