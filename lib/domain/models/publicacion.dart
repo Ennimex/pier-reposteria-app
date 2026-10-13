@@ -86,6 +86,18 @@ class ComentarioPublicacion {
 /// Una publicación del feed: texto, fotos o videos, «Me encanta» y los
 /// comentarios más recientes.
 class Publicacion {
+  const Publicacion._({
+    required this.id,
+    required this.texto,
+    required this.creada,
+    required this.editada,
+    required this.medios,
+    required this.corazones,
+    required this.meEncanta,
+    required this.totalComentarios,
+    required this.comentariosRecientes,
+  });
+
   Publicacion.fromJson(Map<String, dynamic> json)
     : id = _entero(json['id']),
       texto = _opcional(json['texto']),
@@ -110,7 +122,42 @@ class Publicacion {
 
   /// Los 2 más recientes, en orden cronológico.
   final List<ComentarioPublicacion> comentariosRecientes;
+
+  /// La misma publicación con otros contadores o comentarios recientes.
+  Publicacion copiaCon({
+    bool? meEncanta,
+    int? corazones,
+    int? totalComentarios,
+    List<ComentarioPublicacion>? comentariosRecientes,
+  }) => Publicacion._(
+    id: id,
+    texto: texto,
+    creada: creada,
+    editada: editada,
+    medios: medios,
+    corazones: corazones ?? this.corazones,
+    meEncanta: meEncanta ?? this.meEncanta,
+    totalComentarios: totalComentarios ?? this.totalComentarios,
+    comentariosRecientes: comentariosRecientes ?? this.comentariosRecientes,
+  );
 }
+
+/// Cómo quedó «Me encanta» de una publicación.
+typedef ReaccionPublicacion = ({bool meEncanta, int corazones});
+
+/// Una página de comentarios visibles.
+typedef PaginaComentarios = ({
+  List<ComentarioPublicacion> comentarios,
+  bool hayMas,
+});
+
+/// Lee la respuesta de GET /publicaciones/:id/comentarios.
+PaginaComentarios paginaComentariosDe(Map<String, dynamic> json) => (
+  comentarios: _mapas(
+    json['comentarios'],
+  ).map(ComentarioPublicacion.fromJson).toList(),
+  hayMas: json['hay_mas'] == true,
+);
 
 /// Dónde sigue el feed: la última publicación vista (fecha con
 /// microsegundos e id).

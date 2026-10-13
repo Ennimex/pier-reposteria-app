@@ -32,3 +32,9 @@ class ConflictoComandaException extends ApiException {
   final bool cambio;
   final int? versionActual;
 }
+
+/// La publicación ya no está (la repostería la eliminó): 404
+/// «Publicación no encontrada» del backend.
+class PublicacionNoDisponibleException extends ApiException {
+  const PublicacionNoDisponibleException(super.message);
+}

@@ -178,6 +178,14 @@ class ApiConstants {
   static const String publicacionesPromociones = '/publicaciones/promociones';
   static String publicacionesSugerencias(int pagina) =>
       '/publicaciones/sugerencias?pagina=$pagina';
+  // «Me encanta»: PUT pone (cuerpo vacío), DELETE quita; idempotente
+  static String publicacionCorazon(int id) => '/publicaciones/$id/corazon';
+  // Comentarios visibles por páginas de 20, después del comentario despues_id
+  static String publicacionComentarios(int id, {int? despuesId}) =>
+      '/publicaciones/$id/comentarios?limite=20'
+      '${despuesId == null ? '' : '&despues_id=$despuesId'}';
+  static String publicacionComentar(int id) => '/publicaciones/$id/comentarios'; // POST {texto}
+  static String comentarioPublicacion(int id) => '/publicaciones/comentarios/$id'; // DELETE (los propios)
 
   // ── DEMANDA NO ATENDIDA (público, registro silencioso) ────────────
   // Espejo de src/utils/demandaNoAtendida.ts de la web. Alimentan el reporte
