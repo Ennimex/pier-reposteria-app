@@ -3,6 +3,11 @@
 // se encoge y sale del árbol al volver a 0 (sin mostrar «0»), no anima al
 // montarse y con «reducir movimiento» cambia al instante. Con una miniatura
 // en camino a su carrito no se adelanta: la reacción es el trago al llegar.
+// Igual con un alta que espera al backend (lanzarAlConfirmar): no rebota con
+// el +1 optimista antes de que salga la miniatura, y si el backend rechaza
+// no reacciona.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
@@ -14,11 +19,15 @@ Widget _insignia(int cantidad) => InsigniaCarrito(cantidad: cantidad);
 /// El carrito de la barra (DestinoVuelo con su insignia) y tres botones:
 /// «Agregar» sube la cantidad y lanza la miniatura en el mismo toque (como
 /// el «+» del catálogo), «Sincronizar» la sube sin vuelo (una carga del
-/// backend) y «Vaciar» la regresa a 0 (el backend revierte).
+/// backend) y «Vaciar» la regresa a 0 (el backend revierte). Con [backend],
+/// un cuarto botón «Añadir» hace el alta como el detalle: el +1 optimista
+/// antes de esperar al backend (como CartProvider.addItem, que lo revierte
+/// si este rechaza) y la espera con lanzarAlConfirmar.
 class _Tienda extends StatefulWidget {
-  const _Tienda({required this.inicial});
+  const _Tienda({required this.inicial, this.backend});
 
   final int inicial;
+  final Future<String?> Function()? backend;
 
   @override
   State<_Tienda> createState() => _TiendaState();
@@ -26,6 +35,13 @@ class _Tienda extends StatefulWidget {
 
 class _TiendaState extends State<_Tienda> {
   late int _cantidad = widget.inicial;
+
+  Future<String?> _altaEsperada(Future<String?> Function() backend) async {
+    setState(() => _cantidad++);
+    final motivo = await backend();
+    if (motivo != null && mounted) setState(() => _cantidad--);
+    return motivo;
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -50,6 +66,19 @@ class _TiendaState extends State<_Tienda> {
             onPressed: () => setState(() => _cantidad = 0),
             child: const Text('Vaciar'),
           ),
+          if (widget.backend case final backend?)
+            Builder(
+              builder: (contexto) => TextButton(
+                onPressed: () async {
+                  await VueloAlCarrito.lanzarAlConfirmar(
+                    contexto,
+                    _altaEsperada(backend),
+                    imagenUrl: '',
+                  );
+                },
+                child: const Text('Añadir'),
+              ),
+            ),
         ],
       ),
     ),
@@ -74,12 +103,17 @@ class _TiendaState extends State<_Tienda> {
   );
 }
 
-Future<void> _montarTienda(WidgetTester tester, int inicial) =>
-    tester.pumpWidget(
-      MaterialApp(
-        home: VueloAlCarrito(child: _Tienda(inicial: inicial)),
-      ),
-    );
+Future<void> _montarTienda(
+  WidgetTester tester,
+  int inicial, {
+  Future<String?> Function()? backend,
+}) => tester.pumpWidget(
+  MaterialApp(
+    home: VueloAlCarrito(
+      child: _Tienda(inicial: inicial, backend: backend),
+    ),
+  ),
+);
 
 /// Escala del trago del carrito (el ScaleTransition de DestinoVuelo).
 double _trago(WidgetTester tester) =>
@@ -249,6 +283,115 @@ void main() {
       expect(_escalas(tester).last, greaterThan(1));
       expect(_trago(tester), 1);
       await tester.pump(AppMovimiento.enfasis);
+    });
+  });
+
+  group('con un alta que espera al backend (lanzarAlConfirmar)', () {
+    /// La miniatura en vuelo (lo único con ClipOval en la tienda).
+    Finder miniatura() => find.byType(ClipOval);
+
+    /// Deja correr la respuesta del backend: el primer pump vacía las
+    /// microtareas y el segundo pinta lo que se haya lanzado.
+    Future<void> trasResponder(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('no rebota antes de que salga la miniatura: solo el trago', (
+      tester,
+    ) async {
+      final respuesta = Completer<String?>();
+      await _montarTienda(tester, 1, backend: () => respuesta.future);
+      await tester.tap(find.text('Añadir'));
+      await tester.pump();
+      expect(find.text('2'), findsOneWidget); // el +1 optimista, al instante
+
+      // El backend tarda 400 ms: nada reacciona ni vuela todavía.
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_escalas(tester), [1, 1]);
+        expect(_trago(tester), 1);
+        expect(miniatura(), findsNothing);
+      }
+
+      respuesta.complete();
+      await trasResponder(tester);
+      expect(miniatura(), findsOneWidget); // sale al aceptar
+
+      // Mientras vuela (560 ms) tampoco.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_escalas(tester), [1, 1]);
+        expect(_trago(tester), 1);
+      }
+      await tester.pump(const Duration(milliseconds: 100)); // aterriza
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_trago(tester), greaterThan(1));
+      expect(_escalas(tester), [1, 1]); // sin rebote aparte
+      await tester.pump(AppMovimiento.media);
+      expect(_trago(tester), 1);
+    });
+
+    testWidgets('de 0 a 1 está en el árbol y aparece cuando llega', (
+      tester,
+    ) async {
+      final respuesta = Completer<String?>();
+      await _montarTienda(tester, 0, backend: () => respuesta.future);
+      await tester.tap(find.text('Añadir'));
+      await tester.pump();
+      expect(find.text('1'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_escalas(tester).first, 0);
+
+      respuesta.complete();
+      await trasResponder(tester);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_escalas(tester).first, 0); // la miniatura sigue en el aire
+
+      await tester.pump(const Duration(milliseconds: 300)); // aterriza
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(_escalas(tester).first, inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_escalas(tester), [1, 1]);
+    });
+
+    testWidgets('si el backend rechaza, vuelve la cantidad sin reaccionar', (
+      tester,
+    ) async {
+      final respuesta = Completer<String?>();
+      await _montarTienda(tester, 1, backend: () => respuesta.future);
+      await tester.tap(find.text('Añadir'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('2'), findsOneWidget);
+
+      respuesta.complete('No hay stock suficiente');
+      await trasResponder(tester);
+      expect(find.text('1'), findsOneWidget);
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_escalas(tester), [1, 1]);
+        expect(_trago(tester), 1);
+        expect(miniatura(), findsNothing);
+      }
+    });
+
+    testWidgets('de 0 a 1 rechazada nunca aparece', (tester) async {
+      final respuesta = Completer<String?>();
+      await _montarTienda(tester, 0, backend: () => respuesta.future);
+      await tester.tap(find.text('Añadir'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_escalas(tester).first, 0);
+
+      respuesta.complete('No hay stock suficiente');
+      await trasResponder(tester);
+      expect(find.text('1'), findsNothing);
+      expect(miniatura(), findsNothing);
+      await tester.pump(AppMovimiento.media);
+      expect(find.text('1'), findsNothing);
+      expect(_trago(tester), 1);
+      expect(tester.takeException(), isNull);
     });
   });
 }

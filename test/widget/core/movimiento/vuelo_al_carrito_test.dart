@@ -2,9 +2,11 @@
 // sin ámbito (pruebas sueltas) no hace nada; con ámbito la miniatura vuela
 // en el Overlay raíz del botón al ícono del carrito, se quita sola y el ícono
 // da un trago; la miniatura reusa la foto en caché de la tarjeta y mientras
-// carga es un disco dorado; no vuela con «reducir movimiento», sin destino
-// ni con un contexto desmontado, admite tres vuelos a la vez y se limpia si
-// el ámbito se desmonta a medio vuelo.
+// carga es un disco dorado; no vuela con «reducir movimiento», sin destino,
+// con un contexto desmontado ni desde una ruta tapada, admite tres vuelos a
+// la vez y se limpia si el ámbito se desmonta a medio vuelo. lanzarAlConfirmar
+// (alta que espera al backend) reserva el vuelo al tocar, vuela solo si el
+// backend acepta y devuelve lo mismo que el alta.
 import 'dart:async';
 import 'dart:io';
 
@@ -88,6 +90,82 @@ double _escalaDestino(WidgetTester tester) => escalaEn(
     matching: find.byType(DestinoVuelo),
   ),
 );
+
+/// Miniaturas en el aire o reservadas, como las ve la insignia del carrito.
+int _enCamino(WidgetTester tester) => DestinoVuelo.enCamino(
+  tester.element(find.byIcon(Icons.shopping_cart, skipOffstage: false)),
+)!.value;
+
+/// Como el detalle: «Añadir» espera al backend ([respuesta], que completa la
+/// prueba) con lanzarAlConfirmar y anota lo que devuelve. Mientras espera, la
+/// prueba puede ocultar el botón (como en una pestaña oculta) o quitarlo (la
+/// pantalla se cerró).
+class _Detalle extends StatefulWidget {
+  const _Detalle({required this.respuesta, required this.resultados});
+
+  final Completer<String?> respuesta;
+  final List<Object?> resultados;
+
+  @override
+  State<_Detalle> createState() => _DetalleState();
+}
+
+class _DetalleState extends State<_Detalle> {
+  bool _oculto = false;
+  bool _cerrado = false;
+
+  void ocultar() => setState(() => _oculto = true);
+
+  void cerrar() => setState(() => _cerrado = true);
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Align(
+      alignment: Alignment.topCenter,
+      child: _cerrado
+          ? const SizedBox.shrink()
+          : TickerMode(
+              enabled: !_oculto,
+              child: Builder(
+                builder: (contexto) => ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      widget.resultados.add(
+                        await VueloAlCarrito.lanzarAlConfirmar(
+                          contexto,
+                          widget.respuesta.future,
+                          imagenUrl: '',
+                        ),
+                      );
+                    } on SocketException catch (error) {
+                      widget.resultados.add(error);
+                    }
+                  },
+                  child: const Text('Añadir'),
+                ),
+              ),
+            ),
+    ),
+    bottomNavigationBar: const SizedBox(
+      height: 56,
+      child: Center(child: DestinoVuelo(child: Icon(Icons.shopping_cart))),
+    ),
+  );
+}
+
+/// Toca «Añadir» y deja pasar 300 ms sin respuesta del backend.
+Future<void> _anadirYEsperar(WidgetTester tester) async {
+  await tester.tap(find.text('Añadir'));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+/// Deja correr la respuesta del backend: el primer pump vacía las microtareas
+/// (sigue lanzarAlConfirmar) y el segundo pinta lo que haya lanzado.
+Future<void> _trasResponder(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump();
+}
 
 void main() {
   testWidgets('sin ámbito no hace nada', (tester) async {
@@ -233,6 +311,19 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('desde una ruta tapada por otra no vuela', (tester) async {
+    await tester.pumpWidget(_app(const _Tienda()));
+    final tapado = tester.element(find.text('Agregar'));
+    final tapa = MaterialPageRoute<void>(builder: (_) => const Scaffold());
+    Navigator.of(tapado).push(tapa).ignore();
+    await tester.pumpAndSettle();
+
+    VueloAlCarrito.lanzar(tapado, imagenUrl: '');
+    await tester.pump();
+    expect(_miniatura, findsNothing);
+    expect(_enCamino(tester), 0);
+  });
+
   testWidgets('con movimiento reducido no vuela', (tester) async {
     await tester.pumpWidget(_app(const _Tienda(), reducido: true));
     await tester.tap(_boton);
@@ -273,5 +364,166 @@ void main() {
     await tester.pump();
     expect(_miniatura, findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  group('lanzarAlConfirmar (alta que espera al backend)', () {
+    testWidgets('sin ámbito o con movimiento reducido: el mismo Future', (
+      tester,
+    ) async {
+      final alta = Completer<String?>().future;
+      late BuildContext suelto;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              suelto = context;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      expect(
+        VueloAlCarrito.lanzarAlConfirmar(suelto, alta, imagenUrl: ''),
+        same(alta),
+      );
+
+      late BuildContext reducido;
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) {
+              reducido = context;
+              return const _Tienda();
+            },
+          ),
+          reducido: true,
+        ),
+      );
+      expect(
+        VueloAlCarrito.lanzarAlConfirmar(reducido, alta, imagenUrl: ''),
+        same(alta),
+      );
+      expect(_enCamino(tester), 0); // sin reserva
+    });
+
+    testWidgets('reserva al tocar y, si el backend acepta, vuela del botón', (
+      tester,
+    ) async {
+      final respuesta = Completer<String?>();
+      final resultados = <Object?>[];
+      await tester.pumpWidget(
+        _app(_Detalle(respuesta: respuesta, resultados: resultados)),
+      );
+      final boton = tester.getCenter(find.text('Añadir'));
+
+      await _anadirYEsperar(tester);
+      // Mientras el backend responde: reservado, sin nada en el aire.
+      expect(_enCamino(tester), 1);
+      expect(_miniatura, findsNothing);
+
+      respuesta.complete();
+      await _trasResponder(tester);
+      expect(resultados, [null]);
+      expect(_miniatura, findsOneWidget);
+      expect(tester.getCenter(_miniatura), boton);
+      expect(_enCamino(tester), 1); // la reserva pasó a ser el vuelo
+
+      await tester.pump(AppMovimiento.vuelo);
+      await tester.pump(const Duration(milliseconds: 100)); // aterriza
+      expect(_miniatura, findsNothing);
+      expect(_enCamino(tester), 0);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_escalaDestino(tester), greaterThan(1));
+      await tester.pump(AppMovimiento.media);
+    });
+
+    testWidgets('si el backend rechaza, devuelve el motivo y no reacciona', (
+      tester,
+    ) async {
+      final respuesta = Completer<String?>();
+      final resultados = <Object?>[];
+      await tester.pumpWidget(
+        _app(_Detalle(respuesta: respuesta, resultados: resultados)),
+      );
+      await _anadirYEsperar(tester);
+
+      respuesta.complete('No hay stock suficiente');
+      await _trasResponder(tester);
+      expect(resultados, ['No hay stock suficiente']);
+      expect(_enCamino(tester), 0);
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_miniatura, findsNothing);
+        expect(_escalaDestino(tester), 1);
+      }
+    });
+
+    testWidgets('si el alta lanza un error, lo devuelve y suelta la reserva', (
+      tester,
+    ) async {
+      final respuesta = Completer<String?>();
+      final resultados = <Object?>[];
+      await tester.pumpWidget(
+        _app(_Detalle(respuesta: respuesta, resultados: resultados)),
+      );
+      await _anadirYEsperar(tester);
+
+      const error = SocketException('sin red');
+      respuesta.completeError(error);
+      await _trasResponder(tester);
+      expect(resultados, [same(error)]);
+      expect(_enCamino(tester), 0);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_miniatura, findsNothing);
+      expect(_escalaDestino(tester), 1);
+    });
+
+    testWidgets('si el shell se va mientras espera, devuelve el resultado', (
+      tester,
+    ) async {
+      final respuesta = Completer<String?>();
+      final resultados = <Object?>[];
+      await tester.pumpWidget(
+        _app(_Detalle(respuesta: respuesta, resultados: resultados)),
+      );
+      await _anadirYEsperar(tester);
+
+      // Como cerrar sesión mientras el backend responde: la reserva se va
+      // con el ámbito.
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      respuesta.complete();
+      await _trasResponder(tester);
+      expect(resultados, [null]);
+      expect(_miniatura, findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final (caso, apartar) in <(String, void Function(_DetalleState))>[
+      ('el botón se desmontó', (detalle) => detalle.cerrar()),
+      ('el botón quedó fuera de la vista', (detalle) => detalle.ocultar()),
+    ]) {
+      testWidgets('aceptada pero $caso: el trago sale sin miniatura', (
+        tester,
+      ) async {
+        final respuesta = Completer<String?>();
+        final resultados = <Object?>[];
+        await tester.pumpWidget(
+          _app(_Detalle(respuesta: respuesta, resultados: resultados)),
+        );
+        await _anadirYEsperar(tester);
+        apartar(tester.state<_DetalleState>(find.byType(_Detalle)));
+        await tester.pump();
+
+        respuesta.complete();
+        await _trasResponder(tester);
+        expect(resultados, [null]);
+        expect(_miniatura, findsNothing);
+        expect(_enCamino(tester), 0);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_escalaDestino(tester), greaterThan(1));
+        await tester.pump(AppMovimiento.media);
+        expect(_escalaDestino(tester), 1);
+      });
+    }
   });
 }

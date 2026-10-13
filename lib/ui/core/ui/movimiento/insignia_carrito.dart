@@ -6,10 +6,11 @@
 // el número cambia sin rebote. Al montarse no anima (cambiar de pestaña no
 // la hace saltar). Sirve igual para cualquier contador de la app.
 //
-// Dentro de un DestinoVuelo, con una miniatura en camino al carrito, no se
-// adelanta: el número cambia al instante pero no rebota (la reacción es el
-// trago del destino al aterrizar) y, si aparece desde 0, crece cuando la
-// miniatura llega.
+// Dentro de un DestinoVuelo, con una miniatura en camino al carrito (en el
+// aire, o reservada por un alta que espera al backend: lanzarAlConfirmar),
+// no se adelanta: el número cambia al instante pero no rebota (la reacción
+// es el trago del destino) y, si aparece desde 0, crece cuando la miniatura
+// llega o la reserva se suelta sin vuelo.
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
@@ -58,7 +59,8 @@ class _InsigniaCarritoState extends State<InsigniaCarrito>
   late int _numero = widget.cantidad;
 
   // Mientras espera a una miniatura para aparecer: los vuelos en camino y
-  // cuántos había la última vez (bajan cuando una aterriza).
+  // cuántos había la última vez (bajan cuando una aterriza o cuando una
+  // reserva se suelta sin vuelo).
   ValueListenable<int>? _enCamino;
   int _vuelosVistos = 0;
 
@@ -89,7 +91,8 @@ class _InsigniaCarritoState extends State<InsigniaCarrito>
     if (nueva == vieja) return;
     if (nueva > 0) _numero = nueva;
     final reducido = AppMovimiento.reducido(context);
-    // Una miniatura en camino a este carrito: la insignia no se adelanta.
+    // Una miniatura en camino a este carrito (en el aire o reservada): la
+    // insignia no se adelanta.
     final enCamino = reducido ? null : DestinoVuelo.enCamino(context);
     final vuelo = enCamino != null && enCamino.value > 0 ? enCamino : null;
     if (nueva > 0 && vieja <= 0) {
