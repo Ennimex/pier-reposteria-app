@@ -2,11 +2,14 @@
 //
 // Precios con descuento que comparten el carrito y el resumen del checkout:
 // el precio unitario de una línea (con el de lista tachado) y el par
-// «Subtotal tachado / Descuentos» antes del total.
+// «Subtotal tachado / Descuentos» antes del total. Los dos montos del par
+// cuentan hasta su nuevo valor cuando cambia el carrito (nunca al montarse),
+// al mismo ritmo que el total que va debajo.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 
 /// «$90 c/u» y, si la línea tiene descuento, el precio de lista tachado.
 class PrecioUnitario extends StatelessWidget {
@@ -65,9 +68,10 @@ class ResumenDescuentos extends StatelessWidget {
           children: [
             const Text('Subtotal',
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            Text(
-              '\$${subtotal.toStringAsFixed(0)}$sufijo',
-              style: TextStyle(
+            MontoAnimado(
+              valor: subtotal,
+              formato: (v) => '\$${v.toStringAsFixed(0)}$sufijo',
+              estilo: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary.withValues(alpha: 0.5),
                   decoration: TextDecoration.lineThrough),
@@ -87,9 +91,10 @@ class ResumenDescuentos extends StatelessWidget {
                       color: AppColors.pierVerde,
                       fontWeight: FontWeight.w600)),
             ]),
-            Text(
-              '-\$${ahorro.toStringAsFixed(0)}$sufijo',
-              style: TextStyle(
+            MontoAnimado(
+              valor: ahorro,
+              formato: (v) => '-\$${v.toStringAsFixed(0)}$sufijo',
+              estilo: TextStyle(
                   fontSize: 14,
                   color: AppColors.pierVerde,
                   fontWeight: FontWeight.bold),
