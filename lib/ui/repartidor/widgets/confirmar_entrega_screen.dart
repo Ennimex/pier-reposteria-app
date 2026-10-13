@@ -12,7 +12,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/repartidor/view_model/confirmar_entrega_view_model.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -46,6 +48,10 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
   final _recibioController = TextEditingController();
   final _picker = ImagePicker();
 
+  // Veces que se intentó confirmar sin decir quién recibió: cada una sacude
+  // la pregunta (el aviso de siempre explica qué falta).
+  int _faltas = 0;
+
   @override
   void dispose() {
     _recibioController.dispose();
@@ -76,6 +82,9 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
     }
     mostrarAviso(context, r.mensaje, ok: r.ok);
     if (r.ok) Navigator.pop(context, true);
+    if (r.mensaje == ConfirmarEntregaViewModel.faltaQuienRecibio) {
+      setState(() => _faltas++);
+    }
   }
 
   @override
@@ -94,102 +103,157 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
     );
   }
 
+  // Las secciones se arman de arriba abajo mientras llega la página; lo que
+  // se construye al hacer scroll ya llega quieto.
   Widget _formulario() {
     final evidencia = _vm.evidencia;
     final enviando = _vm.enviando;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const Text(
-          '¿Quién recibió el pedido?',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+    return AmbitoEntradas(
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          EntradaSuave(
+            id: 'recibio',
+            retraso: AppMovimiento.trasEmpuje,
+            // Se sacude si falta quién recibió.
+            child: Sacudida(
+              disparo: _faltas == 0 ? null : _faltas,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '¿Quién recibió el pedido?',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _recibioController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      hintText: 'Ej. María Alejandra',
+                      prefixIcon:
+                          Icon(LucideIcons.user, color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _recibioController,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            hintText: 'Ej. María Alejandra',
-            prefixIcon: Icon(LucideIcons.user, color: AppColors.textSecondary),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Agregar foto de evidencia',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+          const SizedBox(height: 24),
+          EntradaSuave(
+            id: 'evidencia',
+            retraso: AppMovimiento.trasEmpuje,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Agregar foto de evidencia',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Opcional',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            Text(
-              'Opcional',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary.withValues(alpha: 0.8),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (evidencia != null)
-          _VistaPrevia(ruta: evidencia, onQuitar: _vm.quitarEvidencia)
-        else
-          Row(
-            children: [
-              _BotonFuente(
-                icon: LucideIcons.camera,
-                label: 'Cámara',
-                color: AppColors.pierVerde,
-                onTap: () => _pick(ImageSource.camera),
-              ),
-              const SizedBox(width: 14),
-              _BotonFuente(
-                icon: LucideIcons.images,
-                label: 'Galería',
-                color: AppColors.textSecondary,
-                onTap: () => _pick(ImageSource.gallery),
-              ),
-            ],
-          ),
-        const SizedBox(height: 24),
-        _CobroCard(entrega: _vm.entrega),
-        const SizedBox(height: 24),
-        SizedBox(
-          height: 54,
-          child: ElevatedButton.icon(
-            onPressed: enviando ? null : _confirmar,
-            icon: IconoCargando(
-              icono: Icons.check_circle_outline,
-              cargando: enviando,
-              tamano: 20,
-              color: Colors.white,
-            ),
-            label: Text(enviando ? 'Confirmando…' : 'Confirmar entrega'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: TextButton(
-            onPressed: enviando ? null : () => Navigator.pop(context),
-            child: Text(
-              'Regresar',
-              style: TextStyle(
-                color: AppColors.pierVerde,
-                fontWeight: FontWeight.bold,
-              ),
+                const SizedBox(height: 12),
+                // Mosaicos ↔ foto: lo anterior sale en el mismo cuadro, lo
+                // nuevo aparece en su lugar y el espacio crece o se encoge
+                // sin empujar de golpe lo de abajo.
+                TamanoSuave(
+                  alineacion: Alignment.topCenter,
+                  child: CambioEnVista(
+                    clave: evidencia != null,
+                    tipo: TipoCambio.atravesar,
+                    alineacion: Alignment.topCenter,
+                    soloEntrada: true,
+                    child: evidencia != null
+                        ? _VistaPrevia(
+                            ruta: evidencia,
+                            onQuitar: _vm.quitarEvidencia,
+                          )
+                        : Row(
+                            children: [
+                              _BotonFuente(
+                                icon: LucideIcons.camera,
+                                label: 'Cámara',
+                                color: AppColors.pierVerde,
+                                onTap: () => _pick(ImageSource.camera),
+                              ),
+                              const SizedBox(width: 14),
+                              _BotonFuente(
+                                icon: LucideIcons.images,
+                                label: 'Galería',
+                                color: AppColors.textSecondary,
+                                onTap: () => _pick(ImageSource.gallery),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          EntradaSuave(
+            id: 'cobro',
+            retraso: AppMovimiento.trasEmpuje,
+            child: _CobroCard(entrega: _vm.entrega),
+          ),
+          const SizedBox(height: 24),
+          EntradaSuave(
+            id: 'botones',
+            retraso: AppMovimiento.trasEmpuje,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: enviando ? null : _confirmar,
+                    icon: IconoCargando(
+                      icono: Icons.check_circle_outline,
+                      cargando: enviando,
+                      tamano: 20,
+                      color: Colors.white,
+                    ),
+                    label:
+                        Text(enviando ? 'Confirmando…' : 'Confirmar entrega'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: enviando ? null : () => Navigator.pop(context),
+                    child: Text(
+                      'Regresar',
+                      style: TextStyle(
+                        color: AppColors.pierVerde,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -212,6 +276,17 @@ class _VistaPrevia extends StatelessWidget {
             height: 180,
             width: double.infinity,
             fit: BoxFit.cover,
+            // La foto aparece con un fundido corto al decodificarse en vez
+            // de saltar (si salió de la caché, se pinta tal cual).
+            frameBuilder: (_, foto, cuadro, sincrona) => sincrona
+                ? foto
+                : AnimatedOpacity(
+                    opacity: cuadro == null ? 0 : 1,
+                    duration:
+                        AppMovimiento.duracion(context, AppMovimiento.corta),
+                    curve: AppMovimiento.curvaEntrada,
+                    child: foto,
+                  ),
             // Si el archivo ya no se puede leer, un recuadro en su lugar.
             errorBuilder: (_, _, _) => Container(
               height: 180,
@@ -225,15 +300,19 @@ class _VistaPrevia extends StatelessWidget {
         Positioned(
           top: 8,
           right: 8,
-          child: GestureDetector(
-            onTap: onQuitar,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                shape: BoxShape.circle,
+          child: PresionEscala(
+            escala: AppMovimiento.escalaPresionChica,
+            child: GestureDetector(
+              onTap: onQuitar,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  shape: BoxShape.circle,
+                ),
+                child:
+                    const Icon(LucideIcons.x, color: Colors.white, size: 18),
               ),
-              child: const Icon(LucideIcons.x, color: Colors.white, size: 18),
             ),
           ),
         ),
@@ -259,28 +338,31 @@ class _BotonFuente extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 110,
-          decoration: BoxDecoration(
-            color: AppColors.pierArena,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 30, color: color),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+      // Se hunde al tocarlo, como las tarjetas.
+      child: PresionEscala(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 110,
+            decoration: BoxDecoration(
+              color: AppColors.pierArena,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 30, color: color),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -308,17 +390,25 @@ class _CobroCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: esEfectivo ? AppColors.pierVerde : AppColors.pierDorado,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              esEfectivo ? LucideIcons.banknote : LucideIcons.creditCard,
-              color: Colors.white,
-              size: 22,
+          // Cobro en efectivo: el ícono late una vez cuando la tarjeta ya
+          // llegó, para que el cobro no se pase por alto.
+          PulsoAtencion(
+            activo: esEfectivo,
+            retraso: AppMovimiento.trasEmpuje +
+                AppMovimiento.retrasoCascada(2) +
+                AppMovimiento.entrada,
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: esEfectivo ? AppColors.pierVerde : AppColors.pierDorado,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                esEfectivo ? LucideIcons.banknote : LucideIcons.creditCard,
+                color: Colors.white,
+                size: 22,
+              ),
             ),
           ),
           const SizedBox(width: 14),

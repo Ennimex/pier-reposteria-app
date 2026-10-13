@@ -10,9 +10,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/repartidor/view_model/entrega_detail_view_model.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/confirmar_entrega_screen.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/entrega_detail_partes.dart';
+import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/reportar_fallo_sheet.dart';
 import 'package:provider/provider.dart';
@@ -49,6 +51,10 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
 
   EntregaRepartidor get _entrega => _vm.entrega;
 
+  // Avisos de llegada que el backend aceptó: cada uno hace sonar la campana
+  // del botón una vez.
+  int _llegadasAvisadas = 0;
+
   @override
   void dispose() {
     _vm.dispose();
@@ -77,7 +83,9 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
 
   Future<void> _avisarLlegada() async {
     final r = await _vm.avisarLlegada();
-    if (mounted) mostrarAviso(context, r.mensaje, ok: r.ok);
+    if (!mounted) return;
+    mostrarAviso(context, r.mensaje, ok: r.ok);
+    if (r.ok) setState(() => _llegadasAvisadas++);
   }
 
   Future<void> _marcarEntregado() async {
@@ -97,6 +105,7 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      sheetAnimationStyle: AppMovimiento.estiloHoja(context),
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -121,28 +130,45 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
         return Scaffold(
           backgroundColor: AppColors.pierArena,
           appBar: AppBar(title: Text(_entrega.numero)),
+          // Las tarjetas se arman de arriba abajo mientras llega la página
+          // (el número y el estado aterrizan volando desde la lista); lo que
+          // se construye al hacer scroll ya llega quieto.
           body: SafeArea(
             top: false,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              children: [
-                ClienteCard(entrega: _entrega, estado: _vm.estado),
-                const SizedBox(height: 16),
-                DireccionCard(
-                  direccion: _entrega.direccion,
-                  onComoLlegar: () =>
-                      _abrir(_vm.uriComoLlegar, 'No se pudo abrir el mapa'),
-                  onLlamar: llamada == null
-                      ? null
-                      : () => _abrir(llamada, 'No se pudo abrir el marcador',
-                          mode: LaunchMode.platformDefault),
-                  onWhatsapp: whatsapp == null
-                      ? null
-                      : () => _abrir(whatsapp, 'No se pudo abrir WhatsApp'),
-                ),
-                const SizedBox(height: 16),
-                ResumenCard(entrega: _entrega),
-              ],
+            child: AmbitoEntradas(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                children: [
+                  EntradaSuave(
+                    id: 'cliente',
+                    retraso: AppMovimiento.trasEmpuje,
+                    child: ClienteCard(entrega: _entrega, estado: _vm.estado),
+                  ),
+                  const SizedBox(height: 16),
+                  EntradaSuave(
+                    id: 'direccion',
+                    retraso: AppMovimiento.trasEmpuje,
+                    child: DireccionCard(
+                      direccion: _entrega.direccion,
+                      onComoLlegar: () =>
+                          _abrir(_vm.uriComoLlegar, 'No se pudo abrir el mapa'),
+                      onLlamar: llamada == null
+                          ? null
+                          : () => _abrir(llamada, 'No se pudo abrir el marcador',
+                              mode: LaunchMode.platformDefault),
+                      onWhatsapp: whatsapp == null
+                          ? null
+                          : () => _abrir(whatsapp, 'No se pudo abrir WhatsApp'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  EntradaSuave(
+                    id: 'resumen',
+                    retraso: AppMovimiento.trasEmpuje,
+                    child: ResumenCard(entrega: _entrega),
+                  ),
+                ],
+              ),
             ),
           ),
           bottomNavigationBar: _vm.puedeAccionar ? _acciones() : null,
@@ -153,9 +179,29 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
 
   Widget _acciones() {
     final asignada = _vm.estado == EstadoEntrega.asignada;
-    final saliendo = _vm.saliendo;
-    return SafeArea(
-      child: Padding(
+    // La barra sube desde abajo junto con las tarjetas. Al salir en camino
+    // sus botones cambian con un fundido a través y su alto se ajusta sin
+    // saltos (una entrega finalizada no tiene barra).
+    return EntradaSuave(
+      orden: 1,
+      retraso: AppMovimiento.trasEmpuje,
+      desplazamiento: const Offset(0, AppMovimiento.distanciaLarga),
+      child: SafeArea(
+        child: TamanoSuave(
+          alineacion: Alignment.bottomCenter,
+          child: CambioEnVista(
+            clave: asignada,
+            tipo: TipoCambio.atravesar,
+            alineacion: Alignment.bottomCenter,
+            child: _botones(asignada: asignada, saliendo: _vm.saliendo),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _botones({required bool asignada, required bool saliendo}) =>
+      Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -167,9 +213,13 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _vm.avisandoLlegada ? null : _avisarLlegada,
-                  icon: IconoCargando(
-                    icono: LucideIcons.bellRing,
-                    cargando: _vm.avisandoLlegada,
+                  // La campana suena una vez cuando el cliente ya fue avisado.
+                  icon: Campaneo(
+                    disparo: _llegadasAvisadas == 0 ? null : _llegadasAvisadas,
+                    child: IconoCargando(
+                      icono: LucideIcons.bellRing,
+                      cargando: _vm.avisandoLlegada,
+                    ),
                   ),
                   label: Text(_vm.avisandoLlegada
                       ? 'Avisando…'
@@ -241,7 +291,5 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
               ),
           ],
         ),
-      ),
-    );
-  }
+      );
 }
