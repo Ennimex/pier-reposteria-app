@@ -58,9 +58,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   int _sacudidaDireccion = 0;
   int _sacudidaError = 0;
 
-  // El recuadro del error conserva su mensaje mientras se cierra.
+  // El recuadro del error conserva su mensaje mientras se cierra (y con él
+  // se sabe si el error que llega es el mismo de la vez anterior).
   String _ultimoErrorPago = '';
-  bool _errorMostrado = false;
 
   // Tras un pago exitoso el carrito se vacía ANTES de navegar: el checkout
   // que la ruta de celebración tapa se queda con lo que se pagó.
@@ -141,11 +141,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void _sacudirSeccion() {
     if (!_vm.abierto) return;
     final direccion = _vm.direccion;
+    final errorPago = _vm.errorPago;
     if (_vm.esDomicilio && (direccion == null || !direccion.tieneCobertura)) {
       setState(() => _sacudidaDireccion++);
     } else if (_vm.fecha == null || _vm.hora == null) {
       setState(() => _sacudidaFecha++);
-    } else if (_errorMostrado && _vm.errorPago != null) {
+    } else if (errorPago != null && errorPago == _ultimoErrorPago) {
+      // Se compara con el último mensaje pintado y no con «el recuadro está
+      // a la vista»: al reintentar, el ViewModel borra el error y el
+      // recuadro se cierra mientras el backend contesta.
       setState(() => _sacudidaError++);
     }
   }
@@ -287,7 +291,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         builder: (context, _) {
           final errorPago = _vm.errorPago;
           if (errorPago != null) _ultimoErrorPago = errorPago;
-          _errorMostrado = errorPago != null;
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -330,11 +333,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       const TituloSeccion('Método de pago'),
                       const CheckoutMetodoPago(),
                       // Un solo recuadro: abre su espacio al fallar el pago y
-                      // lo cierra al reintentar.
-                      Aparicion(
-                        visible: errorPago != null,
-                        child: Sacudida(
-                          disparo: _sacudidaError,
+                      // lo cierra al reintentar. La sacudida va por fuera:
+                      // el recuadro sale del árbol mientras se reintenta y
+                      // el mismo error lo trae de vuelta sacudiéndose.
+                      Sacudida(
+                        disparo: _sacudidaError,
+                        child: Aparicion(
+                          visible: errorPago != null,
                           child: Padding(
                             padding: const EdgeInsets.only(top: 12),
                             child: AvisoErrorPago(_ultimoErrorPago),

@@ -59,15 +59,17 @@ Map<String, dynamic> _carrito({bool conRosca = false}) => {
   },
 };
 
-/// Monta «Mi Carrito» en un celular (412×869 lógicos). Con [demora] el
-/// carrito tarda en llegar (se ve el estado de carga).
+/// Monta «Mi Carrito» en un celular (412×869 lógicos; [tamano] es la
+/// pantalla en pixeles físicos a 3.5). Con [demora] el carrito tarda en
+/// llegar (se ve el estado de carga).
 Future<(FakeApiClient, CartProvider)> _montar(
   WidgetTester tester, {
   Duration? demora,
   bool reducido = false,
+  Size tamano = const Size(1440, 3040),
 }) async {
   tester.view
-    ..physicalSize = const Size(1440, 3040)
+    ..physicalSize = tamano
     ..devicePixelRatio = 3.5;
   addTearDown(tester.view.reset);
   final api = FakeApiClient(
@@ -126,6 +128,29 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
         expect(find.byType(Shimmer), findsNothing);
         expect(find.byType(Scaffold), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'con el celular de lado el esqueleto se recorta en vez de desbordar',
+      (tester) async {
+        // 869×411 lógicos: el cuerpo mide menos que las tres líneas en
+        // blanco (~390 dp).
+        await _montar(
+          tester,
+          demora: const Duration(milliseconds: 300),
+          tamano: const Size(3040, 1440),
+        );
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(Shimmer), findsNWidgets(3));
+
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.takeException(), isNull);
+        expect(find.byType(Shimmer), findsNothing);
+        expect(find.text('Fresa Matcha Bliss'), findsOneWidget);
       },
     );
 

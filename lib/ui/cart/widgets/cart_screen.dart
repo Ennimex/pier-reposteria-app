@@ -521,16 +521,25 @@ class _EsqueletoCarrito extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: Column(
-        children: [
-          _LineaFantasma(),
-          SizedBox(height: 12),
-          _LineaFantasma(),
-          SizedBox(height: 12),
-          _LineaFantasma(),
-        ],
+    // Las tres líneas miden ~390 dp: en una pantalla baja (celular de lado,
+    // pantalla dividida) se recortan en vez de desbordar la columna.
+    return const ClipRect(
+      child: OverflowBox(
+        alignment: Alignment.topCenter,
+        maxHeight: double.infinity,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LineaFantasma(),
+              SizedBox(height: 12),
+              _LineaFantasma(),
+              SizedBox(height: 12),
+              _LineaFantasma(),
+            ],
+          ),
+        ),
       ),
     );
   }

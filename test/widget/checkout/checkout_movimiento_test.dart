@@ -221,6 +221,47 @@ void main() {
       expect(tester.getTopLeft(recuadro), enReposo);
     });
 
+    testWidgets('con la red de por medio, el mismo error vuelve sacudiendo su '
+        'recuadro', (tester) async {
+      // Como en el celular: el backend tarda en contestar, así que se pinta
+      // al menos un cuadro entre el reintento y el error.
+      final (api, vm) = await _montar(tester);
+      await _cargarCarrito(tester, api);
+      api
+        ..fallar(ApiConstants.crearPaymentIntent, 'Carrito vacío')
+        ..demorar(
+          ApiConstants.crearPaymentIntent,
+          const Duration(milliseconds: 300),
+        );
+      vm
+        ..elegirFecha(DateTime(2026, 10, 13))
+        ..elegirHora('11:00 - 12:00');
+      await _asentar(tester);
+
+      await tester.tap(find.text(r'Pagar  $690 MXN'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await _asentar(tester);
+      final recuadro = find.byType(AvisoErrorPago);
+      expect(recuadro, findsOneWidget);
+      final enReposo = tester.getTopLeft(recuadro);
+
+      // Al reintentar, el recuadro se cierra mientras el backend contesta…
+      await tester.tap(find.text(r'Pagar  $690 MXN'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(recuadro, findsNothing);
+
+      // …y el mismo error lo trae de vuelta sacudiéndose.
+      await tester.pump(const Duration(milliseconds: 150));
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(recuadro, findsOneWidget);
+      expect(tester.getTopLeft(recuadro).dx, isNot(closeTo(enReposo.dx, 0.5)));
+
+      await _asentar(tester);
+      expect(tester.getTopLeft(recuadro), enReposo);
+    });
+
     testWidgets('tras pagar, el resumen se queda con lo pagado mientras la '
         'celebración lo tapa', (tester) async {
       final (api, vm) = await _montar(tester);
