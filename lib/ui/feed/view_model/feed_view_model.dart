@@ -5,7 +5,8 @@
 // publicaciones con una promoción después de cada 5 y, al acabarse, las
 // sugerencias en bloques de 6 con las promociones que falten. Ninguna
 // promoción se repite y las sugerencias no repiten productos que ya salieron
-// como promoción. Lo crea HomeScreen solo con sesión de cliente.
+// como promoción. «Me encanta» se marca al instante y queda lo que diga el
+// servidor (#133). Lo crea HomeScreen solo con sesión de cliente.
 import 'package:flutter/foundation.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/publicaciones_repository.dart';
@@ -141,6 +142,13 @@ class FeedViewModel extends ChangeNotifier {
   int _turno = 0;
   bool _cerrado = false;
 
+  /// «Me encanta» que la persona quiere en cada publicación con una
+  /// petición en curso (si toca varias veces, se manda el último).
+  final Map<int, bool> _corazonDeseado = {};
+
+  /// Vueltas máximas para alcanzar el último toque.
+  static const _maxVueltasCorazon = 4;
+
   /// Ya llegó la primera página (aunque viniera vacía).
   bool get iniciado => _iniciado;
   bool get cargando => _cargando;
@@ -221,6 +229,108 @@ class FeedViewModel extends ChangeNotifier {
     _cargandoMas = false;
     _avisar();
   }
+
+  /// Pone o quita «Me encanta» al instante y luego deja lo que diga el
+  /// servidor. Devuelve el aviso para la persona si algo falló (null si
+  /// quedó): si falla vuelve a como estaba; si la publicación ya no está, la
+  /// quita del inicio.
+  Future<String?> alternarMeEncanta(int publicacionId) async {
+    final antes = _publicacion(publicacionId);
+    if (antes == null) return null;
+    final quiere = !antes.meEncanta;
+    _reemplazar(
+      antes.copiaCon(
+        meEncanta: quiere,
+        corazones: antes.corazones + (quiere ? 1 : -1),
+      ),
+    );
+    _avisar();
+    if (_corazonDeseado.containsKey(publicacionId)) {
+      _corazonDeseado[publicacionId] = quiere;
+      return null;
+    }
+    _corazonDeseado[publicacionId] = quiere;
+    ReaccionPublicacion? confirmada;
+    String? aviso;
+    try {
+      for (var vuelta = 0; vuelta < _maxVueltasCorazon; vuelta++) {
+        final pedido = _corazonDeseado[publicacionId]!;
+        confirmada = await _repo.meEncanta(publicacionId, poner: pedido);
+        if (_corazonDeseado[publicacionId] == pedido) break;
+      }
+    } on PublicacionNoDisponibleException catch (e) {
+      _corazonDeseado.remove(publicacionId);
+      quitarPublicacion(publicacionId);
+      return e.message;
+    } on ApiException catch (e) {
+      aviso = e.message;
+    }
+    _corazonDeseado.remove(publicacionId);
+    final actual = _publicacion(publicacionId);
+    if (actual != null) {
+      _reemplazar(
+        actual.copiaCon(
+          meEncanta: confirmada?.meEncanta ?? antes.meEncanta,
+          corazones: confirmada?.corazones ?? antes.corazones,
+        ),
+      );
+    }
+    _avisar();
+    return aviso;
+  }
+
+  /// Refleja lo que se comentó o borró en la hoja de comentarios: el total
+  /// y los 2 más recientes.
+  void aplicarComentarios(
+    int publicacionId, {
+    List<ComentarioPublicacion> nuevos = const [],
+    Set<int> borrados = const {},
+  }) {
+    final p = _publicacion(publicacionId);
+    if (p == null || (nuevos.isEmpty && borrados.isEmpty)) return;
+    final recientes = [
+      ...p.comentariosRecientes.where((c) => !borrados.contains(c.id)),
+      ...nuevos,
+    ];
+    _reemplazar(
+      p.copiaCon(
+        totalComentarios: (p.totalComentarios + nuevos.length - borrados.length)
+            .clamp(0, 1 << 30),
+        comentariosRecientes: recientes.length > 2
+            ? recientes.sublist(recientes.length - 2)
+            : recientes,
+      ),
+    );
+    _avisar();
+  }
+
+  /// La repostería eliminó la publicación: sale del inicio.
+  void quitarPublicacion(int publicacionId) {
+    _estado = _conLista(
+      _estado.publicaciones.where((p) => p.id != publicacionId).toList(),
+    );
+    _avisar();
+  }
+
+  Publicacion? _publicacion(int id) =>
+      _estado.publicaciones.where((p) => p.id == id).firstOrNull;
+
+  void _reemplazar(Publicacion nueva) {
+    _estado = _conLista(
+      _estado.publicaciones.map((p) => p.id == nueva.id ? nueva : p).toList(),
+    );
+  }
+
+  /// El mismo estado con otra lista de publicaciones.
+  EstadoFeed _conLista(List<Publicacion> publicaciones) => EstadoFeed(
+    publicaciones: publicaciones,
+    siguiente: _estado.siguiente,
+    feedTerminado: _estado.feedTerminado,
+    promociones: _estado.promociones,
+    sugerencias: _estado.sugerencias,
+    paginaSugerencias: _estado.paginaSugerencias,
+    sugerenciasTerminadas: _estado.sugerenciasTerminadas,
+  );
 
   /// Olvida todo (al cerrar sesión).
   void limpiar() {

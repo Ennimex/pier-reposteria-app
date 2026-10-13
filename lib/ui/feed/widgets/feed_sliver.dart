@@ -3,7 +3,8 @@
 // «Novedades de Pier» al final del inicio del cliente (#132): las
 // publicaciones con las promociones intercaladas y, al acabarse, las
 // sugerencias; abajo, cargando más, el error para reintentar o «Ya viste todo
-// por hoy». HomeScreen pide más páginas al acercarse al final.
+// por hoy». «Me encanta» y los comentarios se manejan aquí (#133).
+// HomeScreen pide más páginas al acercarse al final.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/domain/models/publicacion.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/feed/view_model/feed_view_model.dart';
+import 'package:pier_pasteleria/ui/feed/widgets/comentarios_sheet.dart';
 import 'package:pier_pasteleria/ui/feed/widgets/tarjeta_publicacion.dart';
 import 'package:pier_pasteleria/utils/moneda.dart';
 
@@ -28,6 +30,20 @@ class FeedSliver extends StatelessWidget {
 
   final FeedViewModel viewModel;
   final AgregarAlCarrito alAgregar;
+
+  /// Pone o quita «Me encanta»; si algo falló lo avisa.
+  Future<void> _meEncanta(BuildContext context, int publicacionId) async {
+    final avisos = ScaffoldMessenger.of(context);
+    final aviso = await viewModel.alternarMeEncanta(publicacionId);
+    if (aviso == null) return;
+    avisos.showSnackBar(
+      SnackBar(
+        content: Text(aviso),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -54,6 +70,15 @@ class FeedSliver extends StatelessWidget {
             itemBuilder: (_, i) => switch (elementos[i]) {
               ElementoPublicacion(:final publicacion) => TarjetaPublicacion(
                 publicacion,
+                alMeEncanta: () =>
+                    unawaited(_meEncanta(context, publicacion.id)),
+                alComentar: () => unawaited(
+                  abrirComentarios(
+                    context,
+                    publicacionId: publicacion.id,
+                    feed: vm,
+                  ),
+                ),
               ),
               ElementoPromocion(:final promocion) => _TarjetaPromocion(
                 promocion,

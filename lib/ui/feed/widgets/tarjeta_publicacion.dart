@@ -2,8 +2,9 @@
 //
 // Tarjeta de una publicación del inicio (#132): la marca y cuándo se publicó,
 // el texto («Ver más» si es largo), las fotos o videos (deslizables, con su
-// proporción acotada) y los contadores con los comentarios más recientes.
-// Los videos muestran su portada; la reproducción llega en #134.
+// proporción acotada), «Me encanta», «Comentar» y los comentarios más
+// recientes (#133). Los videos muestran su portada; la reproducción llega en
+// #134.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/publicacion.dart';
@@ -48,9 +49,18 @@ String duracionVideo(double segundos) {
 }
 
 class TarjetaPublicacion extends StatelessWidget {
-  const TarjetaPublicacion(this.publicacion, {super.key});
+  const TarjetaPublicacion(
+    this.publicacion, {
+    required this.alMeEncanta,
+    required this.alComentar,
+    super.key,
+  });
 
   final Publicacion publicacion;
+  final VoidCallback alMeEncanta;
+
+  /// Abre la hoja de comentarios.
+  final VoidCallback alComentar;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +78,7 @@ class TarjetaPublicacion extends StatelessWidget {
           _Encabezado(p),
           if (p.texto case final texto?) _TextoPublicacion(texto),
           if (p.medios.isNotEmpty) _Medios(p.medios),
-          _Contadores(p),
+          _Acciones(p, alMeEncanta: alMeEncanta, alComentar: alComentar),
           if (p.comentariosRecientes.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
@@ -280,31 +290,53 @@ class _Pastilla extends StatelessWidget {
   );
 }
 
-class _Contadores extends StatelessWidget {
-  const _Contadores(this.publicacion);
+/// «Me encanta» con su contador, «Comentar» y «Ver los N comentarios».
+class _Acciones extends StatelessWidget {
+  const _Acciones(
+    this.publicacion, {
+    required this.alMeEncanta,
+    required this.alComentar,
+  });
 
   final Publicacion publicacion;
+  final VoidCallback alMeEncanta;
+  final VoidCallback alComentar;
 
   @override
   Widget build(BuildContext context) {
     final p = publicacion;
     final comentarios = p.totalComentarios;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+      padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
       child: Row(
         children: [
-          Icon(
-            p.meEncanta ? Icons.favorite : Icons.favorite_border,
-            size: 20,
-            color: p.meEncanta ? AppColors.error : AppColors.textSecondary,
+          IconButton(
+            tooltip: p.meEncanta ? 'Quitar me encanta' : 'Me encanta',
+            onPressed: alMeEncanta,
+            icon: Icon(
+              p.meEncanta ? Icons.favorite : Icons.favorite_border,
+              color: p.meEncanta ? AppColors.error : AppColors.textSecondary,
+            ),
           ),
-          const SizedBox(width: 4),
           Text('${p.corazones}'),
+          IconButton(
+            tooltip: 'Comentar',
+            onPressed: alComentar,
+            icon: const Icon(
+              LucideIcons.messageCircle,
+              color: AppColors.textSecondary,
+            ),
+          ),
           const Spacer(),
           if (comentarios > 0)
-            Text(
-              comentarios == 1 ? '1 comentario' : '$comentarios comentarios',
-              style: const TextStyle(color: AppColors.textSecondary),
+            TextButton(
+              onPressed: alComentar,
+              child: Text(
+                comentarios == 1
+                    ? 'Ver el comentario'
+                    : 'Ver los $comentarios comentarios',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
             ),
         ],
       ),
@@ -314,9 +346,12 @@ class _Contadores extends StatelessWidget {
 
 /// Un comentario en una línea: autor y texto; la respuesta oficial resalta.
 class ComentarioBreve extends StatelessWidget {
-  const ComentarioBreve(this.comentario, {super.key});
+  const ComentarioBreve(this.comentario, {super.key, this.alBorrar});
 
   final ComentarioPublicacion comentario;
+
+  /// Si se puede borrar (los propios), muestra «Eliminar comentario».
+  final VoidCallback? alBorrar;
 
   @override
   Widget build(BuildContext context) {
@@ -358,7 +393,25 @@ class ComentarioBreve extends StatelessWidget {
                 ),
             ],
           ),
-          Text(c.texto, style: const TextStyle(fontSize: 13)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(c.texto, style: const TextStyle(fontSize: 13)),
+              ),
+              if (alBorrar != null)
+                IconButton(
+                  tooltip: 'Eliminar comentario',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: alBorrar,
+                  icon: const Icon(
+                    LucideIcons.trash2,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );

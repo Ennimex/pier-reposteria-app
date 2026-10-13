@@ -115,7 +115,7 @@ void main() {
         find.text('Pastel de chocolate recién salido del horno'),
       );
       expect(find.text('Pier Repostería'), findsWidgets);
-      expect(find.text('2 comentarios'), findsOneWidget);
+      expect(find.text('Ver los 2 comentarios'), findsOneWidget);
       expect(find.text('¡Se ve delicioso!'), findsOneWidget);
       expect(find.text('¡Gracias por tu pedido!'), findsOneWidget);
       expect(find.text('Respuesta de Pier'), findsOneWidget);
