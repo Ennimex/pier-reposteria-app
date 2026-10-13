@@ -1,4 +1,10 @@
 // lib/ui/public/widgets/about_us_screen.dart
+//
+// Movimiento: la foto de la portada aparece sobre el verde oscuro, se
+// asienta y al subir se queda atrás (paralaje) mientras el título se
+// desvanece; cada bloque entra una sola vez y, si está más abajo de lo que
+// se ve, espera a que el scroll lo traiga (los íconos dan un pop con su
+// bloque y las cifras se cuentan).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,7 +13,9 @@ import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/public/view_model/about_us_view_model.dart';
+import 'package:pier_pasteleria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:provider/provider.dart';
 
 class AboutUsScreen extends StatefulWidget {
@@ -71,159 +79,198 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
   Widget _buildPantalla(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.pierArena,
-      body: CustomScrollView(
-        slivers: [
-          // ── HERO ────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 260,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&fit=crop',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => ColoredBox(
-                      color: AppColors.pierVerdeOscuro,
-                      child: const Icon(LucideIcons.store,
-                          color: Colors.white54, size: 60),
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.1),
-                          Colors.black.withValues(alpha: 0.6),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Botón back
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 8,
-                    left: 16,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          shape: BoxShape.circle,
+      // Los bloques que ya se ven entran en cascada al llegar la página; los
+      // de más abajo, cuando el scroll los trae.
+      body: VistaRevelada(
+        retrasoLlegada: esperaDePagina(context),
+        child: CustomScrollView(
+          slivers: [
+            // ── HERO ────────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 260,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // La foto llega sobre el mismo verde oscuro del respaldo
+                    // (el título blanco se lee desde el primer cuadro), se
+                    // asienta y al subir se queda un poco atrás.
+                    ColoredBox(color: AppColors.pierVerdeOscuro),
+                    _Paralaje(
+                      child: Image.network(
+                        'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&fit=crop',
+                        fit: BoxFit.cover,
+                        frameBuilder: (_, foto, cuadro, sincrona) => FotoAlLlegar(
+                            foto: foto,
+                            cuadro: cuadro,
+                            sincrona: sincrona,
+                            asentar: true),
+                        errorBuilder: (_, _, _) => ColoredBox(
+                          color: AppColors.pierVerdeOscuro,
+                          child: const Icon(LucideIcons.store,
+                              color: Colors.white54, size: 60),
                         ),
-                        child: const Icon(LucideIcons.chevronLeft,
-                            size: 16, color: AppColors.textPrimary),
                       ),
                     ),
-                  ),
-                  // Título sobre imagen
-                  Positioned(
-                    bottom: 24, left: 20, right: 20,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.pierDorado,
-                            borderRadius: BorderRadius.circular(20),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.1),
+                            Colors.black.withValues(alpha: 0.6),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Botón back
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 8,
+                      left: 16,
+                      child: PresionEscala(
+                        escala: AppMovimiento.escalaPresionChica,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(LucideIcons.chevronLeft,
+                                size: 16, color: AppColors.textPrimary),
                           ),
-                          child: const Text('ARTESANAL',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1)),
                         ),
-                        const SizedBox(height: 8),
-                        Text(_vm.historiaTitulo,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontFamily: 'Playfair Display',
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    // Título sobre imagen: la píldora y el título suben al
+                    // llegar y se desvanecen cuando la portada se va.
+                    Positioned(
+                      bottom: 24, left: 20, right: 20,
+                      child: _DesvaneceAlSubir(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            EntradaAlVer(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.pierDorado,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text('ARTESANAL',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1)),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            EntradaAlVer(
+                              child: Text(_vm.historiaTitulo,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontFamily: 'Playfair Display',
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // ── CONTENIDO ────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            // ── CONTENIDO ────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
 
-                  // ── HISTORIA ────────────────────────────────────
-                  Text(
-                    _vm.historia,
-                    style: const TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textSecondary,
-                        height: 1.6),
-                  ),
-                  const SizedBox(height: 28),
+                    // ── HISTORIA ────────────────────────────────────
+                    EntradaAlVer(
+                      child: Text(
+                        _vm.historia,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
+                            height: 1.6),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
 
-                  // ── MISIÓN Y VISIÓN ──────────────────────────────
-                  _buildInfoCard(
-                    icon: LucideIcons.flag,
-                    title: 'Misión',
-                    content: _vm.mision,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: LucideIcons.eye,
-                    title: 'Visión',
-                    content: _vm.vision,
-                  ),
-                  const SizedBox(height: 28),
+                    // ── MISIÓN Y VISIÓN ──────────────────────────────
+                    EntradaAlVer(
+                      child: _buildInfoCard(
+                        icon: LucideIcons.flag,
+                        title: 'Misión',
+                        content: _vm.mision,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    EntradaAlVer(
+                      child: _buildInfoCard(
+                        icon: LucideIcons.eye,
+                        title: 'Visión',
+                        content: _vm.vision,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
 
-                  // ── VALORES ──────────────────────────────────────
-                  const Text('Nuestros Valores',
-                      style: TextStyle(
-                          fontFamily: 'Playfair Display',
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary)),
-                  const SizedBox(height: 16),
-                  for (var i = 0; i < _vm.valores.length; i++)
-                    _buildValueTile(_vm.valores[i], _iconoValor(i)),
+                    // ── VALORES ──────────────────────────────────────
+                    const EntradaAlVer(
+                      child: Text('Nuestros Valores',
+                          style: TextStyle(
+                              fontFamily: 'Playfair Display',
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                    ),
+                    const SizedBox(height: 16),
+                    for (var i = 0; i < _vm.valores.length; i++)
+                      EntradaAlVer(
+                        child: _buildValueTile(_vm.valores[i], _iconoValor(i)),
+                      ),
 
-                  const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                  // ── SUCURSAL ──────────────────────────────────────
-                  const Text('Encuéntranos',
-                      style: TextStyle(
-                          fontFamily: 'Playfair Display',
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary)),
-                  const SizedBox(height: 14),
-                  _buildBranchCard(),
+                    // ── SUCURSAL ──────────────────────────────────────
+                    const EntradaAlVer(
+                      child: Text('Encuéntranos',
+                          style: TextStyle(
+                              fontFamily: 'Playfair Display',
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                    ),
+                    const SizedBox(height: 14),
+                    EntradaAlVer(child: _buildBranchCard()),
 
-                  const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                  // ── STATS ─────────────────────────────────────────
-                  Row(children: [
-                    for (var i = 0; i < _vm.stats.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 12),
-                      _buildStat(_vm.stats[i].$1, _vm.stats[i].$2),
-                    ],
-                  ]),
-                ],
+                    // ── STATS ─────────────────────────────────────────
+                    // Cada cifra entra con su tarjeta y se cuenta.
+                    Row(children: [
+                      for (var i = 0; i < _vm.stats.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 12),
+                        _buildStat(_vm.stats[i].$1, _vm.stats[i].$2),
+                      ],
+                    ]),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -248,13 +295,16 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.pierVerde.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+          // El ícono da un pop mientras su tarjeta entra.
+          PopAlCompas(
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.pierVerde.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: AppColors.pierVerde, size: 20),
             ),
-            child: Icon(icon, color: AppColors.pierVerde, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -284,13 +334,15 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
-        Container(
-          width: 36, height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.pierDorado.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+        PopAlCompas(
+          child: Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.pierDorado.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.pierDorado, size: 18),
           ),
-          child: Icon(icon, color: AppColors.pierDorado, size: 18),
         ),
         const SizedBox(width: 12),
         Text(text,
@@ -316,14 +368,16 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
         ],
       ),
       child: Row(children: [
-        Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
+        PopAlCompas(
+          child: Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(LucideIcons.store,
+                color: Colors.white, size: 22),
           ),
-          child: const Icon(LucideIcons.store,
-              color: Colors.white, size: 22),
         ),
         const SizedBox(width: 14),
         const Expanded(
@@ -352,31 +406,100 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
 
   Widget _buildStat(String value, String label) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 3))
-          ],
-        ),
-        child: Column(children: [
-          Text(value,
-              style: TextStyle(
+      child: EntradaAlVer(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3))
+            ],
+          ),
+          child: Column(children: [
+            // «100%» y «+ 5 años» se cuentan; el ❤️ late.
+            CifraQueCuenta(
+              texto: value,
+              estilo: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.pierVerde)),
-          const SizedBox(height: 4),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary),
-              textAlign: TextAlign.center),
-        ]),
+                  color: AppColors.pierVerde),
+            ),
+            const SizedBox(height: 4),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+                textAlign: TextAlign.center),
+          ]),
+        ),
       ),
+    );
+  }
+}
+
+/// La foto de la portada sube más despacio que la página (paralaje): se
+/// queda un poco atrás mientras la portada se va. Solo pinta; con
+/// movimiento reducido no se mueve.
+class _Paralaje extends StatelessWidget {
+  const _Paralaje({required this.child});
+
+  final Widget child;
+
+  // Por cada dp que sube la página, la foto baja 0.4 dentro de su marco
+  // (en pantalla sube al 60 % del ritmo). El marco la recorta.
+  static const double _rezago = 0.4;
+
+  @override
+  Widget build(BuildContext context) {
+    final posicion = Scrollable.maybeOf(context)?.position;
+    if (posicion == null) return child;
+    final reducido = AppMovimiento.reducido(context);
+    return AnimatedBuilder(
+      animation: posicion,
+      child: child,
+      builder: (context, foto) {
+        // Al estirar hacia abajo (el rebote de iOS) la foto no se mueve.
+        final subido =
+            !reducido && posicion.hasPixels && posicion.pixels > 0
+                ? posicion.pixels
+                : 0.0;
+        return Transform.translate(
+          offset: Offset(0, subido * _rezago),
+          child: foto,
+        );
+      },
+    );
+  }
+}
+
+/// El título de la portada se desvanece mientras la portada sube, antes de
+/// llegar a la barra de estado. Con movimiento reducido se queda igual.
+class _DesvaneceAlSubir extends StatelessWidget {
+  const _DesvaneceAlSubir({required this.child});
+
+  final Widget child;
+
+  // Empieza a apagarse tras 60 dp de scroll y ya no se ve a los 180.
+  static const double _desde = 60;
+  static const double _tramo = 120;
+
+  @override
+  Widget build(BuildContext context) {
+    final posicion = Scrollable.maybeOf(context)?.position;
+    if (posicion == null) return child;
+    final reducido = AppMovimiento.reducido(context);
+    return AnimatedBuilder(
+      animation: posicion,
+      child: child,
+      builder: (context, titulo) {
+        final subido =
+            !reducido && posicion.hasPixels ? posicion.pixels : 0.0;
+        final opacidad = (1 - (subido - _desde) / _tramo).clamp(0.0, 1.0);
+        return Opacity(opacity: opacidad, child: titulo);
+      },
     );
   }
 }

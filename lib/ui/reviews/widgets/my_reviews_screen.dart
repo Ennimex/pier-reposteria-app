@@ -1,4 +1,12 @@
 // lib/ui/reviews/widgets/my_reviews_screen.dart
+//
+// Movimiento: el contador del encabezado aparece con un pop y su número
+// rueda; del indicador a las reseñas (o al estado vacío) con un fundido a
+// través; las tarjetas entran en cascada una sola vez (recargar o volver con
+// scroll no la repite), sus fotos aparecen con fundido y, si una reseña
+// cambia al recargar (editada, respondida, aprobada), su tarjeta ajusta el
+// alto y el estado cambia de color en sitio. La hoja de edición sube con la
+// curva de la casa, su contenido entra en cascada y sus estrellas dan pop.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -8,6 +16,8 @@ import 'package:pier_pasteleria/domain/models/mi_resena.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_dimensions.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_pasteleria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:pier_pasteleria/ui/reviews/view_model/my_reviews_view_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
@@ -45,6 +55,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: AppMovimiento.estiloHoja(context),
       builder: (_) => _EditarResenaSheet(resena: r),
     );
     if (cambios == null || !mounted) return;
@@ -82,6 +93,43 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Widget _buildPantalla(BuildContext context) {
     final resenas = _vm.resenas;
     final cargando = _vm.cargando;
+    // Lo que se arma durante el push espera a que llegue la página; lo que
+    // llega después entra de inmediato.
+    final espera = esperaDePagina(context);
+    final Widget cuerpo;
+    if (cargando) {
+      cuerpo = KeyedSubtree(
+        key: const ValueKey('cargando'),
+        child: Center(
+            child: CircularProgressIndicator(color: AppColors.pierVerde)),
+      );
+    } else if (resenas.isEmpty) {
+      cuerpo = KeyedSubtree(
+        key: const ValueKey('vacio'),
+        child: _buildEmptyState(espera),
+      );
+    } else {
+      cuerpo = KeyedSubtree(
+        key: const ValueKey('lista'),
+        child: RefreshIndicator(
+          onRefresh: () => _vm.cargar(silenciosa: true),
+          color: AppColors.pierVerde,
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            itemCount: resenas.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            // Cada reseña entra una sola vez, en cascada con las que
+            // llegan juntas.
+            itemBuilder: (context, i) => EntradaSuave(
+              key: ValueKey<String>(resenas[i].id),
+              id: resenas[i].id,
+              retraso: espera,
+              child: _buildCard(resenas[i]),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -92,22 +140,25 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2))
-                        ],
+                  PresionEscala(
+                    escala: AppMovimiento.escalaPresionChica,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2))
+                          ],
+                        ),
+                        child: const Icon(LucideIcons.chevronLeft,
+                            size: 16, color: AppColors.textPrimary),
                       ),
-                      child: const Icon(LucideIcons.chevronLeft,
-                          size: 16, color: AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -118,19 +169,25 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary)),
                   const Spacer(),
+                  // El contador aparece con un pop y su número rueda si
+                  // cambia al recargar.
                   if (!cargando && resenas.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.pierVerde.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
+                    PopAlEntrar(
+                      retraso: espera,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.pierVerde.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: CuentaRodante(
+                            valor: resenas.length,
+                            estilo: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.pierVerde,
+                                fontWeight: FontWeight.bold)),
                       ),
-                      child: Text('${resenas.length}',
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.pierVerde,
-                              fontWeight: FontWeight.bold)),
                     ),
                 ],
               ),
@@ -138,26 +195,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
             const SizedBox(height: 16),
 
+            // Indicador, vacío o lista cambian con un fundido a través; el
+            // ámbito queda afuera para que recargar no repita las entradas.
             Expanded(
-              child: cargando
-                  ? Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.pierVerde))
-                  : resenas.isEmpty
-                      ? _buildEmptyState()
-                      : RefreshIndicator(
-                          onRefresh: () => _vm.cargar(silenciosa: true),
-                          color: AppColors.pierVerde,
-                          child: ListView.separated(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                            itemCount: resenas.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, i) =>
-                                _buildCard(resenas[i]),
-                          ),
-                        ),
+              child: AmbitoEntradas(
+                child: CambioAnimado(tipo: TipoCambio.atravesar, child: cuerpo),
+              ),
             ),
           ],
         ),
@@ -218,6 +261,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           productoImagen,
                           width: 52, height: 52,
                           fit: BoxFit.cover,
+                          frameBuilder: (_, foto, cuadro, sincrona) =>
+                              FotoAlLlegar(
+                                  foto: foto,
+                                  cuadro: cuadro,
+                                  sincrona: sincrona),
                           errorBuilder: (_, _, _) =>
                               _productoPlaceholder(),
                         )
@@ -242,29 +290,45 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     ],
                   ),
                 ),
-                Container(
+                // Si el estado cambia al recargar (en revisión → publicada),
+                // el chip pasa al nuevo color y su contenido cambia en sitio.
+                AnimatedContainer(
+                  duration: AppMovimiento.duracion(context, AppMovimiento.corta),
+                  curve: AppMovimiento.curvaEstandar,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: estadoColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(estadoIcon, size: 12, color: estadoColor),
-                    const SizedBox(width: 4),
-                    Text(estadoLabel,
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: estadoColor,
-                            fontWeight: FontWeight.w600)),
-                  ]),
+                  child: TamanoSuave(
+                    alineacion: AlignmentDirectional.centerEnd,
+                    child: CambioAnimado(
+                      alineacion: Alignment.center,
+                      child: Row(
+                          key: ValueKey(r.estado),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(estadoIcon, size: 12, color: estadoColor),
+                            const SizedBox(width: 4),
+                            Text(estadoLabel,
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: estadoColor,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
+                    ),
+                  ),
                 ),
-                GestureDetector(
-                  onTap: () => _editarResena(r),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 4, top: 4, bottom: 4),
-                    child: Icon(LucideIcons.pencil,
-                        size: 18, color: AppColors.pierVerde),
+                PresionEscala(
+                  escala: AppMovimiento.escalaPresionChica,
+                  child: GestureDetector(
+                    onTap: () => _editarResena(r),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 4, bottom: 4),
+                      child: Icon(LucideIcons.pencil,
+                          size: 18, color: AppColors.pierVerde),
+                    ),
                   ),
                 ),
               ],
@@ -274,112 +338,116 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1)),
 
           // ── CALIFICACIÓN + CONTENIDO ──────────────────────────
+          // Si al recargar cambia (editada, respondida), la tarjeta ajusta
+          // su alto con suavidad en vez de saltar.
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  ...List.generate(
-                      5,
-                      (i) => Icon(
-                            i < rating.round()
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            size: 18,
-                            color: i < rating.round()
-                                ? Colors.amber
-                                : Colors.grey[300],
-                          )),
-                  const SizedBox(width: 8),
-                  Text(rating.toStringAsFixed(1),
-                      style: const TextStyle(
+            child: TamanoSuave(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    ...List.generate(
+                        5,
+                        (i) => Icon(
+                              i < rating.round()
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              size: 18,
+                              color: i < rating.round()
+                                  ? Colors.amber
+                                  : Colors.grey[300],
+                            )),
+                    const SizedBox(width: 8),
+                    Text(rating.toStringAsFixed(1),
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
+                  ]),
+                  if (titulo.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(titulo,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.textPrimary)),
+                  ],
+                  const SizedBox(height: 6),
+                  Text(comentario,
+                      style: TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary)),
-                ]),
-                if (titulo.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(titulo,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: AppColors.textPrimary)),
-                ],
-                const SizedBox(height: 6),
-                Text(comentario,
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                        height: 1.4)),
+                          color: Colors.grey[600],
+                          height: 1.4)),
 
-                // Respuesta del negocio
-                if (respuesta != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.pierArena,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppColors.pierDorado
-                              .withValues(alpha: 0.3)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Text('✦ ',
-                              style: TextStyle(
-                                  color: AppColors.pierDorado,
-                                  fontSize: 12)),
-                          Text('Respuesta de Pier',
+                  // Respuesta del negocio
+                  if (respuesta != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.pierArena,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: AppColors.pierDorado
+                                .withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Text('✦ ',
+                                style: TextStyle(
+                                    color: AppColors.pierDorado,
+                                    fontSize: 12)),
+                            Text('Respuesta de Pier',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.pierDoradoOscuro)),
+                          ]),
+                          const SizedBox(height: 4),
+                          Text(respuesta,
                               style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.pierDoradoOscuro)),
-                        ]),
-                        const SizedBox(height: 4),
-                        Text(respuesta,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[700],
-                                height: 1.4)),
-                      ],
-                    ),
-                  ),
-                ],
-
-                // Motivo de rechazo
-                if (r.estado == EstadoResena.rechazada &&
-                    motivo != null) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: Colors.red.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(LucideIcons.info,
-                            size: 14, color: Colors.red.shade400),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(motivo,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.red.shade400,
+                                  color: Colors.grey[700],
                                   height: 1.4)),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
+
+                  // Motivo de rechazo
+                  if (r.estado == EstadoResena.rechazada &&
+                      motivo != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: Colors.red.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(LucideIcons.info,
+                              size: 14, color: Colors.red.shade400),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(motivo,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red.shade400,
+                                    height: 1.4)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],
@@ -397,33 +465,48 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             color: AppColors.pierVerde, size: 24),
       );
 
-  Widget _buildEmptyState() {
+  // El círculo crece apenas mientras aparece y los textos suben detrás de
+  // él; una sola vez (una recarga no lo repite).
+  Widget _buildEmptyState(Duration espera) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 100, height: 100,
-            decoration: BoxDecoration(
-              color: AppColors.pierVerde.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
+          EntradaSuave(
+            id: 'vacio-icono',
+            retraso: espera,
+            escalaInicial: 0.85,
+            child: Container(
+              width: 100, height: 100,
+              decoration: BoxDecoration(
+                color: AppColors.pierVerde.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(LucideIcons.messageSquare,
+                  size: 46,
+                  color: AppColors.pierVerde.withValues(alpha: 0.5)),
             ),
-            child: Icon(LucideIcons.messageSquare,
-                size: 46,
-                color: AppColors.pierVerde.withValues(alpha: 0.5)),
           ),
           const SizedBox(height: 20),
-          const Text('Sin reseñas aún',
-              style: TextStyle(
-                  fontFamily: 'Playfair Display',
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary)),
+          EntradaSuave(
+            id: 'vacio-titulo',
+            retraso: espera,
+            child: const Text('Sin reseñas aún',
+                style: TextStyle(
+                    fontFamily: 'Playfair Display',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary)),
+          ),
           const SizedBox(height: 8),
-          Text(
-            'Cuando compres y califiques un producto\naparecerá aquí.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          EntradaSuave(
+            id: 'vacio-texto',
+            retraso: espera,
+            child: Text(
+              'Cuando compres y califiques un producto\naparecerá aquí.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
           ),
         ],
       ),
@@ -482,6 +565,9 @@ class _EditarResenaSheetState extends State<_EditarResenaSheet> {
   @override
   Widget build(BuildContext context) {
     final productoNombre = widget.resena.productoNombre;
+    // El contenido sube en cascada mientras la hoja llega (se lee al
+    // montarse: el teclado no lo repite).
+    final espera = esperaDePagina(context);
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -508,69 +594,97 @@ class _EditarResenaSheetState extends State<_EditarResenaSheet> {
               ),
             ),
             const SizedBox(height: AppDimensions.space16),
-            const Text('Editar reseña',
-                style: TextStyle(
-                    fontFamily: 'Playfair Display',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
+            EntradaSuave(
+              retraso: espera,
+              child: const Text('Editar reseña',
+                  style: TextStyle(
+                      fontFamily: 'Playfair Display',
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+            ),
             if (productoNombre.isNotEmpty) ...[
               const SizedBox(height: 2),
-              Text(productoNombre,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+              EntradaSuave(
+                retraso: espera,
+                child: Text(productoNombre,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+              ),
             ],
             const SizedBox(height: AppDimensions.space16),
-            Row(
-              children: List.generate(5, (i) {
-                final filled = i < _rating;
-                return GestureDetector(
-                  onTap: () => setState(() => _rating = i + 1),
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Icon(
-                      filled
-                          ? Icons.star_rounded
-                          : Icons.star_border_rounded,
-                      size: 34,
-                      color: filled ? Colors.amber : Colors.grey[300],
+            // Las estrellas que se encienden dan un pop en fila (el ícono
+            // cambia al instante; solo se mueve).
+            EntradaSuave(
+              orden: 1,
+              retraso: espera,
+              child: Row(
+                children: List.generate(5, (i) {
+                  final filled = i < _rating;
+                  return GestureDetector(
+                    onTap: () => setState(() => _rating = i + 1),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: EstrellaAnimada(
+                        indice: i,
+                        calificacion: _rating,
+                        child: Icon(
+                          filled
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
+                          size: 34,
+                          color: filled ? Colors.amber : Colors.grey[300],
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
             const SizedBox(height: AppDimensions.space16),
-            TextField(
-              controller: _tituloCtrl,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                  hintText: 'Título (opcional)'),
+            EntradaSuave(
+              orden: 2,
+              retraso: espera,
+              child: TextField(
+                controller: _tituloCtrl,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                    hintText: 'Título (opcional)'),
+              ),
             ),
             const SizedBox(height: AppDimensions.space12),
-            TextField(
-              controller: _comentarioCtrl,
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                  hintText: 'Tu comentario'),
+            EntradaSuave(
+              orden: 3,
+              retraso: espera,
+              child: TextField(
+                controller: _comentarioCtrl,
+                maxLines: 4,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                    hintText: 'Tu comentario'),
+              ),
             ),
             const SizedBox(height: AppDimensions.space20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
+            EntradaSuave(
+              orden: 4,
+              retraso: espera,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancelar'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppDimensions.space12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _guardar,
-                    child: const Text('Guardar'),
+                  const SizedBox(width: AppDimensions.space12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _guardar,
+                      child: const Text('Guardar'),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

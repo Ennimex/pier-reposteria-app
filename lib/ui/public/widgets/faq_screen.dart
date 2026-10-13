@@ -1,4 +1,11 @@
 // lib/ui/public/widgets/faq_screen.dart
+//
+// Movimiento: los chips llegan desde la derecha y las preguntas suben en
+// cascada después del push; elegir una categoría centra su chip (fondo y
+// texto cambian juntos) y vuelve a repartir las preguntas de esa categoría
+// (las que no son se van al instante, sin animación de salida); una
+// pregunta se abre con la curva enfática, su tarjeta se eleva y la
+// respuesta sube mientras aparece.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,8 +14,10 @@ import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart'
 import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/public/view_model/faq_view_model.dart';
 import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_pasteleria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:provider/provider.dart';
 
 class FAQScreen extends StatefulWidget {
@@ -50,6 +59,11 @@ class _FAQScreenState extends State<FAQScreen> {
 
   Widget _buildPantalla(BuildContext context) {
     final categorias = _vm.categorias;
+    final categoria = _vm.categoriaSeleccionada;
+    final preguntas = _vm.filtradas;
+    // Al llegar la página, las preguntas esperan a que termine el push; al
+    // cambiar de categoría entran de inmediato.
+    final espera = esperaDePagina(context);
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       body: SafeArea(
@@ -60,22 +74,25 @@ class _FAQScreenState extends State<FAQScreen> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2))
-                        ],
+                  PresionEscala(
+                    escala: AppMovimiento.escalaPresionChica,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2))
+                          ],
+                        ),
+                        child: const Icon(LucideIcons.chevronLeft,
+                            size: 16, color: AppColors.textPrimary),
                       ),
-                      child: const Icon(LucideIcons.chevronLeft,
-                          size: 16, color: AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -92,120 +109,94 @@ class _FAQScreenState extends State<FAQScreen> {
             const SizedBox(height: 16),
 
             // ── FILTROS DE CATEGORÍA ─────────────────────────────
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: categorias.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, i) {
-                  final cat = categorias[i];
-                  final sel = _vm.categoriaSeleccionada == cat;
-                  return GestureDetector(
-                    onTap: () => _vm.seleccionarCategoria(cat),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: sel ? AppColors.pierVerde : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: sel
-                                ? AppColors.pierVerde
-                                : AppColors.textSecondary
-                                    .withValues(alpha: 0.2)),
+            // La fila llega desde la derecha; cada chip se hunde al tocarlo
+            // y su fondo, borde y texto cambian juntos.
+            EntradaSuave(
+              retraso: espera,
+              desplazamiento: const Offset(AppMovimiento.distanciaLarga, 0),
+              child: SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: categorias.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, i) {
+                    final cat = categorias[i];
+                    final sel = categoria == cat;
+                    // El contexto propio del chip (el de itemBuilder es el
+                    // de la lista) para centrarlo a él.
+                    return Builder(
+                      builder: (chip) => PresionEscala(
+                        escala: AppMovimiento.escalaPresionChica,
+                        child: GestureDetector(
+                          onTap: () {
+                            _vm.seleccionarCategoria(cat);
+                            centrarEnSuFila(chip);
+                          },
+                          child: AnimatedContainer(
+                            duration: AppMovimiento.duracion(
+                                chip, AppMovimiento.corta),
+                            curve: AppMovimiento.curvaEstandar,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: sel ? AppColors.pierVerde : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: sel
+                                      ? AppColors.pierVerde
+                                      : AppColors.textSecondary
+                                          .withValues(alpha: 0.2)),
+                            ),
+                            child: TextoColorSuave(cat,
+                                estilo: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: sel
+                                        ? Colors.white
+                                        : AppColors.textSecondary)),
+                          ),
+                        ),
                       ),
-                      child: Text(cat,
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: sel
-                                  ? Colors.white
-                                  : AppColors.textSecondary)),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
 
             const SizedBox(height: 12),
 
             // ── LISTA ────────────────────────────────────────────
+            // Una lista por categoría: al cambiarla, la anterior se va de
+            // golpe (sin animación de salida), la nueva empieza arriba y sus
+            // preguntas suben en cascada, todas cerradas. Las del panel
+            // reemplazan a las de la app en su lugar, sin volver a entrar.
             Expanded(
               child: ListView(
+                key: ValueKey<String>(categoria),
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                 children: [
-                  ..._vm.filtradas.map((faq) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _buildFAQCard(faq),
-                      )),
+                  for (var i = 0; i < preguntas.length; i++)
+                    Padding(
+                      key: ValueKey<String>('$categoria|$i'),
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: EntradaSuave(
+                        orden: i + 1,
+                        retraso: espera,
+                        child: _TarjetaPregunta(pregunta: preguntas[i]),
+                      ),
+                    ),
                   const SizedBox(height: 16),
-                  _buildContactBanner(context),
+                  EntradaSuave(
+                    orden: preguntas.length + 1,
+                    retraso: espera,
+                    child: _buildContactBanner(context),
+                  ),
                 ],
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFAQCard(PreguntaFrecuente faq) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 3))
-        ],
-      ),
-      // Material propio: sin él la onda del ExpansionTile queda tapada por el
-      // fondo blanco del Container (aserción de ListTile en debug).
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        clipBehavior: Clip.antiAlias,
-        child: Theme(
-          data: Theme.of(context).copyWith(
-              dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            tilePadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            childrenPadding:
-                const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            iconColor: AppColors.pierVerde,
-            collapsedIconColor:
-                AppColors.textSecondary.withValues(alpha: 0.6),
-            title: Text(
-              faq.pregunta,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: AppColors.textPrimary),
-            ),
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.pierArena,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  faq.respuesta,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                      height: 1.5),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -239,26 +230,125 @@ class _FAQScreenState extends State<FAQScreen> {
             ],
           ),
         ),
-        GestureDetector(
-          onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const ContactScreen())),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+        PresionEscala(
+          escala: AppMovimiento.escalaPresionChica,
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const ContactScreen())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text('Contactar',
+                  style: TextStyle(
+                      color: AppColors.pierVerde,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
             ),
-            child: Text('Contactar',
-                style: TextStyle(
-                    color: AppColors.pierVerde,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold)),
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// Una pregunta: se abre con la curva enfática de la casa, la tarjeta se
+/// eleva un poco mientras está abierta (sombra más marcada y un filo verde,
+/// sin cambiar su tamaño) y la respuesta sube mientras aparece. La respuesta
+/// se arma de nuevo en cada apertura, así que su entrada se repite cada vez.
+class _TarjetaPregunta extends StatefulWidget {
+  const _TarjetaPregunta({required this.pregunta});
+
+  final PreguntaFrecuente pregunta;
+
+  @override
+  State<_TarjetaPregunta> createState() => _TarjetaPreguntaState();
+}
+
+class _TarjetaPreguntaState extends State<_TarjetaPregunta> {
+  bool _abierta = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final faq = widget.pregunta;
+    final radio = BorderRadius.circular(14);
+    return AnimatedContainer(
+      duration: AppMovimiento.duracion(context, AppMovimiento.corta),
+      curve: AppMovimiento.curvaEstandar,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: radio,
+        boxShadow: [
+          // Mismo desenfoque: solo cambian el tono y la caída de la sombra.
+          BoxShadow(
+              color: Colors.black.withValues(alpha: _abierta ? 0.08 : 0.04),
+              blurRadius: 8,
+              offset: Offset(0, _abierta ? 5 : 3))
+        ],
+      ),
+      // El filo va encima (no ocupa espacio): abrir no mueve nada.
+      foregroundDecoration: BoxDecoration(
+        borderRadius: radio,
+        border: Border.all(
+            color: AppColors.pierVerde.withValues(alpha: _abierta ? 0.25 : 0)),
+      ),
+      // Material propio: sin él la onda del ExpansionTile queda tapada por el
+      // fondo blanco del Container (aserción de ListTile en debug).
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radio,
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+              dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            expansionAnimationStyle: AppMovimiento.estiloExpansion(context),
+            onExpansionChanged: (abierta) =>
+                setState(() => _abierta = abierta),
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            childrenPadding:
+                const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            iconColor: AppColors.pierVerde,
+            collapsedIconColor:
+                AppColors.textSecondary.withValues(alpha: 0.6),
+            title: Text(
+              faq.pregunta,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary),
+            ),
+            children: [
+              EntradaSuave(
+                retraso: AppMovimiento.paso,
+                duracion: AppMovimiento.media,
+                desplazamiento: const Offset(0, AppMovimiento.distanciaCorta),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.pierArena,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    faq.respuesta,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

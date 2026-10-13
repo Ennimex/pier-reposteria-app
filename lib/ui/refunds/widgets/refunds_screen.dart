@@ -1,4 +1,13 @@
 // lib/ui/refunds/widgets/refunds_screen.dart
+//
+// Movimiento: el título rueda al cambiar de pestaña y el «?» aparece con un
+// pop; el botón «Nueva Solicitud» se encoge y se apaga siguiendo al dedo
+// (o a la animación de la pestaña) sin reconstruir la pantalla. La lista
+// pasa del indicador a las solicitudes (o al estado vacío) con un fundido a
+// través y entra en cascada una sola vez: volver de la otra pestaña o
+// recargar no la repite, y la solicitud recién enviada llega con un aro
+// dorado. Un campo que no pasa la validación se sacude y el botón de envío
+// cambia en sitio.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,6 +18,8 @@ import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/domain/models/reembolso.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_pasteleria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:pier_pasteleria/ui/refunds/view_model/refunds_view_model.dart';
 import 'package:provider/provider.dart';
 
@@ -34,6 +45,16 @@ class _RefundsScreenState extends State<RefundsScreen>
   final _formKey = GlobalKey<FormState>();
   final _descripcionCtrl = TextEditingController();
 
+  // Para saber qué campo no pasó la validación y sacudir solo ese.
+  final _motivoKey = GlobalKey<FormFieldState<String>>();
+  final _descripcionKey = GlobalKey<FormFieldState<String>>();
+  final _sacudirMotivo = ValueNotifier<int>(0);
+  final _sacudirDescripcion = ValueNotifier<int>(0);
+
+  // Solicitudes ya vistas: la que aparezca después (la recién enviada) se
+  // resalta una vez.
+  Set<String>? _conocidas;
+
   @override
   void initState() {
     super.initState();
@@ -45,12 +66,41 @@ class _RefundsScreenState extends State<RefundsScreen>
   void dispose() {
     _tabController.dispose();
     _descripcionCtrl.dispose();
+    _sacudirMotivo.dispose();
+    _sacudirDescripcion.dispose();
     _vm.dispose();
     super.dispose();
   }
 
+  /// Sacude los campos que quedaron con error (los textos de error son los
+  /// de siempre).
+  void _sacudirInvalidos() {
+    if (_motivoKey.currentState?.hasError ?? false) _sacudirMotivo.value++;
+    if (_descripcionKey.currentState?.hasError ?? false) {
+      _sacudirDescripcion.value++;
+    }
+  }
+
+  /// La solicitud que no estaba la vez anterior. Solo una: una llegada se
+  /// resalta; un cambio en bloque (la primera carga, recuperarse de un error)
+  /// no.
+  Set<String> _nuevas(List<Reembolso> lista) {
+    final ids = {for (final r in lista) r.id};
+    final conocidas = _conocidas;
+    if (conocidas == null) {
+      _conocidas = ids;
+      return const <String>{};
+    }
+    final nuevas = ids.difference(conocidas);
+    conocidas.addAll(ids);
+    return nuevas.length == 1 ? nuevas : const <String>{};
+  }
+
   Future<void> _enviarSolicitud() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _sacudirInvalidos();
+      return;
+    }
     final error = await _vm.enviar(descripcion: _descripcionCtrl.text);
     if (!mounted) return;
     if (error != null) {
@@ -95,52 +145,68 @@ class _RefundsScreenState extends State<RefundsScreen>
                 animation: _tabController,
                 builder: (_, _) => Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                                color:
-                                    Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2))
-                          ],
+                    PresionEscala(
+                      escala: AppMovimiento.escalaPresionChica,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                  color:
+                                      Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2))
+                            ],
+                          ),
+                          child: const Icon(LucideIcons.chevronLeft,
+                              size: 16, color: AppColors.textPrimary),
                         ),
-                        child: const Icon(LucideIcons.chevronLeft,
-                            size: 16, color: AppColors.textPrimary),
                       ),
                     ),
                     const SizedBox(width: 14),
+                    // El título rueda: sube al ir a «Nueva Solicitud» y
+                    // baja al volver.
                     Expanded(
-                      child: Text(_titulo,
-                          style: const TextStyle(
-                              fontFamily: 'Playfair Display',
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary)),
-                    ),
-                    // Ícono ? solo en Nueva Solicitud
-                    if (_tabController.index == 1)
-                      Container(
-                        width: 38, height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                                color:
-                                    Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2))
-                          ],
-                        ),
-                        child: const Icon(LucideIcons.circleHelp,
-                            size: 18, color: AppColors.textSecondary),
+                      child: CambioAnimado(
+                        tipo: TipoCambio.subir,
+                        direccion: _tabController.index == 1 ? 1 : -1,
+                        child: Text(_titulo,
+                            key: ValueKey<String>(_titulo),
+                            style: const TextStyle(
+                                fontFamily: 'Playfair Display',
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary)),
                       ),
+                    ),
+                    // Ícono ? solo en Nueva Solicitud: abre su lugar y
+                    // aparece con un pop.
+                    Aparicion(
+                      visible: _tabController.index == 1,
+                      alineacion: AlignmentDirectional.centerEnd,
+                      child: PopAlEntrar(
+                        child: Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                  color:
+                                      Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2))
+                            ],
+                          ),
+                          child: const Icon(LucideIcons.circleHelp,
+                              size: 18, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -190,19 +256,23 @@ class _RefundsScreenState extends State<RefundsScreen>
             const SizedBox(height: 16),
 
             // ── CONTENIDO ────────────────────────────────────────
+            // El ámbito queda fuera de las pestañas: el TabBarView desmonta
+            // la que no se ve, y así volver a ella no repite su entrada.
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  ListenableBuilder(
-                    listenable: _vm,
-                    builder: (_, _) => _buildMisSolicitudes(),
-                  ),
-                  ListenableBuilder(
-                    listenable: _vm,
-                    builder: (_, _) => _buildNuevaSolicitud(),
-                  ),
-                ],
+              child: AmbitoEntradas(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    ListenableBuilder(
+                      listenable: _vm,
+                      builder: (_, _) => _buildMisSolicitudes(),
+                    ),
+                    ListenableBuilder(
+                      listenable: _vm,
+                      builder: (_, _) => _buildNuevaSolicitud(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -210,35 +280,82 @@ class _RefundsScreenState extends State<RefundsScreen>
       ),
 
       // ── FAB ─────────────────────────────────────────────────────
+      // Sigue a la animación de las pestañas (también al dedo cuando se
+      // desliza): se apaga y se encoge camino a «Nueva Solicitud» y vuelve
+      // al regresar. Solo cambian su opacidad y su escala; a media salida ya
+      // no recibe toques y del todo fuera sale del árbol, como antes.
       floatingActionButton: AnimatedBuilder(
-        animation: _tabController,
-        builder: (_, _) => _tabController.index == 0
-            ? FloatingActionButton.extended(
-                onPressed: () => _tabController.animateTo(1),
-                backgroundColor: AppColors.pierVerde,
-                icon: const Icon(LucideIcons.plus, color: Colors.white),
-                label: const Text('Nueva Solicitud',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(50)),
-              )
-            : const SizedBox.shrink(),
+        animation: _tabController.animation!,
+        child: FloatingActionButton.extended(
+          onPressed: () => _tabController.animateTo(1),
+          backgroundColor: AppColors.pierVerde,
+          icon: const Icon(LucideIcons.plus, color: Colors.white),
+          label: const Text('Nueva Solicitud',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(50)),
+        ),
+        builder: (context, boton) {
+          final presente =
+              (1 - _tabController.animation!.value).clamp(0.0, 1.0);
+          if (presente <= 0) return const SizedBox.shrink();
+          final t = AppMovimiento.curvaEntrada.transform(presente);
+          final apagado = presente < 0.5;
+          return IgnorePointer(
+            ignoring: apagado,
+            child: ExcludeSemantics(
+              excluding: apagado,
+              child: Opacity(
+                opacity: t,
+                child: Transform.scale(
+                  scale: AppMovimiento.reducido(context) ? 1 : 0.6 + 0.4 * t,
+                  child: boton,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
   // ── TAB 1: MIS SOLICITUDES ──────────────────────────────────────
+  // Indicador, vacío o lista cambian con un fundido a través (recargar
+  // también pasa por el indicador, como antes).
   Widget _buildMisSolicitudes() {
     final reembolsos = _vm.reembolsos;
+    final Widget cuerpo;
     if (_vm.cargandoReembolsos) {
-      return Center(
-          child: CircularProgressIndicator(color: AppColors.pierVerde));
+      cuerpo = KeyedSubtree(
+        key: const ValueKey('cargando'),
+        child: Center(
+            child: CircularProgressIndicator(color: AppColors.pierVerde)),
+      );
+    } else {
+      final espera = esperaDePagina(context);
+      final nuevas = _nuevas(reembolsos);
+      cuerpo = reembolsos.isEmpty
+          ? KeyedSubtree(
+              key: const ValueKey('vacio'),
+              child: _buildEmptyState(espera),
+            )
+          : KeyedSubtree(
+              key: const ValueKey('lista'),
+              child: _buildLista(reembolsos, nuevas, espera),
+            );
     }
-    if (reembolsos.isEmpty) {
-      return _buildEmptyState();
-    }
+    return CambioAnimado(tipo: TipoCambio.atravesar, child: cuerpo);
+  }
+
+  /// El historial: cada solicitud entra una sola vez, en cascada con las
+  /// que llegan juntas; la recién enviada además llega con un aro dorado.
+  Widget _buildLista(
+    List<Reembolso> reembolsos,
+    Set<String> nuevas,
+    Duration espera,
+  ) {
     return RefreshIndicator(
       onRefresh: _vm.cargarReembolsos,
       color: AppColors.pierVerde,
@@ -248,18 +365,33 @@ class _RefundsScreenState extends State<RefundsScreen>
         itemBuilder: (context, i) {
           // Índice 0 = título de sección
           if (i == 0) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Text('Historial de solicitudes',
-                  style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500)),
+            return EntradaSuave(
+              key: const ValueKey('historial'),
+              id: 'historial',
+              retraso: espera,
+              child: const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: Text('Historial de solicitudes',
+                    style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500)),
+              ),
             );
           }
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: _buildReembolsoCard(reembolsos[i - 1]),
+          final r = reembolsos[i - 1];
+          return EntradaSuave(
+            key: ValueKey<String>(r.id),
+            id: r.id,
+            retraso: espera,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: ResaltadoUnaVez(
+                activo: nuevas.contains(r.id),
+                radio: BorderRadius.circular(20),
+                child: _buildReembolsoCard(r),
+              ),
+            ),
           );
         },
       ),
@@ -545,36 +677,40 @@ class _RefundsScreenState extends State<RefundsScreen>
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppColors.textSecondary.withValues(alpha: 0.2)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 16)),
-                  initialValue: _vm.motivo,
-                  hint: Text('Selecciona un motivo',
-                      style: TextStyle(
-                          color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
-                  icon: Icon(LucideIcons.chevronDown,
-                      color: AppColors.pierVerde),
-                  items: RefundsViewModel.motivos
-                      .map((m) => DropdownMenuItem(
-                          value: m,
-                          child: Text(m,
-                              style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textPrimary))))
-                      .toList(),
-                  onChanged: _vm.seleccionarMotivo,
-                  validator: (val) =>
-                      val == null ? 'Selecciona un motivo' : null,
+            SacudidaConAviso(
+              aviso: _sacudirMotivo,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: AppColors.textSecondary.withValues(alpha: 0.2)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButtonFormField<String>(
+                    key: _motivoKey,
+                    decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 16)),
+                    initialValue: _vm.motivo,
+                    hint: Text('Selecciona un motivo',
+                        style: TextStyle(
+                            color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
+                    icon: Icon(LucideIcons.chevronDown,
+                        color: AppColors.pierVerde),
+                    items: RefundsViewModel.motivos
+                        .map((m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(m,
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary))))
+                        .toList(),
+                    onChanged: _vm.seleccionarMotivo,
+                    validator: (val) =>
+                        val == null ? 'Selecciona un motivo' : null,
+                  ),
                 ),
               ),
             ),
@@ -587,37 +723,43 @@ class _RefundsScreenState extends State<RefundsScreen>
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 10),
-            TextFormField(
-              controller: _descripcionCtrl,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: 'Describe el problema con detalle...',
-                hintStyle:
-                    TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14),
-                filled: true,
-                fillColor: Colors.white,
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                        color: AppColors.textSecondary.withValues(alpha: 0.2))),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                        color: AppColors.pierVerde, width: 1.5)),
-                errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide:
-                        const BorderSide(color: AppColors.error)),
-                contentPadding: const EdgeInsets.all(14),
+            SacudidaConAviso(
+              aviso: _sacudirDescripcion,
+              child: TextFormField(
+                key: _descripcionKey,
+                controller: _descripcionCtrl,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: 'Describe el problema con detalle...',
+                  hintStyle:
+                      TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14),
+                  filled: true,
+                  fillColor: Colors.white,
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                          color: AppColors.textSecondary.withValues(alpha: 0.2))),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                          color: AppColors.pierVerde, width: 1.5)),
+                  errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          const BorderSide(color: AppColors.error)),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+                validator: (val) =>
+                    (val == null || val.trim().length < 10)
+                        ? 'Mínimo 10 caracteres'
+                        : null,
               ),
-              validator: (val) =>
-                  (val == null || val.trim().length < 10)
-                      ? 'Mínimo 10 caracteres'
-                      : null,
             ),
             const SizedBox(height: 32),
 
             // ── BOTÓN ENVIAR ───────────────────────────────────
+            // «Enviar Solicitud» ↔ «Enviando...» en el mismo botón: el
+            // ícono cambia con un pop y el texto con un fundido.
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -625,19 +767,32 @@ class _RefundsScreenState extends State<RefundsScreen>
                 onPressed: (_vm.enviando || pedidos.isEmpty)
                     ? null
                     : _enviarSolicitud,
-                icon: _vm.enviando
-                    ? const SizedBox(
-                        height: 18, width: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(LucideIcons.send,
-                        color: Colors.white, size: 18),
-                label: Text(
-                    _vm.enviando ? 'Enviando...' : 'Enviar Solicitud',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
+                icon: CambioAnimado(
+                  tipo: TipoCambio.escalar,
+                  alineacion: Alignment.center,
+                  child: _vm.enviando
+                      ? const SizedBox(
+                          key: ValueKey('enviando'),
+                          height: 18, width: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(LucideIcons.send,
+                          key: ValueKey('enviar'),
+                          color: Colors.white, size: 18),
+                ),
+                label: TamanoSuave(
+                  alineacion: Alignment.center,
+                  child: CambioAnimado(
+                    alineacion: Alignment.center,
+                    child: Text(
+                        _vm.enviando ? 'Enviando...' : 'Enviar Solicitud',
+                        key: ValueKey(_vm.enviando),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.pierVerde,
                   disabledBackgroundColor:
@@ -655,38 +810,53 @@ class _RefundsScreenState extends State<RefundsScreen>
   }
 
   // ── EMPTY STATE ─────────────────────────────────────────────────
-  Widget _buildEmptyState() {
+  // El círculo crece apenas mientras aparece y los textos suben detrás de
+  // él; una sola vez (volver de la otra pestaña no lo repite).
+  Widget _buildEmptyState(Duration espera) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 120, height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.pierVerde.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+            EntradaSuave(
+              id: 'vacio-icono',
+              retraso: espera,
+              escalaInicial: 0.85,
+              child: Container(
+                width: 120, height: 120,
+                decoration: BoxDecoration(
+                  color: AppColors.pierVerde.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(LucideIcons.receiptText,
+                    size: 52,
+                    color: AppColors.pierVerde.withValues(alpha: 0.45)),
               ),
-              child: Icon(LucideIcons.receiptText,
-                  size: 52,
-                  color: AppColors.pierVerde.withValues(alpha: 0.45)),
             ),
             const SizedBox(height: 24),
-            const Text('Sin solicitudes',
-                style: TextStyle(
-                    fontFamily: 'Playfair Display',
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
+            EntradaSuave(
+              id: 'vacio-titulo',
+              retraso: espera,
+              child: const Text('Sin solicitudes',
+                  style: TextStyle(
+                      fontFamily: 'Playfair Display',
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+            ),
             const SizedBox(height: 8),
-            const Text(
-              'Aún no tienes solicitudes. Si tuviste un problema con un pedido, puedes crear una aquí.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.5),
+            EntradaSuave(
+              id: 'vacio-texto',
+              retraso: espera,
+              child: const Text(
+                'Aún no tienes solicitudes. Si tuviste un problema con un pedido, puedes crear una aquí.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.5),
+              ),
             ),
           ],
         ),
