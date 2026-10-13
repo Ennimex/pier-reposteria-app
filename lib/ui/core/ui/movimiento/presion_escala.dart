@@ -2,7 +2,8 @@
 //
 // Respuesta al tocar para tarjetas y controles hechos con GestureDetector
 // (que no tienen la tinta de InkWell): el hijo se hunde un poco mientras el
-// dedo está abajo y regresa con un rebote leve al soltar.
+// dedo está abajo y regresa con un rebote leve al soltar. Si el dedo se
+// arrastra (un scroll que empezó encima), regresa ya sin terminar de hundirse.
 //
 // Usa un Listener: nunca entra a la arena de gestos, así que el onTap del
 // GestureDetector de adentro sigue igual (se dispara al soltar, como antes).
@@ -93,24 +94,40 @@ class _PresionEscalaState extends State<PresionEscala>
   }
 
   void _alMover(PointerMoveEvent evento) {
-    // Si el dedo se arrastra es un scroll, no un toque: se suelta ya.
+    // Si el dedo se arrastra es un scroll, no un toque: se cancela ya.
     if (mounted &&
         evento.pointer == _puntero &&
         (evento.position - _origen).distance > kTouchSlop) {
-      _soltar();
+      _cancelar();
     }
   }
 
-  void _alLevantar(PointerEvent evento) {
+  void _alLevantar(PointerUpEvent evento) {
     if (mounted && evento.pointer == _puntero) _soltar();
   }
 
-  void _soltar() {
+  void _alCancelarPuntero(PointerCancelEvent evento) {
+    if (mounted && evento.pointer == _puntero) _cancelar();
+  }
+
+  void _liberar() {
     _reclamados.remove(_puntero);
     _puntero = null;
-    // En un toque rápido el hundido aún no termina: el status listener lo
-    // regresa al completarse, así el pulso siempre se alcanza a ver.
+  }
+
+  // Toque terminado: en un toque rápido el hundido aún no termina y el
+  // status listener lo regresa al completarse, así el pulso siempre se
+  // alcanza a ver.
+  void _soltar() {
+    _liberar();
     if (!_control.isAnimating) _control.reverse().ignore();
+  }
+
+  // Scroll o puntero cancelado: no fue un toque, regresa ya desde donde va
+  // (un scroll que empieza sobre la tarjeta casi no la hunde).
+  void _cancelar() {
+    _liberar();
+    _control.reverse().ignore();
   }
 
   void _alCambiarEstado(AnimationStatus estado) {
@@ -135,7 +152,7 @@ class _PresionEscalaState extends State<PresionEscala>
       onPointerDown: _alBajar,
       onPointerMove: _alMover,
       onPointerUp: _alLevantar,
-      onPointerCancel: _alLevantar,
+      onPointerCancel: _alCancelarPuntero,
       child: FadeTransition(
         opacity: _reducido
             ? _control.drive(_atenuado)

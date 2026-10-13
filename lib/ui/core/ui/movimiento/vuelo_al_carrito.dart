@@ -12,6 +12,7 @@
 // la lógica del carrito ni sus mensajes: es solo decoración.
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
@@ -23,16 +24,25 @@ class VueloAlCarrito extends StatefulWidget {
 
   /// Lanza la miniatura de [imagenUrl] hacia el carrito.
   ///
-  /// Sale del rectángulo de `context` (el botón que se tocó) o, si se da,
-  /// del widget con la Key [origen] (p. ej. la foto) o de [desde] (en
-  /// coordenadas globales). Se llama desde el manejador del toque, justo
-  /// cuando el producto se agrega; no espera nada ni devuelve nada.
+  /// Sale de [desde] (en coordenadas globales) si se da; si no, del widget
+  /// con la Key [origen]; si no, del rectángulo de `context`. Lo normal es
+  /// el botón que se tocó: su `context`, u [origen] si el manejador solo
+  /// tiene el de la pantalla. Una pantalla que se cierra al agregar (el
+  /// detalle) la lanza desde el botón, nunca desde la foto: la foto ya
+  /// regresa a su tarjeta con su Hero. La foto sirve de [origen] solo si la
+  /// pantalla se queda y la foto está a la vista.
+  ///
+  /// Se llama desde el manejador del toque, en el mismo bloque que el alta
+  /// del producto (si el alta espera al backend, justo después del await):
+  /// así la insignia del carrito no se adelanta a la miniatura. No espera
+  /// ni devuelve nada; con `context` ya desmontado no hace nada.
   static void lanzar(
     BuildContext context, {
     required String imagenUrl,
     GlobalKey? origen,
     Rect? desde,
   }) {
+    if (!context.mounted) return;
     final ambito = context.findAncestorStateOfType<_VueloAlCarritoState>();
     if (ambito == null || AppMovimiento.reducido(ambito.context)) return;
     final inicio = desde ?? _rectGlobal(origen?.currentContext ?? context);
@@ -56,6 +66,9 @@ class _VueloAlCarritoState extends State<VueloAlCarrito> {
   final List<_DestinoVueloState> _destinos = <_DestinoVueloState>[];
   final List<OverlayEntry> _vuelos = <OverlayEntry>[];
   final ValueNotifier<int> _llegadas = ValueNotifier<int>(0);
+
+  // Miniaturas en el aire (lo que ve DestinoVuelo.enCamino).
+  final ValueNotifier<int> _enCamino = ValueNotifier<int>(0);
 
   void _registrar(_DestinoVueloState destino) => _destinos.add(destino);
 
@@ -98,6 +111,7 @@ class _VueloAlCarritoState extends State<VueloAlCarrito> {
       ),
     );
     _vuelos.add(entrada);
+    _enCamino.value = _vuelos.length;
     overlay.insert(entrada);
   }
 
@@ -106,6 +120,9 @@ class _VueloAlCarritoState extends State<VueloAlCarrito> {
     entrada
       ..remove()
       ..dispose();
+    // En el mismo cuadro: la insignia que esperaba aparece y el destino da
+    // el trago.
+    _enCamino.value = _vuelos.length;
     _llegadas.value++;
   }
 
@@ -119,6 +136,7 @@ class _VueloAlCarritoState extends State<VueloAlCarrito> {
     }
     _vuelos.clear();
     _llegadas.dispose();
+    _enCamino.dispose();
     super.dispose();
   }
 
@@ -132,6 +150,14 @@ class DestinoVuelo extends StatefulWidget {
   const DestinoVuelo({required this.child, super.key});
 
   final Widget child;
+
+  /// Cuántas miniaturas van en el aire en el ámbito del DestinoVuelo que
+  /// rodea a [context] (todas van al carrito); baja en uno en el cuadro en
+  /// que cada una aterriza y el destino da el trago. Null fuera de un
+  /// DestinoVuelo con ámbito. InsigniaCarrito lo usa para reaccionar cuando
+  /// llega la miniatura y no antes.
+  static ValueListenable<int>? enCamino(BuildContext context) =>
+      context.findAncestorStateOfType<_DestinoVueloState>()?._ambito?._enCamino;
 
   @override
   State<DestinoVuelo> createState() => _DestinoVueloState();
@@ -309,13 +335,18 @@ class _Miniatura extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(2),
+          // Sin cacheWidth: es la misma entrada de ImageCache que la foto que
+          // ya pintan la tarjeta y la galería, así que sale con la foto desde
+          // el primer cuadro (sin descargarla otra vez). Si aún no está, el
+          // disco dorado ocupa su lugar mientras llega.
           child: ClipOval(
             child: imagenUrl.isEmpty
                 ? relleno
                 : Image.network(
                     imagenUrl,
                     fit: BoxFit.cover,
-                    cacheWidth: 132,
+                    frameBuilder: (_, foto, cuadro, sincrona) =>
+                        sincrona || cuadro != null ? foto : relleno,
                     errorBuilder: (_, _, _) => relleno,
                   ),
           ),

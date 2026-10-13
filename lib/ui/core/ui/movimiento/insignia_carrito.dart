@@ -5,8 +5,15 @@
 // 0, y rebota SOLO cuando la cantidad sube; si baja (o el backend revierte)
 // el número cambia sin rebote. Al montarse no anima (cambiar de pestaña no
 // la hace saltar). Sirve igual para cualquier contador de la app.
+//
+// Dentro de un DestinoVuelo, con una miniatura en camino al carrito, no se
+// adelanta: el número cambia al instante pero no rebota (la reacción es el
+// trago del destino al aterrizar) y, si aparece desde 0, crece cuando la
+// miniatura llega.
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/vuelo_al_carrito.dart';
 
 class InsigniaCarrito extends StatefulWidget {
   const InsigniaCarrito({
@@ -50,6 +57,11 @@ class _InsigniaCarritoState extends State<InsigniaCarrito>
   // La insignia que se va conserva su último número (no muestra «0»).
   late int _numero = widget.cantidad;
 
+  // Mientras espera a una miniatura para aparecer: los vuelos en camino y
+  // cuántos había la última vez (bajan cuando una aterriza).
+  ValueListenable<int>? _enCamino;
+  int _vuelosVistos = 0;
+
   // Se crean aquí y no de forma perezosa: una insignia que nunca se mostró
   // no debe crear controladores al desmontarse.
   @override
@@ -77,21 +89,48 @@ class _InsigniaCarritoState extends State<InsigniaCarrito>
     if (nueva == vieja) return;
     if (nueva > 0) _numero = nueva;
     final reducido = AppMovimiento.reducido(context);
+    // Una miniatura en camino a este carrito: la insignia no se adelanta.
+    final enCamino = reducido ? null : DestinoVuelo.enCamino(context);
+    final vuelo = enCamino != null && enCamino.value > 0 ? enCamino : null;
     if (nueva > 0 && vieja <= 0) {
       if (reducido) {
         _presencia.value = 1;
+      } else if (vuelo != null) {
+        _esperarVuelo(vuelo);
       } else {
         _presencia.forward().ignore();
       }
     } else if (nueva <= 0 && vieja > 0) {
+      _dejarDeEsperar();
       if (reducido) {
         _presencia.value = 0;
       } else {
         _presencia.reverse().ignore();
       }
-    } else if (nueva > vieja && !reducido) {
+    } else if (nueva > vieja && !reducido && vuelo == null) {
       _rebote.forward(from: 0).ignore();
     }
+  }
+
+  void _esperarVuelo(ValueListenable<int> enCamino) {
+    _dejarDeEsperar();
+    _vuelosVistos = enCamino.value;
+    _enCamino = enCamino..addListener(_alCambiarVuelos);
+  }
+
+  void _alCambiarVuelos() {
+    final enCamino = _enCamino;
+    if (enCamino == null) return;
+    final aterrizo = enCamino.value < _vuelosVistos;
+    _vuelosVistos = enCamino.value;
+    if (!aterrizo) return;
+    _dejarDeEsperar();
+    _presencia.forward().ignore();
+  }
+
+  void _dejarDeEsperar() {
+    _enCamino?.removeListener(_alCambiarVuelos);
+    _enCamino = null;
   }
 
   void _alCambiarPresencia(AnimationStatus estado) {
@@ -101,6 +140,7 @@ class _InsigniaCarritoState extends State<InsigniaCarrito>
 
   @override
   void dispose() {
+    _dejarDeEsperar();
     _escalaPresencia.dispose();
     _presencia.dispose();
     _rebote.dispose();
@@ -109,7 +149,11 @@ class _InsigniaCarritoState extends State<InsigniaCarrito>
 
   @override
   Widget build(BuildContext context) {
-    if (_presencia.isDismissed) return const SizedBox.shrink();
+    // Esperando a la miniatura ya está en el árbol (las pruebas encuentran
+    // el número), pero a escala 0.
+    if (_presencia.isDismissed && _enCamino == null) {
+      return const SizedBox.shrink();
+    }
     return ScaleTransition(
       scale: _escalaPresencia,
       child: ScaleTransition(

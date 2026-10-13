@@ -1,13 +1,14 @@
 // lib/ui/core/ui/movimiento/destello_corazon.dart
 //
 // Destello al marcar favorito: el corazón da un pop y alrededor sale un aro
-// con unos puntos de azúcar. Solo cuando `activo` pasa de false a true
+// con unos puntos de azúcar. Solo cuando `activo` pasa de false a true poco
 // DESPUÉS de que el usuario tocó el corazón: la carga masiva de favoritos
 // (que también voltea corazones) y los toques sin sesión nunca destellan.
 // Pintado con un CustomPainter (las pruebas cuentan íconos de corazón: aquí
 // no se agrega ninguno) y sin bloquear toques.
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
@@ -66,10 +67,18 @@ class _DestelloCorazonState extends State<DestelloCorazon>
     ],
   );
 
+  // Un cambio que llega hasta este tiempo después del toque es del usuario:
+  // alcanza para la ida y vuelta al backend. Un toque que no cambió nada
+  // (invitado, error) caduca solo.
+  static const Duration _ventana = Duration(seconds: 3);
+
   late final AnimationController _control;
 
-  // Hubo un toque dentro del corazón desde el último cambio de `activo`.
-  bool _tocado = false;
+  // Hora (del cuadro) del último toque dentro del corazón, y la llamada que
+  // la toma en el cuadro siguiente al toque mientras está pendiente.
+  Duration? _tocadoEn;
+  int? _marcaPendiente;
+  Offset _origen = Offset.zero;
 
   @override
   void initState() {
@@ -84,15 +93,50 @@ class _DestelloCorazonState extends State<DestelloCorazon>
   void didUpdateWidget(DestelloCorazon oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activo == widget.activo) return;
-    final porElUsuario = _tocado;
-    _tocado = false;
+    final porElUsuario = _tocadoReciente;
+    _olvidarToque();
     if (widget.activo && porElUsuario && !AppMovimiento.reducido(context)) {
       _control.forward(from: 0).ignore();
     }
   }
 
+  // Sin hora todavía, el toque fue en este mismo cuadro.
+  bool get _tocadoReciente {
+    if (_marcaPendiente != null) return true;
+    final tocadoEn = _tocadoEn;
+    return tocadoEn != null &&
+        WidgetsBinding.instance.currentSystemFrameTimeStamp - tocadoEn <=
+            _ventana;
+  }
+
+  void _alBajar(PointerDownEvent evento) {
+    _olvidarToque();
+    _origen = evento.position;
+    // La hora del último cuadro puede ser vieja (pantalla quieta): se toma
+    // la del cuadro que sigue al toque, que corre antes de su build.
+    _marcaPendiente = WidgetsBinding.instance.scheduleFrameCallback((_) {
+      _marcaPendiente = null;
+      _tocadoEn = WidgetsBinding.instance.currentSystemFrameTimeStamp;
+    });
+  }
+
+  void _alMover(PointerMoveEvent evento) {
+    // Un scroll que empezó sobre el corazón no es un toque.
+    if ((evento.position - _origen).distance > kTouchSlop) _olvidarToque();
+  }
+
+  void _olvidarToque() {
+    final pendiente = _marcaPendiente;
+    if (pendiente != null) {
+      WidgetsBinding.instance.cancelFrameCallbackWithId(pendiente);
+    }
+    _marcaPendiente = null;
+    _tocadoEn = null;
+  }
+
   @override
   void dispose() {
+    _olvidarToque();
     _control.dispose();
     super.dispose();
   }
@@ -101,7 +145,9 @@ class _DestelloCorazonState extends State<DestelloCorazon>
   Widget build(BuildContext context) {
     final lado = widget.radio * 2 + 8;
     return Listener(
-      onPointerDown: (_) => _tocado = true,
+      onPointerDown: _alBajar,
+      onPointerMove: _alMover,
+      onPointerCancel: (_) => _olvidarToque(),
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,

@@ -1,10 +1,13 @@
 // lib/ui/core/ui/movimiento/icono_pestana.dart
 //
-// Ícono activo de la barra inferior (activeIcon): al seleccionarse la
-// pestaña, una píldora suave crece detrás del ícono y el ícono da un pop.
-// BottomNavigationBar construye `activeIcon` solo para la pestaña elegida,
-// así que el estado nace en cada selección (tap, fling o desde otra
-// pantalla) y la animación corre una vez; reconstruir la barra no la repite.
+// Ícono de la barra inferior: al elegirse la pestaña, una píldora suave
+// crece detrás del ícono y el ícono da un pop; al dejarse, la píldora se
+// encoge y se apaga (sin pop). Se usa en las dos ranuras del
+// BottomNavigationBarItem: `icon: IconoPestana(i, activo: false)` y
+// `activeIcon: IconoPestana(i)`. La barra pone una u otra en el mismo
+// lugar y, como son del mismo tipo, el estado se conserva y anima los dos
+// sentidos. Montarse elegido (la barra recién creada, o IconoPestana solo en
+// activeIcon) también anima, una vez; reconstruir la barra no la repite.
 //
 // La píldora se pinta fuera de la caja del ícono: la barra no cambia de
 // alto y las etiquetas (con las que las pruebas encuentran las pestañas) no
@@ -13,16 +16,19 @@ import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
 
 class IconoPestana extends StatefulWidget {
-  const IconoPestana(this.icono, {super.key});
+  const IconoPestana(this.icono, {this.activo = true, super.key});
 
   final IconData icono;
+
+  /// Si la pestaña está elegida: false en `icon` y true en `activeIcon`.
+  final bool activo;
 
   @override
   State<IconoPestana> createState() => _IconoPestanaState();
 }
 
 class _IconoPestanaState extends State<IconoPestana>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const double _anchoPildora = 52;
   static const double _altoPildora = 28;
 
@@ -37,13 +43,25 @@ class _IconoPestanaState extends State<IconoPestana>
     end: 1,
   ).chain(CurveTween(curve: AppMovimiento.curvaRebote));
 
-  late final AnimationController _control;
+  // La píldora va y viene; el pop del ícono solo corre al elegirse (en
+  // reposo vale 1: el ícono de una pestaña sin elegir no se ve encogido).
+  late final AnimationController _pildora;
+  late final AnimationController _salto;
   bool _iniciado = false;
 
   @override
   void initState() {
     super.initState();
-    _control = AnimationController(vsync: this, duration: AppMovimiento.media);
+    _pildora = AnimationController(
+      vsync: this,
+      duration: AppMovimiento.media,
+      reverseDuration: AppMovimiento.corta,
+    );
+    _salto = AnimationController(
+      vsync: this,
+      duration: AppMovimiento.media,
+      value: 1,
+    );
   }
 
   @override
@@ -51,16 +69,31 @@ class _IconoPestanaState extends State<IconoPestana>
     super.didChangeDependencies();
     if (_iniciado) return;
     _iniciado = true;
+    if (widget.activo) _animar(elegida: true);
+  }
+
+  @override
+  void didUpdateWidget(IconoPestana oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activo != widget.activo) _animar(elegida: widget.activo);
+  }
+
+  void _animar({required bool elegida}) {
     if (AppMovimiento.reducido(context)) {
-      _control.value = 1;
+      _pildora.value = elegida ? 1 : 0;
+      _salto.value = 1;
+    } else if (elegida) {
+      _pildora.forward().ignore();
+      _salto.forward(from: 0).ignore();
     } else {
-      _control.forward().ignore();
+      _pildora.reverse().ignore();
     }
   }
 
   @override
   void dispose() {
-    _control.dispose();
+    _pildora.dispose();
+    _salto.dispose();
     super.dispose();
   }
 
@@ -78,13 +111,13 @@ class _IconoPestanaState extends State<IconoPestana>
             maxWidth: _anchoPildora,
             maxHeight: _altoPildora,
             child: FadeTransition(
-              opacity: _control.drive(_aparecer),
+              opacity: _pildora.drive(_aparecer),
               child: AnimatedBuilder(
-                animation: _control,
+                animation: _pildora,
                 builder: (context, _) => SizedBox(
                   width:
                       tamano +
-                      (_anchoPildora - tamano) * _crecer.evaluate(_control),
+                      (_anchoPildora - tamano) * _crecer.evaluate(_pildora),
                   height: _altoPildora,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -98,7 +131,7 @@ class _IconoPestanaState extends State<IconoPestana>
           ),
         ),
         ScaleTransition(
-          scale: _control.drive(_pop),
+          scale: _salto.drive(_pop),
           child: Icon(widget.icono),
         ),
       ],

@@ -3,7 +3,8 @@
 // Monto que cuenta hasta su nuevo valor cuando cambia (nunca al montarse).
 // El texto final es EXACTAMENTE `formato(valor)`: el último cuadro pinta el
 // valor recibido, no el resultado de una interpolación. Los lectores de
-// pantalla siempre leen el valor final.
+// pantalla siempre leen el valor final. Usa cifras tabulares para que el
+// ancho no cambie a cada cuadro.
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
 
@@ -79,6 +80,13 @@ class _MontoAnimadoState extends State<MontoAnimado>
   @override
   Widget build(BuildContext context) {
     final texto = widget.formato(widget.valor);
+    // Cifras tabulares (todas del mismo ancho): el monto no baila de lado a
+    // lado mientras cuenta. Roboto (Android) ya las trae; la fuente del
+    // sistema de iOS las tiene proporcionales.
+    final base = widget.estilo ?? const TextStyle();
+    final estilo = base.copyWith(
+      fontFeatures: [...?base.fontFeatures, const FontFeature.tabularFigures()],
+    );
     return Semantics(
       label: texto,
       excludeSemantics: true,
@@ -88,7 +96,7 @@ class _MontoAnimadoState extends State<MontoAnimado>
           _control.isAnimating
               ? widget.formato(_mostrado(widget.valor))
               : texto,
-          style: widget.estilo,
+          style: estilo,
           textAlign: widget.alineacionTexto,
         ),
       ),

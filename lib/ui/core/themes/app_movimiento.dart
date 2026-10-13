@@ -61,6 +61,14 @@ class AppMovimiento {
   /// página y después su contenido.
   static const Duration trasEmpuje = Duration(milliseconds: 150);
 
+  /// Espera del contenido de una pestaña que se abre por primera vez: la
+  /// pestaña que entra es transparente hasta el 30 % de [media] (90 ms).
+  static const Duration trasPestana = Duration(milliseconds: 90);
+
+  /// Espera del contenido de una página a la que se llega con context.go:
+  /// paginaRaiz la deja transparente hasta el 30 % de [raiz] (108 ms).
+  static const Duration trasRaiz = Duration(milliseconds: 110);
+
   // ── Distancias en dp (se ven igual en cualquier ancho) ───────────────
 
   static const double distanciaCorta = 8;

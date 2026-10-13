@@ -1,7 +1,8 @@
 // test/widget/core/movimiento/presion_escala_test.dart — PresionEscala hunde
 // la tarjeta mientras el dedo está abajo y la regresa al soltar, sin tocar el
-// onTap del GestureDetector de adentro; un scroll la suelta, la más interna
-// gana y con «reducir movimiento» atenúa en lugar de escalar.
+// onTap del GestureDetector de adentro; un scroll o un puntero cancelado la
+// regresan ya desde donde iba, la más interna gana y con «reducir
+// movimiento» atenúa en lugar de escalar.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
@@ -19,6 +20,16 @@ Widget _tarjeta(ValueNotifier<int> toques, {Key? key}) => GestureDetector(
 );
 
 Finder get _presion => find.byType(PresionEscala).first;
+
+/// Escala de la tarjeta en cada cuadro de los siguientes 256 ms (16 × 16).
+Future<List<double>> _escalasPorCuadro(WidgetTester tester) async {
+  final escalas = <double>[];
+  for (var i = 0; i < 16; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+    escalas.add(escalaEn(tester, _presion));
+  }
+  return escalas;
+}
 
 void main() {
   late ValueNotifier<int> toques;
@@ -73,6 +84,40 @@ void main() {
     expect(escalaEn(tester, _presion), 1);
     await gesto.up();
     await tester.pump();
+  });
+
+  testWidgets('un scroll que empieza encima la regresa ya, sin hundirla', (
+    tester,
+  ) async {
+    await montarMovimiento(tester, PresionEscala(child: _tarjeta(toques)));
+
+    final gesto = await tester.startGesture(tester.getCenter(_presion));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    // A medio hundido el dedo ya se arrastra: es un scroll, no un toque.
+    await gesto.moveBy(const Offset(0, 40));
+    final escalas = await _escalasPorCuadro(tester);
+    // Regresa desde donde iba: no termina de hundirse ni rebota.
+    expect(escalas, everyElement(greaterThan(0.985)));
+    expect(escalas, everyElement(lessThanOrEqualTo(1)));
+    expect(escalas.last, 1);
+    await gesto.up();
+    await tester.pump();
+    expect(toques.value, 0);
+  });
+
+  testWidgets('si el sistema cancela el puntero la regresa ya', (tester) async {
+    await montarMovimiento(tester, PresionEscala(child: _tarjeta(toques)));
+
+    final gesto = await tester.startGesture(tester.getCenter(_presion));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesto.cancel();
+    final escalas = await _escalasPorCuadro(tester);
+    expect(escalas, everyElement(greaterThan(0.985)));
+    expect(escalas, everyElement(lessThanOrEqualTo(1)));
+    expect(escalas.last, 1);
+    expect(toques.value, 0);
   });
 
   testWidgets('la más interna gana: el «+» no hunde la tarjeta completa', (

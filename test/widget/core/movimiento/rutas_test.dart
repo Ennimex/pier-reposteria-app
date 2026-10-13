@@ -1,6 +1,7 @@
 // test/widget/core/movimiento/rutas_test.dart — paginaRaiz (las rutas de
 // go_router a las que se llega con context.go: fundido a través de la arena,
-// dentro del presupuesto de las pruebas y sin AppTheme) y RutaCelebracion
+// dentro del presupuesto de las pruebas y sin AppTheme; con trasRaiz su
+// contenido espera a que la página se vea) y RutaCelebracion
 // (checkout → éxito: tapa al instante con un fondo opaco y florece encima).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -231,6 +232,56 @@ void main() {
       expect(fundido, lessThan(1));
       await tester.pumpAndSettle();
       expect(find.text('A'), findsOneWidget);
+    });
+
+    testWidgets('con trasRaiz el contenido espera a que la página se vea', (
+      tester,
+    ) async {
+      final router = GoRouter(
+        initialLocation: '/a',
+        routes: [
+          GoRoute(
+            path: '/a',
+            pageBuilder: (c, s) => paginaRaiz(s, const _Pantalla('A')),
+          ),
+          GoRoute(
+            path: '/c',
+            pageBuilder: (c, s) => paginaRaiz(
+              s,
+              const Scaffold(
+                body: Center(
+                  child: EntradaSuave(
+                    retraso: AppMovimiento.trasRaiz,
+                    child: Text('C'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      router.go('/c');
+      await tester.pump();
+      await tester.pump();
+
+      final entrada = find.byType(EntradaSuave);
+      // La página: el FadeTransition más cercano por encima de la entrada.
+      double pagina() => tester
+          .widget<FadeTransition>(
+            find
+                .ancestor(of: entrada, matching: find.byType(FadeTransition))
+                .first,
+          )
+          .opacity
+          .value;
+      // Mientras la página sigue transparente, su contenido no avanza.
+      for (var i = 0; i < 16; i++) {
+        if (pagina() == 0) expect(opacidadEn(tester, entrada), 0);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(opacidadEn(tester, entrada), greaterThan(0));
+      await tester.pumpAndSettle();
     });
   });
 

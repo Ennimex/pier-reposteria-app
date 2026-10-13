@@ -101,6 +101,18 @@ void main() {
       expect(AppMovimiento.retrasoCascada(-2), Duration.zero);
     });
 
+    test('el contenido espera a que su pestaña o su página raíz se vea', () {
+      // La pestaña que entra es transparente hasta el 30 % de media y
+      // paginaRaiz hasta el 30 % de raiz; el push no tapa su contenido.
+      expect(AppMovimiento.trasPestana, AppMovimiento.media * 0.3);
+      expect(
+        AppMovimiento.trasRaiz,
+        greaterThanOrEqualTo(AppMovimiento.raiz * 0.3),
+      );
+      expect(AppMovimiento.trasRaiz, lessThan(AppMovimiento.raiz * 0.4));
+      expect(AppMovimiento.trasEmpuje, lessThan(AppMovimiento.empuje));
+    });
+
     test('las duraciones caben en los presupuestos de las pruebas', () {
       // Pestañas ≤ 300 ms, rutas raíz ≤ 400 ms, montos ≤ 450 ms,
       // celebraciones ≤ 1.6 s.

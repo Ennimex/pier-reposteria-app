@@ -3,7 +3,8 @@
 // anima; al cambiar animan las dos capas (la que sale y la que entra) y en
 // 300 ms solo queda la nueva; las ocultas quedan fuera de escena, sin tickers
 // ni Hero y con su estado intacto; el fling cambia de pestaña; con «reducir
-// movimiento» el cambio es instantáneo.
+// movimiento» el cambio es instantáneo; una entrada con trasPestana no
+// avanza mientras la pestaña sigue transparente.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/ui/core/ui/animated_indexed_stack.dart';
@@ -251,5 +252,53 @@ void main() {
     expect(find.text('Uno 0'), findsNothing);
     expect(find.text('Tres 0'), findsOneWidget);
     expect(_opacidad(tester, 'Tres'), 1);
+  });
+
+  testWidgets('con trasPestana el contenido espera a que la pestaña se vea', (
+    tester,
+  ) async {
+    final indice = ValueNotifier<int>(0);
+    addTearDown(indice.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder<int>(
+          valueListenable: indice,
+          builder: (_, i, _) => AnimatedIndexedStack(
+            index: i,
+            children: const [
+              Center(child: Text('Uno')),
+              Center(
+                child: EntradaSuave(
+                  retraso: AppMovimiento.trasPestana,
+                  child: Text('Dos'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    // Oculta no gasta su entrada.
+    await tester.pump(const Duration(seconds: 1));
+
+    indice.value = 1;
+    await tester.pump();
+    final entrada = find.byType(EntradaSuave);
+    // La capa de la pestaña: el FadeTransition más cercano por encima.
+    double capa() => tester
+        .widget<FadeTransition>(
+          find
+              .ancestor(of: entrada, matching: find.byType(FadeTransition))
+              .first,
+        )
+        .opacity
+        .value;
+    // Mientras la pestaña sigue transparente, su contenido no avanza.
+    for (var i = 0; i < 16; i++) {
+      if (capa() == 0) expect(opacidadEn(tester, entrada), 0);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(opacidadEn(tester, entrada), greaterThan(0));
+    await tester.pump(AppMovimiento.entrada);
   });
 }

@@ -1,7 +1,8 @@
 // test/widget/core/movimiento/insignia_carrito_test.dart — InsigniaCarrito:
 // en 0 no existe; aparece creciendo, rebota solo cuando la cantidad sube,
 // se encoge y sale del árbol al volver a 0 (sin mostrar «0»), no anima al
-// montarse y con «reducir movimiento» cambia al instante.
+// montarse y con «reducir movimiento» cambia al instante. Con una miniatura
+// en camino a su carrito no se adelanta: la reacción es el trago al llegar.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
@@ -9,6 +10,80 @@ import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import '../../../helpers/movimiento.dart';
 
 Widget _insignia(int cantidad) => InsigniaCarrito(cantidad: cantidad);
+
+/// El carrito de la barra (DestinoVuelo con su insignia) y tres botones:
+/// «Agregar» sube la cantidad y lanza la miniatura en el mismo toque (como
+/// el «+» del catálogo), «Sincronizar» la sube sin vuelo (una carga del
+/// backend) y «Vaciar» la regresa a 0 (el backend revierte).
+class _Tienda extends StatefulWidget {
+  const _Tienda({required this.inicial});
+
+  final int inicial;
+
+  @override
+  State<_Tienda> createState() => _TiendaState();
+}
+
+class _TiendaState extends State<_Tienda> {
+  late int _cantidad = widget.inicial;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Builder(
+            builder: (contexto) => TextButton(
+              onPressed: () {
+                setState(() => _cantidad++);
+                VueloAlCarrito.lanzar(contexto, imagenUrl: '');
+              },
+              child: const Text('Agregar'),
+            ),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _cantidad++),
+            child: const Text('Sincronizar'),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _cantidad = 0),
+            child: const Text('Vaciar'),
+          ),
+        ],
+      ),
+    ),
+    bottomNavigationBar: SizedBox(
+      height: 56,
+      child: Center(
+        child: DestinoVuelo(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(Icons.shopping_cart),
+              Positioned(
+                right: -5,
+                top: -5,
+                child: InsigniaCarrito(cantidad: _cantidad),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _montarTienda(WidgetTester tester, int inicial) =>
+    tester.pumpWidget(
+      MaterialApp(
+        home: VueloAlCarrito(child: _Tienda(inicial: inicial)),
+      ),
+    );
+
+/// Escala del trago del carrito (el ScaleTransition de DestinoVuelo).
+double _trago(WidgetTester tester) =>
+    escalaEn(tester, find.byType(DestinoVuelo));
 
 /// Escalas de la insignia: [presencia, rebote].
 List<double> _escalas(WidgetTester tester) => tester
@@ -107,5 +182,73 @@ void main() {
       ),
     );
     expect((caja.decoration! as BoxDecoration).color, Colors.teal);
+  });
+
+  group('con una miniatura en camino a su carrito', () {
+    testWidgets('no rebota: la única reacción es el trago al llegar', (
+      tester,
+    ) async {
+      await _montarTienda(tester, 1);
+      await tester.tap(find.text('Agregar'));
+      await tester.pump();
+      expect(find.text('2'), findsOneWidget); // el número cambia al instante
+
+      // Mientras la miniatura vuela (560 ms) nada se adelanta.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_escalas(tester), [1, 1]);
+        expect(_trago(tester), 1);
+      }
+
+      await tester.pump(const Duration(milliseconds: 100)); // aterriza
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_trago(tester), greaterThan(1));
+      expect(_escalas(tester), [1, 1]); // sin rebote aparte
+      await tester.pump(AppMovimiento.media);
+      expect(_trago(tester), 1);
+    });
+
+    testWidgets('de 0 a 1 está en el árbol pero aparece al llegar', (
+      tester,
+    ) async {
+      await _montarTienda(tester, 0);
+      await tester.tap(find.text('Agregar'));
+      await tester.pump();
+      expect(find.text('1'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_escalas(tester).first, 0);
+
+      await tester.pump(const Duration(milliseconds: 300)); // aterriza
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(_escalas(tester).first, inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_escalas(tester), [1, 1]);
+    });
+
+    testWidgets('si vuelve a 0 antes de que llegue, ya no aparece', (
+      tester,
+    ) async {
+      await _montarTienda(tester, 0);
+      await tester.tap(find.text('Agregar'));
+      await tester.pump();
+      await tester.tap(find.text('Vaciar'));
+      await tester.pump();
+      expect(find.text('1'), findsNothing);
+
+      await tester.pump(AppMovimiento.vuelo);
+      await tester.pump(AppMovimiento.media);
+      expect(find.text('1'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('sin vuelo en camino rebota como siempre', (tester) async {
+      await _montarTienda(tester, 1);
+      await tester.tap(find.text('Sincronizar'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_escalas(tester).last, greaterThan(1));
+      expect(_trago(tester), 1);
+      await tester.pump(AppMovimiento.enfasis);
+    });
   });
 }

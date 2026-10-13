@@ -1,6 +1,7 @@
 // test/widget/core/main_screen_test.dart — el shell del cliente con el
-// sistema de movimiento: la barra conserva etiquetas y orden con el ícono
-// activo animado, la insignia del carrito sigue en la pestaña activa, cada
+// sistema de movimiento: la barra conserva etiquetas y orden con IconoPestana
+// en las cinco pestañas (uno elegido), la insignia del carrito sigue en la
+// pestaña activa, cada
 // pestaña tiene su HeroController, el vuelo al carrito tiene ámbito y
 // destino, la vista de invitado entra al abrir Pedidos y el regreso del
 // sistema sigue sacando la pila de la pestaña visible. Sin red.
@@ -94,6 +95,14 @@ Future<void> _irA(WidgetTester tester, String pestana) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
+/// Los íconos de la barra (IconoPestana en las dos ranuras de las cinco
+/// pestañas) y el único que está elegido.
+Iterable<IconoPestana> _iconos(WidgetTester tester) =>
+    tester.widgetList<IconoPestana>(find.byType(IconoPestana));
+
+IconoPestana _iconoActivo(WidgetTester tester) =>
+    _iconos(tester).singleWhere((icono) => icono.activo);
+
 void main() {
   testWidgets('la barra conserva etiquetas y orden y anima el ícono activo', (
     tester,
@@ -106,19 +115,14 @@ void main() {
         tester.getCenter(_etiqueta(etiqueta)).dx,
     ];
     expect(posiciones, [...posiciones]..sort());
-    expect(
-      tester.widget<IconoPestana>(find.byType(IconoPestana)).icono,
-      LucideIcons.house,
-    );
+    expect(_iconos(tester), hasLength(5));
+    expect(_iconoActivo(tester).icono, LucideIcons.house);
 
     await _irA(tester, 'Catálogo');
     final contexto = tester.element(find.byType(MainScreen));
     expect(contexto.read<NavigationProvider>().selectedIndex, 1);
-    expect(find.byType(IconoPestana), findsOneWidget);
-    expect(
-      tester.widget<IconoPestana>(find.byType(IconoPestana)).icono,
-      LucideIcons.store,
-    );
+    expect(_iconos(tester), hasLength(5));
+    expect(_iconoActivo(tester).icono, LucideIcons.store);
     await _desmontar(tester);
   });
 
@@ -160,7 +164,7 @@ void main() {
 
     await _irA(tester, 'Carrito');
     expect(insignia, findsOneWidget);
-    expect(find.byType(IconoPestana), findsOneWidget); // el carrito activo
+    expect(_iconoActivo(tester).icono, LucideIcons.shoppingCart);
     await _desmontar(tester);
   });
 
@@ -191,6 +195,11 @@ void main() {
       // Oculta, la vista de invitado no gastó su entrada.
       final entradas = find.byType(EntradaSuave, skipOffstage: false);
       expect(entradas, findsNWidgets(4));
+      // Esperan a que la pestaña empiece a verse (token, no un valor propio).
+      expect(
+        tester.widgetList<EntradaSuave>(entradas).map((e) => e.retraso),
+        everyElement(AppMovimiento.trasPestana),
+      );
       double opacidad(Finder entrada) => tester
           .widget<FadeTransition>(
             find

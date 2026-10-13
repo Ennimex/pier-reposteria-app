@@ -1,7 +1,8 @@
 // test/widget/core/movimiento/monto_animado_test.dart — MontoAnimado no
 // anima al montarse, cuenta hacia el nuevo valor y termina EXACTAMENTE en
-// formato(valor); salta al valor con «reducir movimiento» u oculto, y los
-// lectores de pantalla leen siempre el valor final.
+// formato(valor); salta al valor con «reducir movimiento» u oculto, usa
+// cifras tabulares (el ancho no baila al contar) y los lectores de pantalla
+// leen siempre el valor final.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
@@ -61,6 +62,28 @@ void main() {
     await montarMovimiento(tester, oculto(100));
     await montarMovimiento(tester, oculto(300));
     expect(find.text(r'$300.00 MXN'), findsOneWidget);
+  });
+
+  testWidgets('usa cifras tabulares sin perder el estilo que se le da', (
+    tester,
+  ) async {
+    Widget monto(double valor) => MontoAnimado(
+      valor: valor,
+      formato: _pesos,
+      estilo: const TextStyle(fontSize: 20, color: Colors.teal),
+    );
+    TextStyle estilo() => tester.widget<Text>(find.byType(Text)).style!;
+
+    await montarMovimiento(tester, monto(270));
+    expect(estilo().fontFeatures, contains(const FontFeature.tabularFigures()));
+    expect(estilo().fontSize, 20);
+    expect(estilo().color, Colors.teal);
+
+    // También mientras cuenta (ahí es donde el ancho bailaría).
+    await montarMovimiento(tester, monto(450));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(estilo().fontFeatures, contains(const FontFeature.tabularFigures()));
+    await tester.pump(AppMovimiento.conteo);
   });
 
   testWidgets('los lectores de pantalla leen el valor final', (tester) async {

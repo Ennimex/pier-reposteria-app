@@ -167,16 +167,17 @@ class _MainScreenState extends State<MainScreen> {
             selectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.bold, fontSize: 12),
             unselectedLabelStyle: const TextStyle(fontSize: 12),
-            // El ícono activo (IconoPestana) da un pop sobre una píldora
-            // suave cada vez que se elige la pestaña.
+            // IconoPestana en las dos ranuras (mismo estado): al elegir la
+            // pestaña crece una píldora suave con un pop y al dejarla se
+            // encoge y se apaga.
             items: const [
               BottomNavigationBarItem(
-                icon: Icon(LucideIcons.house),
+                icon: IconoPestana(LucideIcons.house, activo: false),
                 activeIcon: IconoPestana(LucideIcons.house),
                 label: 'Inicio',
               ),
               BottomNavigationBarItem(
-                icon: Icon(LucideIcons.store),
+                icon: IconoPestana(LucideIcons.store, activo: false),
                 activeIcon: IconoPestana(LucideIcons.store),
                 label: 'Catálogo',
               ),
@@ -186,12 +187,12 @@ class _MainScreenState extends State<MainScreen> {
                 label: 'Carrito',
               ),
               BottomNavigationBarItem(
-                icon: Icon(LucideIcons.receiptText),
+                icon: IconoPestana(LucideIcons.receiptText, activo: false),
                 activeIcon: IconoPestana(LucideIcons.receiptText),
                 label: 'Pedidos',
               ),
               BottomNavigationBarItem(
-                icon: Icon(LucideIcons.menu),
+                icon: IconoPestana(LucideIcons.menu, activo: false),
                 activeIcon: IconoPestana(LucideIcons.menu),
                 label: 'Más',
               ),
@@ -205,6 +206,8 @@ class _MainScreenState extends State<MainScreen> {
 
 /// Ícono del carrito en la barra: es el destino del vuelo al carrito y
 /// lleva la insignia de cantidad, también cuando la pestaña está activa.
+/// Las dos ranuras de la barra lo construyen igual, así que el destino y la
+/// insignia conservan su estado al cambiar de pestaña.
 class _IconoCarrito extends StatelessWidget {
   const _IconoCarrito({required this.activo});
 
@@ -216,10 +219,7 @@ class _IconoCarrito extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          if (activo)
-            const IconoPestana(LucideIcons.shoppingCart)
-          else
-            const Icon(LucideIcons.shoppingCart),
+          IconoPestana(LucideIcons.shoppingCart, activo: activo),
           Positioned(
             right: -5,
             top: -5,
@@ -273,11 +273,10 @@ class _LoginRequiredView extends StatelessWidget {
   final String message;
   final IconData icon;
 
-  // La cascada empieza cuando la pestaña ya está apareciendo. Como la
-  // pestaña oculta tiene sus tickers pausados, se ve la primera vez que se
-  // abre (no al arrancar la app, fuera de pantalla).
-  static const Duration _espera = Duration(milliseconds: 100);
-
+  // La cascada espera AppMovimiento.trasPestana: empieza cuando la pestaña
+  // ya está apareciendo. Como la pestaña oculta tiene sus tickers pausados,
+  // se ve la primera vez que se abre (no al arrancar la app, fuera de
+  // pantalla).
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -290,7 +289,7 @@ class _LoginRequiredView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 EntradaSuave(
-                  retraso: _espera,
+                  retraso: AppMovimiento.trasPestana,
                   escalaInicial: 0.9,
                   child: Container(
                     width: 100, height: 100,
@@ -307,7 +306,7 @@ class _LoginRequiredView extends StatelessWidget {
                 const SizedBox(height: 24),
                 EntradaSuave(
                   orden: 1,
-                  retraso: _espera,
+                  retraso: AppMovimiento.trasPestana,
                   child: Text(title,
                       style: const TextStyle(
                           fontFamily: 'Playfair Display',
@@ -319,7 +318,7 @@ class _LoginRequiredView extends StatelessWidget {
                 const SizedBox(height: 10),
                 EntradaSuave(
                   orden: 2,
-                  retraso: _espera,
+                  retraso: AppMovimiento.trasPestana,
                   child: Text(message,
                       style: TextStyle(
                           fontSize: 14,
@@ -330,7 +329,7 @@ class _LoginRequiredView extends StatelessWidget {
                 const SizedBox(height: 32),
                 EntradaSuave(
                   orden: 3,
-                  retraso: _espera,
+                  retraso: AppMovimiento.trasPestana,
                   child: SizedBox(
                     width: double.infinity,
                     height: 52,
