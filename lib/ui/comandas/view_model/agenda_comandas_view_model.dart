@@ -88,21 +88,24 @@ class AgendaComandasViewModel extends ChangeNotifier {
       final cierre = _vista == VistaAgenda.entregadas
           ? c.entregadaAt
           : _vista == VistaAgenda.canceladas
-              ? c.canceladaAt
-              : null;
+          ? c.canceladaAt
+          : null;
       final diaCierre = cierre == null ? null : diaDeEvento(cierre);
       if (diaCierre != null) {
         fecha = diaCierre;
         dias = diasEntre(agenda.hoy, diaCierre);
       }
-      grupos.putIfAbsent(
-        fecha,
-        () => GrupoDia(
-          titulo: etiquetaDia(fecha, dias, anioActual: anio),
-          dias: dias,
-          comandas: [],
-        ),
-      ).comandas.add(c);
+      grupos
+          .putIfAbsent(
+            fecha,
+            () => GrupoDia(
+              titulo: etiquetaDia(fecha, dias, anioActual: anio),
+              dias: dias,
+              comandas: [],
+            ),
+          )
+          .comandas
+          .add(c);
     }
     return grupos.values.toList();
   }
@@ -142,8 +145,7 @@ class AgendaComandasViewModel extends ChangeNotifier {
     final busqueda = _busqueda;
     final listaSirveDeActivas =
         vista == VistaAgenda.activas && busqueda.isEmpty;
-    final pedirActivas =
-        area != null && conPendientes && !listaSirveDeActivas;
+    final pedirActivas = area != null && conPendientes && !listaSirveDeActivas;
     try {
       final respuestas = await Future.wait([
         _repo.agenda(vista: vista, busqueda: busqueda),

@@ -163,6 +163,9 @@ class ApiConstants {
   static String agendaComandas(String vista, {String busqueda = ''}) =>
       '$comandas?vista=$vista'
       '${busqueda.isEmpty ? '' : '&busqueda=${Uri.encodeQueryComponent(busqueda)}'}';
+  static String comandaDetalle(int id)   => '$comandas/$id';
+  // «Enterado» de producción: {version} que se leyó (409 si cambió)
+  static String comandaConfirmar(int id) => '$comandas/$id/confirmar';
 
   // ── DEMANDA NO ATENDIDA (público, registro silencioso) ────────────
   // Espejo de src/utils/demandaNoAtendida.ts de la web. Alimentan el reporte

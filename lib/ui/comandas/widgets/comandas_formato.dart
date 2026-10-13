@@ -5,11 +5,27 @@
 // hora de Huejutla, así que se calculan sin depender de la zona del teléfono.
 
 const _dias = [
-  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+  'domingo',
 ];
 const _meses = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
-  'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
 ];
 
 /// Huejutla no tiene horario de verano desde 2022: siempre UTC-6.
@@ -18,8 +34,7 @@ const _desfaseHuejutla = Duration(hours: -6);
 DateTime? _fecha(String iso) {
   final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(iso);
   if (m == null) return null;
-  return DateTime.utc(
-      int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
+  return DateTime.utc(int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
 }
 
 /// '11:00 a. m.' a partir de 'HH:MM'.
@@ -48,12 +63,12 @@ String etiquetaDia(String iso, int diasRestantes, {int? anioActual}) {
 
 /// 'Es hoy', 'Faltan 3 días', 'Venció hace 2 días'.
 String textoDiasRestantes(int dias) => switch (dias) {
-      0 => 'Es hoy',
-      1 => 'Es mañana',
-      -1 => 'Venció ayer',
-      > 1 => 'Faltan $dias días',
-      _ => 'Venció hace ${-dias} días',
-    };
+  0 => 'Es hoy',
+  1 => 'Es mañana',
+  -1 => 'Venció ayer',
+  > 1 => 'Faltan $dias días',
+  _ => 'Venció hace ${-dias} días',
+};
 
 /// Día ('YYYY-MM-DD') de un timestamp ISO en hora de Huejutla.
 String? diaDeEvento(String iso) {

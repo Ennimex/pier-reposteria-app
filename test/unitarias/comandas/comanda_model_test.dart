@@ -9,18 +9,24 @@ import '../../fakes/comandas_json.dart';
 void main() {
   group('ResumenComanda.fromJson', () {
     test('lee la cabecera, el semáforo y las firmas', () {
-      final c = ResumenComanda.fromJson(comandaJson(
-        id: 7,
-        folio: 5003,
-        hora: '16:30',
-        dias: 0,
-        semaforo: 'rojo',
-        version: 2,
-        imagenes: 3,
-        hornos: firmaJson(
-            vigente: true, version: 2, usuario: 'Rosa Pérez', fecha: 'x'),
-        decoracion: firmaJson(version: 1, usuario: 'Leo Díaz'),
-      ));
+      final c = ResumenComanda.fromJson(
+        comandaJson(
+          id: 7,
+          folio: 5003,
+          hora: '16:30',
+          dias: 0,
+          semaforo: 'rojo',
+          version: 2,
+          imagenes: 3,
+          hornos: firmaJson(
+            vigente: true,
+            version: 2,
+            usuario: 'Rosa Pérez',
+            fecha: 'x',
+          ),
+          decoracion: firmaJson(version: 1, usuario: 'Leo Díaz'),
+        ),
+      );
 
       expect(c.id, 7);
       expect(c.folio, 5003);
@@ -49,7 +55,8 @@ void main() {
 
     test('los montos de NUMERIC llegan como texto', () {
       final c = ResumenComanda.fromJson(
-          comandaJson(total: '850.00', anticipo: '200.00', saldo: '650.00'));
+        comandaJson(total: '850.00', anticipo: '200.00', saldo: '650.00'),
+      );
 
       expect(c.total, 850);
       expect(c.anticipo, 200);
@@ -65,19 +72,24 @@ void main() {
     });
 
     test('pendientePara: activa y sin la firma vigente del área', () {
-      final c = ResumenComanda.fromJson(comandaJson(
-          hornos: firmaJson(vigente: true, version: 1, usuario: 'Rosa')));
+      final c = ResumenComanda.fromJson(
+        comandaJson(
+          hornos: firmaJson(vigente: true, version: 1, usuario: 'Rosa'),
+        ),
+      );
 
       expect(c.pendientePara(AreaProduccion.hornos), isFalse);
       expect(c.pendientePara(AreaProduccion.decoracion), isTrue);
-      final entregada =
-          ResumenComanda.fromJson(comandaJson(estado: 'entregada'));
+      final entregada = ResumenComanda.fromJson(
+        comandaJson(estado: 'entregada'),
+      );
       expect(entregada.pendientePara(AreaProduccion.decoracion), isFalse);
     });
 
     test('estado y semáforo desconocidos no truenan', () {
       final c = ResumenComanda.fromJson(
-          comandaJson(estado: 'otro', semaforo: 'morado'));
+        comandaJson(estado: 'otro', semaforo: 'morado'),
+      );
 
       expect(c.estado, EstadoComanda.activa);
       expect(c.semaforo, isNull);
@@ -87,7 +99,8 @@ void main() {
   group('AgendaComandas.fromJson', () {
     test('trae hoy y las comandas', () {
       final a = AgendaComandas.fromJson(
-          agendaJson([comandaJson(), comandaJson(id: 2)], hoy: '2026-10-13'));
+        agendaJson([comandaJson(), comandaJson(id: 2)], hoy: '2026-10-13'),
+      );
 
       expect(a.hoy, '2026-10-13');
       expect(a.comandas.map((c) => c.id), [1, 2]);
@@ -120,8 +133,12 @@ void main() {
     });
 
     test('vistas de la agenda con su valor para el backend', () {
-      expect(VistaAgenda.values.map((v) => v.name),
-          ['proximas', 'activas', 'entregadas', 'canceladas']);
+      expect(VistaAgenda.values.map((v) => v.name), [
+        'proximas',
+        'activas',
+        'entregadas',
+        'canceladas',
+      ]);
       expect(VistaAgenda.proximas.etiqueta, 'Próximos 15 días');
       expect(VistaAgenda.entregadas.esHistorica, isTrue);
       expect(VistaAgenda.activas.esHistorica, isFalse);
@@ -138,16 +155,26 @@ void main() {
     });
 
     test('encabezado del día', () {
-      expect(etiquetaDia('2026-10-12', 0, anioActual: 2026),
-          'Hoy · lunes 12 de octubre');
-      expect(etiquetaDia('2026-10-13', 1, anioActual: 2026),
-          'Mañana · martes 13 de octubre');
-      expect(etiquetaDia('2026-10-11', -1, anioActual: 2026),
-          'Ayer · domingo 11 de octubre');
-      expect(etiquetaDia('2026-10-17', 5, anioActual: 2026),
-          'Sábado 17 de octubre');
-      expect(etiquetaDia('2027-01-02', 82, anioActual: 2026),
-          'Sábado 2 de enero de 2027');
+      expect(
+        etiquetaDia('2026-10-12', 0, anioActual: 2026),
+        'Hoy · lunes 12 de octubre',
+      );
+      expect(
+        etiquetaDia('2026-10-13', 1, anioActual: 2026),
+        'Mañana · martes 13 de octubre',
+      );
+      expect(
+        etiquetaDia('2026-10-11', -1, anioActual: 2026),
+        'Ayer · domingo 11 de octubre',
+      );
+      expect(
+        etiquetaDia('2026-10-17', 5, anioActual: 2026),
+        'Sábado 17 de octubre',
+      );
+      expect(
+        etiquetaDia('2027-01-02', 82, anioActual: 2026),
+        'Sábado 2 de enero de 2027',
+      );
       expect(etiquetaDia('raro', 3), 'raro');
     });
 

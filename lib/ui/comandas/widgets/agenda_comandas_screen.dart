@@ -8,13 +8,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/comandas/view_model/agenda_comandas_view_model.dart';
 import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_partes.dart';
+import 'package:pier_pasteleria/ui/comandas/widgets/detalle_comanda_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
@@ -39,7 +38,8 @@ class AgendaComandasScreen extends StatefulWidget {
 
 class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     with WidgetsBindingObserver {
-  late final AgendaComandasViewModel _vm = widget.viewModel ??
+  late final AgendaComandasViewModel _vm =
+      widget.viewModel ??
       AgendaComandasViewModel(
         repo: context.read(),
         area: AreaProduccion.deRol(context.read<AuthProvider>().rol),
@@ -79,32 +79,26 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
   void _revisarSesion() {
     if (!_vm.sesionInvalida || _saliendo) return;
     _saliendo = true;
-    unawaited(_cerrarSesion(mensaje: _vm.error));
+    unawaited(salirDeComandas(context, mensaje: _vm.error));
   }
 
-  Future<void> _cerrarSesion({String? mensaje}) async {
-    final avisos = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
-    await context.read<AuthProvider>().logout();
-    router.go(AppRoutes.login);
-    if (mensaje != null) {
-      avisos.showSnackBar(SnackBar(
-        content: Text(mensaje),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
+  /// Abre el detalle; al volver, la agenda se actualiza (pudo confirmar).
+  Future<void> _abrir(ResumenComanda comanda) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => DetalleComandaScreen(id: comanda.id),
+      ),
+    );
+    if (mounted) unawaited(_vm.recargar());
   }
 
   Future<void> _abrirSitio() async {
-    final ok = await launchUrl(Uri.parse(BusinessInfo.sitioWeb),
-        mode: LaunchMode.externalApplication);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No se pudo abrir el sitio web'),
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
+    final ok = await launchUrl(
+      Uri.parse(BusinessInfo.sitioWeb),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && mounted) avisoComandas(context, 'No se pudo abrir el sitio web');
   }
 
   @override
@@ -124,13 +118,17 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
             icon: const Icon(LucideIcons.ellipsisVertical),
             onSelected: (o) => unawaited(switch (o) {
               _Opcion.sitioWeb => _abrirSitio(),
-              _Opcion.cerrarSesion => _cerrarSesion(),
+              _Opcion.cerrarSesion => salirDeComandas(context),
             }),
             itemBuilder: (_) => const [
               PopupMenuItem(
-                  value: _Opcion.sitioWeb, child: Text('Abrir sitio web')),
+                value: _Opcion.sitioWeb,
+                child: Text('Abrir sitio web'),
+              ),
               PopupMenuItem(
-                  value: _Opcion.cerrarSesion, child: Text('Cerrar sesión')),
+                value: _Opcion.cerrarSesion,
+                child: Text('Cerrar sesión'),
+              ),
             ],
           ),
         ],
@@ -161,7 +159,9 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
               builder: (context, _) => Column(
                 children: [
                   _SelectorVistas(
-                      vista: _vm.vista, alCambiar: _vm.cambiarVista),
+                    vista: _vm.vista,
+                    alCambiar: _vm.cambiarVista,
+                  ),
                   Expanded(child: _contenido()),
                 ],
               ),
@@ -206,6 +206,7 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
               pendientes: pendientes,
               verTodas: _verTodas,
               alAlternar: () => setState(() => _verTodas = !_verTodas),
+              alAbrir: _abrir,
             ),
           if (grupos.isEmpty)
             EstadoAgenda(
@@ -227,7 +228,8 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
                 ),
               ),
             ),
-            for (final c in grupo.comandas) TarjetaComanda(c),
+            for (final c in grupo.comandas)
+              TarjetaComanda(c, alTocar: () => _abrir(c)),
           ],
         ],
       ),
@@ -243,23 +245,23 @@ class _SelectorVistas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Row(
-          children: [
-            for (final v in VistaAgenda.values)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(v.etiqueta),
-                  selected: v == vista,
-                  onSelected: (_) => alCambiar(v),
-                  selectedColor: AppColors.pierVerde.withValues(alpha: 0.18),
-                ),
-              ),
-          ],
-        ),
-      );
+    scrollDirection: Axis.horizontal,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    child: Row(
+      children: [
+        for (final v in VistaAgenda.values)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(v.etiqueta),
+              selected: v == vista,
+              onSelected: (_) => alCambiar(v),
+              selectedColor: AppColors.pierVerde.withValues(alpha: 0.18),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _AvisoError extends StatelessWidget {
@@ -269,13 +271,15 @@ class _AvisoError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text('No se pudo actualizar: $mensaje',
-            style: const TextStyle(color: AppColors.error)),
-      );
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: AppColors.error.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(
+      'No se pudo actualizar: $mensaje',
+      style: const TextStyle(color: AppColors.error),
+    ),
+  );
 }
