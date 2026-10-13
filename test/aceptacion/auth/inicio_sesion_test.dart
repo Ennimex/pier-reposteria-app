@@ -169,14 +169,17 @@ void main() {
     //   Dado que tengo una cuenta verificada
     //   Cuando inicio sesión con mi correo y mi contraseña
     //   Entonces entro a la pantalla de inicio que corresponde a mi rol
-    //     (cliente → /main, repartidor → /repartidor, empleado, gerencia y
-    //     dirección general → /panel-web).
+    //     (cliente → /main, repartidor → /repartidor, empleado, gerencia,
+    //     dirección general, hornos y decoración → /panel-web; #126: hornos
+    //     y decoración ya no caen en la tienda).
     final destinos = <String, (String, Type)>{
       'cliente': (AppRoutes.main, MainScreen),
       'repartidor': (AppRoutes.repartidor, RepartidorMainScreen),
       'empleado': (AppRoutes.panelWeb, PanelWebScreen),
       'gerencia': (AppRoutes.panelWeb, PanelWebScreen),
       'direccion_general': (AppRoutes.panelWeb, PanelWebScreen),
+      'hornos': (AppRoutes.panelWeb, PanelWebScreen),
+      'decoracion': (AppRoutes.panelWeb, PanelWebScreen),
     };
     for (final MapEntry(key: rol, value: (ruta, pantalla))
         in destinos.entries) {

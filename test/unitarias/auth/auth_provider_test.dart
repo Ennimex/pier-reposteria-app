@@ -114,6 +114,17 @@ void main() {
         expect(_conSesion(rol: rol).isRolInterno, isTrue, reason: rol);
       }
     });
+
+    test('hornos y decoración son producción y roles internos (#126)', () {
+      for (final rol in ['hornos', 'decoracion']) {
+        final auth = _conSesion(rol: rol);
+        expect(auth.isProduccion, isTrue, reason: rol);
+        expect(auth.isRolInterno, isTrue, reason: rol);
+        expect(auth.isRepartidor, isFalse, reason: rol);
+      }
+      expect(_conSesion(rol: 'empleado').isProduccion, isFalse);
+      expect(_conSesion().isProduccion, isFalse);
+    });
   });
 
   group('AuthProvider: perfil en memoria', () {

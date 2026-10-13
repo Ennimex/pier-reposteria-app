@@ -26,7 +26,10 @@ class AuthProvider with ChangeNotifier {
   bool get isEmpleado => rol == 'empleado';
   bool get isGerencia => rol == 'gerencia';
   bool get isDireccion => rol == 'direccion_general';
-  bool get isRolInterno => isEmpleado || isGerencia || isDireccion;
+  // Producción (hornos y decoración): trabajan las comandas del mostrador.
+  bool get isProduccion => rol == 'hornos' || rol == 'decoracion';
+  bool get isRolInterno =>
+      isEmpleado || isGerencia || isDireccion || isProduccion;
 
   // Verificar sesión al iniciar app
   Future<void> checkSession() async {
