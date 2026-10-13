@@ -19,40 +19,50 @@ import '../../fakes/fake_api_client.dart';
 const _proximas = '/comandas?vista=proximas';
 const _activas = '/comandas?vista=activas';
 
-final Map<String, dynamic> _firmada =
-    firmaJson(vigente: true, version: 1, usuario: 'Rosa Pérez');
+final Map<String, dynamic> _firmada = firmaJson(
+  vigente: true,
+  version: 1,
+  usuario: 'Rosa Pérez',
+);
 
 FakeApiClient _backend() => FakeApiClient()
   ..responder(
-      _proximas,
-      agendaJson([
-        comandaJson(
-            fecha: '2026-10-12',
-            dias: 0,
-            hora: '16:00',
-            semaforo: 'rojo',
-            imagenes: 2),
-        comandaJson(
-            id: 2,
-            folio: 5002,
-            cliente: 'Juan Ruiz',
-            hornos: _firmada,
-            decoracion: firmaJson(version: 1, usuario: 'Leo')),
-      ]))
+    _proximas,
+    agendaJson([
+      comandaJson(
+        fecha: '2026-10-12',
+        dias: 0,
+        hora: '16:00',
+        semaforo: 'rojo',
+        imagenes: 2,
+      ),
+      comandaJson(
+        id: 2,
+        folio: 5002,
+        cliente: 'Juan Ruiz',
+        hornos: _firmada,
+        decoracion: firmaJson(version: 1, usuario: 'Leo'),
+      ),
+    ]),
+  )
   ..responder(
-      _activas,
-      agendaJson([
-        comandaJson(fecha: '2026-10-12', dias: 0, cliente: 'Ana'),
-        comandaJson(id: 2, folio: 5002, hornos: _firmada, cliente: 'Beto'),
-        comandaJson(id: 3, folio: 5003, dias: 5, cliente: 'Carla'),
-        comandaJson(id: 4, folio: 5004, dias: 6, cliente: 'Dora'),
-        comandaJson(id: 5, folio: 5005, dias: 7, cliente: 'Eva'),
-      ]))
+    _activas,
+    agendaJson([
+      comandaJson(fecha: '2026-10-12', dias: 0, cliente: 'Ana'),
+      comandaJson(id: 2, folio: 5002, hornos: _firmada, cliente: 'Beto'),
+      comandaJson(id: 3, folio: 5003, dias: 5, cliente: 'Carla'),
+      comandaJson(id: 4, folio: 5004, dias: 6, cliente: 'Dora'),
+      comandaJson(id: 5, folio: 5005, dias: 7, cliente: 'Eva'),
+    ]),
+  )
   ..responder('/auth/logout', {'success': true});
 
 /// Monta la agenda con sesión de [rol] dentro de un router con login.
-Future<void> _montar(WidgetTester tester, FakeApiClient api,
-    {String rol = 'hornos'}) async {
+Future<void> _montar(
+  WidgetTester tester,
+  FakeApiClient api, {
+  String rol = 'hornos',
+}) async {
   tester.view
     ..physicalSize = const Size(1080, 6000)
     ..devicePixelRatio = 3;
@@ -68,56 +78,65 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api,
     initialLocation: AppRoutes.produccion,
     routes: [
       GoRoute(
-          path: AppRoutes.produccion,
-          builder: (_, _) => const AgendaComandasScreen()),
+        path: AppRoutes.produccion,
+        builder: (_, _) => const AgendaComandasScreen(),
+      ),
       GoRoute(
-          path: AppRoutes.login,
-          builder: (_, _) => const Scaffold(body: Text('LOGIN'))),
+        path: AppRoutes.login,
+        builder: (_, _) => const Scaffold(body: Text('LOGIN')),
+      ),
     ],
   );
   // La sesión se abre fuera del build; luego se monta el router.
   final listo = ValueNotifier(false);
   late BuildContext contexto;
-  await tester.pumpWidget(MultiProvider(
-    providers: dependencias(api),
-    child: ValueListenableBuilder<bool>(
-      valueListenable: listo,
-      builder: (context, montar, _) {
-        contexto = context;
-        return montar
-            ? MaterialApp.router(routerConfig: router)
-            : const SizedBox();
-      },
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: dependencias(api),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: listo,
+        builder: (context, montar, _) {
+          contexto = context;
+          return montar
+              ? MaterialApp.router(routerConfig: router)
+              : const SizedBox();
+        },
+      ),
     ),
-  ));
-  contexto
-      .read<AuthProvider>()
-      .abrirSesion({'id': 1, 'nombre': 'Rosa', 'rol': rol});
+  );
+  contexto.read<AuthProvider>().abrirSesion({
+    'id': 1,
+    'nombre': 'Rosa',
+    'rol': rol,
+  });
   listo.value = true;
   await tester.pumpAndSettle();
 }
 
 void main() {
   group('AgendaComandasScreen', () {
-    testWidgets('agrupa por día con folio, hora, urgencia y firmas, sin montos',
-        (tester) async {
-      await _montar(tester, _backend());
+    testWidgets(
+      'agrupa por día con folio, hora, urgencia y firmas, sin montos',
+      (tester) async {
+        await _montar(tester, _backend());
 
-      expect(find.text('Comandas · Hornos'), findsOneWidget);
-      expect(find.text('Hoy · lunes 12 de octubre'), findsOneWidget);
-      expect(find.text('Miércoles 14 de octubre'), findsOneWidget);
-      expect(find.text('#5001'), findsWidgets);
-      expect(find.text('4:00 p. m.'), findsOneWidget);
-      expect(find.text('Urgente'), findsOneWidget);
-      expect(find.text('María López'), findsOneWidget);
-      expect(find.text('Hornos: confirmó'), findsOneWidget);
-      expect(find.text('Decoración: falta re-confirmar'), findsOneWidget);
-      expect(find.text('2 fotos'), findsOneWidget);
-      expect(find.textContaining(r'$'), findsNothing);
-    });
+        expect(find.text('Comandas · Hornos'), findsOneWidget);
+        expect(find.text('Hoy · lunes 12 de octubre'), findsOneWidget);
+        expect(find.text('Miércoles 14 de octubre'), findsOneWidget);
+        expect(find.text('#5001'), findsWidgets);
+        expect(find.text('4:00 p. m.'), findsOneWidget);
+        expect(find.text('Urgente'), findsOneWidget);
+        expect(find.text('María López'), findsOneWidget);
+        expect(find.text('Hornos: confirmó'), findsOneWidget);
+        expect(find.text('Decoración: falta re-confirmar'), findsOneWidget);
+        expect(find.text('2 fotos'), findsOneWidget);
+        expect(find.textContaining(r'$'), findsNothing);
+      },
+    );
 
-    testWidgets('pendientes de mi área: las 3 más urgentes y «Ver las N»',
-        (tester) async {
+    testWidgets('pendientes de mi área: las 3 más urgentes y «Ver las N»', (
+      tester,
+    ) async {
       await _montar(tester, _backend());
 
       expect(find.text('Pendientes de tu confirmación (4)'), findsOneWidget);
@@ -141,14 +160,16 @@ void main() {
     testWidgets('cambiar de vista consulta esa vista', (tester) async {
       final api = _backend()
         ..responder(
-            '/comandas?vista=canceladas',
-            agendaJson([
-              comandaJson(
-                  folio: 5009,
-                  estado: 'cancelada',
-                  semaforo: null,
-                  canceladaAt: '2026-10-11T20:00:00.000Z'),
-            ]));
+          '/comandas?vista=canceladas',
+          agendaJson([
+            comandaJson(
+              folio: 5009,
+              estado: 'cancelada',
+              semaforo: null,
+              canceladaAt: '2026-10-11T20:00:00.000Z',
+            ),
+          ]),
+        );
       await _montar(tester, api);
 
       await tester.ensureVisible(find.text('Canceladas'));
@@ -162,8 +183,10 @@ void main() {
 
     testWidgets('buscar espera a que termine de escribir', (tester) async {
       final api = _backend()
-        ..responder('/comandas?vista=proximas&busqueda=Juan',
-            agendaJson([comandaJson(folio: 5002, cliente: 'Juan Ruiz')]));
+        ..responder(
+          '/comandas?vista=proximas&busqueda=Juan',
+          agendaJson([comandaJson(folio: 5002, cliente: 'Juan Ruiz')]),
+        );
       await _montar(tester, api);
 
       await tester.enterText(find.byType(TextField), 'Juan');
@@ -178,7 +201,9 @@ void main() {
     testWidgets('sin resultados de la búsqueda', (tester) async {
       final api = _backend()
         ..responder(
-            '/comandas?vista=proximas&busqueda=Zoe', agendaJson(const []));
+          '/comandas?vista=proximas&busqueda=Zoe',
+          agendaJson(const []),
+        );
       await _montar(tester, api);
 
       await tester.enterText(find.byType(TextField), 'Zoe');
@@ -209,8 +234,9 @@ void main() {
       expect(find.text('#5007'), findsWidgets);
     });
 
-    testWidgets('si falla al actualizar conserva la lista y avisa',
-        (tester) async {
+    testWidgets('si falla al actualizar conserva la lista y avisa', (
+      tester,
+    ) async {
       final api = _backend();
       await _montar(tester, api);
       api
@@ -240,8 +266,9 @@ void main() {
       expect(api.llamo(_proximas), isTrue);
     });
 
-    testWidgets('cuenta desactivada: cierra la sesión y vuelve al login',
-        (tester) async {
+    testWidgets('cuenta desactivada: cierra la sesión y vuelve al login', (
+      tester,
+    ) async {
       final api = _backend()
         ..responder(_proximas, {
           'success': false,

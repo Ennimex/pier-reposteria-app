@@ -12,13 +12,19 @@ import '../../fakes/fake_api_client.dart';
 const _proximas = '/comandas?vista=proximas';
 const _activas = '/comandas?vista=activas';
 
-final Map<String, dynamic> _firmada =
-    firmaJson(vigente: true, version: 1, usuario: 'Rosa Pérez');
+final Map<String, dynamic> _firmada = firmaJson(
+  vigente: true,
+  version: 1,
+  usuario: 'Rosa Pérez',
+);
 
-AgendaComandasViewModel _vm(FakeApiClient api,
-        {AreaProduccion? area = AreaProduccion.hornos}) =>
-    AgendaComandasViewModel(
-        repo: ComandasRepositoryRemote(api: api), area: area);
+AgendaComandasViewModel _vm(
+  FakeApiClient api, {
+  AreaProduccion? area = AreaProduccion.hornos,
+}) => AgendaComandasViewModel(
+  repo: ComandasRepositoryRemote(api: api),
+  area: area,
+);
 
 void main() {
   late FakeApiClient api;
@@ -26,38 +32,49 @@ void main() {
   setUp(() {
     api = FakeApiClient()
       ..responder(
-          _proximas,
-          agendaJson([
-            comandaJson(fecha: '2026-10-12', dias: 0, hora: '16:00'),
-            comandaJson(id: 2, fecha: '2026-10-12', dias: 0, hora: '10:00'),
-            comandaJson(id: 3, hornos: _firmada),
-          ]))
+        _proximas,
+        agendaJson([
+          comandaJson(fecha: '2026-10-12', dias: 0, hora: '16:00'),
+          comandaJson(id: 2, fecha: '2026-10-12', dias: 0, hora: '10:00'),
+          comandaJson(id: 3, hornos: _firmada),
+        ]),
+      )
       ..responder(
-          _activas,
-          agendaJson([
-            comandaJson(id: 5, fecha: '2026-10-10', dias: -2, semaforo: 'vencida'),
-            comandaJson(fecha: '2026-10-12', dias: 0, hora: '16:00'),
-            comandaJson(id: 2, fecha: '2026-10-12', dias: 0, hora: '10:00'),
-            comandaJson(id: 3, hornos: _firmada),
-            comandaJson(id: 4, fecha: '2026-11-20', dias: 39, semaforo: 'verde'),
-          ]));
+        _activas,
+        agendaJson([
+          comandaJson(
+            id: 5,
+            fecha: '2026-10-10',
+            dias: -2,
+            semaforo: 'vencida',
+          ),
+          comandaJson(fecha: '2026-10-12', dias: 0, hora: '16:00'),
+          comandaJson(id: 2, fecha: '2026-10-12', dias: 0, hora: '10:00'),
+          comandaJson(id: 3, hornos: _firmada),
+          comandaJson(id: 4, fecha: '2026-11-20', dias: 39, semaforo: 'verde'),
+        ]),
+      );
   });
 
   group('cargar', () {
-    test('trae los próximos días y todas las activas para los pendientes',
-        () async {
-      final vm = _vm(api);
-      final cargando = vm.cargar();
-      expect(vm.cargando, isTrue);
-      await cargando;
+    test(
+      'trae los próximos días y todas las activas para los pendientes',
+      () async {
+        final vm = _vm(api);
+        final cargando = vm.cargar();
+        expect(vm.cargando, isTrue);
+        await cargando;
 
-      expect(vm.cargando, isFalse);
-      expect(vm.error, isNull);
-      expect(api.llamadas.map((l) => l.endpoint),
-          unorderedEquals([_proximas, _activas]));
-      expect(vm.hoy, '2026-10-12');
-      expect(vm.total, 3);
-    });
+        expect(vm.cargando, isFalse);
+        expect(vm.error, isNull);
+        expect(
+          api.llamadas.map((l) => l.endpoint),
+          unorderedEquals([_proximas, _activas]),
+        );
+        expect(vm.hoy, '2026-10-12');
+        expect(vm.total, 3);
+      },
+    );
 
     test('agrupa por día de entrega con su encabezado', () async {
       final vm = _vm(api);
@@ -70,22 +87,26 @@ void main() {
       expect(vm.grupos.first.comandas.map((c) => c.id), [1, 2]);
     });
 
-    test('pendientes: activas sin la firma de mi área, la más urgente primero',
-        () async {
-      final vm = _vm(api);
-      await vm.cargar();
+    test(
+      'pendientes: activas sin la firma de mi área, la más urgente primero',
+      () async {
+        final vm = _vm(api);
+        await vm.cargar();
 
-      expect(vm.pendientes!.map((c) => c.id), [5, 2, 1, 4]);
-    });
+        expect(vm.pendientes!.map((c) => c.id), [5, 2, 1, 4]);
+      },
+    );
 
-    test('sin área (no es producción) no hay pendientes ni segunda consulta',
-        () async {
-      final vm = _vm(api, area: null);
-      await vm.cargar();
+    test(
+      'sin área (no es producción) no hay pendientes ni segunda consulta',
+      () async {
+        final vm = _vm(api, area: null);
+        await vm.cargar();
 
-      expect(vm.pendientes, isNull);
-      expect(api.llamadas.single.endpoint, _proximas);
-    });
+        expect(vm.pendientes, isNull);
+        expect(api.llamadas.single.endpoint, _proximas);
+      },
+    );
 
     test('error: lo expone y conserva lo que había', () async {
       final vm = _vm(api);
@@ -118,65 +139,77 @@ void main() {
   });
 
   group('vistas y búsqueda', () {
-    test('Todas las activas usa una sola consulta para lista y pendientes',
-        () async {
-      final vm = _vm(api);
-      await vm.cambiarVista(VistaAgenda.activas);
+    test(
+      'Todas las activas usa una sola consulta para lista y pendientes',
+      () async {
+        final vm = _vm(api);
+        await vm.cambiarVista(VistaAgenda.activas);
 
-      expect(vm.vista, VistaAgenda.activas);
-      expect(api.llamadas.single.endpoint, _activas);
-      expect(vm.total, 5);
-      expect(vm.pendientes!.length, 4);
-      expect(vm.grupos.first.titulo, 'Sábado 10 de octubre');
-    });
+        expect(vm.vista, VistaAgenda.activas);
+        expect(api.llamadas.single.endpoint, _activas);
+        expect(vm.total, 5);
+        expect(vm.pendientes!.length, 4);
+        expect(vm.grupos.first.titulo, 'Sábado 10 de octubre');
+      },
+    );
 
     test('entregadas: agrupa por el día en que se entregaron', () async {
       api.responder(
-          '/comandas?vista=entregadas',
-          agendaJson([
-            comandaJson(
-                id: 8,
-                estado: 'entregada',
-                semaforo: null,
-                fecha: '2026-10-15',
-                entregadaAt: '2026-10-12T02:00:00.000Z'),
-          ]));
+        '/comandas?vista=entregadas',
+        agendaJson([
+          comandaJson(
+            id: 8,
+            estado: 'entregada',
+            semaforo: null,
+            fecha: '2026-10-15',
+            entregadaAt: '2026-10-12T02:00:00.000Z',
+          ),
+        ]),
+      );
       final vm = _vm(api);
       await vm.cambiarVista(VistaAgenda.entregadas);
 
       expect(vm.grupos.single.titulo, 'Ayer · domingo 11 de octubre');
     });
 
-    test('canceladas sin fecha de cancelación usa la fecha de entrega',
-        () async {
-      api.responder(
+    test(
+      'canceladas sin fecha de cancelación usa la fecha de entrega',
+      () async {
+        api.responder(
           '/comandas?vista=canceladas',
           agendaJson([
-            comandaJson(
-                id: 9, estado: 'cancelada', semaforo: null),
-          ]));
-      final vm = _vm(api);
-      await vm.cambiarVista(VistaAgenda.canceladas);
+            comandaJson(id: 9, estado: 'cancelada', semaforo: null),
+          ]),
+        );
+        final vm = _vm(api);
+        await vm.cambiarVista(VistaAgenda.canceladas);
 
-      expect(vm.grupos.single.titulo, 'Miércoles 14 de octubre');
-    });
+        expect(vm.grupos.single.titulo, 'Miércoles 14 de octubre');
+      },
+    );
 
-    test('buscar quita el # del folio y consulta con la vista actual',
-        () async {
-      api.responder('/comandas?vista=proximas&busqueda=5003',
-          agendaJson([comandaJson(folio: 5003)]));
-      final vm = _vm(api);
-      await vm.cargar();
-      api.llamadas.clear();
+    test(
+      'buscar quita el # del folio y consulta con la vista actual',
+      () async {
+        api.responder(
+          '/comandas?vista=proximas&busqueda=5003',
+          agendaJson([comandaJson(folio: 5003)]),
+        );
+        final vm = _vm(api);
+        await vm.cargar();
+        api.llamadas.clear();
 
-      await vm.buscar('  #5003 ');
+        await vm.buscar('  #5003 ');
 
-      expect(vm.busqueda, '5003');
-      expect(api.llamadas.single.endpoint,
-          '/comandas?vista=proximas&busqueda=5003');
-      expect(vm.total, 1);
-      expect(vm.pendientes!.length, 4, reason: 'los pendientes no cambian');
-    });
+        expect(vm.busqueda, '5003');
+        expect(
+          api.llamadas.single.endpoint,
+          '/comandas?vista=proximas&busqueda=5003',
+        );
+        expect(vm.total, 1);
+        expect(vm.pendientes!.length, 4, reason: 'los pendientes no cambian');
+      },
+    );
 
     test('la misma búsqueda no vuelve a consultar', () async {
       final vm = _vm(api);

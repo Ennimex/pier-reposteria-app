@@ -32,8 +32,10 @@ void main() {
     test('manda la vista y la búsqueda codificada', () async {
       await repo.agenda(vista: VistaAgenda.entregadas, busqueda: 'Ana María');
 
-      expect(api.llamadas.single.endpoint,
-          '/comandas?vista=entregadas&busqueda=Ana+Mar%C3%ADa');
+      expect(
+        api.llamadas.single.endpoint,
+        '/comandas?vista=entregadas&busqueda=Ana+Mar%C3%ADa',
+      );
     });
 
     test('la búsqueda vacía no se manda', () async {
@@ -47,8 +49,13 @@ void main() {
 
       await expectLater(
         repo.agenda(),
-        throwsA(isA<ApiException>().having((e) => e.message, 'message',
-            'No tienes permiso para esta acción')),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            'No tienes permiso para esta acción',
+          ),
+        ),
       );
     });
 
@@ -57,8 +64,13 @@ void main() {
 
       await expectLater(
         repo.agenda(),
-        throwsA(isA<ApiException>().having(
-            (e) => e.message, 'message', 'No se pudieron cargar las comandas')),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            'No se pudieron cargar las comandas',
+          ),
+        ),
       );
     });
 
@@ -66,11 +78,11 @@ void main() {
       api.responder(ApiConstants.comandas, {
         'success': false,
         'codigo': 'SESION_INVALIDA',
-        'message': 'Tu cuenta está desactivada o cambió. Inicia sesión de nuevo.',
+        'message':
+            'Tu cuenta está desactivada o cambió. Inicia sesión de nuevo.',
       });
 
-      await expectLater(
-          repo.agenda(), throwsA(isA<SesionInvalidaException>()));
+      await expectLater(repo.agenda(), throwsA(isA<SesionInvalidaException>()));
     });
   });
 }
