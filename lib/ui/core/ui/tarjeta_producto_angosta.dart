@@ -3,10 +3,13 @@
 // Tarjeta angosta de producto de los carruseles horizontales (inicio y
 // "Otros clientes también pidieron"): foto con el precio encima, datos
 // básicos y estrellas. Quien la usa pone los badges y el botón de la foto.
+// La foto que llega de internet aparece con un fundido y, si se le da un
+// ámbito, vuela al detalle.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 
 class TarjetaProductoAngosta extends StatelessWidget {
   const TarjetaProductoAngosta({
@@ -15,6 +18,7 @@ class TarjetaProductoAngosta extends StatelessWidget {
     required this.boton,
     this.insignias,
     this.precioTachado,
+    this.ambitoFoto,
     super.key,
   });
 
@@ -31,6 +35,12 @@ class TarjetaProductoAngosta extends StatelessWidget {
 
   /// Precio original tachado bajo la descripción (si hay descuento).
   final double? precioTachado;
+
+  /// Con valor, la foto es un FotoProductoHero con ese ámbito y vuela al
+  /// detalle que se abra con el mismo (los recomendados del detalle). Sin
+  /// valor no hay Hero: en Inicio un producto se repite entre carruseles y
+  /// dos Hero con la misma etiqueta no pueden convivir.
+  final String? ambitoFoto;
 
   @override
   Widget build(BuildContext context) {
@@ -58,15 +68,7 @@ class TarjetaProductoAngosta extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    p.imagenUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => ColoredBox(
-                      color: AppColors.pierArena,
-                      child: Icon(LucideIcons.cake,
-                          color: AppColors.pierVerde, size: 40),
-                    ),
-                  ),
+                  _foto(p),
                   // Gradiente inferior para que se lea el precio
                   Positioned(
                     bottom: 0, left: 0, right: 0, height: 70,
@@ -176,6 +178,37 @@ class TarjetaProductoAngosta extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// La foto: si llega de internet aparece con un fundido corto (la que ya
+  /// está en caché se pinta tal cual) y, con [ambitoFoto], vuela al detalle.
+  Widget _foto(Product p) {
+    final foto = Image.network(
+      p.imagenUrl,
+      fit: BoxFit.cover,
+      frameBuilder: (context, imagen, cuadro, sincrona) => sincrona
+          ? imagen
+          : AnimatedOpacity(
+              opacity: cuadro == null ? 0 : 1,
+              duration: AppMovimiento.duracion(context, AppMovimiento.corta),
+              curve: AppMovimiento.curvaEntrada,
+              child: imagen,
+            ),
+      errorBuilder: (_, _, _) => ColoredBox(
+        color: AppColors.pierArena,
+        child: Icon(LucideIcons.cake,
+            color: AppColors.pierVerde, size: 40),
+      ),
+    );
+    final ambito = ambitoFoto;
+    if (ambito == null) return foto;
+    return FotoProductoHero(
+      productoId: p.id,
+      imagenUrl: p.imagenUrl,
+      ambito: ambito,
+      radio: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: foto,
     );
   }
 }

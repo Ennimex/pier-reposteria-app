@@ -3,12 +3,12 @@
 // Catálogo (MVVM, Fase 4): la vista pinta lo que expone ProductsViewModel
 // (categoría, búsqueda, filtros, orden, favoritos) sobre el catálogo que
 // carga ProductProvider. Aquí solo queda lo que es de la interfaz: el texto
-// del buscador, cuadrícula/lista, el rebote del botón de carrito, mandar a
+// del buscador, cuadrícula/lista, el rebote del botón de carrito, el vuelo de
+// la miniatura al carrito, la entrada en cascada de las tarjetas, mandar a
 // iniciar sesión y los avisos (SnackBar).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
@@ -18,9 +18,11 @@ import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
 import 'package:pier_pasteleria/ui/products/view_model/products_view_model.dart';
 import 'package:pier_pasteleria/ui/products/widgets/catalogo_secciones.dart';
+import 'package:pier_pasteleria/ui/products/widgets/movimiento_catalogo.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
@@ -62,6 +64,11 @@ class _ProductsScreenState extends State<ProductsScreen>
   String? _lastAuthEmail;
   NavigationProvider? _navRef;
 
+  // La pestaña se está abriendo con una categoría pedida desde el inicio:
+  // la tanda de tarjetas que llega en ese cuadro espera a que la pestaña
+  // empiece a verse.
+  bool _abriendoPestana = false;
+
   bool get _autenticado => context.read<AuthProvider>().isAuthenticated;
 
   @override
@@ -102,6 +109,9 @@ class _ProductsScreenState extends State<ProductsScreen>
     if (_navRef?.selectedIndex != 1) return;
     final cat = _navRef?.consumirCategoriaPendiente();
     if (cat == null) return;
+    _abriendoPestana = true;
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _abriendoPestana = false);
     Navigator.of(context).popUntil((ruta) => ruta.isFirst);
     if (cat == _vm.categoria) return;
     unawaited(_vm.seleccionarCategoria(cat));
@@ -142,10 +152,10 @@ class _ProductsScreenState extends State<ProductsScreen>
 
   AnimationController _getCartController(String id) {
     return _cartControllers.putIfAbsent(id, () {
+      // Hunde, rebota y asienta en 1 (antes el botón se quedaba al 130 %).
       final c = AnimationController(
-          vsync: this, duration: const Duration(milliseconds: 500));
-      _cartAnims[id] = Tween<double>(begin: 1, end: 1.3).animate(
-          CurvedAnimation(parent: c, curve: Curves.elasticOut));
+          vsync: this, duration: AppMovimiento.enfasis);
+      _cartAnims[id] = c.drive(AppMovimiento.pulso);
       return c;
     });
   }
@@ -173,7 +183,9 @@ class _ProductsScreenState extends State<ProductsScreen>
       ));
   }
 
-  void _addToCart(Product p) {
+  /// [boton] es el botón tocado: de ahí sale la miniatura que vuela al
+  /// carrito.
+  void _addToCart(Product p, BuildContext boton) {
     // Agotado: el botón es "Avísame" (registra interés; sin sesión, como web)
     if (p.agotado) {
       _vm.avisarme(p);
@@ -186,8 +198,11 @@ class _ProductsScreenState extends State<ProductsScreen>
       return;
     }
     PierLog.info('🛒 Agregando al carrito desde catálogo: ${p.nombre}');
-    context.read<CartProvider>().addItem(p);
-    _getCartController(p.id).forward(from: 0);
+    unawaited(context.read<CartProvider>().addItem(p));
+    // En el mismo bloque que el alta: cuando la insignia de la barra cambia
+    // con el +1 ya ve la miniatura en el aire y espera a que llegue.
+    VueloAlCarrito.lanzar(boton, imagenUrl: p.imagenUrl);
+    _getCartController(p.id).forward(from: 0).ignore();
     _aviso('${p.nombre} agregado',
         icono: Icons.check_circle_rounded, color: AppColors.pierVerde);
   }
@@ -216,6 +231,26 @@ class _ProductsScreenState extends State<ProductsScreen>
       listenable: _vm,
       builder: (context, _) {
         final products = _vm.filtrar(productProvider.productos);
+        // Tanda de entrada de las tarjetas: cambia con lo que decide «qué se
+        // ve» (categoría, filtros, orden, vista) y entonces todas entran otra
+        // vez en cascada. Escribir en el buscador no la cambia: las tarjetas
+        // que siguen no se mueven.
+        final generacion = [
+          _vm.categoria,
+          _vm.filtroSabor,
+          _vm.filtroTamano,
+          _vm.filtroTipo,
+          _vm.orden.name,
+          _isGridView,
+        ].join('|');
+        // Las tarjetas que se construyen con la pestaña oculta (la primera
+        // carga, antes de abrir el catálogo) o mientras se abre esperan a
+        // que la pestaña empiece a verse; las que llegan con la pantalla a la
+        // vista entran ya.
+        final retraso = _abriendoPestana ||
+                !TickerMode.getValuesNotifier(context).value.enabled
+            ? AppMovimiento.trasPestana
+            : Duration.zero;
         return Scaffold(
           backgroundColor: AppColors.pierArena,
           body: Column(
@@ -240,28 +275,48 @@ class _ProductsScreenState extends State<ProductsScreen>
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverToBoxAdapter(child: _tituloYVista()),
-                      if (_vm.hayFiltros)
-                        SliverToBoxAdapter(child: _quitarFiltros()),
+                      // "Quitar filtros" abre su espacio y aparece (o se
+                      // apaga y lo cierra): la cuadrícula se desliza en vez
+                      // de saltar.
+                      SliverToBoxAdapter(
+                        child: Aparicion(
+                          visible: _vm.hayFiltros,
+                          child: _quitarFiltros(),
+                        ),
+                      ),
                       if (productProvider.isLoading)
                         _grid((context, i) => const ProductSkeletonCard(), 6)
                       else if (products.isEmpty)
                         SliverFillRemaining(
                             child: CatalogoVacio(onLimpiar: _limpiarTodo))
                       else
-                        _grid(
-                          (context, i) => _card(products[i], productProvider)
-                              // Entrada escalonada: cada tarjeta entra un pelín
-                              // después que la anterior (tope a 6 para no
-                              // demorar listas largas), con fade + leve
-                              // deslizamiento.
-                              .animate()
-                              .fadeIn(
-                                duration: 350.ms,
-                                delay: (40 * (i % 6)).ms,
-                                curve: Curves.easeOut,
-                              )
-                              .slideY(begin: 0.08, end: 0, curve: Curves.easeOutCubic),
-                          products.length,
+                        // Entrada en cascada: cada tarjeta sube y aparece un
+                        // escalón después de la anterior (las del séptimo
+                        // escalón en adelante entran juntas). Cada producto
+                        // entra una sola vez por tanda: volver con scroll,
+                        // regresar del detalle o recargar favoritos no repite
+                        // nada, y las que aparecen al hacer scroll llegan
+                        // quietas.
+                        AmbitoEntradas(
+                          generacion: generacion,
+                          child: _grid(
+                            (context, i) => EntradaSuave(
+                              key: ValueKey<String>(products[i].id),
+                              id: products[i].id,
+                              retraso: retraso,
+                              child: _card(products[i], productProvider),
+                            ),
+                            products.length,
+                            clave: ValueKey<String>(generacion),
+                            // Al buscar, la tarjeta de un producto que sigue
+                            // en la lista conserva su lugar en el árbol.
+                            indicePorClave: (clave) {
+                              if (clave is! ValueKey<String>) return null;
+                              final i = products
+                                  .indexWhere((p) => p.id == clave.value);
+                              return i < 0 ? null : i;
+                            },
+                          ),
                         ),
                     ],
                   ),
@@ -282,14 +337,17 @@ class _ProductsScreenState extends State<ProductsScreen>
         animacionCarrito: _cartAnims[p.id],
         onTap: () => _goToDetail(p),
         onToggleFavorito: () => _toggleFavorito(p.id),
-        onAgregar: () => _addToCart(p),
+        onAgregar: (boton) => _addToCart(p, boton),
       );
 
-  Widget _grid(NullableIndexedWidgetBuilder builder, int cantidad) {
+  Widget _grid(NullableIndexedWidgetBuilder builder, int cantidad,
+      {Key? clave, ChildIndexGetter? indicePorClave}) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
       sliver: SliverGrid(
-        delegate: SliverChildBuilderDelegate(builder, childCount: cantidad),
+        key: clave,
+        delegate: SliverChildBuilderDelegate(builder,
+            childCount: cantidad, findChildIndexCallback: indicePorClave),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: _isGridView ? 2 : 1,
           childAspectRatio: _isGridView ? 0.63 : 3.2,
@@ -309,23 +367,44 @@ class _ProductsScreenState extends State<ProductsScreen>
           const Text('Nuestro Menú',
               style: TextStyle(fontFamily: 'Playfair Display', fontSize: 22,
                   fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-          GestureDetector(
-            onTap: () => setState(() => _isGridView = !_isGridView),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.pierVerde.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.pierVerde.withValues(alpha: 0.2)),
+          PresionEscala(
+            escala: AppMovimiento.escalaPresionChica,
+            child: GestureDetector(
+              onTap: () => setState(() => _isGridView = !_isGridView),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.pierVerde.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.pierVerde.withValues(alpha: 0.2)),
+                ),
+                // El ícono cambia con un rebote, la etiqueta rueda y la
+                // píldora ajusta su ancho con suavidad.
+                child: TamanoAnimado(
+                  alineacion: AlignmentDirectional.centerStart,
+                  child: Row(children: [
+                    CambioAnimado(
+                      tipo: TipoCambio.escalar,
+                      alineacion: Alignment.center,
+                      child: Icon(_isGridView ? LucideIcons.grid2x2 : LucideIcons.list,
+                          key: ValueKey<bool>(_isGridView),
+                          color: AppColors.pierVerde, size: 16),
+                    ),
+                    const SizedBox(width: 5),
+                    ClipRect(
+                      child: CambioAnimado(
+                        tipo: TipoCambio.subir,
+                        direccion: _isGridView ? -1 : 1,
+                        soloEntrada: true,
+                        child: Text(_isGridView ? 'Cuadrícula' : 'Lista',
+                            key: ValueKey<bool>(_isGridView),
+                            style: TextStyle(fontSize: 12, color: AppColors.pierVerde,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ]),
+                ),
               ),
-              child: Row(children: [
-                Icon(_isGridView ? LucideIcons.grid2x2 : LucideIcons.list,
-                    color: AppColors.pierVerde, size: 16),
-                const SizedBox(width: 5),
-                Text(_isGridView ? 'Cuadrícula' : 'Lista',
-                    style: TextStyle(fontSize: 12, color: AppColors.pierVerde,
-                        fontWeight: FontWeight.w600)),
-              ]),
             ),
           ),
         ],
@@ -336,19 +415,21 @@ class _ProductsScreenState extends State<ProductsScreen>
   Widget _quitarFiltros() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      child: GestureDetector(
-        onTap: _limpiarTodo,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(LucideIcons.filterX, size: 14, color: Colors.red.shade400),
-              const SizedBox(width: 6),
-              Text('Quitar filtros',
-                  style: TextStyle(fontSize: 12, color: Colors.red.shade400, fontWeight: FontWeight.w600)),
-            ],
+      child: PresionEscala(
+        child: GestureDetector(
+          onTap: _limpiarTodo,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.filterX, size: 14, color: Colors.red.shade400),
+                const SizedBox(width: 6),
+                Text('Quitar filtros',
+                    style: TextStyle(fontSize: 12, color: Colors.red.shade400, fontWeight: FontWeight.w600)),
+              ],
+            ),
           ),
         ),
       ),

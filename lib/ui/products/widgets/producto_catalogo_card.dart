@@ -3,13 +3,17 @@
 // Tarjeta de un producto del catálogo, en cuadrícula o en lista: imagen con
 // badges de promoción, corazón de favorito, precio (con descuento) y botón de
 // agregar ("Avísame" si está agotado). Solo pinta: las acciones llegan por
-// callbacks desde la pantalla (MVVM, Fase 4).
+// callbacks desde la pantalla (MVVM, Fase 4). Se hunde al presionarla, su
+// foto vuela al detalle y el corazón y el botón responden con su propio
+// movimiento.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_pasteleria/ui/products/widgets/movimiento_catalogo.dart';
 import 'package:provider/provider.dart';
 
 class ProductoCatalogoCard extends StatelessWidget {
@@ -33,24 +37,31 @@ class ProductoCatalogoCard extends StatelessWidget {
   final bool esFavorito;
   final VoidCallback onTap;
   final VoidCallback onToggleFavorito;
-  final VoidCallback onAgregar;
+
+  /// Agregar al carrito. Recibe el contexto del botón tocado: de ahí sale la
+  /// miniatura que vuela al carrito.
+  final ValueChanged<BuildContext> onAgregar;
 
   /// Rebote del botón al agregar al carrito (lo anima la pantalla).
   final Animation<double>? animacionCarrito;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 6))],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: enCuadricula ? _buildGridCard() : _buildListCard(),
+    // Se hunde un poco mientras el dedo está abajo (el corazón y el botón
+    // de agregar se hunden solos, sin hundir la tarjeta).
+    return PresionEscala(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 6))],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: enCuadricula ? _buildGridCard() : _buildListCard(),
+          ),
         ),
       ),
     );
@@ -69,7 +80,10 @@ class ProductoCatalogoCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _imagen(tamanoIcono: 40),
+              _imagen(
+                tamanoIcono: 40,
+                radio: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
               // Columna de badges por tipo (igual que el web)
               Positioned(
                 top: 8, left: 8,
@@ -160,7 +174,10 @@ class ProductoCatalogoCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _imagen(tamanoIcono: 36),
+              _imagen(
+                tamanoIcono: 36,
+                radio: const BorderRadius.horizontal(left: Radius.circular(20)),
+              ),
               // Badges múltiples apilados igual que el web
               Positioned(
                 top: 6, left: 6,
@@ -230,9 +247,18 @@ class ProductoCatalogoCard extends StatelessWidget {
     );
   }
 
-  Widget _imagen({required double tamanoIcono}) => Hero(
-        tag: 'producto-img-${producto.id}',
+  /// La foto vuela al detalle (misma etiqueta de siempre,
+  /// `producto-img-<id>`) con las esquinas de esta tarjeta ([radio])
+  /// enderezándose en el camino; si llega de internet aparece con un fundido
+  /// corto.
+  Widget _imagen({required double tamanoIcono, required BorderRadius radio}) =>
+      FotoProductoHero(
+        productoId: producto.id,
+        imagenUrl: producto.imagenUrl,
+        radio: radio,
         child: Image.network(producto.imagenUrl, fit: BoxFit.cover,
+            frameBuilder: (_, foto, cuadro, sincrona) =>
+                AparicionFoto(foto: foto, cuadro: cuadro, sincrona: sincrona),
             errorBuilder: (_, _, _) => ColoredBox(
               color: AppColors.pierArena,
               child: Icon(LucideIcons.cake, color: AppColors.pierVerde, size: tamanoIcono),
@@ -283,7 +309,9 @@ class ProductoCatalogoCard extends StatelessWidget {
   }
 }
 
-/// Corazón de favorito con "pop" al marcar (al desmarcar entra sin rebote).
+/// Corazón de favorito. Al marcarlo con un toque da un pop con un destello
+/// de azúcar (la carga de favoritos, que también voltea corazones, no
+/// destella) y el ícono cambia con un rebote; al presionarlo se hunde.
 class _BotonFavorito extends StatelessWidget {
   const _BotonFavorito({
     required this.esFavorito,
@@ -301,27 +329,33 @@ class _BotonFavorito extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: diametro, height: diametro,
-        decoration: BoxDecoration(
-          color: esFavorito ? Colors.red : Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: difuminado)],
-        ),
-        child: TweenAnimationBuilder<double>(
-          key: ValueKey(esFavorito),
-          tween: Tween(begin: esFavorito ? 1.6 : 1.0, end: 1),
-          duration: const Duration(milliseconds: 450),
-          curve: Curves.elasticOut,
-          builder: (_, scale, child) =>
-              Transform.scale(scale: scale, child: child),
-          child: Icon(
-            esFavorito ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-            color: esFavorito ? Colors.white : AppColors.textSecondary,
-            size: tamanoIcono,
+    return DestelloCorazon(
+      activo: esFavorito,
+      // El corazón está a 8 del borde de la foto, que recorta: el destello
+      // cabe con su margen.
+      radio: diametro / 2 + 4,
+      child: PresionEscala(
+        escala: AppMovimiento.escalaPresionChica,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: diametro, height: diametro,
+            decoration: BoxDecoration(
+              color: esFavorito ? Colors.red : Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: difuminado)],
+            ),
+            child: CambioAnimado(
+              tipo: TipoCambio.escalar,
+              alineacion: Alignment.center,
+              child: Icon(
+                esFavorito ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                key: ValueKey<bool>(esFavorito),
+                color: esFavorito ? Colors.white : AppColors.textSecondary,
+                size: tamanoIcono,
+              ),
+            ),
           ),
         ),
       ),
@@ -330,8 +364,9 @@ class _BotonFavorito extends StatelessWidget {
 }
 
 /// Botón de agregar al carrito (palomita si ya está). Agotado: campana de
-/// "Avísame", con texto en la vista de lista.
-class _BotonAgregar extends StatelessWidget {
+/// "Avísame", con texto en la vista de lista. Se hunde al presionarlo, el
+/// ícono cambia con un rebote (+ → palomita) y la campana suena al tocarla.
+class _BotonAgregar extends StatefulWidget {
   const _BotonAgregar({
     required this.producto,
     required this.onTap,
@@ -340,52 +375,107 @@ class _BotonAgregar extends StatelessWidget {
   });
 
   final Product producto;
-  final VoidCallback onTap;
+
+  /// Recibe el contexto de este botón (de ahí sale la miniatura al carrito).
+  final ValueChanged<BuildContext> onTap;
   final Animation<double>? animacion;
 
   /// Cuadrícula: botón cuadrado de 34. Lista: botón ancho con "Avísame".
   final bool compacto;
 
   @override
+  State<_BotonAgregar> createState() => _BotonAgregarState();
+}
+
+class _BotonAgregarState extends State<_BotonAgregar>
+    with SingleTickerProviderStateMixin {
+  static const Animatable<double> _vaiven = Vaiven();
+
+  // Vaivén de la campana de "Avísame"; se crea con el primer toque (la
+  // mayoría de los productos no está agotada).
+  AnimationController? _campana;
+
+  void _alTocar() {
+    widget.onTap(context);
+    if (!widget.producto.agotado || AppMovimiento.reducido(context)) return;
+    var campana = _campana;
+    if (campana == null) {
+      campana = AnimationController(vsync: this, duration: AppMovimiento.enfasis);
+      setState(() => _campana = campana);
+    }
+    campana.forward(from: 0).ignore();
+  }
+
+  @override
+  void dispose() {
+    _campana?.dispose();
+    super.dispose();
+  }
+
+  /// La campana cuelga de arriba y se mece al tocarla.
+  Widget _conVaiven(Widget icono) {
+    final campana = _campana;
+    if (campana == null) return icono;
+    return RotationTransition(
+      turns: campana.drive(_vaiven),
+      alignment: Alignment.topCenter,
+      child: icono,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final producto = widget.producto;
+    final compacto = widget.compacto;
     final enCarrito =
         context.select<CartProvider, bool>((c) => c.isInCart(producto.id));
     final agotado = producto.agotado;
-    final icono = Icon(
-        agotado
-            ? LucideIcons.bellRing
-            : enCarrito ? LucideIcons.check : LucideIcons.plus,
-        color: Colors.white, size: 20);
-    Widget boton = GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: compacto ? 34 : null,
-        height: compacto ? 34 : null,
-        padding: compacto
-            ? null
-            : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-            color: agotado ? AppColors.pierDorado : AppColors.pierVerde,
-            borderRadius: BorderRadius.circular(compacto ? 10 : 12)),
-        child: agotado && !compacto
-            ? const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(LucideIcons.bellRing, color: Colors.white, size: 18),
-                  SizedBox(width: 6),
-                  Text('Avísame',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold)),
-                ])
-            : icono,
+    final icono = agotado
+        ? LucideIcons.bellRing
+        : enCarrito ? LucideIcons.check : LucideIcons.plus;
+    // El rebote de la pantalla va siempre en el mismo lugar del árbol (en
+    // reposo, escala 1): cuando llega con el primer alta, el botón no se
+    // vuelve a montar y su cambio + → palomita se alcanza a ver.
+    return ScaleTransition(
+      scale: widget.animacion ?? kAlwaysCompleteAnimation,
+      child: PresionEscala(
+        escala: AppMovimiento.escalaPresionChica,
+        child: GestureDetector(
+          onTap: _alTocar,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: compacto ? 34 : null,
+            height: compacto ? 34 : null,
+            padding: compacto
+                ? null
+                : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+                color: agotado ? AppColors.pierDorado : AppColors.pierVerde,
+                borderRadius: BorderRadius.circular(compacto ? 10 : 12)),
+            child: agotado && !compacto
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _conVaiven(const Icon(LucideIcons.bellRing, color: Colors.white, size: 18)),
+                      const SizedBox(width: 6),
+                      const Text('Avísame',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ])
+                : CambioAnimado(
+                    tipo: TipoCambio.escalar,
+                    alineacion: Alignment.center,
+                    child: KeyedSubtree(
+                      key: ValueKey<IconData>(icono),
+                      child: _conVaiven(Icon(icono, color: Colors.white, size: 20)),
+                    ),
+                  ),
+          ),
+        ),
       ),
     );
-    final anim = animacion;
-    if (anim != null) boton = ScaleTransition(scale: anim, child: boton);
-    return boton;
   }
 }
 
