@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/movimiento_pedidos.dart';
 
 /// Tarjeta blanca con [titulo] arriba de [child].
 class TarjetaDetalle extends StatelessWidget {
@@ -153,6 +155,8 @@ class RenglonProducto extends StatelessWidget {
 }
 
 /// «Cancelar pedido» con su nota; mientras [cancelando] muestra un spinner.
+/// El ícono pasa a spinner (y de regreso) con un pequeño rebote y la
+/// etiqueta cambia con un fundido mientras el contenido ajusta su ancho.
 class BotonCancelarPedido extends StatelessWidget {
   const BotonCancelarPedido({
     required this.cancelando,
@@ -170,16 +174,29 @@ class BotonCancelarPedido extends StatelessWidget {
         width: double.infinity,
         child: OutlinedButton.icon(
           onPressed: cancelando ? null : onCancelar,
-          icon: cancelando
-              ? const SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.error))
-              : const Icon(LucideIcons.circleX,
-                  size: 18, color: AppColors.error),
-          label: Text(cancelando ? 'Cancelando…' : 'Cancelar pedido',
-              style: const TextStyle(
-                  color: AppColors.error, fontWeight: FontWeight.bold)),
+          icon: CambioAnimado(
+            tipo: TipoCambio.escalar,
+            alineacion: Alignment.center,
+            child: cancelando
+                ? const SizedBox(
+                    key: ValueKey('cancelando'),
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.error))
+                : const Icon(LucideIcons.circleX,
+                    key: ValueKey('cancelar'),
+                    size: 18, color: AppColors.error),
+          ),
+          label: TamanoSuave(
+            alineacion: Alignment.center,
+            child: CambioAnimado(
+              alineacion: Alignment.center,
+              child: Text(cancelando ? 'Cancelando…' : 'Cancelar pedido',
+                  key: ValueKey<bool>(cancelando),
+                  style: const TextStyle(
+                      color: AppColors.error, fontWeight: FontWeight.bold)),
+            ),
+          ),
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
             padding: const EdgeInsets.symmetric(vertical: 14),
