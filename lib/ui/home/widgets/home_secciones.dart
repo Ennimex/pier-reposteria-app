@@ -317,13 +317,15 @@ class HomeResenasDestacadas extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // Las estrellas se encienden en fila al llegar la reseña.
+                    // Las estrellas se encienden en fila al llegar la reseña,
+                    // un escalón de cascada entre una y otra.
                     Row(
                         children: List.generate(
                             5,
                             (i) => GestoIcono(
                                   tipo: TipoGesto.brinco,
-                                  retraso: Duration(milliseconds: 200 + 40 * i),
+                                  retraso: AppMovimiento.corta +
+                                      AppMovimiento.retrasoCascada(i),
                                   child: Icon(
                                       i < rating.floor()
                                           ? Icons.star_rounded

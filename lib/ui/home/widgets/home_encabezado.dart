@@ -169,10 +169,10 @@ class _CampanaNotificacionesState extends State<CampanaNotificaciones>
   void initState() {
     super.initState();
     _numero = widget.cantidad;
-    _meneo = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 650),
-    );
+    _meneo = AnimationController(vsync: this, duration: AppMovimiento.relleno);
+    // La insignia sigue la misma receta que InsigniaCarrito (crecer, saltar
+    // y encogerse igual que la del carrito); no se usa esa porque esta
+    // muestra «9+» y mide 16 × 16.
     _presencia = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
@@ -410,7 +410,8 @@ class _HaloListo extends StatefulWidget {
 
 class _HaloListoState extends State<_HaloListo>
     with SingleTickerProviderStateMixin {
-  static const Duration _duracion = Duration(milliseconds: 900);
+  // Dos latidos, cada uno del largo de un pop de ícono.
+  static final Duration _duracion = AppMovimiento.enfasis * 2;
 
   late final AnimationController _control;
   double _inicio = 0;
@@ -469,7 +470,8 @@ class _HaloListoState extends State<_HaloListo>
       builder: (context, cuadro) {
         final t = _avance;
         final latido = math.sin(t * math.pi * 2);
-        final anillo = Curves.easeOutCubic.transform(math.min(t / 0.75, 1));
+        final anillo =
+            AppMovimiento.curvaEntrada.transform(math.min(t / 0.75, 1));
         return Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.center,

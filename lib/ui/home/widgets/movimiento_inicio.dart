@@ -86,8 +86,11 @@ class VistaInicio extends StatefulWidget {
 
 class _VistaInicioState extends State<VistaInicio> {
   final Set<Object> _vistas = <Object>{};
+  // Las montadas en este cuadro, en el orden en que se construyeron: de
+  // arriba abajo.
   final List<_EntradaInicioState> _tanda = <_EntradaInicioState>[];
-  // En el orden en que se montaron: de arriba abajo.
+  // Las que esperan a verse. Vienen de tandas distintas: al revisarlas se
+  // ordenan por su lugar en la pantalla.
   final Set<_EntradaInicioState> _esperando = <_EntradaInicioState>{};
   Duration? _primerCuadro;
   bool _revisionPendiente = false;
@@ -138,17 +141,21 @@ class _VistaInicioState extends State<VistaInicio> {
       ..ensureVisualUpdate();
   }
 
-  // Después del layout: las que ya se ven entran, en cascada entre ellas.
+  // Después del layout: las que ya se ven entran, en cascada entre ellas y
+  // de arriba abajo (las que esperan pueden venir de tandas distintas, y un
+  // deslizamiento rápido destapa varias a la vez).
   void _revisar(Duration _) {
     _revisionPendiente = false;
     if (!mounted) return;
     final area = _area();
+    final visibles = [
+      for (final entrada in _esperando)
+        if (entrada._seVe(area)) entrada,
+    ]..sort((a, b) => a._arriba().compareTo(b._arriba()));
     var turno = 0;
-    for (final entrada in List<_EntradaInicioState>.of(_esperando)) {
-      if (entrada._seVe(area)) {
-        _esperando.remove(entrada);
-        entrada._empezar(AppMovimiento.retrasoCascada(turno++));
-      }
+    for (final entrada in visibles) {
+      _esperando.remove(entrada);
+      entrada._empezar(AppMovimiento.retrasoCascada(turno++));
     }
   }
 
@@ -394,6 +401,13 @@ class _EntradaInicioState extends State<EntradaInicio>
         arriba + caja.size.height > area.top;
   }
 
+  /// Su borde de arriba en la pantalla (0 mientras no tiene medidas).
+  double _arriba() {
+    final caja = context.findRenderObject();
+    if (caja is! RenderBox || !caja.hasSize) return 0;
+    return caja.localToGlobal(Offset.zero).dy;
+  }
+
   @override
   void dispose() {
     _vista?._olvidar(this);
@@ -529,7 +543,7 @@ class GestoIcono extends StatefulWidget {
   const GestoIcono({
     required this.tipo,
     required this.child,
-    this.retraso = const Duration(milliseconds: 150),
+    this.retraso = AppMovimiento.rapida,
     super.key,
   });
 
@@ -539,14 +553,16 @@ class GestoIcono extends StatefulWidget {
   /// Espera después de que la sección empieza a verse.
   final Duration retraso;
 
-  /// Cuánto dura cada gesto.
+  /// Cuánto dura cada gesto, con el ritmo de la casa: los de un golpe
+  /// (brinco, chispazo, destello) son pops de ícono; la vuelta completa y
+  /// los de dos tiempos (flama, empujón) duran lo de un relleno.
   static Duration duracionDe(TipoGesto tipo) => switch (tipo) {
-    TipoGesto.brinco => AppMovimiento.enfasis,
-    TipoGesto.vuelta => const Duration(milliseconds: 650),
-    TipoGesto.chispazo => const Duration(milliseconds: 420),
-    TipoGesto.destello => const Duration(milliseconds: 500),
-    TipoGesto.flama => const Duration(milliseconds: 700),
-    TipoGesto.empujon => const Duration(milliseconds: 800),
+    TipoGesto.brinco ||
+    TipoGesto.chispazo ||
+    TipoGesto.destello => AppMovimiento.enfasis,
+    TipoGesto.vuelta ||
+    TipoGesto.flama ||
+    TipoGesto.empujon => AppMovimiento.relleno,
   };
 
   @override
@@ -560,14 +576,14 @@ final Animatable<double> _escalaDestello = TweenSequence<double>(
       tween: Tween<double>(
         begin: 0.7,
         end: 1.15,
-      ).chain(CurveTween(curve: Curves.easeOut)),
+      ).chain(CurveTween(curve: AppMovimiento.curvaEntrada)),
       weight: 55,
     ),
     TweenSequenceItem<double>(
       tween: Tween<double>(
         begin: 1.15,
         end: 1,
-      ).chain(CurveTween(curve: Curves.easeInOut)),
+      ).chain(CurveTween(curve: AppMovimiento.curvaEstandar)),
       weight: 45,
     ),
   ],
@@ -581,13 +597,13 @@ final Animatable<double> _escalaDestello = TweenSequence<double>(
     case TipoGesto.brinco:
       return (
         escala: 0.6 + 0.4 * AppMovimiento.curvaRebote.transform(t),
-        giro: -0.35 * (1 - Curves.easeOutCubic.transform(t)),
+        giro: -0.35 * (1 - AppMovimiento.curvaEntrada.transform(t)),
         dx: 0,
       );
     case TipoGesto.vuelta:
       return (
         escala: 1,
-        giro: -2 * math.pi * Curves.easeInOutCubic.transform(t),
+        giro: -2 * math.pi * AppMovimiento.curvaEstandar.transform(t),
         dx: 0,
       );
     case TipoGesto.chispazo:
@@ -599,7 +615,7 @@ final Animatable<double> _escalaDestello = TweenSequence<double>(
     case TipoGesto.destello:
       return (
         escala: _escalaDestello.transform(t),
-        giro: 0.26 * (1 - Curves.easeOutCubic.transform(t)),
+        giro: 0.26 * (1 - AppMovimiento.curvaEntrada.transform(t)),
         dx: 0,
       );
     case TipoGesto.flama:
@@ -714,7 +730,7 @@ class BarridoDeLuz extends StatefulWidget {
   const BarridoDeLuz({
     required this.child,
     required this.radio,
-    this.retraso = const Duration(milliseconds: 450),
+    this.retraso = AppMovimiento.enfasis,
     super.key,
   });
 
@@ -726,8 +742,9 @@ class BarridoDeLuz extends StatefulWidget {
   /// Espera después de que la sección empieza a verse.
   final Duration retraso;
 
-  /// Lo que tarda la luz en cruzar.
-  static const Duration duracion = Duration(milliseconds: 900);
+  /// Lo que tarda la luz en cruzar: una línea que recorre la pieza, como
+  /// las que se llenan.
+  static const Duration duracion = AppMovimiento.relleno;
 
   @override
   State<BarridoDeLuz> createState() => _BarridoDeLuzState();
@@ -778,7 +795,7 @@ class _BarridoDeLuzState extends State<BarridoDeLuz>
     _tramo.curve = Interval(
       retraso.inMicroseconds / total.inMicroseconds,
       1,
-      curve: Curves.easeInOut,
+      curve: AppMovimiento.curvaEstandar,
     );
     _control
       ..duration = total

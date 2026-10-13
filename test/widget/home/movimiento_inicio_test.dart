@@ -332,6 +332,49 @@ void main() {
       expect(_opacidad(tester, _entradaDe('Abajo')), 1);
     });
 
+    testWidgets('las que se destapan juntas entran de arriba abajo aunque '
+        'hayan llegado en tandas distintas', (tester) async {
+      final control = ScrollController();
+      addTearDown(control.dispose);
+      Widget seccion(String id, String texto, double alto) =>
+          SliverToBoxAdapter(
+            key: ValueKey(id),
+            child: EntradaInicio(
+              id: id,
+              child: SizedBox(height: alto, child: Text(texto)),
+            ),
+          );
+      Widget arbol({required bool conMedia}) => VistaInicio(
+        child: CustomScrollView(
+          controller: control,
+          slivers: [
+            seccion('a', 'Arriba', 1500),
+            if (conMedia) seccion('b', 'Media', 100),
+            seccion('c', 'Abajo', 100),
+          ],
+        ),
+      );
+      await montarMovimiento(tester, arbol(conMedia: false));
+      await tester.pump();
+      // «Media» llega en otra tanda, arriba de «Abajo»: las dos esperan.
+      await montarMovimiento(tester, arbol(conMedia: true));
+      await tester.pump(const Duration(seconds: 1));
+      expect(_opacidad(tester, _entradaDe('Media')), 0);
+      expect(_opacidad(tester, _entradaDe('Abajo')), 0);
+
+      control.jumpTo(control.position.maxScrollExtent);
+      await tester.pump(); // revisa después del layout
+      await tester.pump(); // tic 0
+      await tester.pump(const Duration(milliseconds: 30));
+      // Primero la de arriba; la de abajo, un escalón después.
+      expect(_opacidad(tester, _entradaDe('Media')), greaterThan(0));
+      expect(_opacidad(tester, _entradaDe('Abajo')), 0);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(_opacidad(tester, _entradaDe('Media')), 1);
+      expect(_opacidad(tester, _entradaDe('Abajo')), 1);
+    });
+
     testWidgets('una sección que se va y vuelve no repite su entrada', (
       tester,
     ) async {
@@ -567,7 +610,8 @@ void main() {
 
       await montarMovimiento(tester, const CampanaNotificaciones(cantidad: 12));
       expect(find.text('9+'), findsOneWidget);
-      await tester.pump(const Duration(milliseconds: 100));
+      // El primer vaivén llega a su punto más alto a 1/12 del meneo.
+      await tester.pump(AppMovimiento.relleno ~/ 12);
       expect(giro(tester), isNot(0));
       expect(
         escalaEn(tester, find.byType(CampanaNotificaciones)),

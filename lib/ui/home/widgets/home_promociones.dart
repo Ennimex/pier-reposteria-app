@@ -210,9 +210,11 @@ class HomePromoBanner extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.pierVerdeOscuro)),
                         const SizedBox(width: 6),
+                        // Empuja cuando la flama terminó de parpadear.
                         GestoIcono(
                           tipo: TipoGesto.empujon,
-                          retraso: const Duration(milliseconds: 700),
+                          retraso: AppMovimiento.rapida +
+                              GestoIcono.duracionDe(TipoGesto.flama),
                           child: Icon(LucideIcons.arrowRight,
                               color: AppColors.pierVerdeOscuro, size: 16),
                         ),
