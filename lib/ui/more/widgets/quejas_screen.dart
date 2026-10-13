@@ -8,6 +8,7 @@ import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
 import 'package:pier_pasteleria/domain/models/queja.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/more/view_model/quejas_view_model.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
@@ -66,6 +67,7 @@ class _QuejasScreenState extends State<QuejasScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: AppMovimiento.estiloHoja(context),
       builder: (_) => _FormularioQueja(
         vm: _vm,
         onEnviado: () => Navigator.pop(context),
@@ -114,16 +116,19 @@ class _QuejasScreenState extends State<QuejasScreen> {
                 children: [
                   Row(
                     children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: 40, height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
+                      PresionEscala(
+                        escala: AppMovimiento.escalaPresionChica,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(LucideIcons.chevronLeft,
+                                size: 16, color: Colors.white),
                           ),
-                          child: const Icon(LucideIcons.chevronLeft,
-                              size: 16, color: Colors.white),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -145,76 +150,114 @@ class _QuejasScreenState extends State<QuejasScreen> {
                         ),
                       ),
                       // Botón nueva queja
-                      GestureDetector(
-                        onTap: _abrirFormulario,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 9),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(LucideIcons.plus,
-                                  color: AppColors.pierVerdeOscuro,
-                                  size: 16),
-                              const SizedBox(width: 5),
-                              Text('Nueva',
-                                  style: TextStyle(
-                                      color: AppColors.pierVerdeOscuro,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold)),
-                            ],
+                      PresionEscala(
+                        escala: AppMovimiento.escalaPresionChica,
+                        child: GestureDetector(
+                          onTap: _abrirFormulario,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(LucideIcons.plus,
+                                    color: AppColors.pierVerdeOscuro,
+                                    size: 16),
+                                const SizedBox(width: 5),
+                                Text('Nueva',
+                                    style: TextStyle(
+                                        color: AppColors.pierVerdeOscuro,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  if (!cargando && quejas.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${quejas.length} registro${quejas.length == 1 ? '' : 's'}',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w500),
-                      ),
+                  // El contador aparece abriendo su espacio y su número
+                  // sube cuando cambia (p. ej. al enviar una queja).
+                  Aparicion(
+                    visible: !cargando && quejas.isNotEmpty,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: CambioAnimado(
+                            tipo: TipoCambio.subir,
+                            child: Text(
+                              '${quejas.length} registro${quejas.length == 1 ? '' : 's'}',
+                              key: ValueKey<int>(quejas.length),
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
 
             // ── CONTENIDO ─────────────────────────────────────────
+            // Indicador → vacío o lista con un fundido a través. El ámbito
+            // vive fuera del cambio: al recargar, las tarjetas ya vistas no
+            // vuelven a entrar y una queja nueva entra sola.
             Expanded(
-              child: cargando
-                  ? Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.pierVerde))
-                  : quejas.isEmpty
-                      ? _buildEmptyState()
-                      : RefreshIndicator(
-                          onRefresh: _vm.cargar,
-                          color: AppColors.pierVerde,
-                          child: ListView.separated(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                            itemCount: quejas.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (_, i) =>
-                                _buildCard(quejas[i]),
-                          ),
-                        ),
+              child: AmbitoEntradas(
+                soloPrimeraTanda: false,
+                child: CambioAnimado(
+                  tipo: TipoCambio.atravesar,
+                  alineacion: Alignment.topCenter,
+                  child: cargando
+                      ? KeyedSubtree(
+                          key: const ValueKey<String>('cargando'),
+                          child: Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.pierVerde)),
+                        )
+                      : quejas.isEmpty
+                          ? KeyedSubtree(
+                              key: const ValueKey<String>('vacio'),
+                              child: _buildEmptyState(),
+                            )
+                          : KeyedSubtree(
+                              key: const ValueKey<String>('lista'),
+                              child: RefreshIndicator(
+                                onRefresh: _vm.cargar,
+                                color: AppColors.pierVerde,
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16, 16, 16, 32),
+                                  itemCount: quejas.length,
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(height: 10),
+                                  itemBuilder: (_, i) => EntradaSuave(
+                                    key: ValueKey<String>(quejas[i].id),
+                                    id: quejas[i].id,
+                                    child: _buildCard(quejas[i]),
+                                  ),
+                                ),
+                              ),
+                            ),
+                ),
+              ),
             ),
           ],
         ),
@@ -300,12 +343,17 @@ class _QuejasScreenState extends State<QuejasScreen> {
                       ],
                     ),
                   ),
-                  Icon(
-                    expandida
-                        ? LucideIcons.chevronUp
-                        : LucideIcons.chevronDown,
-                    color: AppColors.textSecondary.withValues(alpha: 0.5),
-                    size: 22,
+                  // Un solo chevrón que gira al abrir y cerrar.
+                  AnimatedRotation(
+                    turns: expandida ? 0.5 : 0,
+                    duration:
+                        AppMovimiento.duracion(context, AppMovimiento.corta),
+                    curve: AppMovimiento.curvaEstandar,
+                    child: Icon(
+                      LucideIcons.chevronDown,
+                      color: AppColors.textSecondary.withValues(alpha: 0.5),
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
@@ -313,105 +361,113 @@ class _QuejasScreenState extends State<QuejasScreen> {
           ),
 
           // ── DETALLE EXPANDIDO ────────────────────────────────────
-          if (expandida) ...[
-            Divider(height: 1, color: AppColors.textSecondary.withValues(alpha: 0.08)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Descripción
-                  const Text('Descripción',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                          letterSpacing: .3)),
-                  const SizedBox(height: 6),
-                  Text(descripcion,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                          height: 1.5)),
-
-                  // Pedido asociado
-                  if (pedidoId != null) ...[
-                    const SizedBox(height: 12),
-                    const Text('Pedido asociado',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                            letterSpacing: .3)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.pierVerde.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: AppColors.pierVerde
-                                .withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                              LucideIcons.receiptText,
-                              size: 14,
-                              color: AppColors.pierVerde),
-                          const SizedBox(width: 6),
-                          Text('Pedido #${_vm.numeroDePedido(pedidoId)}',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.pierVerde,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  // Respuesta del equipo (solo si hay respuesta)
-                  if (respuesta != null) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.pierVerde.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.pierVerde
-                                .withValues(alpha: 0.25)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            Icon(Icons.check_circle_rounded,
-                                size: 15, color: AppColors.pierVerde),
-                            const SizedBox(width: 6),
-                            Text('Respuesta del equipo',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.pierVerde)),
-                          ]),
-                          const SizedBox(height: 8),
-                          Text(respuesta,
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.pierVerdeOscuro,
-                                  height: 1.5)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+          // Se abre su espacio y aparece; al cerrar se apaga, sale del
+          // árbol y el espacio se cierra.
+          Aparicion(
+            visible: expandida,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(height: 1, color: AppColors.textSecondary.withValues(alpha: 0.08)),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Descripción
+                      const Text('Descripción',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                              letterSpacing: .3)),
+                      const SizedBox(height: 6),
+                      Text(descripcion,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              height: 1.5)),
+    
+                      // Pedido asociado
+                      if (pedidoId != null) ...[
+                        const SizedBox(height: 12),
+                        const Text('Pedido asociado',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                                letterSpacing: .3)),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.pierVerde.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: AppColors.pierVerde
+                                    .withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                  LucideIcons.receiptText,
+                                  size: 14,
+                                  color: AppColors.pierVerde),
+                              const SizedBox(width: 6),
+                              Text('Pedido #${_vm.numeroDePedido(pedidoId)}',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.pierVerde,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
+    
+                      // Respuesta del equipo (solo si hay respuesta)
+                      if (respuesta != null) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.pierVerde.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppColors.pierVerde
+                                    .withValues(alpha: 0.25)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(children: [
+                                Icon(Icons.check_circle_rounded,
+                                    size: 15, color: AppColors.pierVerde),
+                                const SizedBox(width: 6),
+                                Text('Respuesta del equipo',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.pierVerde)),
+                              ]),
+                              const SizedBox(height: 8),
+                              Text(respuesta,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.pierVerdeOscuro,
+                                      height: 1.5)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -448,6 +504,8 @@ class _QuejasScreenState extends State<QuejasScreen> {
     );
   }
 
+  // Estado vacío: el ícono crece un poco y el texto y la invitación suben
+  // en cascada cada vez que aparece.
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -455,44 +513,57 @@ class _QuejasScreenState extends State<QuejasScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 100, height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.pierVerde.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+            EntradaSuave(
+              escalaInicial: 0.85,
+              child: Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(
+                  color: AppColors.pierVerde.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(LucideIcons.messageCircle,
+                    size: 46,
+                    color: AppColors.pierVerde.withValues(alpha: 0.5)),
               ),
-              child: Icon(LucideIcons.messageCircle,
-                  size: 46,
-                  color: AppColors.pierVerde.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 20),
-            const Text('Sin quejas registradas',
-                style: TextStyle(
-                    fontFamily: 'Playfair Display',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
+            const EntradaSuave(
+              orden: 1,
+              child: Text('Sin quejas registradas',
+                  style: TextStyle(
+                      fontFamily: 'Playfair Display',
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+            ),
             const SizedBox(height: 8),
-            const Text(
-              'Si tienes alguna queja, sugerencia o\ncomentario, cuéntanoslo.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            const EntradaSuave(
+              orden: 2,
+              child: Text(
+                'Si tienes alguna queja, sugerencia o\ncomentario, cuéntanoslo.',
+                textAlign: TextAlign.center,
+                style:
+                    TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
             ),
             const SizedBox(height: 28),
-            ElevatedButton.icon(
-              onPressed: _abrirFormulario,
-              icon: const Icon(LucideIcons.plus,
-                  color: Colors.white, size: 18),
-              label: const Text('Crear primera queja',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.pierVerde,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
+            EntradaSuave(
+              orden: 3,
+              child: ElevatedButton.icon(
+                onPressed: _abrirFormulario,
+                icon: const Icon(LucideIcons.plus,
+                    color: Colors.white, size: 18),
+                label: const Text('Crear primera queja',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.pierVerde,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
               ),
             ),
           ],
@@ -584,6 +655,10 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
 
   Widget _buildHoja(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    // La hoja sube con la curva enfática; su contenido entra en cascada
+    // cuando ya subió casi toda (una sola vez, aunque la hoja se
+    // reconstruya con cada cambio del formulario o del teclado).
+    const retraso = AppMovimiento.trasEmpuje;
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 24),
@@ -609,144 +684,204 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
             ),
 
             // Título
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Flexible: con el texto del sistema grande no desborda.
-                const Flexible(
-                  child: Text('Nueva queja o sugerencia',
-                      style: TextStyle(
-                          fontFamily: 'Playfair Display',
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary)),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.textSecondary.withValues(alpha: 0.06),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(LucideIcons.x,
-                        size: 18, color: AppColors.textPrimary),
+            EntradaSuave(
+              retraso: retraso,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Flexible: con el texto del sistema grande no desborda.
+                  const Flexible(
+                    child: Text('Nueva queja o sugerencia',
+                        style: TextStyle(
+                            fontFamily: 'Playfair Display',
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
                   ),
-                ),
-              ],
+                  PresionEscala(
+                    escala: AppMovimiento.escalaPresionChica,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color:
+                              AppColors.textSecondary.withValues(alpha: 0.06),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(LucideIcons.x,
+                            size: 18, color: AppColors.textPrimary),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
 
             // Tipo
-            _label('Tipo'),
-            _selector<TipoQueja>(
-              value: _vm.tipo,
-              items: TipoQueja.values,
-              labelOf: (t) => t.etiqueta,
-              onChanged: _vm.seleccionarTipo,
+            EntradaSuave(
+              orden: 1,
+              retraso: retraso,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label('Tipo'),
+                  _selector<TipoQueja>(
+                    value: _vm.tipo,
+                    items: TipoQueja.values,
+                    labelOf: (t) => t.etiqueta,
+                    onChanged: _vm.seleccionarTipo,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
 
             // Categoría
-            _label('Categoría'),
-            _selector<CategoriaQueja>(
-              value: _vm.categoria,
-              items: CategoriaQueja.values,
-              labelOf: (c) => c.etiqueta,
-              onChanged: _vm.seleccionarCategoria,
+            EntradaSuave(
+              orden: 2,
+              retraso: retraso,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label('Categoría'),
+                  _selector<CategoriaQueja>(
+                    value: _vm.categoria,
+                    items: CategoriaQueja.values,
+                    labelOf: (c) => c.etiqueta,
+                    onChanged: _vm.seleccionarCategoria,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
 
             // Pedido asociado (opcional)
-            _label('Pedido asociado', opcional: true),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                    color: AppColors.textSecondary.withValues(alpha: 0.25)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _vm.pedidoId,
-                  isExpanded: true,
-                  icon: Icon(LucideIcons.chevronDown,
-                      color: AppColors.pierVerde),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14),
-                  hint: Text('Sin pedido asociado',
-                      style: TextStyle(
-                          fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.5))),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      child: Text('Sin pedido asociado',
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textSecondary)),
+            EntradaSuave(
+              orden: 3,
+              retraso: retraso,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label('Pedido asociado', opcional: true),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                          color:
+                              AppColors.textSecondary.withValues(alpha: 0.25)),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    ..._vm.pedidos.map((p) {
-                      return DropdownMenuItem<String>(
-                        value: p.id,
-                        child: Text(
-                          '#${p.numero} — \$${p.total.toStringAsFixed(0)} (${p.statusText})',
-                          style: const TextStyle(fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }),
-                  ],
-                  onChanged: _vm.seleccionarPedido,
-                ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _vm.pedidoId,
+                        isExpanded: true,
+                        icon: Icon(LucideIcons.chevronDown,
+                            color: AppColors.pierVerde),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 14),
+                        hint: Text('Sin pedido asociado',
+                            style: TextStyle(
+                                fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.5))),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            child: Text('Sin pedido asociado',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary)),
+                          ),
+                          ..._vm.pedidos.map((p) {
+                            return DropdownMenuItem<String>(
+                              value: p.id,
+                              child: Text(
+                                '#${p.numero} — \$${p.total.toStringAsFixed(0)} (${p.statusText})',
+                                style: const TextStyle(fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }),
+                        ],
+                        onChanged: _vm.seleccionarPedido,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 14),
 
-            // Asunto
-            _label('Asunto'),
-            TextField(
-              controller: _asuntoCtrl,
-              maxLength: 150,
-              decoration: _inputDeco(
-                  hint: 'Describe brevemente tu queja'),
-            ),
-            const SizedBox(height: 14),
+            // Asunto y descripción
+            EntradaSuave(
+              orden: 4,
+              retraso: retraso,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Asunto
+                  _label('Asunto'),
+                  TextField(
+                    controller: _asuntoCtrl,
+                    maxLength: 150,
+                    decoration: _inputDeco(
+                        hint: 'Describe brevemente tu queja'),
+                  ),
+                  const SizedBox(height: 14),
 
-            // Descripción
-            _label('Descripción'),
-            TextField(
-              controller: _descripcionCtrl,
-              maxLines: 4,
-              maxLength: 1000,
-              decoration:
-                  _inputDeco(hint: 'Detalla tu queja o sugerencia...'),
+                  // Descripción
+                  _label('Descripción'),
+                  TextField(
+                    controller: _descripcionCtrl,
+                    maxLines: 4,
+                    maxLength: 1000,
+                    decoration:
+                        _inputDeco(hint: 'Detalla tu queja o sugerencia...'),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
 
-            // Botón enviar
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _vm.enviando ? null : _enviar,
-                icon: _vm.enviando
-                    ? const SizedBox(
-                        height: 18, width: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(LucideIcons.send,
-                        color: Colors.white, size: 18),
-                label: Text(
-                    _vm.enviando ? 'Enviando...' : 'Enviar queja',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.pierVerde,
-                  disabledBackgroundColor:
-                      AppColors.pierVerde.withValues(alpha: 0.4),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50)),
-                  elevation: 0,
+            // Botón enviar: un solo ElevatedButton; el ícono y el texto
+            // cambian dentro de él.
+            EntradaSuave(
+              orden: 5,
+              retraso: retraso,
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _vm.enviando ? null : _enviar,
+                  icon: CambioAnimado(
+                    tipo: TipoCambio.escalar,
+                    alineacion: Alignment.center,
+                    child: _vm.enviando
+                        ? const SizedBox(
+                            key: ValueKey<String>('enviando'),
+                            height: 18, width: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(LucideIcons.send,
+                            key: ValueKey<String>('enviar'),
+                            color: Colors.white, size: 18),
+                  ),
+                  label: CambioAnimado(
+                    alineacion: Alignment.center,
+                    child: Text(
+                        _vm.enviando ? 'Enviando...' : 'Enviar queja',
+                        key: ValueKey<bool>(_vm.enviando),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.pierVerde,
+                    disabledBackgroundColor:
+                        AppColors.pierVerde.withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50)),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ),
