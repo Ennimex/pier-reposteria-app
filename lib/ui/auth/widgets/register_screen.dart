@@ -9,6 +9,7 @@ import 'package:pier_pasteleria/ui/auth/view_model/register_view_model.dart';
 import 'package:pier_pasteleria/ui/auth/widgets/auth_partes.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/public/widgets/legal_screen.dart';
 import 'package:pier_pasteleria/utils/validators.dart';
 import 'package:provider/provider.dart';
@@ -40,6 +41,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   late final TapGestureRecognizer _privacyRecognizer = TapGestureRecognizer()
     ..onTap = _abrirLegal;
 
+  // Registrarse sin aceptar los términos sacude ese renglón.
+  int _faltanTerminos = 0;
+
   void _abrirLegal() => Navigator.push(
       context, MaterialPageRoute(builder: (_) => const LegalScreen()));
 
@@ -59,6 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     if (!_vm.aceptaTerminos) {
+      setState(() => _faltanTerminos++);
       mostrarAvisoAuth(context, RegisterViewModel.faltanTerminos);
       return;
     }
@@ -86,6 +91,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
     const separacion = SizedBox(height: 12);
+    // Cascada de entrada (una sola vez) cuando la página ya se ve.
+    final retraso = retrasoEntradaAuth(context);
     return ListenableBuilder(
       listenable: _vm,
       builder: (context, _) => Scaffold(
@@ -101,167 +108,196 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 20),
 
                   // ── HEADER ───────────────────────────────────────
-                  const BotonAtrasAuth(grande: false),
+                  EntradaSuave(
+                    retraso: retraso,
+                    desplazamiento: Offset.zero,
+                    child: const BotonAtrasAuth(grande: false),
+                  ),
                   const SizedBox(height: 20),
 
-                  const _Logo(),
+                  // Sin entrada propia: llega volando desde el login (Hero),
+                  // y una escala aquí haría que aterrizara chico.
+                  const LogoAuth(
+                    tamano: 90,
+                    margen: 14,
+                    alfaSombra: 0.15,
+                    desenfoque: 12,
+                    caida: 4,
+                    tamanoRespaldo: 40,
+                  ),
                   const SizedBox(height: 20),
 
-                  const Text('Crea tu cuenta',
-                      style: TextStyle(
-                          fontFamily: 'Playfair Display',
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary),
-                      textAlign: TextAlign.center),
+                  EntradaSuave(
+                    orden: 1,
+                    retraso: retraso,
+                    child: const Text('Crea tu cuenta',
+                        style: TextStyle(
+                            fontFamily: 'Playfair Display',
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary),
+                        textAlign: TextAlign.center),
+                  ),
                   const SizedBox(height: 6),
-                  const Text('Completa los siguientes datos',
-                      style: TextStyle(
-                          fontSize: 14, color: AppColors.textSecondary),
-                      textAlign: TextAlign.center),
+                  EntradaSuave(
+                    orden: 1,
+                    retraso: retraso,
+                    child: const Text('Completa los siguientes datos',
+                        style: TextStyle(
+                            fontSize: 14, color: AppColors.textSecondary),
+                        textAlign: TextAlign.center),
+                  ),
                   const SizedBox(height: 28),
 
-                  // ── CAMPOS ───────────────────────────────────────
-                  CampoAuth(
-                      controller: _nombreCtrl,
-                      label: 'Nombre',
-                      icon: LucideIcons.user,
-                      validator: Validators.nombre),
+                  // ── CAMPOS (de dos en dos) ───────────────────────
+                  EntradaSuave(
+                    orden: 2,
+                    retraso: retraso,
+                    child: CampoAuth(
+                        controller: _nombreCtrl,
+                        label: 'Nombre',
+                        icon: LucideIcons.user,
+                        validator: Validators.nombre),
+                  ),
                   separacion,
-                  CampoAuth(
-                      controller: _apellidoCtrl,
-                      label: 'Apellido',
-                      icon: LucideIcons.user,
-                      validator: Validators.nombre),
+                  EntradaSuave(
+                    orden: 2,
+                    retraso: retraso,
+                    child: CampoAuth(
+                        controller: _apellidoCtrl,
+                        label: 'Apellido',
+                        icon: LucideIcons.user,
+                        validator: Validators.nombre),
+                  ),
                   separacion,
-                  CampoAuth(
-                      controller: _emailCtrl,
-                      label: 'Email',
-                      icon: LucideIcons.mail,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: Validators.email),
+                  EntradaSuave(
+                    orden: 3,
+                    retraso: retraso,
+                    child: CampoAuth(
+                        controller: _emailCtrl,
+                        label: 'Email',
+                        icon: LucideIcons.mail,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: Validators.email),
+                  ),
                   separacion,
-                  CampoAuth(
-                      controller: _telefonoCtrl,
-                      label: 'Teléfono',
-                      icon: LucideIcons.phone,
-                      keyboardType: TextInputType.phone,
-                      validator: Validators.telefono),
+                  EntradaSuave(
+                    orden: 3,
+                    retraso: retraso,
+                    child: CampoAuth(
+                        controller: _telefonoCtrl,
+                        label: 'Teléfono',
+                        icon: LucideIcons.phone,
+                        keyboardType: TextInputType.phone,
+                        validator: Validators.telefono),
+                  ),
                   separacion,
-                  CampoAuth(
-                      controller: _passwordCtrl,
-                      label: 'Contraseña',
-                      icon: LucideIcons.lock,
-                      obscureText: !_vm.verPassword,
-                      suffixIcon: OjoPassword(
-                        visible: _vm.verPassword,
-                        onPressed: _vm.alternarPassword,
-                      ),
-                      // Sincronizado con backend (mín 6 + letra + número)
-                      helperText: 'Mínimo 6 caracteres, 1 letra y 1 número',
-                      validator: Validators.passwordNueva),
+                  EntradaSuave(
+                    orden: 4,
+                    retraso: retraso,
+                    child: CampoAuth(
+                        controller: _passwordCtrl,
+                        label: 'Contraseña',
+                        icon: LucideIcons.lock,
+                        obscureText: !_vm.verPassword,
+                        suffixIcon: OjoPassword(
+                          visible: _vm.verPassword,
+                          onPressed: _vm.alternarPassword,
+                        ),
+                        // Sincronizado con backend (mín 6 + letra + número)
+                        helperText: 'Mínimo 6 caracteres, 1 letra y 1 número',
+                        validator: Validators.passwordNueva),
+                  ),
                   separacion,
-                  CampoAuth(
-                      controller: _confirmPasswordCtrl,
-                      label: 'Confirmar contraseña',
-                      icon: LucideIcons.lock,
-                      obscureText: !_vm.verConfirmacion,
-                      suffixIcon: OjoPassword(
-                        visible: _vm.verConfirmacion,
-                        onPressed: _vm.alternarConfirmacion,
-                      ),
-                      validator: (v) =>
-                          Validators.confirmarPassword(v, _passwordCtrl.text)),
+                  EntradaSuave(
+                    orden: 4,
+                    retraso: retraso,
+                    child: CampoAuth(
+                        controller: _confirmPasswordCtrl,
+                        label: 'Confirmar contraseña',
+                        icon: LucideIcons.lock,
+                        obscureText: !_vm.verConfirmacion,
+                        suffixIcon: OjoPassword(
+                          visible: _vm.verConfirmacion,
+                          onPressed: _vm.alternarConfirmacion,
+                        ),
+                        validator: (v) => Validators.confirmarPassword(
+                            v, _passwordCtrl.text)),
+                  ),
                   const SizedBox(height: 16),
 
-                  // ── TÉRMINOS ─────────────────────────────────────
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: Checkbox(
-                          value: _vm.aceptaTerminos,
-                          activeColor: AppColors.pierVerde,
-                          onChanged: (v) => _vm.aceptaTerminos = v ?? false,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: RichText(
-                          text: TextSpan(
-                            style: const TextStyle(
-                                color: AppColors.textSecondary, fontSize: 13),
-                            children: [
-                              const TextSpan(text: 'Acepto los '),
-                              TextSpan(
-                                text: 'Términos y Condiciones',
-                                style: TextStyle(
-                                    color: AppColors.pierVerde,
-                                    fontWeight: FontWeight.bold),
-                                recognizer: _termsRecognizer,
-                              ),
-                              const TextSpan(text: ' y el '),
-                              TextSpan(
-                                text: 'Aviso de Privacidad',
-                                style: TextStyle(
-                                    color: AppColors.pierVerde,
-                                    fontWeight: FontWeight.bold),
-                                recognizer: _privacyRecognizer,
-                              ),
-                            ],
+                  // ── TÉRMINOS (se sacuden si faltan) ──────────────
+                  // Solo fundido: el renglón mide lo que la casilla y, con
+                  // desplazamiento, un toque al inicio de la entrada caería
+                  // fuera de su caja.
+                  EntradaSuave(
+                    orden: 5,
+                    retraso: retraso,
+                    desplazamiento: Offset.zero,
+                    child: Sacudida(
+                      disparo: _faltanTerminos,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _vm.aceptaTerminos,
+                              activeColor: AppColors.pierVerde,
+                              onChanged: (v) =>
+                                  _vm.aceptaTerminos = v ?? false,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13),
+                                children: [
+                                  const TextSpan(text: 'Acepto los '),
+                                  TextSpan(
+                                    text: 'Términos y Condiciones',
+                                    style: TextStyle(
+                                        color: AppColors.pierVerde,
+                                        fontWeight: FontWeight.bold),
+                                    recognizer: _termsRecognizer,
+                                  ),
+                                  const TextSpan(text: ' y el '),
+                                  TextSpan(
+                                    text: 'Aviso de Privacidad',
+                                    style: TextStyle(
+                                        color: AppColors.pierVerde,
+                                        fontWeight: FontWeight.bold),
+                                    recognizer: _privacyRecognizer,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 24),
 
                   // ── BOTÓN REGISTRAR ──────────────────────────────
-                  BotonPrincipalAuth(
-                    texto: 'Registrarse',
-                    cargando: _vm.registrando,
-                    onPressed: _handleRegister,
+                  EntradaSuave(
+                    orden: 5,
+                    retraso: retraso,
+                    child: BotonPrincipalAuth(
+                      texto: 'Registrarse',
+                      cargando: _vm.registrando,
+                      onPressed: _handleRegister,
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Logo de Pier en un círculo blanco con sombra verde suave.
-class _Logo extends StatelessWidget {
-  const _Logo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 90,
-        height: 90,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.pierVerde.withValues(alpha: 0.15),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Image.asset(
-          'assets/images/logo.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, _, _) =>
-              Icon(LucideIcons.cake, size: 40, color: AppColors.pierVerde),
         ),
       ),
     );

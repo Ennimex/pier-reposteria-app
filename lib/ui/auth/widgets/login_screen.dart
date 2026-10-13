@@ -11,6 +11,7 @@ import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/utils/validators.dart';
 import 'package:provider/provider.dart';
 
@@ -33,6 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
   late final LoginViewModel _vm = widget.viewModel ??
       LoginViewModel(repo: context.read<AuthRepository>());
 
+  // Cada intento fallido sacude el bloque de credenciales.
+  int _errores = 0;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -42,7 +46,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      setState(() => _errores++);
+      return;
+    }
     final usuario = await _vm.iniciarSesion(
       _emailController.text.trim(),
       _passwordController.text.trim(),
@@ -52,6 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final auth = context.read<AuthProvider>()..abrirSesion(usuario);
       context.go(AppRoutes.homeForRole(auth.rol));
     } else {
+      setState(() => _errores++);
       mostrarAvisoAuth(context, _vm.error ?? 'Verifica tus credenciales');
     }
   }
@@ -72,6 +80,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    // Cascada de entrada: espera a que la página se vea (fundido de
+    // context.go o deslizamiento del push) y se reproduce una sola vez.
+    final retraso = retrasoEntradaAuth(context);
     return ListenableBuilder(
       listenable: _vm,
       builder: (context, _) => Scaffold(
@@ -88,158 +99,179 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
 
                     // ── BACK (esquina superior izquierda) ────────────
-                    BotonAtrasAuth(
-                      grande: false,
-                      onTap: () {
-                        if (Navigator.canPop(context)) {
-                          Navigator.pop(context);
-                        } else {
-                          context.go(AppRoutes.main);
-                        }
-                      },
+                    EntradaSuave(
+                      retraso: retraso,
+                      desplazamiento: Offset.zero,
+                      child: BotonAtrasAuth(
+                        grande: false,
+                        onTap: () {
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            context.go(AppRoutes.main);
+                          }
+                        },
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    const _Logo(),
+                    // El logo vuela al registro (Hero) y regresa.
+                    EntradaSuave(
+                      retraso: retraso,
+                      escalaInicial: 0.92,
+                      child: const LogoAuth(
+                        tamano: 110,
+                        margen: 15,
+                        alfaSombra: 0.2,
+                        desenfoque: 15,
+                        caida: 5,
+                        tamanoRespaldo: 50,
+                      ),
+                    ),
                     const SizedBox(height: 24),
 
-                    const Text('Bienvenido',
-                        style: TextStyle(
-                            fontFamily: 'Playfair Display',
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary),
-                        textAlign: TextAlign.center),
+                    EntradaSuave(
+                      orden: 1,
+                      retraso: retraso,
+                      child: const Text('Bienvenido',
+                          style: TextStyle(
+                              fontFamily: 'Playfair Display',
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary),
+                          textAlign: TextAlign.center),
+                    ),
                     const SizedBox(height: 6),
-                    const Text('Inicia sesión para continuar',
-                        style: TextStyle(
-                            fontSize: 15, color: AppColors.textSecondary),
-                        textAlign: TextAlign.center),
+                    EntradaSuave(
+                      orden: 1,
+                      retraso: retraso,
+                      child: const Text('Inicia sesión para continuar',
+                          style: TextStyle(
+                              fontSize: 15, color: AppColors.textSecondary),
+                          textAlign: TextAlign.center),
+                    ),
                     const SizedBox(height: 32),
 
-                    // ── EMAIL ────────────────────────────────────────
-                    CampoAuth(
-                      controller: _emailController,
-                      label: 'Email',
-                      icon: LucideIcons.mail,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.email],
-                      validator: Validators.email,
-                      sinBordeBase: true,
-                    ),
-                    const SizedBox(height: 14),
+                    // ── CREDENCIALES (se sacuden si el intento falla) ─
+                    EntradaSuave(
+                      orden: 2,
+                      retraso: retraso,
+                      child: Sacudida(
+                        disparo: _errores,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // ── EMAIL ────────────────────────────────
+                            CampoAuth(
+                              controller: _emailController,
+                              label: 'Email',
+                              icon: LucideIcons.mail,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.email],
+                              validator: Validators.email,
+                              sinBordeBase: true,
+                            ),
+                            const SizedBox(height: 14),
 
-                    // ── CONTRASEÑA ───────────────────────────────────
-                    CampoAuth(
-                      controller: _passwordController,
-                      label: 'Contraseña',
-                      icon: LucideIcons.lock,
-                      obscureText: !_vm.verPassword,
-                      textInputAction: TextInputAction.done,
-                      autofillHints: const [AutofillHints.password],
-                      onFieldSubmitted: (_) => _handleLogin(),
-                      suffixIcon: OjoPassword(
-                        visible: _vm.verPassword,
-                        onPressed: _vm.alternarPassword,
+                            // ── CONTRASEÑA ───────────────────────────
+                            CampoAuth(
+                              controller: _passwordController,
+                              label: 'Contraseña',
+                              icon: LucideIcons.lock,
+                              obscureText: !_vm.verPassword,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.password],
+                              onFieldSubmitted: (_) => _handleLogin(),
+                              suffixIcon: OjoPassword(
+                                visible: _vm.verPassword,
+                                onPressed: _vm.alternarPassword,
+                              ),
+                              validator: Validators.passwordLogin,
+                              sinBordeBase: true,
+                            ),
+                          ],
+                        ),
                       ),
-                      validator: Validators.passwordLogin,
-                      sinBordeBase: true,
                     ),
 
                     // ── OLVIDÉ CONTRASEÑA ────────────────────────────
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    const ForgotPasswordScreen())),
-                        child: Text('¿Olvidaste tu contraseña?',
-                            style: TextStyle(
-                                color: AppColors.pierDorado, fontSize: 13)),
+                    EntradaSuave(
+                      orden: 3,
+                      retraso: retraso,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ForgotPasswordScreen())),
+                          child: Text('¿Olvidaste tu contraseña?',
+                              style: TextStyle(
+                                  color: AppColors.pierDorado, fontSize: 13)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
 
                     // ── BOTÓN LOGIN ──────────────────────────────────
-                    BotonPrincipalAuth(
-                      texto: 'Iniciar Sesión',
-                      cargando: _vm.ingresando,
-                      onPressed: _handleLogin,
+                    EntradaSuave(
+                      orden: 3,
+                      retraso: retraso,
+                      child: BotonPrincipalAuth(
+                        texto: 'Iniciar Sesión',
+                        cargando: _vm.ingresando,
+                        onPressed: _handleLogin,
+                      ),
                     ),
                     const SizedBox(height: 24),
 
-                    const _Separador(),
+                    EntradaSuave(
+                      orden: 4,
+                      retraso: retraso,
+                      child: const _Separador(),
+                    ),
                     const SizedBox(height: 20),
 
                     // ── GOOGLE ───────────────────────────────────────
-                    _BotonGoogle(
-                      cargando: _vm.ingresandoConGoogle,
-                      onPressed: _handleGoogleLogin,
+                    EntradaSuave(
+                      orden: 4,
+                      retraso: retraso,
+                      child: _BotonGoogle(
+                        cargando: _vm.ingresandoConGoogle,
+                        onPressed: _handleGoogleLogin,
+                      ),
                     ),
                     const SizedBox(height: 28),
 
                     // ── REGISTRO ─────────────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('¿No tienes cuenta?',
-                            style: TextStyle(color: AppColors.textSecondary)),
-                        TextButton(
-                          onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const RegisterScreen())),
-                          child: Text('Regístrate',
-                              style: TextStyle(
-                                  color: AppColors.pierVerde,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                      ],
+                    EntradaSuave(
+                      orden: 5,
+                      retraso: retraso,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('¿No tienes cuenta?',
+                              style:
+                                  TextStyle(color: AppColors.textSecondary)),
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const RegisterScreen())),
+                            child: Text('Regístrate',
+                                style: TextStyle(
+                                    color: AppColors.pierVerde,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Logo de Pier en un círculo blanco con sombra verde.
-class _Logo extends StatelessWidget {
-  const _Logo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 110,
-        height: 110,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.pierVerde.withValues(alpha: 0.2),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: ClipOval(
-          child: Padding(
-            padding: const EdgeInsets.all(15),
-            child: Image.asset(
-              'assets/images/logo.png',
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) =>
-                  Icon(LucideIcons.cake, size: 50, color: AppColors.pierVerde),
             ),
           ),
         ),
@@ -269,7 +301,8 @@ class _Separador extends StatelessWidget {
   }
 }
 
-/// Botón «Continuar con Google» (logo o «G» de respaldo; indicador al cargar).
+/// Botón «Continuar con Google» (logo o «G» de respaldo; indicador al cargar,
+/// que cambia con un pop dentro del mismo botón).
 class _BotonGoogle extends StatelessWidget {
   const _BotonGoogle({required this.cargando, required this.onPressed});
 
@@ -282,27 +315,33 @@ class _BotonGoogle extends StatelessWidget {
       height: 52,
       child: OutlinedButton.icon(
         onPressed: cargando ? null : onPressed,
-        icon: cargando
-            ? const SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.textPrimary))
-            : Image.asset(
-                'assets/images/google_logo.png',
-                height: 22,
-                width: 22,
-                errorBuilder: (_, _, _) => Container(
-                  width: 22,
+        icon: CambioAnimado(
+          tipo: TipoCambio.escalar,
+          alineacion: Alignment.center,
+          child: cargando
+              ? const SizedBox(
+                  key: ValueKey<String>('cargando'),
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.textPrimary))
+              : Image.asset(
+                  'assets/images/google_logo.png',
+                  key: const ValueKey<String>('google'),
                   height: 22,
-                  alignment: Alignment.center,
-                  child: const Text('G',
-                      style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF4285F4))),
+                  width: 22,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 22,
+                    height: 22,
+                    alignment: Alignment.center,
+                    child: const Text('G',
+                        style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF4285F4))),
+                  ),
                 ),
-              ),
+        ),
         label: const Text('Continuar con Google',
             style: TextStyle(color: AppColors.textPrimary, fontSize: 15)),
         style: OutlinedButton.styleFrom(

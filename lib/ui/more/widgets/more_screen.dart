@@ -16,6 +16,7 @@ import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:pier_pasteleria/ui/more/view_model/more_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
@@ -91,7 +92,8 @@ class _MoreScreenState extends State<MoreScreen> {
   void _showLogoutDialog(AuthProvider auth) {
     unawaited(showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      animationStyle: AppMovimiento.estiloDialogo(context),
+      builder: (dialogContext) => EntradaDialogo(child: AlertDialog(
         title: const Text('Cerrar sesión'),
         content:
             const Text('¿Estás seguro que deseas cerrar tu sesión?'),
@@ -123,7 +125,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 style: TextStyle(color: Colors.white)),
           ),
         ],
-      ),
+      )),
     ));
   }
 
@@ -165,10 +167,18 @@ class _MoreScreenState extends State<MoreScreen> {
           // ── STATS (solo con sesión) ──────────────────────────────
           // El banner "Pier Rewards" para invitados se quitó (2026-07-25):
           // prometía un programa de puntos/sorteos que no existe en backend.
-          if (isAuth) ...[
-            _buildStatsRow(),
-            const SizedBox(height: 24),
-          ],
+          // Al cerrar sesión se apagan y su espacio se cierra; sin sesión
+          // no están en el árbol.
+          Aparicion(
+            visible: isAuth,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildStatsRow(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
 
           // ── ENCUÉNTRANOS ─────────────────────────────────────────
           _buildEncuentranos(),
@@ -189,8 +199,10 @@ class _MoreScreenState extends State<MoreScreen> {
                           color: AppColors.textPrimary,
                           fontFamily: 'Playfair Display')),
                 ),
-                if (!isAuth)
-                  Container(
+                Aparicion(
+                  visible: !isAuth,
+                  alineacion: AlignmentDirectional.centerEnd,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -203,6 +215,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             color: AppColors.pierVerde,
                             fontWeight: FontWeight.w600)),
                   ),
+                ),
               ],
             ),
           ),
@@ -328,40 +341,45 @@ class _MoreScreenState extends State<MoreScreen> {
           const SizedBox(height: 24),
 
           // ── CERRAR SESIÓN ─────────────────────────────────────────
-          if (isAuth)
-            Padding(
+          // Se hunde al tocarlo; al cerrar la sesión se apaga y se cierra.
+          Aparicion(
+            visible: isAuth,
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: GestureDetector(
-                onTap: () => _showLogoutDialog(auth),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: AppColors.error.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(children: [
-                    Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(LucideIcons.logOut,
-                          color: AppColors.error, size: 18),
+              child: PresionEscala(
+                child: GestureDetector(
+                  onTap: () => _showLogoutDialog(auth),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.3)),
                     ),
-                    const SizedBox(width: 14),
-                    const Text('Cerrar sesión',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.error)),
-                  ]),
+                    child: Row(children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(LucideIcons.logOut,
+                            color: AppColors.error, size: 18),
+                      ),
+                      const SizedBox(width: 14),
+                      const Text('Cerrar sesión',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.error)),
+                    ]),
+                  ),
                 ),
               ),
             ),
+          ),
 
           const SizedBox(height: 28),
 
@@ -414,219 +432,238 @@ class _MoreScreenState extends State<MoreScreen> {
                   color: AppColors.textPrimary,
                   fontFamily: 'Playfair Display')),
           const SizedBox(height: 12),
-          if (_vm.cargandoContacto)
+          // La caja de carga se funde en la tarjeta y el espacio crece con
+          // ella (solo con la pestaña a la vista: ver _CambioMas).
+          _CambioMas(
+            conTamano: true,
+            child: _vm.cargandoContacto
+                ? KeyedSubtree(
+                    key: const ValueKey<String>('cargando'),
+                    child: _cajaCargandoContacto(),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey<String>('contacto'),
+                    child: _tarjetaContacto(
+                      direccion: direccion,
+                      telefono: telefono,
+                      emailContacto: emailContacto,
+                      horario: horario,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cajaCargandoContacto() {
+    return Container(
+      height: 100,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Center(
+        child: CircularProgressIndicator(
+            color: AppColors.pierVerde, strokeWidth: 2),
+      ),
+    );
+  }
+
+  Widget _tarjetaContacto({
+    required String direccion,
+    required String telefono,
+    required String emailContacto,
+    required String horario,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.pierVerdeOscuro,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.pierVerdeOscuro.withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6))
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(LucideIcons.mapPin,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(BusinessInfo.sucursal,
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(direccion,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 12)),
+                ],
+              ),
+            ),
+          ]),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Divider(
+                color: Colors.white.withValues(alpha: 0.15), height: 1),
+          ),
+
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(LucideIcons.clock,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Horario de atención',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(horario,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 12)),
+                ],
+              ),
+            ),
+          ]),
+
+          if (telefono.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(
+                  color: Colors.white.withValues(alpha: 0.15), height: 1),
+            ),
+            Row(children: [
               Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.pierVerde, strokeWidth: 2),
-                  ),
-                )
-          else
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(LucideIcons.phone,
+                    color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Teléfono',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14)),
+                    const SizedBox(height: 2),
+                    Text(telefono,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+            ]),
+          ],
+
+          if (emailContacto.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(
+                  color: Colors.white.withValues(alpha: 0.15), height: 1),
+            ),
+            Row(children: [
               Container(
-                  padding: const EdgeInsets.all(18),
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(LucideIcons.mail,
+                    color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Email',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14)),
+                    const SizedBox(height: 2),
+                    Text(emailContacto,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+            ]),
+          ],
+
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: PresionEscala(
+              child: GestureDetector(
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ContactScreen())),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.pierVerdeOscuro,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                          color: AppColors.pierVerdeOscuro
-                              .withValues(alpha: 0.3),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6))
-                    ],
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25)),
                   ),
-                  child: Column(
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(children: [
-                        Container(
-                          width: 38, height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(LucideIcons.mapPin,
-                              color: Colors.white, size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(BusinessInfo.sucursal,
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14)),
-                              const SizedBox(height: 2),
-                              Text(direccion,
-                                  style: TextStyle(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.75),
-                                      fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                      ]),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Divider(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            height: 1),
-                      ),
-
-                      Row(children: [
-                        Container(
-                          width: 38, height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(LucideIcons.clock,
-                              color: Colors.white, size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Horario de atención',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14)),
-                              const SizedBox(height: 2),
-                              Text(horario,
-                                  style: TextStyle(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.75),
-                                      fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                      ]),
-
-                      if (telefono.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Divider(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              height: 1),
-                        ),
-                        Row(children: [
-                          Container(
-                            width: 38, height: 38,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(LucideIcons.phone,
-                                color: Colors.white, size: 20),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Teléfono',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14)),
-                                const SizedBox(height: 2),
-                                Text(telefono,
-                                    style: TextStyle(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.75),
-                                        fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        ]),
-                      ],
-
-                      if (emailContacto.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Divider(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              height: 1),
-                        ),
-                        Row(children: [
-                          Container(
-                            width: 38, height: 38,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(LucideIcons.mail,
-                                color: Colors.white, size: 20),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Email',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14)),
-                                const SizedBox(height: 2),
-                                Text(emailContacto,
-                                    style: TextStyle(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.75),
-                                        fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        ]),
-                      ],
-
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: GestureDetector(
-                          onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const ContactScreen())),
-                          child: Container(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color:
-                                  Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: Colors.white
-                                      .withValues(alpha: 0.25)),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(LucideIcons.messageCircle,
-                                    color: Colors.white, size: 16),
-                                SizedBox(width: 8),
-                                Text('Enviar mensaje',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      Icon(LucideIcons.messageCircle,
+                          color: Colors.white, size: 16),
+                      SizedBox(width: 8),
+                      Text('Enviar mensaje',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -640,9 +677,21 @@ class _MoreScreenState extends State<MoreScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          // Mientras baja la foto se ve el verde oscuro (el mismo del
+          // respaldo) y la foto aparece encima con un fundido.
+          ColoredBox(color: AppColors.pierVerdeOscuro),
           Image.network(
             'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&fit=crop',
             fit: BoxFit.cover,
+            frameBuilder: (context, foto, cuadro, sincrona) => sincrona
+                ? foto
+                : AnimatedOpacity(
+                    opacity: cuadro == null ? 0 : 1,
+                    duration:
+                        AppMovimiento.duracion(context, AppMovimiento.media),
+                    curve: AppMovimiento.curvaEntrada,
+                    child: foto,
+                  ),
             errorBuilder: (_, _, _) => ColoredBox(
               color: AppColors.pierVerdeOscuro,
               child: const Icon(LucideIcons.croissant,
@@ -666,10 +715,19 @@ class _MoreScreenState extends State<MoreScreen> {
               top: MediaQuery.of(context).padding.top + 16,
               left: 20, right: 20, bottom: 20,
             ),
-            child: isAuth
-                ? _heroAuthContent(
-                    nombre, email, iniciales, fotoUrl, auth)
-                : _heroGuestContent(),
+            // Invitado ↔ con sesión (al cerrar sesión): fundido a través.
+            child: _CambioMas(
+              child: isAuth
+                  ? KeyedSubtree(
+                      key: const ValueKey<String>('cuenta'),
+                      child: _heroAuthContent(
+                          nombre, email, iniciales, fotoUrl, auth),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey<String>('invitado'),
+                      child: _heroGuestContent(),
+                    ),
+            ),
           ),
         ],
       ),
@@ -775,21 +833,24 @@ class _MoreScreenState extends State<MoreScreen> {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const ProfileScreen())),
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3)),
+          PresionEscala(
+            escala: AppMovimiento.escalaPresionChica,
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ProfileScreen())),
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3)),
+                ),
+                child: const Icon(LucideIcons.chevronRight,
+                    color: Colors.white, size: 22),
               ),
-              child: const Icon(LucideIcons.chevronRight,
-                  color: Colors.white, size: 22),
             ),
           ),
         ]),
@@ -826,17 +887,24 @@ class _MoreScreenState extends State<MoreScreen> {
           ],
         ),
         child: Column(children: [
-          if (_vm.cargandoStats)
-              SizedBox(
-                  height: 20, width: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.pierVerde))
-          else
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.pierVerde)),
+          // El indicador se cambia por el número (y un número nuevo sube
+          // en su lugar); sin conteo: el valor final aparece tal cual.
+          _CambioMas(
+            tipo: TipoCambio.subir,
+            alineacion: Alignment.center,
+            child: _vm.cargandoStats
+                ? SizedBox(
+                    key: const ValueKey<String>('cargando'),
+                    height: 20, width: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.pierVerde))
+                : Text(value,
+                    key: ValueKey<String>('valor $value'),
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.pierVerde)),
+          ),
           const SizedBox(height: 4),
           Text(label,
               style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
@@ -950,4 +1018,54 @@ class _MoreScreenState extends State<MoreScreen> {
 
   Widget _footerIcon(IconData icon) =>
       Icon(icon, color: AppColors.textSecondary.withValues(alpha: 0.5), size: 22);
+}
+
+/// Cambio de estado en sitio de «Más» (CambioAnimado y, con [conTamano], el
+/// espacio que crece o se encoge con él).
+///
+/// La pestaña vive oculta desde que arranca la app, con sus tickers en
+/// pausa, y ahí le llegan el contacto y los contadores: un cambio animado
+/// mientras está oculta se reproduciría tarde, con el estado viejo de por
+/// medio, al abrirla por primera vez. La Key ligada a la visibilidad monta
+/// el cambio de nuevo, ya en su estado final, cada vez que la pestaña se
+/// muestra o se esconde; a la vista, anima.
+class _CambioMas extends StatelessWidget {
+  const _CambioMas({
+    required this.child,
+    this.tipo = TipoCambio.atravesar,
+    this.alineacion = AlignmentDirectional.centerStart,
+    this.conTamano = false,
+  });
+
+  /// El contenido, con una Key que cambia con él.
+  final Widget child;
+  final TipoCambio tipo;
+  final AlignmentGeometry alineacion;
+  final bool conTamano;
+
+  // AnimatedSize no acepta duración cero: «instantáneo» es un milisegundo.
+  static const Duration _instante = Duration(milliseconds: 1);
+
+  @override
+  Widget build(BuildContext context) {
+    final aLaVista = TickerMode.valuesOf(context).enabled;
+    final cambio = CambioAnimado(
+      tipo: tipo,
+      alineacion: alineacion,
+      child: child,
+    );
+    return KeyedSubtree(
+      key: ValueKey<bool>(aLaVista),
+      child: conTamano
+          ? AnimatedSize(
+              duration: AppMovimiento.reducido(context)
+                  ? _instante
+                  : AppMovimiento.media,
+              curve: AppMovimiento.curvaEnfasis,
+              alignment: AlignmentDirectional.topStart,
+              child: cambio,
+            )
+          : cambio,
+    );
+  }
 }
