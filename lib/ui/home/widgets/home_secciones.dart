@@ -7,7 +7,8 @@
 //
 // Movimiento: el ícono de cada título hace su gesto una vez (la estrella
 // brinca, «Pide de nuevo» da una vuelta); las primeras tarjetas llegan desde
-// la derecha al compás de su sección y se hunden al tocarlas; las reseñas
+// la derecha al compás de su sección, se hunden al tocarlas y su foto vuela
+// al detalle (con el ámbito de su carrusel); las reseñas
 // suben una tras otra y sus estrellas se encienden en fila; las razones para
 // elegirnos aparecen creciendo apenas.
 import 'package:flutter/material.dart';
@@ -42,6 +43,10 @@ class HomeSeccionProductos extends StatelessWidget {
     final gesto = titleIcon == LucideIcons.rotateCcw
         ? TipoGesto.vuelta
         : TipoGesto.brinco;
+    // La foto de la tarjeta vuela al detalle. Cada carrusel usa su propio
+    // ámbito: un producto puede estar en varios y dos Hero con la misma
+    // etiqueta no pueden convivir.
+    final ambitoFoto = 'inicio-$title';
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 24, 0, 0),
       child: Column(
@@ -105,11 +110,14 @@ class HomeSeccionProductos extends StatelessWidget {
                         PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
                         Navigator.push(context,
                             MaterialPageRoute<void>(
-                                builder: (_) => ProductDetailScreen(product: p))).ignore();
+                                builder: (_) => ProductDetailScreen(
+                                    product: p,
+                                    ambitoFoto: ambitoFoto))).ignore();
                       },
                       child: TarjetaProductoAngosta(
                         producto: p,
                         precio: p.precio,
+                        ambitoFoto: ambitoFoto,
                         insignias: p.popular ? const _BadgePopular() : null,
                         // De adorno: tocar la tarjeta abre el detalle.
                         boton: Container(

@@ -7,19 +7,22 @@
 // la campana se mece y su insignia crece, salta y se va; el aviso del pedido
 // cambia de estado sin duplicar textos y late al quedar listo; el carrusel
 // hace paralaje solo mientras desliza y, con movimiento reducido, salta de
-// slide; mientras cargan los productos se ve su esqueleto. Con movimiento
+// slide; mientras cargan los productos se ve su esqueleto y la foto de una
+// tarjeta vuela al detalle con el ámbito de su carrusel. Con movimiento
 // reducido todo queda en su lugar. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
 import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_pasteleria/ui/core/ui/tarjeta_producto_angosta.dart';
 import 'package:pier_pasteleria/ui/home/view_model/home_view_model.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_carrusel.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_encabezado.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_secciones.dart';
 import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
+import 'package:pier_pasteleria/ui/products/widgets/detalle_galeria.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/movimiento.dart';
@@ -829,6 +832,60 @@ void main() {
   });
 
   group('HomeScreen', () {
+    testWidgets('la foto de una tarjeta vuela al detalle con el ámbito de su '
+        'carrusel', (tester) async {
+      _pantalla(tester, alto: 2400);
+      await tester.pumpApp(const HomeScreen(), api: _backend());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      // Chocoflan está en Destacados y en Mejor calificados: cada tarjeta
+      // tiene su propia etiqueta (dos iguales no pueden convivir).
+      final etiquetas = tester
+          .widgetList<Hero>(find.byType(Hero))
+          .map((hero) => hero.tag)
+          .toList();
+      expect(etiquetas.toSet(), hasLength(etiquetas.length));
+      expect(
+        etiquetas,
+        containsAll(<Object>[
+          FotoProductoHero.etiqueta('1', ambito: 'inicio-Destacados'),
+          FotoProductoHero.etiqueta('1', ambito: 'inicio-Mejor calificados'),
+        ]),
+      );
+
+      final tarjeta = find
+          .ancestor(
+            of: find.text('Rico Rosca'),
+            matching: find.byType(TarjetaProductoAngosta),
+          )
+          .first;
+      Finder fotoDe(Finder tarjeta) => find.descendant(
+        of: find.descendant(
+          of: tarjeta,
+          matching: find.byType(FotoProductoHero),
+        ),
+        matching: find.byType(Image),
+      );
+      expect(fotoDe(tarjeta), findsOneWidget);
+
+      await tester.tap(find.text('Rico Rosca'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      // A medio vuelo la tarjeta deja su hueco (la foto va en el aire).
+      expect(fotoDe(tarjeta), findsNothing);
+
+      await tester.pump(const Duration(seconds: 1));
+      final galeria = tester.widget<FotoProductoHero>(
+        find.descendant(
+          of: find.byType(DetalleGaleria),
+          matching: find.byType(FotoProductoHero),
+        ),
+      );
+      expect(galeria.productoId, '2');
+      expect(galeria.ambito, 'inicio-Mejor calificados');
+      await _desmontar(tester);
+    });
+
     testWidgets('mientras cargan los productos se ve su esqueleto y al '
         'llegar, la sección', (tester) async {
       _pantalla(tester);
