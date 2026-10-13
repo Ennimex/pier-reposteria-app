@@ -2,16 +2,26 @@
 //
 // Secciones del inicio que solo pintan datos: carrusel de productos
 // (destacados, pide de nuevo, mejor calificados, recién llegados),
-// reseñas destacadas y por qué elegirnos.
+// reseñas destacadas y por qué elegirnos. Mientras cargan los productos, el
+// esqueleto de un carrusel ocupa su lugar.
+//
+// Movimiento: el ícono de cada título hace su gesto una vez (la estrella
+// brinca, «Pide de nuevo» da una vuelta); las primeras tarjetas llegan desde
+// la derecha al compás de su sección y se hunden al tocarlas; las reseñas
+// suben una tras otra y sus estrellas se encienden en fila; las razones para
+// elegirnos aparecen creciendo apenas.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/core/ui/tarjeta_producto_angosta.dart';
+import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 
 /// Título con "Ver más" y carrusel horizontal de productos.
 class HomeSeccionProductos extends StatelessWidget {
@@ -28,6 +38,10 @@ class HomeSeccionProductos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // «Pide de nuevo» da una vuelta (otra vez); los demás brincan.
+    final gesto = titleIcon == LucideIcons.rotateCcw
+        ? TipoGesto.vuelta
+        : TipoGesto.brinco;
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 24, 0, 0),
       child: Column(
@@ -41,7 +55,11 @@ class HomeSeccionProductos extends StatelessWidget {
                 Row(
                   children: [
                     if (titleIcon != null) ...[
-                      Icon(titleIcon, color: AppColors.pierVerde, size: 20),
+                      GestoIcono(
+                        tipo: gesto,
+                        child: Icon(titleIcon,
+                            color: AppColors.pierVerde, size: 20),
+                      ),
                       const SizedBox(width: 6),
                     ],
                     Text(title,
@@ -52,13 +70,16 @@ class HomeSeccionProductos extends StatelessWidget {
                             color: AppColors.textPrimary)),
                   ],
                 ),
-                GestureDetector(
-                  onTap: () => context.read<NavigationProvider>().goCatalogo(),
-                  child: Text('Ver más',
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.pierVerde,
-                          fontWeight: FontWeight.w600)),
+                PresionEscala(
+                  escala: AppMovimiento.escalaPresionChica,
+                  child: GestureDetector(
+                    onTap: () => context.read<NavigationProvider>().goCatalogo(),
+                    child: Text('Ver más',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.pierVerde,
+                            fontWeight: FontWeight.w600)),
+                  ),
                 ),
               ],
             ),
@@ -73,29 +94,37 @@ class HomeSeccionProductos extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
                 final p = productos[i];
-                return GestureDetector(
-                  onTap: () {
-                    PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
-                    Navigator.push(context,
-                        MaterialPageRoute<void>(
-                            builder: (_) => ProductDetailScreen(product: p)));
-                  },
-                  child: TarjetaProductoAngosta(
-                    producto: p,
-                    precio: p.precio,
-                    insignias: p.popular ? const _BadgePopular() : null,
-                    // De adorno: tocar la tarjeta abre el detalle.
-                    boton: Container(
-                      width: 30, height: 30,
-                      decoration: BoxDecoration(
-                        color: AppColors.pierVerde,
-                        borderRadius: BorderRadius.circular(9),
-                        boxShadow: [BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 6)],
+                // Las primeras llegan desde la derecha, una tras otra; las
+                // que aparecen al desplazar ya están en su lugar.
+                return EntradaInicio(
+                  orden: i + 1,
+                  desplazamiento: const Offset(AppMovimiento.distanciaLarga, 0),
+                  child: PresionEscala(
+                    child: GestureDetector(
+                      onTap: () {
+                        PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
+                        Navigator.push(context,
+                            MaterialPageRoute<void>(
+                                builder: (_) => ProductDetailScreen(product: p))).ignore();
+                      },
+                      child: TarjetaProductoAngosta(
+                        producto: p,
+                        precio: p.precio,
+                        insignias: p.popular ? const _BadgePopular() : null,
+                        // De adorno: tocar la tarjeta abre el detalle.
+                        boton: Container(
+                          width: 30, height: 30,
+                          decoration: BoxDecoration(
+                            color: AppColors.pierVerde,
+                            borderRadius: BorderRadius.circular(9),
+                            boxShadow: [BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6)],
+                          ),
+                          child: const Icon(LucideIcons.plus,
+                              color: Colors.white, size: 18),
+                        ),
                       ),
-                      child: const Icon(LucideIcons.plus,
-                          color: Colors.white, size: 18),
                     ),
                   ),
                 );
@@ -103,6 +132,69 @@ class HomeSeccionProductos extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Mientras cargan los productos: la forma de un carrusel de productos
+/// (título y tarjetas angostas) con el brillo de los esqueletos de la app,
+/// para que el inicio no salte cuando llegan. Con movimiento reducido el
+/// brillo no corre.
+class HomeSeccionProductosEsqueleto extends StatelessWidget {
+  const HomeSeccionProductosEsqueleto({super.key});
+
+  static Widget _caja(double alto, double ancho, {double radio = 8}) =>
+      Container(
+        height: alto,
+        width: ancho,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radio),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      // El brillo se repinta en cada cuadro: aislado del resto del inicio.
+      child: RepaintBoundary(
+        child: Shimmer.fromColors(
+          baseColor: AppColors.pierArenaOscuro,
+          highlightColor: Colors.white.withValues(alpha: 0.9),
+          enabled: !AppMovimiento.reducido(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  height: 23,
+                  child: Row(
+                    children: [
+                      _caja(20, 20, radio: 10),
+                      const SizedBox(width: 6),
+                      _caja(16, 120),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 310,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 3,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (_, _) => _caja(310, 165, radio: 20),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -155,9 +247,13 @@ class HomeResenasDestacadas extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Icon(Icons.star_rounded, color: AppColors.pierDorado, size: 20),
-            SizedBox(width: 6),
-            Text('Lo que dicen nuestros clientes',
+            GestoIcono(
+              tipo: TipoGesto.brinco,
+              child: Icon(Icons.star_rounded,
+                  color: AppColors.pierDorado, size: 20),
+            ),
+            const SizedBox(width: 6),
+            const Text('Lo que dicen nuestros clientes',
                 style: TextStyle(
                     fontFamily: 'Playfair Display',
                     fontSize: 17,
@@ -165,7 +261,8 @@ class HomeResenasDestacadas extends StatelessWidget {
                     color: AppColors.textPrimary)),
           ]),
           const SizedBox(height: 14),
-          ...resenas.map((r) {
+          ...resenas.indexed.map((entrada) {
+            final (indice, r) = entrada;
             final nombre =
                 '${r['autor_nombre'] ?? ''} ${r['autor_apellido'] ?? ''}'.trim();
             final iniciales = nombre.length >= 2
@@ -176,7 +273,7 @@ class HomeResenasDestacadas extends StatelessWidget {
             final comentario = r['comentario']?.toString() ?? '';
             final producto = r['producto_nombre']?.toString() ?? '';
 
-            return Container(
+            final tarjeta = Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -215,30 +312,39 @@ class HomeResenasDestacadas extends StatelessWidget {
                               overflow: TextOverflow.ellipsis),
                           if (producto.isNotEmpty)
                             Text(producto,
-                                style: TextStyle(
+                                style: const TextStyle(
                                     fontSize: 11, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
+                    // Las estrellas se encienden en fila al llegar la reseña,
+                    // un escalón de cascada entre una y otra.
                     Row(
                         children: List.generate(
                             5,
-                            (i) => Icon(
-                                  i < rating.floor()
-                                      ? Icons.star_rounded
-                                      : Icons.star_outline_rounded,
-                                  color: Colors.amber,
-                                  size: 14))),
+                            (i) => GestoIcono(
+                                  tipo: TipoGesto.brinco,
+                                  retraso: AppMovimiento.corta +
+                                      AppMovimiento.retrasoCascada(i),
+                                  child: Icon(
+                                      i < rating.floor()
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      color: Colors.amber,
+                                      size: 14),
+                                ))),
                   ]),
                   const SizedBox(height: 10),
                   Text(comentario,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 13, color: AppColors.textSecondary, height: 1.5),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis),
                 ],
               ),
             );
+            // Las reseñas suben una tras otra.
+            return EntradaInicio(orden: indice + 1, child: tarjeta);
           }),
         ],
       ),
@@ -276,8 +382,9 @@ class HomePorQueElegirnos extends StatelessWidget {
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
             childAspectRatio: 1.6,
-            children: features.map((f) {
-              return Container(
+            children: features.indexed.map((entrada) {
+              final (indice, f) = entrada;
+              final tarjeta = Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -295,7 +402,7 @@ class HomePorQueElegirnos extends StatelessWidget {
                         color: AppColors.pierVerde.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(f['icon'] as IconData,
+                      child: Icon(f['icon']! as IconData,
                           color: AppColors.pierVerde, size: 20),
                     ),
                     const SizedBox(width: 10),
@@ -304,19 +411,26 @@ class HomePorQueElegirnos extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(f['title'] as String,
+                          Text(f['title']! as String,
                               style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary)),
-                          Text(f['desc'] as String,
-                              style: TextStyle(
+                          Text(f['desc']! as String,
+                              style: const TextStyle(
                                   fontSize: 10, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
                   ],
                 ),
+              );
+              // Cada razón aparece creciendo apenas, una tras otra.
+              return EntradaInicio(
+                orden: indice + 1,
+                escalaInicial: 0.94,
+                desplazamiento: const Offset(0, AppMovimiento.distanciaCorta),
+                child: tarjeta,
               );
             }).toList(),
           ),
