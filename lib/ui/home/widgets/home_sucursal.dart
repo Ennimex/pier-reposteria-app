@@ -3,10 +3,15 @@
 // "Encuéntranos": una tarjeta por sucursal cuando la configuración de
 // contacto trae al menos 2 (como la web); si no, la tarjeta única con la
 // dirección y el horario generales. Tocar una tarjeta abre Contacto.
+//
+// Movimiento: las tarjetas suben una tras otra al compás de la sección y se
+// hunden al tocarlas.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
 import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
 import 'package:pier_pasteleria/utils/config_format.dart';
 
@@ -44,23 +49,30 @@ class HomeSucursal extends StatelessWidget {
                   color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           if (sucursales.isEmpty)
-            _TarjetaSucursal(
-              color: AppColors.pierVerdeOscuro,
-              encabezado: _FilaIcono(
-                icono: LucideIcons.store,
-                titulo: BusinessInfo.sucursal,
-                texto: direccion,
-                conFlecha: true,
+            EntradaInicio(
+              orden: 1,
+              child: _TarjetaSucursal(
+                color: AppColors.pierVerdeOscuro,
+                encabezado: _FilaIcono(
+                  icono: LucideIcons.store,
+                  titulo: BusinessInfo.sucursal,
+                  texto: direccion,
+                  conFlecha: true,
+                ),
+                detalle: [
+                  _FilaIcono(
+                      icono: LucideIcons.clock, titulo: 'Horario', texto: horario),
+                ],
               ),
-              detalle: [
-                _FilaIcono(
-                    icono: LucideIcons.clock, titulo: 'Horario', texto: horario),
-              ],
             )
           else
             for (var i = 0; i < sucursales.length; i++) ...[
               if (i > 0) const SizedBox(height: 12),
-              _tarjetaDeSucursal(sucursales[i], i, direccion),
+              // Las tarjetas suben una tras otra.
+              EntradaInicio(
+                orden: i + 1,
+                child: _tarjetaDeSucursal(sucursales[i], i, direccion),
+              ),
             ],
         ],
       ),
@@ -133,30 +145,32 @@ class _TarjetaSucursal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute<void>(builder: (_) => const ContactScreen())),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(
-              color: color.withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 6))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            encabezado,
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Divider(
-                  color: Colors.white.withValues(alpha: 0.15), height: 1),
-            ),
-            ...detalle,
-          ],
+    return PresionEscala(
+      child: GestureDetector(
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute<void>(builder: (_) => const ContactScreen())),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(
+                color: color.withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              encabezado,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Divider(
+                    color: Colors.white.withValues(alpha: 0.15), height: 1),
+              ),
+              ...detalle,
+            ],
+          ),
         ),
       ),
     );

@@ -3,13 +3,21 @@
 // Secciones de promociones del inicio (mismo concepto que la web): banner,
 // ofertas relámpago, de temporada y destacadas. Pintan lo que el
 // HomeViewModel separó por tipo; tocar una oferta abre su producto.
+//
+// Movimiento: las tarjetas entran al compás de su sección (las de temporada
+// desde la derecha), se hunden al tocarlas y sus fotos aparecen con un
+// fundido. En el banner la flama parpadea, una luz cruza el código de
+// descuento y la flecha del botón empuja dos veces; cada título hace su
+// gesto (el rayo se sacude, los brillos destellan). Todo una sola vez.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/promociones_inicio.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/home/view_model/home_view_model.dart';
+import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
@@ -30,8 +38,12 @@ void _abrirProductoDePromo(
   }
   PierLog.nav('→ ProductDetailScreen desde $origen');
   Navigator.push(context,
-      MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: producto)));
+      MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: producto))).ignore();
 }
+
+/// Lo que devuelve el `frameBuilder` de las fotos de las ofertas.
+Widget _fundido(BuildContext _, Widget foto, int? cuadro, bool sincrona) =>
+    FotoConFundido(foto: foto, cuadro: cuadro, sincrona: sincrona);
 
 /// Banner de la promoción tipo 'banner'.
 class HomePromoBanner extends StatelessWidget {
@@ -79,8 +91,12 @@ class HomePromoBanner extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(LucideIcons.flame,
-                    color: Colors.white, size: 18),
+                // La flama parpadea dos veces al llegar el banner.
+                child: const GestoIcono(
+                  tipo: TipoGesto.flama,
+                  child: Icon(LucideIcons.flame,
+                      color: Colors.white, size: 18),
+                ),
               ),
               const SizedBox(width: 8),
               Container(
@@ -140,59 +156,68 @@ class HomePromoBanner extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Código de descuento
+            // Código de descuento: una luz lo cruza una vez.
             if (codigo != null && codigo.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.pierDorado.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: AppColors.pierDorado.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.gift,
-                        color: AppColors.pierDorado, size: 16),
-                    const SizedBox(width: 8),
-                    Text(codigo,
-                        style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 2)),
-                  ],
+              BarridoDeLuz(
+                radio: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.pierDorado.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.pierDorado.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.gift,
+                          color: AppColors.pierDorado, size: 16),
+                      const SizedBox(width: 8),
+                      Text(codigo,
+                          style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 2)),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
             ],
 
-            // Botón CTA
+            // Botón CTA: su flecha empuja dos veces, invitando a tocar.
             SizedBox(
               width: double.infinity,
-              child: GestureDetector(
-                onTap: () => context.read<NavigationProvider>().goCatalogo(),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Ver productos',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.pierVerdeOscuro)),
-                      SizedBox(width: 6),
-                      Icon(LucideIcons.arrowRight,
-                          color: AppColors.pierVerdeOscuro, size: 16),
-                    ],
+              child: PresionEscala(
+                child: GestureDetector(
+                  onTap: () => context.read<NavigationProvider>().goCatalogo(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Ver productos',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.pierVerdeOscuro)),
+                        const SizedBox(width: 6),
+                        GestoIcono(
+                          tipo: TipoGesto.empujon,
+                          retraso: const Duration(milliseconds: 700),
+                          child: Icon(LucideIcons.arrowRight,
+                              color: AppColors.pierVerdeOscuro, size: 16),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -229,8 +254,11 @@ class HomeOfertasRelampago extends StatelessWidget {
                 color: Colors.amber.shade50,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(LucideIcons.zap,
-                  color: Colors.amber.shade700, size: 18),
+              child: GestoIcono(
+                tipo: TipoGesto.chispazo,
+                child: Icon(LucideIcons.zap,
+                    color: Colors.amber.shade700, size: 18),
+              ),
             ),
             const SizedBox(width: 8),
             const Text('Ofertas Relámpago',
@@ -271,108 +299,117 @@ class HomeOfertasRelampago extends StatelessWidget {
                   idx == 0 ? AppColors.pierVerdeOscuro : AppColors.pierDoradoOscuro;
 
               return Expanded(
-                child: GestureDetector(
-                  onTap: () => _abrirProductoDePromo(context, promo, 'relámpago'),
-                  child: Container(
-                    margin: EdgeInsets.only(
-                        left: idx == 0 ? 0 : 8, right: idx == 0 ? 8 : 0),
-                    height: 140,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(
-                          color: gradientColor.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4))],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Stack(fit: StackFit.expand, children: [
-                        imagenUrl.isNotEmpty
-                            ? Image.network(imagenUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    Container(color: gradientColor))
-                            : Container(color: gradientColor),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                gradientColor.withValues(alpha: 0.5),
-                                gradientColor.withValues(alpha: 0.88),
-                              ],
-                            ),
-                          ),
+                // Las dos tarjetas llegan una tras otra.
+                child: EntradaInicio(
+                  orden: idx + 1,
+                  child: PresionEscala(
+                    child: GestureDetector(
+                      onTap: () => _abrirProductoDePromo(context, promo, 'relámpago'),
+                      child: Container(
+                        margin: EdgeInsets.only(
+                            left: idx == 0 ? 0 : 8, right: idx == 0 ? 8 : 0),
+                        height: 140,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(
+                              color: gradientColor.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4))],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 7, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(tag,
-                                      style: const TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white)),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Stack(fit: StackFit.expand, children: [
+                            // El color de la tarjeta mientras la foto llega
+                            // (y si no hay foto o falla).
+                            ColoredBox(color: gradientColor),
+                            if (imagenUrl.isNotEmpty)
+                              Image.network(imagenUrl,
+                                  fit: BoxFit.cover,
+                                  frameBuilder: _fundido,
+                                  errorBuilder: (_, _, _) =>
+                                      ColoredBox(color: gradientColor)),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    gradientColor.withValues(alpha: 0.5),
+                                    gradientColor.withValues(alpha: 0.88),
+                                  ],
                                 ),
-                                if (tiempo.isNotEmpty) ...[
-                                  const Spacer(),
-                                  Row(children: [
-                                    const Icon(LucideIcons.timer,
-                                        color: Colors.white70, size: 11),
-                                    const SizedBox(width: 2),
-                                    Text(tiempo,
-                                        style: const TextStyle(
-                                            fontSize: 9,
-                                            color: Colors.white70)),
-                                  ]),
-                                ],
-                              ]),
-                              Column(
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(titulo,
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
-                                  if (subtitulo.isNotEmpty)
-                                    Text(subtitulo,
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.white
-                                                .withValues(alpha: 0.85))),
-                                  const SizedBox(height: 2),
                                   Row(children: [
-                                    const Text('Ver detalle',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(width: 2),
-                                    Icon(LucideIcons.chevronRight,
-                                        size: 9,
-                                        color:
-                                            Colors.white.withValues(alpha: 0.9)),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 7, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(tag,
+                                          style: const TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white)),
+                                    ),
+                                    if (tiempo.isNotEmpty) ...[
+                                      const Spacer(),
+                                      Row(children: [
+                                        const Icon(LucideIcons.timer,
+                                            color: Colors.white70, size: 11),
+                                        const SizedBox(width: 2),
+                                        Text(tiempo,
+                                            style: const TextStyle(
+                                                fontSize: 9,
+                                                color: Colors.white70)),
+                                      ]),
+                                    ],
                                   ]),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(titulo,
+                                          style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
+                                      if (subtitulo.isNotEmpty)
+                                        Text(subtitulo,
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.85))),
+                                      const SizedBox(height: 2),
+                                      Row(children: [
+                                        const Text('Ver detalle',
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 2),
+                                        Icon(LucideIcons.chevronRight,
+                                            size: 9,
+                                            color:
+                                                Colors.white.withValues(alpha: 0.9)),
+                                      ]),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ]),
                         ),
-                      ]),
+                      ),
                     ),
                   ),
                 ),
@@ -417,8 +454,11 @@ class HomeOfertasTemporada extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(children: [
-                  Icon(LucideIcons.sparkles,
-                      size: 13, color: AppColors.estadoCancelado),
+                  GestoIcono(
+                    tipo: TipoGesto.destello,
+                    child: Icon(LucideIcons.sparkles,
+                        size: 13, color: AppColors.estadoCancelado),
+                  ),
                   SizedBox(width: 4),
                   Text('Temporada',
                       style: TextStyle(
@@ -464,18 +504,26 @@ class HomeOfertasTemporada extends StatelessWidget {
                     precioFinal > 0 ? '\$${precioFinal.toStringAsFixed(0)}' : '';
                 final tiempo =
                     tiempoRestante(promo['fecha_fin']?.toString());
-                return _buildTemporadaCard(
-                  idx: idx,
-                  imagenUrl: imagenUrl,
-                  titulo: titulo,
-                  subtitulo: subtitulo.isNotEmpty
-                      ? subtitulo
-                      : (tiempo.isNotEmpty ? 'Hasta $tiempo' : ''),
-                  precio: precioStr,
-                  precioOriginal:
-                      porcentaje > 0 ? '\$${precioBruto.toStringAsFixed(0)}' : null,
-                  accent: accent,
-                  onTap: () => _abrirProductoDePromo(context, promo, 'temporada'),
+                // Las primeras llegan desde la derecha, una tras otra; las
+                // que aparecen al desplazar ya están en su lugar.
+                return EntradaInicio(
+                  orden: idx + 1,
+                  desplazamiento: const Offset(AppMovimiento.distanciaLarga, 0),
+                  child: PresionEscala(
+                    child: _buildTemporadaCard(
+                      idx: idx,
+                      imagenUrl: imagenUrl,
+                      titulo: titulo,
+                      subtitulo: subtitulo.isNotEmpty
+                          ? subtitulo
+                          : (tiempo.isNotEmpty ? 'Hasta $tiempo' : ''),
+                      precio: precioStr,
+                      precioOriginal:
+                          porcentaje > 0 ? '\$${precioBruto.toStringAsFixed(0)}' : null,
+                      accent: accent,
+                      onTap: () => _abrirProductoDePromo(context, promo, 'temporada'),
+                    ),
+                  ),
                 );
               },
             ),
@@ -491,10 +539,11 @@ class HomeOfertasTemporada extends StatelessWidget {
     required String titulo,
     required String subtitulo,
     required String precio,
-    String? precioOriginal,
     required Color accent,
     required VoidCallback onTap,
+    String? precioOriginal,
   }) {
+    final fondoFoto = accent.withValues(alpha: 0.12);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -518,18 +567,22 @@ class HomeOfertasTemporada extends StatelessWidget {
                 height: 115,
                 width: double.infinity,
                 child: Stack(fit: StackFit.expand, children: [
-                  imagenUrl.isNotEmpty
-                      ? Image.network(imagenUrl, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: accent.withValues(alpha: 0.12),
-                            child: Icon(LucideIcons.cake,
-                                color: accent, size: 40),
-                          ))
-                      : Container(
-                          color: accent.withValues(alpha: 0.12),
+                  if (imagenUrl.isNotEmpty) ...[
+                    // El tinte mientras la foto llega.
+                    ColoredBox(color: fondoFoto),
+                    Image.network(imagenUrl, fit: BoxFit.cover,
+                        frameBuilder: _fundido,
+                        errorBuilder: (_, _, _) => ColoredBox(
+                          color: fondoFoto,
                           child: Icon(LucideIcons.cake,
                               color: accent, size: 40),
-                        ),
+                        )),
+                  ] else
+                    ColoredBox(
+                      color: fondoFoto,
+                      child: Icon(LucideIcons.cake,
+                          color: accent, size: 40),
+                    ),
                   Positioned(
                     bottom: 0, left: 0, right: 0,
                     child: Container(
@@ -594,7 +647,7 @@ class HomeOfertasTemporada extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(subtitulo,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       fontSize: 10,
                                       color: AppColors.textSecondary),
                                   maxLines: 1,
@@ -683,8 +736,11 @@ class HomePromoDestacado extends StatelessWidget {
                     colors: [AppColors.pierDorado, AppColors.pierDoradoOscuro]),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(LucideIcons.sparkles,
-                  color: Colors.white, size: 16),
+              child: const GestoIcono(
+                tipo: TipoGesto.destello,
+                child: Icon(LucideIcons.sparkles,
+                    color: Colors.white, size: 16),
+              ),
             ),
             const SizedBox(width: 8),
             const Text('Productos Destacados',
@@ -695,10 +751,11 @@ class HomePromoDestacado extends StatelessWidget {
                     color: AppColors.textPrimary)),
           ]),
           const SizedBox(height: 4),
-          Text('Seleccionados especialmente para ti',
+          const Text('Seleccionados especialmente para ti',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 14),
-          ...(promociones.destacado.map((promo) {
+          ...promociones.destacado.indexed.map((entrada) {
+            final (indice, promo) = entrada;
             final imagenUrl = promo['producto_imagen']?.toString() ?? '';
             final nombre =
                 promo['producto_nombre']?.toString() ?? 'Producto';
@@ -717,7 +774,7 @@ class HomePromoDestacado extends StatelessWidget {
             final fechaFin = promo['fecha_fin']?.toString();
             final tiempo = tiempoRestante(fechaFin);
 
-            return GestureDetector(
+            final fila = GestureDetector(
               onTap: () => _abrirProductoDePromo(context, promo, 'destacado'),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -738,19 +795,23 @@ class HomePromoDestacado extends StatelessWidget {
                       SizedBox(
                         width: 110,
                         child: Stack(fit: StackFit.expand, children: [
-                          imagenUrl.isNotEmpty
-                              ? Image.network(imagenUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: AppColors.pierArena,
-                                    child: Icon(LucideIcons.cake,
-                                        color: AppColors.pierDorado, size: 36),
-                                  ))
-                              : Container(
+                          if (imagenUrl.isNotEmpty) ...[
+                            // La arena mientras la foto llega.
+                            ColoredBox(color: AppColors.pierArena),
+                            Image.network(imagenUrl,
+                                fit: BoxFit.cover,
+                                frameBuilder: _fundido,
+                                errorBuilder: (_, _, _) => ColoredBox(
                                   color: AppColors.pierArena,
                                   child: Icon(LucideIcons.cake,
                                       color: AppColors.pierDorado, size: 36),
-                                ),
+                                )),
+                          ] else
+                            ColoredBox(
+                              color: AppColors.pierArena,
+                              child: Icon(LucideIcons.cake,
+                                  color: AppColors.pierDorado, size: 36),
+                            ),
                           // Badge dorado
                           Positioned(
                             top: 8, left: 8,
@@ -869,7 +930,12 @@ class HomePromoDestacado extends StatelessWidget {
                 ),
               ),
             );
-          })),
+            // Las filas suben una tras otra.
+            return EntradaInicio(
+              orden: indice + 1,
+              child: PresionEscala(child: fila),
+            );
+          }),
         ],
       ),
     );
