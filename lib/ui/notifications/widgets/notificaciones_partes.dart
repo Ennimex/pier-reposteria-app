@@ -195,10 +195,10 @@ class AvisoNotificaciones extends StatelessWidget {
       figura = MovimientoUnaVez(
         retraso: espera + AppMovimiento.entrada,
         duracion: AppMovimiento.relleno,
-        builder: (context, avance, icono) => RotationTransition(
+        builder: (context, avance, campana) => RotationTransition(
           turns: avance.drive(_vaiven),
           alignment: Alignment.topCenter,
-          child: icono,
+          child: campana,
         ),
         child: figura,
       );

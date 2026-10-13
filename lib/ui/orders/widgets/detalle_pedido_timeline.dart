@@ -67,28 +67,34 @@ class DetallePedidoTimeline extends StatelessWidget {
               offset: const Offset(0, 3))
         ],
       ),
-      child: ProgresoAnimado(
-        valor: meta,
-        retraso: retraso,
-        // 220 ms por paso, entre 220 ms y 1.1 s en total.
-        duracion: Duration(milliseconds: (220 * (actual + 1)).clamp(220, 1100)),
-        builder: (context, avance, _) {
-          final cabeza = avance - _entrada;
-          return Row(
-            children: [
-              for (var i = 0; i < pasos.length; i++)
-                Expanded(
-                  child: _Paso(
-                    paso: pasos[i],
-                    indice: i,
-                    actual: actual,
-                    ultimo: i == pasos.length - 1,
-                    cabeza: cabeza,
+      // El relleno repinta la fila en cada cuadro (hasta 1.1 s más los
+      // rebotes): en su propia capa, para no repintar con ella toda la
+      // página del detalle (tarjetas y sombras).
+      child: RepaintBoundary(
+        child: ProgresoAnimado(
+          valor: meta,
+          retraso: retraso,
+          // 220 ms por paso, entre 220 ms y 1.1 s en total.
+          duracion:
+              Duration(milliseconds: (220 * (actual + 1)).clamp(220, 1100)),
+          builder: (context, avance, _) {
+            final cabeza = avance - _entrada;
+            return Row(
+              children: [
+                for (var i = 0; i < pasos.length; i++)
+                  Expanded(
+                    child: _Paso(
+                      paso: pasos[i],
+                      indice: i,
+                      actual: actual,
+                      ultimo: i == pasos.length - 1,
+                      cabeza: cabeza,
+                    ),
                   ),
-                ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -283,9 +289,10 @@ class _HaloActual extends StatefulWidget {
 
 class _HaloActualState extends State<_HaloActual>
     with SingleTickerProviderStateMixin {
-  // Primero termina el rebote del círculo; luego, dos latidos.
+  // Primero termina el rebote del círculo (AppMovimiento.media, el mismo
+  // de _Paso); luego, dos latidos con el ritmo de los rellenos.
   static const Duration _espera = AppMovimiento.media;
-  static const Duration _latido = Duration(milliseconds: 900);
+  static const Duration _latido = AppMovimiento.relleno;
 
   late final AnimationController _control;
   late final double _inicio;
@@ -356,7 +363,7 @@ class _PintorHalo extends CustomPainter {
     // Dos latidos seguidos: cada uno abre el aro de 1 a 1.8 veces el
     // círculo mientras se adelgaza y se apaga.
     final t = ((valor - inicio) / (1 - inicio) * 2) % 1;
-    final abierto = Curves.easeOut.transform(t);
+    final abierto = AppMovimiento.curvaEntrada.transform(t);
     canvas.drawCircle(
       size.center(Offset.zero),
       size.shortestSide / 2 * (1 + 0.8 * abierto),

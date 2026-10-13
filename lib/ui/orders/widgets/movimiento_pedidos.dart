@@ -22,7 +22,12 @@ import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 /// EntradaSuave lee su retraso una sola vez, al montarse, así que basta con
 /// pasarle lo que esto devuelve en cada build.
 Duration esperaDeLlegada(BuildContext context) {
-  if (!TickerMode.valuesOf(context).enabled) return AppMovimiento.trasPestana;
+  // Se lee el TickerMode sin depender de él: con valuesOf, cada cambio de
+  // pestaña (o cada ruta que tapa la pantalla) reconstruiría entera a la
+  // pantalla que preguntó, y el valor solo importa al montar.
+  if (!TickerMode.getValuesNotifier(context).value.enabled) {
+    return AppMovimiento.trasPestana;
+  }
   final ruta = ModalRoute.of(context);
   // Recién empujada, en su primer cuadro el HeroController la mide fuera de
   // escena (offstage) y mientras tanto su animación se ve completa; en los

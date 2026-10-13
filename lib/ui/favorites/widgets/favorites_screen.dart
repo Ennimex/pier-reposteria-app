@@ -606,27 +606,29 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   // ── EMPTY STATE ───────────────────────────────────────────────────
-  // Latido doble del corazón del estado vacío (termina en 1).
+  // Latido doble del corazón del estado vacío (termina en 1): cada golpe
+  // sube con la curva de entrada y baja con la de salida; el último se
+  // asienta con la estándar.
   static final Animatable<double> _latido = TweenSequence<double>(
     <TweenSequenceItem<double>>[
       TweenSequenceItem<double>(
         tween: Tween<double>(begin: 1, end: 1.14)
-            .chain(CurveTween(curve: Curves.easeOut)),
+            .chain(CurveTween(curve: AppMovimiento.curvaEntrada)),
         weight: 18,
       ),
       TweenSequenceItem<double>(
         tween: Tween<double>(begin: 1.14, end: 1)
-            .chain(CurveTween(curve: Curves.easeIn)),
+            .chain(CurveTween(curve: AppMovimiento.curvaSalida)),
         weight: 18,
       ),
       TweenSequenceItem<double>(
         tween: Tween<double>(begin: 1, end: 1.1)
-            .chain(CurveTween(curve: Curves.easeOut)),
+            .chain(CurveTween(curve: AppMovimiento.curvaEntrada)),
         weight: 18,
       ),
       TweenSequenceItem<double>(
         tween: Tween<double>(begin: 1.1, end: 1)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+            .chain(CurveTween(curve: AppMovimiento.curvaEstandar)),
         weight: 46,
       ),
     ],
@@ -840,22 +842,28 @@ class _BotonAgregar extends StatefulWidget {
 
 class _BotonAgregarState extends State<_BotonAgregar>
     with SingleTickerProviderStateMixin {
-  // Pulso de AppMovimiento (400 ms) en la primera parte; la palomita se
-  // queda hasta el 75 % y luego vuelve el «+».
-  static const Duration _duracion = Duration(milliseconds: 900);
-  static const double _finPalomita = 0.75;
-  static final Animatable<double> _pulso = AppMovimiento.pulso
-      .chain(CurveTween(curve: const Interval(0, 0.45)));
-  // La campana se mece en la primera mitad.
-  static final Animatable<double> _vaiven = const Balanceo()
-      .chain(CurveTween(curve: const Interval(0, 0.5)));
+  // Al agregar, la palomita dura lo que vuela la miniatura al carrito
+  // (AppMovimiento.vuelo) y el «+» vuelve cuando el carrito la recibe; el
+  // pulso de AppMovimiento ocupa sus primeros 400 ms, como en los demás
+  // botones de agregar.
+  static final Animatable<double> _pulso = AppMovimiento.pulso.chain(
+    CurveTween(
+      curve: Interval(
+        0,
+        AppMovimiento.empuje.inMicroseconds /
+            AppMovimiento.vuelo.inMicroseconds,
+      ),
+    ),
+  );
+  // «Avísame»: la campana se mece con el ritmo de la de Notificaciones.
+  static const Animatable<double> _vaiven = Balanceo();
 
   late final AnimationController _control;
 
   @override
   void initState() {
     super.initState();
-    _control = AnimationController(vsync: this, duration: _duracion);
+    _control = AnimationController(vsync: this);
   }
 
   @override
@@ -867,8 +875,12 @@ class _BotonAgregarState extends State<_BotonAgregar>
   void _alTocar() {
     final agrego = widget.onTap(context);
     if (!mounted || AppMovimiento.reducido(context)) return;
+    final agotado = widget.producto.agotado;
     // Sin sesión (se abrió el inicio de sesión) no hay nada que celebrar.
-    if (agrego || widget.producto.agotado) _control.forward(from: 0).ignore();
+    if (!agrego && !agotado) return;
+    _control
+      ..duration = agotado ? AppMovimiento.relleno : AppMovimiento.vuelo
+      ..forward(from: 0).ignore();
   }
 
   @override
@@ -897,8 +909,7 @@ class _BotonAgregarState extends State<_BotonAgregar>
                 : AnimatedBuilder(
                     animation: _control,
                     builder: (context, _) {
-                      final palomita = _control.isAnimating &&
-                          _control.value < _finPalomita;
+                      final palomita = _control.isAnimating;
                       return CambioAnimado(
                         tipo: TipoCambio.escalar,
                         alineacion: Alignment.center,
