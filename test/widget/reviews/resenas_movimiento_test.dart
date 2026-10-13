@@ -181,7 +181,9 @@ void main() {
       expect(find.text('Muy bueno 😊'), findsOneWidget);
       expect(_movimientoDeEstrella(0), findsWidgets);
 
-      await tester.pump(const Duration(milliseconds: 100));
+      // La tocada (cuarta) empieza tres escalones de cascada después
+      // (150 ms).
+      await tester.pump(const Duration(milliseconds: 120));
       // La tocada (cuarta) ya se endereza; la quinta no se mueve.
       expect(_movimientoDeEstrella(3), findsWidgets);
       expect(_movimientoDeEstrella(4), findsNothing);
@@ -385,10 +387,17 @@ void main() {
       await tester.iniciarSesion(find.byType(ProductReviewsScreen));
       await tester.pumpAndSettle();
       final cuenta = find.byType(CuentaRodante).first;
-      final pulgar = find.descendant(
-        of: find.byType(PopAlActivar).first,
-        matching: find.byType(Transform),
-      );
+      // El giro y la escala del pulgar son la identidad mientras no se
+      // mueve (el árbol es siempre el mismo, así su color se funde).
+      bool pulgarQuieto() => tester
+          .widgetList<Transform>(
+            find.descendant(
+              of: find.byType(PopAlActivar).first,
+              matching: find.byType(Transform),
+            ),
+          )
+          .every((t) => t.transform.isIdentity());
+      expect(pulgarQuieto(), isTrue);
 
       await tester.tap(find.byIcon(LucideIcons.thumbsUp).first);
       await tester.pump();
@@ -399,14 +408,14 @@ void main() {
         find.descendant(of: cuenta, matching: find.byType(Text)),
         findsNWidgets(2),
       );
-      expect(pulgar, findsWidgets);
+      expect(pulgarQuieto(), isFalse);
 
       await tester.pumpAndSettle();
       expect(
         find.descendant(of: cuenta, matching: find.byType(Text)),
         findsOneWidget,
       );
-      expect(pulgar, findsNothing);
+      expect(pulgarQuieto(), isTrue);
       expect(api.llamo(ApiConstants.likeResena('1')), isTrue);
     });
 

@@ -248,7 +248,8 @@ void main() {
       // El ícono ya cambió: 3 llenas desde el primer cuadro.
       expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      // La tocada (tercera) empieza dos escalones de cascada después (100 ms).
+      await tester.pump(const Duration(milliseconds: 120));
       // La primera ya da su pop, la tocada (tercera) empieza enderezándose
       // desde un giro y la cuarta no se mueve.
       expect(_movimientoDeEstrella(0), findsWidgets);
@@ -353,33 +354,52 @@ void main() {
       expect(find.text('4'), findsNothing);
     });
 
-    testWidgets('PopAlActivar solo da su pop al marcarse', (tester) async {
+    testWidgets('PopAlActivar solo da su pop al marcarse y el ícono sigue '
+        'fundiendo su color', (tester) async {
+      const apagado = Color(0xFF000000);
+      const encendido = Color(0xFF00FF00);
       Widget pulgar({required bool activo}) => PopAlActivar(
         activo: activo,
-        child: const Icon(Icons.thumb_up),
+        child: IconoColorSuave(
+          Icons.thumb_up,
+          tamano: 14,
+          color: activo ? encendido : apagado,
+        ),
       );
-      final movimiento = find.descendant(
-        of: find.byType(PopAlActivar),
-        matching: find.byType(Transform),
-      );
+      // El giro y la escala del pulgar son la identidad mientras no se
+      // mueve (el árbol es siempre el mismo).
+      bool quieto() => tester
+          .widgetList<Transform>(
+            find.descendant(
+              of: find.byType(PopAlActivar),
+              matching: find.byType(Transform),
+            ),
+          )
+          .every((t) => t.transform.isIdentity());
+      Color? color() => tester.widget<Icon>(find.byIcon(Icons.thumb_up)).color;
 
       // Montarse ya marcado no anima.
       await montarMovimiento(tester, pulgar(activo: true));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(movimiento, findsNothing);
+      expect(quieto(), isTrue);
 
       // Desmarcar tampoco.
       await montarMovimiento(tester, pulgar(activo: false));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(movimiento, findsNothing);
+      expect(quieto(), isTrue);
+      await tester.pumpAndSettle();
+      expect(color(), apagado);
 
-      // Marcar sí.
+      // Marcar sí, y el color pasa al nuevo con un fundido (no salta).
       await montarMovimiento(tester, pulgar(activo: true));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(movimiento, findsWidgets);
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(quieto(), isFalse);
+      expect(color(), isNot(apagado));
+      expect(color(), isNot(encendido));
       await tester.pumpAndSettle();
-      expect(movimiento, findsNothing);
+      expect(quieto(), isTrue);
+      expect(color(), encendido);
     });
 
     testWidgets('ResaltadoUnaVez pinta su aro solo si llega activo', (
@@ -464,6 +484,16 @@ void main() {
       expect(tester.widget<ScaleTransition>(latido).scale.value, 1);
     });
 
+    testWidgets('una cifra que no cabe en un entero no rompe la pantalla: late '
+        'y queda exacta', (tester) async {
+      const enorme = '99999999999999999999 clientes';
+      await montarMovimiento(tester, const CifraQueCuenta(texto: enorme));
+      expect(tester.takeException(), isNull);
+      expect(find.text(enorme), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.text(enorme), findsOneWidget);
+    });
+
     testWidgets('con movimiento reducido las cifras ya están completas', (
       tester,
     ) async {
@@ -506,6 +536,42 @@ void main() {
       await tester.pump();
       expect(opacidadEn(tester, abajo), 1);
       expect(find.text('100%'), findsOneWidget);
+    });
+
+    testWidgets('lo último de la página entra aunque el scroll al tope no lo '
+        'suba hasta el 90 % de la vista', (tester) async {
+      // Vista alta y contenido apenas más alto: con el scroll al tope, el
+      // último bloque se ve completo pero su borde queda en el 93 %.
+      tester.view
+        ..physicalSize = const Size(400, 1000)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: VistaRevelada(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    SizedBox(height: 1000),
+                    EntradaAlVer(
+                      child: SizedBox(height: 50, child: Text('Final')),
+                    ),
+                    SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final ultimo = _entradaAlVerDe(find.text('Final'));
+      expect(opacidadEn(tester, ultimo), 0);
+
+      _scroll(tester).jumpTo(_scroll(tester).maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(opacidadEn(tester, ultimo), 1);
     });
   });
 
@@ -724,6 +790,64 @@ void main() {
         opacidadEn(tester, _entradaSuaveDe(find.text('¿Pregunta de Envíos?'))),
         1,
       );
+    });
+
+    testWidgets('en una lista larga cada pregunta entra una sola vez: lo que '
+        'llega al bajar ya está en su lugar y volver no repite', (
+      tester,
+    ) async {
+      await _montarFaq(
+        tester,
+        FakeApiClient(
+          respuestas: {
+            ApiConstants.configuracionSeccion('faq'): {
+              'success': true,
+              'config': {
+                'preguntas': [
+                  for (var i = 0; i < 30; i++)
+                    {
+                      'categoria': 'Envíos',
+                      'pregunta': '¿Pregunta $i?',
+                      'respuesta': 'Respuesta $i',
+                    },
+                ],
+              },
+            },
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      final lista = tester
+          .state<ScrollableState>(
+            find
+                .ancestor(
+                  of: find.text('¿Pregunta 0?'),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position;
+
+      // La lista arma las filas de abajo al llegar a ellas: ya en su lugar.
+      lista.jumpTo(lista.maxScrollExtent);
+      await tester.pump();
+      await tester.pump();
+      expect(
+        opacidadEn(tester, _entradaSuaveDe(find.text('¿Pregunta 29?'))),
+        1,
+      );
+      await tester.pumpAndSettle();
+
+      // Las de arriba se desarmaron al bajar; al volver no repiten su
+      // entrada.
+      lista.jumpTo(0);
+      await tester.pump();
+      await tester.pump();
+      expect(
+        opacidadEn(tester, _entradaSuaveDe(find.text('¿Pregunta 0?'))),
+        1,
+      );
+      await tester.pumpAndSettle();
     });
   });
 

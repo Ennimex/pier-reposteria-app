@@ -172,28 +172,36 @@ class _FAQScreenState extends State<FAQScreen> {
             // golpe (sin animación de salida), la nueva empieza arriba y sus
             // preguntas suben en cascada, todas cerradas. Las del panel
             // reemplazan a las de la app en su lugar, sin volver a entrar.
+            // La lista arma y desarma sus filas según el scroll: el ámbito
+            // hace que cada pregunta entre una sola vez (las que llegan al
+            // bajar aparecen ya en su lugar y volver no repite la entrada).
             Expanded(
-              child: ListView(
-                key: ValueKey<String>(categoria),
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                children: [
-                  for (var i = 0; i < preguntas.length; i++)
-                    Padding(
-                      key: ValueKey<String>('$categoria|$i'),
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: EntradaSuave(
-                        orden: i + 1,
-                        retraso: espera,
-                        child: _TarjetaPregunta(pregunta: preguntas[i]),
+              child: AmbitoEntradas(
+                generacion: categoria,
+                child: ListView(
+                  key: ValueKey<String>(categoria),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  children: [
+                    for (var i = 0; i < preguntas.length; i++)
+                      Padding(
+                        key: ValueKey<String>('$categoria|$i'),
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: EntradaSuave(
+                          id: '$categoria|$i',
+                          // Un escalón detrás de los chips.
+                          retraso: espera + AppMovimiento.paso,
+                          child: _TarjetaPregunta(pregunta: preguntas[i]),
+                        ),
                       ),
+                    const SizedBox(height: 16),
+                    EntradaSuave(
+                      key: ValueKey<String>('$categoria|contacto'),
+                      id: '$categoria|contacto',
+                      retraso: espera + AppMovimiento.paso,
+                      child: _buildContactBanner(context),
                     ),
-                  const SizedBox(height: 16),
-                  EntradaSuave(
-                    orden: preguntas.length + 1,
-                    retraso: espera,
-                    child: _buildContactBanner(context),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

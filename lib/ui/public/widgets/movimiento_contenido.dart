@@ -232,9 +232,9 @@ class _PopAlEntrarState extends State<PopAlEntrar>
 /// Una estrella de calificación (escribir y editar reseña). El ícono lo
 /// cambia la pantalla al instante (las pruebas cuentan estrellas llenas);
 /// esta pieza solo lo mueve: al subir la calificación, las estrellas que se
-/// encienden dan un pop una tras otra (45 ms entre cada una) y la tocada se
-/// endereza desde un giro corto; al bajarla, las que se apagan se encogen
-/// apenas y regresan. Solo pinta: el área del toque no cambia.
+/// encienden dan un pop una tras otra (un escalón de cascada entre cada una)
+/// y la tocada se endereza desde un giro corto; al bajarla, las que se apagan
+/// se encogen apenas y regresan. Solo pinta: el área del toque no cambia.
 class EstrellaAnimada extends StatefulWidget {
   const EstrellaAnimada({
     required this.indice,
@@ -260,8 +260,10 @@ enum _GestoEstrella { encender, apagar }
 
 class _EstrellaAnimadaState extends State<EstrellaAnimada>
     with SingleTickerProviderStateMixin {
-  static const Duration _separacion = Duration(milliseconds: 45);
-  static const Duration _pop = Duration(milliseconds: 380);
+  // El ritmo de la casa: un escalón de cascada entre estrellas y la
+  // duración de los pops de íconos.
+  static const Duration _separacion = AppMovimiento.paso;
+  static const Duration _pop = AppMovimiento.enfasis;
 
   // Crece de más, se pasa un poco hacia abajo y asienta en 1.
   static final Animatable<double> _escalaEncender = TweenSequence<double>(
@@ -455,7 +457,7 @@ class _InsigniaExitoState extends State<InsigniaExito>
   );
 
   // Las chispas salen cuando el disco ya cayó (cerca del 60 % del pop).
-  static const Duration _retrasoChispas = Duration(milliseconds: 280);
+  static final Duration _retrasoChispas = AppMovimiento.enfasis * 0.6;
 
   late final AnimationController _control;
   bool _preparada = false;
@@ -544,7 +546,7 @@ class _InsigniaExitoState extends State<InsigniaExito>
           ),
         ),
         if (_chispas)
-          const Positioned.fill(
+          Positioned.fill(
             child: Chispas(cantidad: 16, retraso: _retrasoChispas),
           ),
       ],
@@ -667,7 +669,9 @@ class TextoColorSuave extends StatelessWidget {
 
 /// Un ícono que da un pop y se endereza desde un giro corto cuando [activo]
 /// pasa de falso a verdadero (el pulgar de «útil» al marcarlo). Montarse ya
-/// activo no anima y desmarcar tampoco. Con movimiento reducido, quieto.
+/// activo no anima y desmarcar tampoco. Con movimiento reducido, quieto. El
+/// hijo conserva su estado durante el pop (p. ej. un IconoColorSuave sigue
+/// fundiendo su color).
 class PopAlActivar extends StatefulWidget {
   const PopAlActivar({required this.activo, required this.child, super.key});
 
@@ -744,11 +748,19 @@ class _PopAlActivarState extends State<PopAlActivar>
       animation: _control,
       child: widget.child,
       builder: (context, icono) {
+        // Siempre el mismo árbol (en reposo, sin giro y a escala 1): si los
+        // Transform aparecieran solo durante el pop, el ícono se montaría de
+        // nuevo y perdería su propio estado (el fundido de su color).
         final t = _control.value;
-        if (t >= 1) return icono!;
+        final quieto = t >= 1;
         return Transform.rotate(
-          angle: _giroInicial * (1 - AppMovimiento.curvaRebote.transform(t)),
-          child: Transform.scale(scale: _pop.transform(t), child: icono),
+          angle: quieto
+              ? 0
+              : _giroInicial * (1 - AppMovimiento.curvaRebote.transform(t)),
+          child: Transform.scale(
+            scale: quieto ? 1 : _pop.transform(t),
+            child: icono,
+          ),
         );
       },
     );
@@ -852,7 +864,9 @@ class _ResaltadoUnaVezState extends State<ResaltadoUnaVez>
         radio: widget.radio,
         color: AppColors.pierDorado,
       ),
-      child: widget.child,
+      // La tarjeta en su propia capa: el aro se repinta en cada cuadro sin
+      // volver a pintar la tarjeta.
+      child: RepaintBoundary(child: widget.child),
     );
   }
 }
@@ -1128,14 +1142,17 @@ class _EntradaAlVerState extends State<EntradaAlVer>
       ..forward(from: 0).ignore();
   }
 
-  /// Si ya se ve en [area]: su borde de arriba pasó del 90 % de la vista.
+  /// Si ya se ve en [area]: su borde de arriba pasó del 90 % de la vista, o
+  /// cabe completo en ella (lo último de la página puede no subir hasta ese
+  /// 90 % ni con el scroll al tope, y aun así se ve entero).
   bool _seVe(Rect? area) {
     final caja = context.findRenderObject();
     // Sin medidas no se sabe: mejor que entre a que se quede invisible.
     if (area == null || caja is! RenderBox || !caja.hasSize) return true;
     final arriba = caja.localToGlobal(Offset.zero).dy;
-    return arriba < area.top + area.height * 0.9 &&
-        arriba + caja.size.height > area.top;
+    final abajo = arriba + caja.size.height;
+    return abajo > area.top &&
+        (arriba < area.top + area.height * 0.9 || abajo <= area.bottom);
   }
 
   /// Su borde de arriba en la pantalla (0 mientras no tiene medidas).
@@ -1347,8 +1364,12 @@ class _CifraQueCuentaState extends State<CifraQueCuenta>
   @override
   Widget build(BuildContext context) {
     final coincide = _numero.firstMatch(widget.texto);
+    // Una cifra que no cabe en un entero (algo raro capturado en el panel)
+    // tampoco se cuenta: late, como lo que no es número, en vez de romper
+    // la pantalla.
+    final meta = coincide == null ? null : int.tryParse(coincide.group(2)!);
     final Widget cifra;
-    if (coincide == null) {
+    if (coincide == null || meta == null) {
       cifra = ScaleTransition(
         scale: _control.drive(_latido),
         child: Text(widget.texto, style: widget.estilo),
@@ -1362,7 +1383,6 @@ class _CifraQueCuentaState extends State<CifraQueCuenta>
           const FontFeature.tabularFigures(),
         ],
       );
-      final meta = int.parse(coincide.group(2)!);
       cifra = AnimatedBuilder(
         animation: _control,
         builder: (context, _) {
