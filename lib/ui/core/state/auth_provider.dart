@@ -31,6 +31,10 @@ class AuthProvider with ChangeNotifier {
   bool get isRolInterno =>
       isEmpleado || isGerencia || isDireccion || isProduccion;
 
+  /// Cliente con sesión (ni repartidor ni personal): ve las publicaciones
+  /// del inicio.
+  bool get esCliente => isAuthenticated && !isRepartidor && !isRolInterno;
+
   // Verificar sesión al iniciar app
   Future<void> checkSession() async {
     _isAuthenticated = await _authService.isAuthenticated();

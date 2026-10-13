@@ -169,6 +169,16 @@ class ApiConstants {
   static String comandaEntregar(int id)  => '$comandas/$id/entregar';  // PUT {saldo_cobrado}
   static String comandaCancelar(int id)  => '$comandas/$id/cancelar';  // PUT {motivo}
 
+  // ── PUBLICACIONES (inicio del cliente; rol releído de la base) ────
+  // Feed por páginas: el cursor es la última publicación vista
+  // (antes = fecha con microsegundos, antes_id = id).
+  static String publicacionesFeed({String? antes, int? antesId, int limite = 8}) =>
+      '/publicaciones/feed?limite=$limite'
+      '${antes == null ? '' : '&antes=${Uri.encodeQueryComponent(antes)}&antes_id=$antesId'}';
+  static const String publicacionesPromociones = '/publicaciones/promociones';
+  static String publicacionesSugerencias(int pagina) =>
+      '/publicaciones/sugerencias?pagina=$pagina';
+
   // ── DEMANDA NO ATENDIDA (público, registro silencioso) ────────────
   // Espejo de src/utils/demandaNoAtendida.ts de la web. Alimentan el reporte
   // "qué buscó la gente y no tuvimos" del panel de Dirección.

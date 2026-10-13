@@ -6,6 +6,7 @@
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/comandas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/respuesta_api.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/domain/models/comanda.dart';
 
@@ -84,11 +85,8 @@ class ComandasRepositoryRemote implements ComandasRepository {
     String porDefecto,
   ) async {
     final r = await llamada;
-    if (r['success'] == true) return r;
     final mensaje = r['message']?.toString() ?? porDefecto;
     switch (r['codigo']) {
-      case 'SESION_INVALIDA':
-        throw SesionInvalidaException(mensaje);
       case 'VERSION_DESACTUALIZADA':
         throw ConflictoComandaException(
           mensaje,
@@ -98,6 +96,6 @@ class ComandasRepositoryRemote implements ComandasRepository {
       case 'YA_CONFIRMADA':
         throw ConflictoComandaException(mensaje, cambio: false);
     }
-    throw ApiException(mensaje);
+    return exigirExito(r, porDefecto);
   }
 }

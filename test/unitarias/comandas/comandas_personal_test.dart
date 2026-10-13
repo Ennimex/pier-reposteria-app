@@ -6,7 +6,7 @@ import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/comandas_repository_remote.dart';
 import 'package:pier_pasteleria/domain/models/comanda.dart';
 import 'package:pier_pasteleria/ui/comandas/view_model/detalle_comanda_view_model.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/comandas_formato.dart';
+import 'package:pier_pasteleria/utils/moneda.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';
