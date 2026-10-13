@@ -1,6 +1,7 @@
 // lib/ui/more/widgets/more_screen.dart
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -51,6 +52,14 @@ class _MoreScreenState extends State<MoreScreen> {
         resenasRepo: context.read<ResenasRepository>(),
       );
 
+  // Cascada de la primera visita. La pestaña vive oculta desde que arranca
+  // la app: sus secciones se pintan tal cual y se envuelven en su entrada
+  // en el primer cuadro en que se ve (oculta no deja entradas pendientes).
+  // Se escucha el TickerMode sin depender de él: cambiar de pestaña no
+  // reconstruye la pantalla.
+  ValueListenable<TickerModeData>? _modoTicker;
+  bool _vista = false;
+
   @override
   void initState() {
     super.initState();
@@ -72,10 +81,36 @@ class _MoreScreenState extends State<MoreScreen> {
             _vm.actualizarSesion(autenticado: autenticado, email: email));
       }
     });
+    _seguirVisibilidad();
+  }
+
+  void _seguirVisibilidad() {
+    if (_vista) return;
+    final modo = TickerMode.getValuesNotifier(context);
+    if (!identical(modo, _modoTicker)) {
+      _modoTicker?.removeListener(_alCambiarVisibilidad);
+      _modoTicker = modo..addListener(_alCambiarVisibilidad);
+    }
+    // A la vista desde el primer cuadro (p. ej. sin pestañas alrededor).
+    if (modo.value.enabled) _dejarDeSeguir();
+  }
+
+  // Llega mientras se construye el TickerMode de arriba: la pantalla se
+  // reconstruye en ese mismo cuadro, ya con las entradas.
+  void _alCambiarVisibilidad() {
+    if (_vista || !(_modoTicker?.value.enabled ?? false)) return;
+    setState(_dejarDeSeguir);
+  }
+
+  void _dejarDeSeguir() {
+    _vista = true;
+    _modoTicker?.removeListener(_alCambiarVisibilidad);
+    _modoTicker = null;
   }
 
   @override
   void dispose() {
+    _modoTicker?.removeListener(_alCambiarVisibilidad);
     _vm.dispose();
     super.dispose();
   }
@@ -133,11 +168,24 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    // Las secciones bajo el encabezado suben en cascada una sola vez (volver
+    // con scroll no las repite y lo que aparece al bajar ya llega quieto);
+    // el encabezado llega con la pestaña.
     return ListenableBuilder(
       listenable: _vm,
-      builder: (context, _) => _buildContenido(),
+      builder: (context, _) => AmbitoEntradas(child: _buildContenido()),
     );
   }
+
+  /// Una sección de la cascada de la primera visita (ver _vista).
+  Widget _seccion(String id, Widget child) => _vista
+      ? EntradaSuave(
+          key: ValueKey<String>(id),
+          id: id,
+          retraso: AppMovimiento.trasPestana,
+          child: child,
+        )
+      : child;
 
   Widget _buildContenido() {
     final auth     = Provider.of<AuthProvider>(context);
@@ -169,212 +217,233 @@ class _MoreScreenState extends State<MoreScreen> {
           // prometía un programa de puntos/sorteos que no existe en backend.
           // Al cerrar sesión se apagan y su espacio se cierra; sin sesión
           // no están en el árbol.
-          Aparicion(
-            visible: isAuth,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildStatsRow(),
-                const SizedBox(height: 24),
-              ],
+          _seccion(
+            'contadores',
+            Aparicion(
+              visible: isAuth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildStatsRow(),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
 
           // ── ENCUÉNTRANOS ─────────────────────────────────────────
-          _buildEncuentranos(),
+          _seccion('encuentranos', _buildEncuentranos()),
           const SizedBox(height: 24),
 
           // ── MI CUENTA ────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Flexible: con el texto del sistema grande no desborda.
-                const Flexible(
-                  child: Text('Mi Cuenta',
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Playfair Display')),
-                ),
-                Aparicion(
-                  visible: !isAuth,
-                  alineacion: AlignmentDirectional.centerEnd,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.pierVerde.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('Acceso requerido',
+          _seccion(
+            'mi-cuenta',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Flexible: con el texto del sistema grande no desborda.
+                  const Flexible(
+                    child: Text('Mi Cuenta',
                         style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.pierVerde,
-                            fontWeight: FontWeight.w600)),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Playfair Display')),
                   ),
-                ),
-              ],
+                  Aparicion(
+                    visible: !isAuth,
+                    alineacion: AlignmentDirectional.centerEnd,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.pierVerde.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('Acceso requerido',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.pierVerde,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildCard(children: [
-              _buildTile(
-                icon: Icons.favorite_rounded,
-                iconColor: AppColors.pierVerde,
-                title: 'Mis Favoritos',
-                onTap: () => _goProtected(const FavoritesScreen()),
-              ),
-              _buildDivider(),
-              _buildTile(
-                icon: LucideIcons.bell,
-                iconColor: AppColors.pierVerde,
-                title: 'Notificaciones',
-                onTap: () => _goProtected(const NotificationsScreen()),
-              ),
-              _buildDivider(),
-              _buildTile(
-                icon: Icons.star_rounded,
-                iconColor: AppColors.pierDorado,
-                title: 'Mis Reseñas',
-                onTap: () => _goProtected(const MyReviewsScreen()),
-              ),
-              _buildDivider(),
-              _buildTile(
-                icon: LucideIcons.receiptText,
-                iconColor: AppColors.pierVerde,
-                title: 'Mis Reembolsos',
-                onTap: () => _goProtected(const RefundsScreen()),
-              ),
-              _buildDivider(), // ✅ NUEVO
-              _buildTile(     // ✅ NUEVO
-                icon: LucideIcons.messageCircle,
-                iconColor: AppColors.pierDoradoOscuro,
-                title: 'Quejas y Sugerencias',
-                onTap: () => _goProtected(const QuejasScreen()),
-              ),
-              _buildDivider(),
-              _buildTile(
-                icon: LucideIcons.mic,
-                iconColor: AppColors.pierVerde,
-                title: 'Vincular con Alexa',
-                onTap: () => _goProtected(const VincularAlexaScreen()),
-                last: true,
-              ),
-            ]),
+          _seccion(
+            'mi-cuenta-opciones',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _buildCard(children: [
+                _buildTile(
+                  icon: Icons.favorite_rounded,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Mis Favoritos',
+                  onTap: () => _goProtected(const FavoritesScreen()),
+                ),
+                _buildDivider(),
+                _buildTile(
+                  icon: LucideIcons.bell,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Notificaciones',
+                  onTap: () => _goProtected(const NotificationsScreen()),
+                ),
+                _buildDivider(),
+                _buildTile(
+                  icon: Icons.star_rounded,
+                  iconColor: AppColors.pierDorado,
+                  title: 'Mis Reseñas',
+                  onTap: () => _goProtected(const MyReviewsScreen()),
+                ),
+                _buildDivider(),
+                _buildTile(
+                  icon: LucideIcons.receiptText,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Mis Reembolsos',
+                  onTap: () => _goProtected(const RefundsScreen()),
+                ),
+                _buildDivider(), // ✅ NUEVO
+                _buildTile(     // ✅ NUEVO
+                  icon: LucideIcons.messageCircle,
+                  iconColor: AppColors.pierDoradoOscuro,
+                  title: 'Quejas y Sugerencias',
+                  onTap: () => _goProtected(const QuejasScreen()),
+                ),
+                _buildDivider(),
+                _buildTile(
+                  icon: LucideIcons.mic,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Vincular con Alexa',
+                  onTap: () => _goProtected(const VincularAlexaScreen()),
+                  last: true,
+                ),
+              ]),
+            ),
           ),
 
           const SizedBox(height: 24),
 
           // ── ACERCA DE PIER ───────────────────────────────────────
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Text('Acerca de Pier',
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Playfair Display')),
+          _seccion(
+            'acerca',
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text('Acerca de Pier',
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Playfair Display')),
+            ),
           ),
           const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildCard(children: [
-              _buildTile(
-                icon: LucideIcons.bookOpen,
-                iconColor: AppColors.pierVerde,
-                title: 'Nuestra Historia',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const AboutUsScreen())),
-              ),
-              _buildDivider(),
-              _buildTile(
-                icon: LucideIcons.circleHelp,
-                iconColor: AppColors.pierVerde,
-                title: 'Preguntas Frecuentes',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const FAQScreen())),
-              ),
-              _buildDivider(),
-              _buildTile(
-                icon: LucideIcons.messageCircle,
-                iconColor: AppColors.pierVerde,
-                title: 'Contacto',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const ContactScreen())),
-              ),
-              _buildDivider(),
-              _buildTile(
-                icon: LucideIcons.shield,
-                iconColor: AppColors.pierVerde,
-                title: 'Términos Legales y Privacidad',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const LegalScreen())),
-                last: true,
-              ),
-            ]),
+          _seccion(
+            'acerca-opciones',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _buildCard(children: [
+                _buildTile(
+                  icon: LucideIcons.bookOpen,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Nuestra Historia',
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const AboutUsScreen())),
+                ),
+                _buildDivider(),
+                _buildTile(
+                  icon: LucideIcons.circleHelp,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Preguntas Frecuentes',
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const FAQScreen())),
+                ),
+                _buildDivider(),
+                _buildTile(
+                  icon: LucideIcons.messageCircle,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Contacto',
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const ContactScreen())),
+                ),
+                _buildDivider(),
+                _buildTile(
+                  icon: LucideIcons.shield,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Términos Legales y Privacidad',
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const LegalScreen())),
+                  last: true,
+                ),
+              ]),
+            ),
           ),
 
           const SizedBox(height: 24),
 
           // ── BADGES ───────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              Expanded(child: _buildBadgeCard(
-                  LucideIcons.cookie, 'Artesanal', 'Hecho a mano')),
-              const SizedBox(width: 12),
-              Expanded(child: _buildBadgeCard(
-                  LucideIcons.flame,
-                  'Fresco', 'Horneado hoy')),
-            ]),
+          _seccion(
+            'insignias',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(children: [
+                Expanded(child: _buildBadgeCard(
+                    LucideIcons.cookie, 'Artesanal', 'Hecho a mano')),
+                const SizedBox(width: 12),
+                Expanded(child: _buildBadgeCard(
+                    LucideIcons.flame,
+                    'Fresco', 'Horneado hoy')),
+              ]),
+            ),
           ),
 
           const SizedBox(height: 24),
 
           // ── CERRAR SESIÓN ─────────────────────────────────────────
           // Se hunde al tocarlo; al cerrar la sesión se apaga y se cierra.
-          Aparicion(
-            visible: isAuth,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: PresionEscala(
-                child: GestureDetector(
-                  onTap: () => _showLogoutDialog(auth),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: AppColors.error.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(children: [
-                      Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(LucideIcons.logOut,
-                            color: AppColors.error, size: 18),
+          _seccion(
+            'cerrar-sesion',
+            Aparicion(
+              visible: isAuth,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: PresionEscala(
+                  child: GestureDetector(
+                    onTap: () => _showLogoutDialog(auth),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: AppColors.error.withValues(alpha: 0.3)),
                       ),
-                      const SizedBox(width: 14),
-                      const Text('Cerrar sesión',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.error)),
-                    ]),
+                      child: Row(children: [
+                        Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(LucideIcons.logOut,
+                              color: AppColors.error, size: 18),
+                        ),
+                        const SizedBox(width: 14),
+                        const Text('Cerrar sesión',
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.error)),
+                      ]),
+                    ),
                   ),
                 ),
               ),
@@ -384,27 +453,31 @@ class _MoreScreenState extends State<MoreScreen> {
           const SizedBox(height: 28),
 
           // ── FOOTER ───────────────────────────────────────────────
-          Column(children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _footerIcon(LucideIcons.circleHelp),
-                const SizedBox(width: 20),
-                _footerIcon(LucideIcons.shieldAlert),
-                const SizedBox(width: 20),
-                _footerIcon(LucideIcons.info),
-              ],
-            ),
-            const SizedBox(height: 10),
-            const Text('Versión ${AppVersion.name} • Pier Repostería',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500)),
-            const SizedBox(height: 4),
-            const Text('Hecho con amor en la panadería',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-          ]),
+          _seccion(
+            'pie',
+            Column(children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _footerIcon(LucideIcons.circleHelp),
+                  const SizedBox(width: 20),
+                  _footerIcon(LucideIcons.shieldAlert),
+                  const SizedBox(width: 20),
+                  _footerIcon(LucideIcons.info),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Text('Versión ${AppVersion.name} • Pier Repostería',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500)),
+              const SizedBox(height: 4),
+              const Text('Hecho con amor en la panadería',
+                  style: TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+            ]),
+          ),
 
           const SizedBox(height: 40),
         ],
@@ -433,9 +506,12 @@ class _MoreScreenState extends State<MoreScreen> {
                   fontFamily: 'Playfair Display')),
           const SizedBox(height: 12),
           // La caja de carga se funde en la tarjeta y el espacio crece con
-          // ella (solo con la pestaña a la vista: ver _CambioMas).
+          // ella (solo con la pestaña a la vista: ver _CambioMas). Las dos
+          // se anclan arriba, como el espacio que crece: centrada en la
+          // tarjeta, la caja bajaría 80 dp fuera del recorte al cruzarse.
           _CambioMas(
             conTamano: true,
+            alineacion: AlignmentDirectional.topStart,
             child: _vm.cargandoContacto
                 ? KeyedSubtree(
                     key: const ValueKey<String>('cargando'),

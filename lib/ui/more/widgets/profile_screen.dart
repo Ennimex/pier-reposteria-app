@@ -269,7 +269,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
             // Indicador → vacío o carrusel: fundido a través y el espacio
-            // crece o se encoge con el contenido.
+            // crece o se encoge con el contenido. Anclados arriba, como el
+            // espacio: centrado, el indicador bajaría fuera del recorte al
+            // cruzarse con el carrusel y el «vacío» brincaría al quedarse
+            // solo.
             SliverToBoxAdapter(
               child: EntradaSuave(
                 orden: 2,
@@ -280,6 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   alignment: AlignmentDirectional.topStart,
                   child: CambioAnimado(
                     tipo: TipoCambio.atravesar,
+                    alineacion: AlignmentDirectional.topStart,
                     child: _vm.cargandoFavoritos
                         ? KeyedSubtree(
                             key: const ValueKey<String>('cargando'),
@@ -363,8 +367,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               )
             else if (pedidos.isEmpty)
+              // Con su propia Key: llega cuando el indicador se va (no hereda
+              // el estado de la entrada del indicador) y sube en ese momento.
               const SliverToBoxAdapter(
                 child: EntradaSuave(
+                  key: ValueKey<String>('sin-pedidos'),
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Text('Sin pedidos aún',
@@ -597,58 +604,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            // La píldora se hunde al tocarla; el ícono y el texto cambian
-            // en sitio y su ancho se ajusta sin saltos.
-            PresionEscala(
-              escala: AppMovimiento.escalaPresionChica,
-              child: GestureDetector(
-                onTap: reordenando ? null : onReordenar,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color:
-                            AppColors.textSecondary.withValues(alpha: 0.25)),
-                  ),
-                  child: AnimatedSize(
-                    duration: AppMovimiento.reducido(context)
-                        ? _instante
-                        : AppMovimiento.corta,
-                    curve: AppMovimiento.curvaEnfasis,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CambioAnimado(
-                          tipo: TipoCambio.escalar,
-                          alineacion: Alignment.center,
-                          child: reordenando
-                              ? SizedBox(
-                                  key: const ValueKey<String>('cargando'),
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.pierVerde),
-                                )
-                              : const Icon(LucideIcons.rotateCcw,
-                                  key: ValueKey<String>('reordenar'),
-                                  size: 14,
-                                  color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(width: 4),
-                        CambioAnimado(
-                          child: Text(
-                              reordenando ? 'Agregando…' : 'Reordenar',
-                              key: ValueKey<bool>(reordenando),
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500)),
-                        ),
-                      ],
+            // La píldora se hunde al tocarla (mientras reordena no recibe el
+            // toque: no se hunde); el ícono y el texto cambian en sitio y su
+            // ancho se ajusta sin saltos.
+            IgnorePointer(
+              ignoring: reordenando,
+              child: PresionEscala(
+                escala: AppMovimiento.escalaPresionChica,
+                child: GestureDetector(
+                  onTap: reordenando ? null : onReordenar,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.25)),
+                    ),
+                    child: AnimatedSize(
+                      duration: AppMovimiento.reducido(context)
+                          ? _instante
+                          : AppMovimiento.corta,
+                      curve: AppMovimiento.curvaEnfasis,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CambioAnimado(
+                            tipo: TipoCambio.escalar,
+                            alineacion: Alignment.center,
+                            child: reordenando
+                                ? SizedBox(
+                                    key: const ValueKey<String>('cargando'),
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.pierVerde),
+                                  )
+                                : const Icon(LucideIcons.rotateCcw,
+                                    key: ValueKey<String>('reordenar'),
+                                    size: 14,
+                                    color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(width: 4),
+                          CambioAnimado(
+                            child: Text(
+                                reordenando ? 'Agregando…' : 'Reordenar',
+                                key: ValueKey<bool>(reordenando),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500)),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

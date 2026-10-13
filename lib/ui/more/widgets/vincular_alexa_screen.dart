@@ -386,8 +386,10 @@ class _OndasMicrofono extends StatefulWidget {
 
 class _OndasMicrofonoState extends State<_OndasMicrofono>
     with SingleTickerProviderStateMixin {
-  static const Duration _duracionOnda = Duration(milliseconds: 700);
-  static const Duration _entreOndas = Duration(milliseconds: 260);
+  // Cada onda se abre como los anillos de la app (AppMovimiento.relleno) y
+  // la segunda sale un tramo de sección después.
+  static const Duration _duracionOnda = AppMovimiento.relleno;
+  static const Duration _entreOndas = AppMovimiento.media;
 
   late final AnimationController _control = AnimationController(
     vsync: this,
@@ -412,11 +414,16 @@ class _OndasMicrofonoState extends State<_OndasMicrofono>
     super.dispose();
   }
 
-  // El tramo del reloj que le toca a la onda que sale tras [espera].
+  // El tramo del reloj que le toca a la onda que sale tras [espera]. Cada
+  // extremo es una sola división: el de la última onda vale 1 exacto
+  // (Interval no admite pasarse de 1).
   Interval _tramo(Duration espera) {
     final total = _control.duration!.inMicroseconds;
-    final inicio = (widget.retraso + espera).inMicroseconds / total;
-    return Interval(inicio, inicio + _duracionOnda.inMicroseconds / total);
+    final inicio = widget.retraso + espera;
+    return Interval(
+      inicio.inMicroseconds / total,
+      (inicio + _duracionOnda).inMicroseconds / total,
+    );
   }
 
   Widget _onda(Interval tramo) {
@@ -452,13 +459,17 @@ class _OndasMicrofonoState extends State<_OndasMicrofono>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        _onda(_tramo(Duration.zero)),
-        _onda(_tramo(_entreOndas)),
-        widget.child,
-      ],
+    // Capa propia: las ondas duran más que la cascada de la página y no
+    // deben repintar la pantalla entera en cada cuadro.
+    return RepaintBoundary(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          _onda(_tramo(Duration.zero)),
+          _onda(_tramo(_entreOndas)),
+          widget.child,
+        ],
+      ),
     );
   }
 }
@@ -482,7 +493,7 @@ class _RevelarCodigoState extends State<_RevelarCodigo>
 
   late final AnimationController _control = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 520),
+    duration: AppMovimiento.enfasis,
   );
   late final Animation<double> _avance = _control.drive(_curva);
   bool _preparada = false;

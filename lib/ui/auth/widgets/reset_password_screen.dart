@@ -65,13 +65,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (error == null) return; // ya había un intento en curso
     // Si lo capturado era válido, el backend rechazó el código: se borra
     // para volver a capturarlo.
-    if (ResetPasswordViewModel.validar(codigo, password, confirmacion) ==
-        null) {
+    final valido =
+        ResetPasswordViewModel.validar(codigo, password, confirmacion) == null;
+    if (valido) {
       _codigo.limpiar();
     }
-    final enCodigo = codigo.length < 6 ||
-        ResetPasswordViewModel.validar(codigo, password, confirmacion) ==
-            null;
+    // Se sacude lo que causó el error: el código (incompleto o rechazado) o
+    // las contraseñas.
+    final enCodigo = codigo.length < 6 || valido;
     setState(() {
       if (enCodigo) {
         _erroresCodigo++;
@@ -248,9 +249,10 @@ class _DialogoRestablecida extends StatelessWidget {
 
   final VoidCallback onIrAlLogin;
 
-  // El diálogo ya es visible desde su primer cuadro (fundido corto): el
-  // texto espera a que la palomita esté cayendo.
-  static const Duration _trasInsignia = Duration(milliseconds: 160);
+  // El diálogo es una ruta recién empujada (fundido corto): el texto espera
+  // lo mismo que el contenido de una página empujada, y así llega cuando
+  // la palomita ya está cayendo.
+  static const Duration _trasInsignia = AppMovimiento.trasEmpuje;
 
   @override
   Widget build(BuildContext context) {
@@ -352,9 +354,11 @@ class _InsigniaExitoState extends State<_InsigniaExito>
     curve: const Interval(0.4, 0.6, curve: Curves.easeOut),
   );
 
+  // El pop de una insignia (AppMovimiento.enfasis): halo, disco y palomita
+  // se reparten ese tiempo con sus tramos.
   late final AnimationController _control = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 700),
+    duration: AppMovimiento.enfasis,
   );
   bool _preparada = false;
 

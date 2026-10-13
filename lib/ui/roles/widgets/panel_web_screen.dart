@@ -286,20 +286,20 @@ class _IconoRol extends StatefulWidget {
 class _IconoRolState extends State<_IconoRol>
     with SingleTickerProviderStateMixin {
   static const double _diametro = 110;
-  static const Duration _caida = Duration(milliseconds: 520);
-  static const Duration _halo = Duration(milliseconds: 900);
+  // La caída es el pop de un ícono; el halo se abre como los anillos de la
+  // app y sale a media caída (al pasarse del rebote).
+  static const Duration _caida = AppMovimiento.enfasis;
+  static const Duration _halo = AppMovimiento.relleno;
+  static const Duration _desfaseHalo = AppMovimiento.corta;
 
   late final AnimationController _control = AnimationController(
     vsync: this,
-    duration: widget.retraso + _halo + const Duration(milliseconds: 260),
+    duration: widget.retraso + _desfaseHalo + _halo,
   );
   bool _preparada = false;
 
   late final Interval _tramoCaida = _tramo(Duration.zero, _caida);
-  late final Interval _tramoHalo = _tramo(
-    const Duration(milliseconds: 260),
-    _halo,
-  );
+  late final Interval _tramoHalo = _tramo(_desfaseHalo, _halo);
 
   // El tramo del reloj que va de [espera] a [espera] + [duracion] (después
   // del retraso de la página).
@@ -351,40 +351,47 @@ class _IconoRolState extends State<_IconoRol>
         border: Border.all(color: Colors.white, width: 2),
       ),
     );
-    return AnimatedBuilder(
-      animation: _control,
-      builder: (context, _) {
-        final valor = _control.value;
-        final caida = _tramoCaida.transform(valor);
-        final h = _tramoHalo.transform(valor);
-        // El halo solo se ve mientras se abre (antes y después, nada).
-        final veHalo = valor > _tramoHalo.begin && valor < _tramoHalo.end;
-        return Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Opacity(
-                  opacity: veHalo ? 0.35 * (1 - h) : 0,
-                  child: Transform.scale(
-                    scale: 1 + 0.6 * AppMovimiento.curvaEntrada.transform(h),
-                    child: halo,
+    // Capa propia: el halo sigue un poco después de la cascada y no debe
+    // repintar la página entera en cada cuadro.
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _control,
+        builder: (context, _) {
+          final valor = _control.value;
+          final caida = _tramoCaida.transform(valor);
+          final h = _tramoHalo.transform(valor);
+          // El halo solo se ve mientras se abre (antes y después, nada).
+          final veHalo = valor > _tramoHalo.begin && valor < _tramoHalo.end;
+          return Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: veHalo ? 0.35 * (1 - h) : 0,
+                    child: Transform.scale(
+                      scale:
+                          1 + 0.6 * AppMovimiento.curvaEntrada.transform(h),
+                      child: halo,
+                    ),
                   ),
                 ),
               ),
-            ),
-            Opacity(
-              // Aparece en el primer 40 % de la caída.
-              opacity: Curves.easeOut.transform(clampDouble(caida * 2.5, 0, 1)),
-              child: Transform.scale(
-                scale: 0.7 + 0.3 * AppMovimiento.curvaRebote.transform(caida),
-                child: circulo,
+              Opacity(
+                // Aparece en el primer 40 % de la caída.
+                opacity:
+                    Curves.easeOut.transform(clampDouble(caida * 2.5, 0, 1)),
+                child: Transform.scale(
+                  scale:
+                      0.7 + 0.3 * AppMovimiento.curvaRebote.transform(caida),
+                  child: circulo,
+                ),
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

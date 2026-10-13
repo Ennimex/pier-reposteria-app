@@ -554,9 +554,9 @@ class _CajaCodigo extends StatefulWidget {
 
 class _CajaCodigoState extends State<_CajaCodigo>
     with TickerProviderStateMixin {
-  // Cada caja sube y regresa en este tiempo; la ola completa dura lo que
-  // tarda en llegar a la sexta.
-  static const Duration _subida = Duration(milliseconds: 280);
+  // Cada caja sube y regresa en este tiempo (un cambio en sitio); la ola
+  // completa dura lo que tarda en llegar a la sexta.
+  static const Duration _subida = AppMovimiento.corta;
   static const double _alturaOla = 6;
 
   static final Animatable<double> _escalaPop = TweenSequence<double>(
@@ -587,12 +587,16 @@ class _CajaCodigoState extends State<_CajaCodigo>
     CurveTween(curve: _tramo(widget.indice)),
   );
 
-  // El tramo de la ola que le toca a la caja [indice] (0 a 5).
+  // El tramo de la ola que le toca a la caja [indice] (0 a 5). Cada extremo
+  // es una sola división: el de la sexta vale 1 exacto (Interval no admite
+  // pasarse de 1).
   static Curve _tramo(int indice) {
     final total = (AppMovimiento.paso * 5 + _subida).inMicroseconds;
-    final inicio = (AppMovimiento.paso * indice).inMicroseconds / total;
-    final fin = inicio + _subida.inMicroseconds / total;
-    return Interval(inicio, fin);
+    final inicio = AppMovimiento.paso * indice;
+    return Interval(
+      inicio.inMicroseconds / total,
+      (inicio + _subida).inMicroseconds / total,
+    );
   }
 
   @override

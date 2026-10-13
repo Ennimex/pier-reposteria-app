@@ -166,24 +166,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   // Guardar — verde si hay cambios pendientes (el color
-                  // cambia con un fundido y el texto en sitio).
-                  PresionEscala(
-                    escala: AppMovimiento.escalaPresionChica,
-                    child: GestureDetector(
-                      onTap: (guardando || !cambios) ? null : _guardar,
-                      child: TweenAnimationBuilder<Color?>(
-                        tween: ColorTween(end: colorGuardar),
-                        duration: AppMovimiento.duracion(
-                            context, AppMovimiento.corta),
-                        builder: (context, color, _) => CambioAnimado(
-                          alineacion: AlignmentDirectional.centerEnd,
-                          child: Text(
-                            guardando ? 'Guardando...' : 'Guardar',
-                            key: ValueKey<bool>(guardando),
-                            style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: color),
+                  // cambia con un fundido y el texto en sitio). Deshabilitado
+                  // no recibe el toque: así tampoco se hunde.
+                  IgnorePointer(
+                    ignoring: guardando || !cambios,
+                    child: PresionEscala(
+                      escala: AppMovimiento.escalaPresionChica,
+                      child: GestureDetector(
+                        onTap: (guardando || !cambios) ? null : _guardar,
+                        child: TweenAnimationBuilder<Color?>(
+                          tween: ColorTween(end: colorGuardar),
+                          duration: AppMovimiento.duracion(
+                              context, AppMovimiento.corta),
+                          builder: (context, color, _) => CambioAnimado(
+                            alineacion: AlignmentDirectional.centerEnd,
+                            child: Text(
+                              guardando ? 'Guardando...' : 'Guardar',
+                              key: ValueKey<bool>(guardando),
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: color),
+                            ),
                           ),
                         ),
                       ),
@@ -193,11 +197,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 28),
+            // 16 + 12 de margen interno = los 28 de siempre: el avatar queda
+            // donde estaba y el anillo del guardado (crece 9 dp por fuera del
+            // avatar) cabe dentro del recorte del scroll.
+            const SizedBox(height: 16),
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
                 child: Form(
                   key: _formKey,
                   child: Column(

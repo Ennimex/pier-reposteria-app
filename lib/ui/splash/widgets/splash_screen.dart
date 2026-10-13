@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen>
   // La entrada dura lo que falta para la salida: 1500 + 300 = 1800 ms, la
   // espera mínima de siempre.
   static const Duration _duracionEntrada = Duration(milliseconds: 1500);
-  static const Duration _duracionSalida = Duration(milliseconds: 300);
+  static const Duration _duracionSalida = AppMovimiento.media;
 
   // Promedio de la foto de fondo: bajo el velo negro del 40 % da #36402B,
   // el color del arranque nativo (Android e iOS).
@@ -328,16 +328,20 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     const SizedBox(height: 60),
                     // El indicador solo se asoma si la sesión tarda más que
-                    // la entrada; si ya está lista, nunca destella.
+                    // la entrada; si ya está lista, nunca destella. Gira sin
+                    // fin: en su propia capa para no repintar el logo y los
+                    // textos (con sombras) en cada cuadro.
                     AnimatedOpacity(
                       opacity: _sesionLista ? 0 : 1,
                       duration: AppMovimiento.duracion(
                           context, AppMovimiento.rapida),
                       child: FadeTransition(
                         opacity: _entrada.drive(_opacidadEspera),
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 3,
+                        child: const RepaintBoundary(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
                         ),
                       ),
                     ),
@@ -391,7 +395,8 @@ class _PlatoQueSeAbre extends CustomPainter {
 
   // Crece acelerando (al final cubre la pantalla de golpe) y se vuelve
   // arena mientras crece.
-  static const Curve _crecer = Interval(0.25, 1, curve: Curves.easeInCubic);
+  static const Curve _crecer =
+      Interval(0.25, 1, curve: AppMovimiento.curvaSalida);
   static const Curve _aArena = Interval(0.25, 0.9, curve: Curves.easeIn);
 
   @override
