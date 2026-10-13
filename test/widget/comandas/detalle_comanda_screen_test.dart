@@ -4,19 +4,13 @@
 // la confirmó un compañero, volver a firmar, fotos a pantalla completa y
 // abrir el detalle desde la agenda.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:pier_pasteleria/config/dependencies.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_screen.dart';
 import 'package:pier_pasteleria/ui/comandas/widgets/detalle_comanda_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/montar_comandas.dart';
 
 const _detalle = '/comandas/7';
 const _confirmar = '/comandas/7/confirmar';
@@ -28,56 +22,14 @@ final Map<String, dynamic> _firmaHornos = firmaJson(
   fecha: 'f',
 );
 
-/// Monta [pantalla] con sesión de [rol] dentro de un router con login.
+/// Monta [pantalla] (por defecto el detalle de la comanda 7) con sesión de
+/// [rol].
 Future<void> _montar(
   WidgetTester tester,
   FakeApiClient api, {
   Widget pantalla = const DetalleComandaScreen(id: 7),
   String rol = 'hornos',
-}) async {
-  tester.view
-    ..physicalSize = const Size(1080, 7200)
-    ..devicePixelRatio = 3;
-  addTearDown(tester.view.reset);
-  const google = MethodChannel('plugins.flutter.io/google_sign_in');
-  final mensajero = tester.binding.defaultBinaryMessenger
-    ..setMockMethodCallHandler(google, (_) async => null);
-  addTearDown(() => mensajero.setMockMethodCallHandler(google, null));
-  SharedPreferences.setMockInitialValues({});
-  final router = GoRouter(
-    initialLocation: AppRoutes.produccion,
-    routes: [
-      GoRoute(path: AppRoutes.produccion, builder: (_, _) => pantalla),
-      GoRoute(
-        path: AppRoutes.login,
-        builder: (_, _) => const Scaffold(body: Text('LOGIN')),
-      ),
-    ],
-  );
-  final listo = ValueNotifier(false);
-  late BuildContext contexto;
-  await tester.pumpWidget(
-    MultiProvider(
-      providers: dependencias(api),
-      child: ValueListenableBuilder<bool>(
-        valueListenable: listo,
-        builder: (context, montar, _) {
-          contexto = context;
-          return montar
-              ? MaterialApp.router(routerConfig: router)
-              : const SizedBox();
-        },
-      ),
-    ),
-  );
-  contexto.read<AuthProvider>().abrirSesion({
-    'id': 1,
-    'nombre': 'Rosa',
-    'rol': rol,
-  });
-  listo.value = true;
-  await tester.pumpAndSettle();
-}
+}) => montarComandas(tester, api, pantalla: pantalla, rol: rol);
 
 Future<void> _tocarEnterado(WidgetTester tester) async {
   await tester.tap(find.widgetWithText(FilledButton, 'Enterado'));

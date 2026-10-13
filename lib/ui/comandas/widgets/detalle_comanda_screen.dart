@@ -1,22 +1,30 @@
 // lib/ui/comandas/widgets/detalle_comanda_screen.dart
 //
-// Detalle de una comanda para producción (#128): lo que hay que hacer (sin
+// Detalle de una comanda. Producción (#128): lo que hay que hacer (sin
 // montos), las firmas de cada área y el botón «Enterado» del color de mi
-// área, ligado a la versión que estoy viendo. Si la comanda cambió mientras
+// área, ligado a la versión que estoy viendo; si la comanda cambió mientras
 // la leía, muestra exactamente qué cambió antes de volver a confirmar.
+// Quien cobra (#129): además el cobro, «Entregar», «Cancelar comanda» (si
+// puede) e «Imprimir», que abre la hoja de impresión de la web.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/config/business_info.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/domain/models/comanda.dart';
 import 'package:pier_pasteleria/ui/comandas/view_model/detalle_comanda_view_model.dart';
 import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_partes.dart';
+import 'package:pier_pasteleria/ui/comandas/widgets/comandas_acciones.dart';
 import 'package:pier_pasteleria/ui/comandas/widgets/comandas_formato.dart';
 import 'package:pier_pasteleria/ui/comandas/widgets/detalle_comanda_partes.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/utils/command.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+const _ambar = Color(0xFFB45309);
 
 class DetalleComandaScreen extends StatefulWidget {
   /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
@@ -42,6 +50,8 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
     WidgetsBinding.instance.addObserver(this);
     _vm.addListener(_revisarSesion);
     _vm.enterado.addListener(_alConfirmar);
+    _vm.entregar.addListener(_alEntregar);
+    _vm.cancelar.addListener(_alCancelar);
     unawaited(_vm.cargar());
   }
 
@@ -54,6 +64,8 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _vm.enterado.removeListener(_alConfirmar);
+    _vm.entregar.removeListener(_alEntregar);
+    _vm.cancelar.removeListener(_alCancelar);
     _vm
       ..removeListener(_revisarSesion)
       ..dispose();
@@ -66,23 +78,63 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
     unawaited(salirDeComandas(context, mensaje: _vm.error));
   }
 
-  /// Aviso del resultado del «Enterado»: verde si quedó, ámbar si la
-  /// comanda cambió o ya la confirmaron, rojo si falló.
-  void _alConfirmar() {
-    final enterado = _vm.enterado;
-    if (enterado.corriendo || _vm.sesionInvalida) return;
-    final resultado = enterado.resultado;
-    final error = enterado.error;
+  void _alConfirmar() =>
+      _avisarResultado(_vm.enterado, (m) => (m, AppColors.pierVerde));
+
+  /// Entregada; si producción no había confirmado, lo dice en ámbar.
+  void _alEntregar() => _avisarResultado(
+    _vm.entregar,
+    (r) => (
+      [r.mensaje, ...r.advertencias].join('\n'),
+      r.advertencias.isEmpty ? AppColors.pierVerde : _ambar,
+    ),
+  );
+
+  void _alCancelar() =>
+      _avisarResultado(_vm.cancelar, (m) => (m, AppColors.pierVerde));
+
+  /// Aviso al terminar [comando]: [exito] da el texto y el color; ámbar si
+  /// la comanda cambió o ya la confirmaron, rojo si falló.
+  void _avisarResultado<T>(
+    Command<T> comando,
+    (String, Color) Function(T resultado) exito,
+  ) {
+    if (comando.corriendo || _vm.sesionInvalida) return;
+    final resultado = comando.resultado;
+    final error = comando.error;
     if (resultado != null) {
-      avisoComandas(context, resultado, color: AppColors.pierVerde);
+      final (texto, color) = exito(resultado);
+      avisoComandas(context, texto, color: color);
     } else if (error is ConflictoComandaException) {
-      avisoComandas(context, error.message, color: const Color(0xFFB45309));
+      avisoComandas(context, error.message, color: _ambar);
     } else if (error is ApiException) {
       avisoComandas(context, error.message);
     } else {
       return;
     }
-    enterado.limpiar();
+    comando.limpiar();
+  }
+
+  Future<void> _entregar(DetalleComanda d) async {
+    final saldo = await pedirSaldoCobrado(context, d);
+    if (saldo != null) unawaited(_vm.entregar.execute(saldo));
+  }
+
+  Future<void> _cancelar(DetalleComanda d) async {
+    final motivo = await pedirMotivoCancelacion(context, d.folio);
+    if (motivo != null) unawaited(_vm.cancelar.execute(motivo));
+  }
+
+  /// La hoja de impresión vive en la web (carta, blanco y negro).
+  Future<void> _imprimir(DetalleComanda d) async {
+    final url = '${BusinessInfo.sitioWeb}/comandas/${d.id}/imprimir';
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && mounted) {
+      avisoComandas(context, 'No se pudo abrir la hoja de impresión');
+    }
   }
 
   Future<void> _tocarEnterado(DetalleComanda d) async {
@@ -110,28 +162,52 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
     return ListenableBuilder(
-      listenable: Listenable.merge([_vm, _vm.enterado]),
+      listenable: Listenable.merge([
+        _vm,
+        _vm.enterado,
+        _vm.entregar,
+        _vm.cancelar,
+      ]),
       builder: (context, _) {
         final d = _vm.detalle;
-        final area = d?.confirmar;
         return Scaffold(
           backgroundColor: AppColors.pierArena,
           appBar: AppBar(
             backgroundColor: AppColors.pierVerde,
             foregroundColor: Colors.white,
             title: Text(d == null ? 'Comanda' : 'Comanda #${d.folio}'),
+            actions: [
+              if (d != null && d.puedeImprimir)
+                IconButton(
+                  tooltip: 'Imprimir',
+                  icon: const Icon(LucideIcons.printer),
+                  onPressed: () => unawaited(_imprimir(d)),
+                ),
+            ],
           ),
           body: _contenido(d),
-          bottomNavigationBar: d == null || area == null
-              ? null
-              : BarraEnterado(
-                  area: area,
-                  refirma: d.firma(area).version != null,
-                  corriendo: _vm.enterado.corriendo,
-                  alTocar: () => unawaited(_tocarEnterado(d)),
-                ),
+          bottomNavigationBar: d == null ? null : _barra(d),
         );
       },
+    );
+  }
+
+  /// Producción: «Enterado» si le toca. Quien cobra: entregar y cancelar.
+  Widget? _barra(DetalleComanda d) {
+    final area = d.confirmar;
+    if (area != null) {
+      return BarraEnterado(
+        area: area,
+        refirma: d.firma(area).version != null,
+        corriendo: _vm.enterado.corriendo,
+        alTocar: () => unawaited(_tocarEnterado(d)),
+      );
+    }
+    if (!d.puedeEntregar && !d.puedeCancelar) return null;
+    return BarraAcciones(
+      corriendo: _vm.entregar.corriendo || _vm.cancelar.corriendo,
+      alEntregar: d.puedeEntregar ? () => unawaited(_entregar(d)) : null,
+      alCancelar: d.puedeCancelar ? () => unawaited(_cancelar(d)) : null,
     );
   }
 
@@ -211,6 +287,9 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
                 d.clienteNombre,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
+              // El teléfono solo le sirve a quien cobra y atiende al cliente
+              if (d.total != null && d.clienteTelefono.isNotEmpty)
+                Text(d.clienteTelefono),
               const SizedBox(height: 4),
               Text(
                 'Tomó la comanda: ${d.tomadoPorNombre}',
@@ -218,6 +297,7 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
               ),
             ],
           ),
+          if (d.total != null) _Cobro(d),
           SeccionDetalle(
             titulo: 'Confirmación de producción',
             icono: LucideIcons.clipboardCheck,
@@ -333,6 +413,56 @@ class _Cabecera extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Montos (solo llegan a quien cobra). Entregada: lo que se cobró.
+class _Cobro extends StatelessWidget {
+  const _Cobro(this.detalle);
+
+  final DetalleComanda detalle;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = detalle;
+    final montos = <(String, double?)>[
+      ('Subtotal', d.subtotal),
+      ('Descuento', d.descuento),
+      ('Total', d.total),
+      ('Anticipo', d.anticipo),
+      if (d.estado == EstadoComanda.entregada)
+        ('Saldo cobrado', d.saldoCobrado)
+      else
+        ('Saldo', d.saldo),
+    ];
+    return SeccionDetalle(
+      titulo: 'Cobro',
+      icono: LucideIcons.wallet,
+      children: [
+        Wrap(
+          spacing: 16,
+          runSpacing: 10,
+          children: [
+            for (final (etiqueta, monto) in montos)
+              SizedBox(
+                width: 130,
+                child: DatoComanda(
+                  etiqueta,
+                  monto == null ? null : moneda(monto),
+                ),
+              ),
+          ],
+        ),
+        if (d.entregadaPorNombre case final quien?)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              'Entregó: $quien',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+      ],
     );
   }
 }

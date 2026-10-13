@@ -377,6 +377,16 @@ class DetalleComanda {
           : null,
       historial: _mapas(c['historial']).map(EventoHistorial.fromJson).toList(),
       confirmar: AreaProduccion.deRol(permisos['confirmar']?.toString()),
+      subtotal: _monto(c['subtotal']),
+      descuento: _monto(c['descuento']),
+      total: _monto(c['total']),
+      anticipo: _monto(c['anticipo']),
+      saldo: _monto(c['saldo']),
+      saldoCobrado: _monto(c['saldo_cobrado']),
+      entregadaPorNombre: _opcional(c['entregada_por_nombre']),
+      puedeEntregar: permisos['entregar'] == true,
+      puedeCancelar: permisos['cancelar'] == true,
+      puedeImprimir: permisos['imprimir'] == true,
     );
   }
 
@@ -401,6 +411,16 @@ class DetalleComanda {
     required this.cambiosPendientes,
     required this.historial,
     required this.confirmar,
+    required this.subtotal,
+    required this.descuento,
+    required this.total,
+    required this.anticipo,
+    required this.saldo,
+    required this.saldoCobrado,
+    required this.entregadaPorNombre,
+    required this.puedeEntregar,
+    required this.puedeCancelar,
+    required this.puedeImprimir,
   });
 
   final int id;
@@ -434,6 +454,27 @@ class DetalleComanda {
   /// Mi área, si me toca confirmar «Enterado» (activa y sin mi firma
   /// vigente); null si no.
   final AreaProduccion? confirmar;
+
+  /// Montos: null para hornos y decoración (el backend no se los manda).
+  final double? subtotal;
+  final double? descuento;
+  final double? total;
+  final double? anticipo;
+  final double? saldo;
+
+  /// Lo que se cobró al entregarla.
+  final double? saldoCobrado;
+  final String? entregadaPorNombre;
+
+  /// Permisos de quien cobra (empleado, gerencia y dirección): entregar
+  /// cualquier activa; cancelar solo quien la tomó, gerencia o dirección.
+  final bool puedeEntregar;
+  final bool puedeCancelar;
+  final bool puedeImprimir;
+
+  /// Áreas que no han confirmado la versión actual.
+  List<AreaProduccion> get areasSinConfirmar =>
+      AreaProduccion.values.where((a) => !firma(a).vigente).toList();
 
   List<RenglonComanda> get pasteles =>
       renglones.where((r) => r.esPastel).toList();

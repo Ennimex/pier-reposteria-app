@@ -22,7 +22,6 @@ import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_screen.dart'
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/main/widgets/main_screen.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_main_screen.dart';
-import 'package:pier_pasteleria/ui/roles/widgets/panel_web_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -170,17 +169,17 @@ void main() {
     //   Dado que tengo una cuenta verificada
     //   Cuando inicio sesión con mi correo y mi contraseña
     //   Entonces entro a la pantalla de inicio que corresponde a mi rol
-    //     (cliente → /main, repartidor → /repartidor, empleado, gerencia y
-    //     dirección general → /panel-web, hornos y decoración → /produccion,
-    //     su agenda de comandas: #126 y #127).
+    //     (cliente → /main, repartidor → /repartidor; empleado, gerencia,
+    //     dirección general, hornos y decoración → /comandas, su agenda de
+    //     comandas: #126, #127 y #129).
     final destinos = <String, (String, Type)>{
       'cliente': (AppRoutes.main, MainScreen),
       'repartidor': (AppRoutes.repartidor, RepartidorMainScreen),
-      'empleado': (AppRoutes.panelWeb, PanelWebScreen),
-      'gerencia': (AppRoutes.panelWeb, PanelWebScreen),
-      'direccion_general': (AppRoutes.panelWeb, PanelWebScreen),
-      'hornos': (AppRoutes.produccion, AgendaComandasScreen),
-      'decoracion': (AppRoutes.produccion, AgendaComandasScreen),
+      'empleado': (AppRoutes.comandas, AgendaComandasScreen),
+      'gerencia': (AppRoutes.comandas, AgendaComandasScreen),
+      'direccion_general': (AppRoutes.comandas, AgendaComandasScreen),
+      'hornos': (AppRoutes.comandas, AgendaComandasScreen),
+      'decoracion': (AppRoutes.comandas, AgendaComandasScreen),
     };
     for (final MapEntry(key: rol, value: (ruta, pantalla))
         in destinos.entries) {

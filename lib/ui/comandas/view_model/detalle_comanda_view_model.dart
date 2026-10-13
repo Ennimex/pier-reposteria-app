@@ -1,7 +1,7 @@
 // lib/ui/comandas/view_model/detalle_comanda_view_model.dart
 //
-// Estado del detalle de una comanda (#128): la comanda completa y el
-// «Enterado» de producción. Si la comanda cambió mientras se leía (409
+// Estado del detalle de una comanda (#128, #129): la comanda completa, el
+// «Enterado» de producción y, para quien cobra, entregar y cancelar. Si la comanda cambió mientras se leía (409
 // VERSION_DESACTUALIZADA), recarga y deja en [cambio] exactamente qué cambió,
 // como la web (src/comandas/DetalleComanda.tsx); si otra persona del área ya
 // la confirmó (409 YA_CONFIRMADA), recarga para mostrar su firma. Lo crea
@@ -24,6 +24,12 @@ class DetalleComandaViewModel extends ChangeNotifier {
     required this.id,
   }) : _repo = repo {
     enterado = Command0<String>(_confirmar);
+    entregar = Command1<EntregaComanda, double>(
+      (saldo) => _yRecargar(_repo.entregar(id, saldoCobrado: saldo)),
+    );
+    cancelar = Command1<String, String>(
+      (motivo) => _yRecargar(_repo.cancelar(id, motivo: motivo)),
+    );
   }
 
   final ComandasRepository _repo;
@@ -33,6 +39,12 @@ class DetalleComandaViewModel extends ChangeNotifier {
   /// es el mensaje del backend; su error, la ApiException (incluido el
   /// conflicto de versión).
   late final Command0<String> enterado;
+
+  /// Marca la comanda entregada con el saldo cobrado.
+  late final Command1<EntregaComanda, double> entregar;
+
+  /// Cancela la comanda con el motivo; su resultado es el mensaje.
+  late final Command1<String, String> cancelar;
 
   DetalleComanda? _detalle;
   bool _cargando = false;
@@ -82,6 +94,24 @@ class DetalleComandaViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Corre [llamada] y, si salió bien, recarga la comanda.
+  Future<T> _yRecargar<T>(Future<T> llamada) async {
+    try {
+      final r = await llamada;
+      await recargar();
+      return r;
+    } on SesionInvalidaException catch (e) {
+      _marcarSesionInvalida(e);
+      rethrow;
+    }
+  }
+
+  void _marcarSesionInvalida(SesionInvalidaException e) {
+    _sesionInvalida = true;
+    _error = e.message;
+    _avisar();
+  }
+
   Future<String> _confirmar() async {
     final leida = _detalle;
     if (leida == null) {
@@ -106,9 +136,7 @@ class DetalleComandaViewModel extends ChangeNotifier {
       }
       rethrow;
     } on SesionInvalidaException catch (e) {
-      _sesionInvalida = true;
-      _error = e.message;
-      _avisar();
+      _marcarSesionInvalida(e);
       rethrow;
     }
   }
@@ -121,6 +149,8 @@ class DetalleComandaViewModel extends ChangeNotifier {
   void dispose() {
     _cerrado = true;
     enterado.dispose();
+    entregar.dispose();
+    cancelar.dispose();
     super.dispose();
   }
 }

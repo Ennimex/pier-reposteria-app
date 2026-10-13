@@ -121,6 +121,20 @@ class TarjetaComanda extends StatelessWidget {
                           color: AppColors.textPrimary,
                         ),
                       ),
+                      if ((c.total, c.saldo) case (
+                        final total?,
+                        final saldo?,
+                      )) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Total ${moneda(total)} · Saldo ${moneda(saldo)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
                       if (c.resumen.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(

@@ -87,3 +87,16 @@ int diasEntre(String desde, String hasta) {
 }
 
 String _dos(int n) => n.toString().padLeft(2, '0');
+
+/// '$1,250.50': montos de la comanda (solo para quien cobra).
+String moneda(double valor) {
+  final centavos = (valor * 100).round();
+  final entero = (centavos.abs() ~/ 100).toString();
+  final miles = StringBuffer();
+  for (var i = 0; i < entero.length; i++) {
+    if (i > 0 && (entero.length - i) % 3 == 0) miles.write(',');
+    miles.write(entero[i]);
+  }
+  final signo = centavos < 0 ? '-' : '';
+  return '$signo\$$miles.${_dos(centavos.abs() % 100)}';
+}
