@@ -21,6 +21,7 @@ import 'package:pier_pasteleria/ui/comandas/widgets/detalle_comanda_partes.dart'
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/utils/command.dart';
+import 'package:pier_pasteleria/utils/moneda.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 

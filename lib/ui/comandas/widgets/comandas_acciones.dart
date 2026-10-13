@@ -7,8 +7,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/comandas_formato.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/utils/moneda.dart';
 
 const _motivoMinimo = 5;
 const _motivoMaximo = 300;

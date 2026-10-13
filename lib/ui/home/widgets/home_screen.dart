@@ -3,18 +3,23 @@
 // Inicio (MVVM, Fase 4): la vista arma las secciones con lo que expone
 // HomeViewModel (categorías, promociones, reseñas, sucursales, slides y,
 // con sesión, pide de nuevo y el pedido activo) y los productos de
-// ProductProvider. Aquí solo queda escuchar la sesión, el refresco y la
-// entrada animada de las secciones.
+// ProductProvider. Al final, con sesión de cliente, «Novedades de Pier»
+// (#132: FeedViewModel), que carga más al acercarse al final. Aquí solo queda
+// escuchar la sesión, el refresco y la entrada animada de las secciones.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/feed/view_model/feed_view_model.dart';
+import 'package:pier_pasteleria/ui/feed/widgets/feed_sliver.dart';
 import 'package:pier_pasteleria/ui/home/view_model/home_view_model.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_carrusel.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_encabezado.dart';
@@ -25,10 +30,11 @@ import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.viewModel});
+  const HomeScreen({super.key, this.viewModel, this.feedViewModel});
 
-  /// Para pruebas; si es null la pantalla crea el suyo.
+  /// Para pruebas; si son null la pantalla crea los suyos.
   final HomeViewModel? viewModel;
+  final FeedViewModel? feedViewModel;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -43,11 +49,16 @@ class _HomeScreenState extends State<HomeScreen> {
         configRepo: context.read(),
         pedidosRepo: context.read(),
       );
+  late final FeedViewModel _feed;
   String? _lastUserEmail;
+
+  /// Margen (px) antes del final en el que se pide la siguiente página.
+  static const _margenCargarMas = 1500.0;
 
   @override
   void initState() {
     super.initState();
+    _feed = widget.feedViewModel ?? FeedViewModel(repo: context.read());
     PierLog.nav('→ HomeScreen');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -70,11 +81,21 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) _vm.limpiarDatosUsuario();
       });
     }
+    // Las publicaciones son solo para el cliente con sesión
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (auth.esCliente) {
+        unawaited(_feed.cargar());
+      } else {
+        _feed.limpiar();
+      }
+    });
   }
 
   @override
   void dispose() {
     _vm.dispose();
+    _feed.dispose();
     super.dispose();
   }
 
@@ -88,9 +109,33 @@ class _HomeScreenState extends State<HomeScreen> {
     PierLog.info('Refresh HomeScreen');
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
+    if (context.read<AuthProvider>().esCliente) unawaited(_feed.recargar());
     await context.read<ProductProvider>().refrescar();
     unawaited(_vm.cargar());
     await _cargarDatosUsuario();
+  }
+
+  /// Agrega desde una promoción o sugerencia del feed y lo avisa.
+  Future<void> _agregarAlCarrito(Product producto, double precio) async {
+    final avisos = ScaffoldMessenger.of(context);
+    final error = await context
+        .read<CartProvider>()
+        .addItem(producto, 1, 'chico', precio);
+    avisos.showSnackBar(SnackBar(
+      content: Text(error ?? 'Se agregó al carrito'),
+      backgroundColor: error == null ? AppColors.pierVerde : AppColors.error,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  /// Pide la siguiente página del feed al acercarse al final.
+  bool _alDesplazar(ScrollNotification n) {
+    if (n.metrics.axis == Axis.vertical &&
+        n.metrics.extentAfter < _margenCargarMas &&
+        context.read<AuthProvider>().esCliente) {
+      unawaited(_feed.cargarMas());
+    }
+    return false;
   }
 
   // Entrada en cascada de las secciones superiores: fade + slide sutil
@@ -124,7 +169,9 @@ class _HomeScreenState extends State<HomeScreen> {
           body: RefreshIndicator(
             onRefresh: _refrescar,
             color: AppColors.pierVerde,
-            child: CustomScrollView(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _alDesplazar,
+              child: CustomScrollView(
               slivers: [
                 _sliver(_entrada(0, HomeEncabezado(
                   auth: auth,
@@ -184,8 +231,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   sucursales: _vm.sucursales,
                 )),
                 _sliver(const HomePorQueElegirnos()),
+                if (auth.esCliente)
+                  FeedSliver(viewModel: _feed, alAgregar: _agregarAlCarrito),
                 _sliver(const SizedBox(height: 32)),
               ],
+            ),
             ),
           ),
         );
