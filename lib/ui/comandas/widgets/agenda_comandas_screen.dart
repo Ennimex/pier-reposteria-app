@@ -123,7 +123,7 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: _Opcion.sitioWeb,
-                child: Text('Abrir sitio web'),
+                child: Text('Abrir panel web'),
               ),
               PopupMenuItem(
                 value: _Opcion.cerrarSesion,

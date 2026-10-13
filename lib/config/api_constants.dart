@@ -166,6 +166,8 @@ class ApiConstants {
   static String comandaDetalle(int id)   => '$comandas/$id';
   // «Enterado» de producción: {version} que se leyó (409 si cambió)
   static String comandaConfirmar(int id) => '$comandas/$id/confirmar';
+  static String comandaEntregar(int id)  => '$comandas/$id/entregar';  // PUT {saldo_cobrado}
+  static String comandaCancelar(int id)  => '$comandas/$id/cancelar';  // PUT {motivo}
 
   // ── DEMANDA NO ATENDIDA (público, registro silencioso) ────────────
   // Espejo de src/utils/demandaNoAtendida.ts de la web. Alimentan el reporte

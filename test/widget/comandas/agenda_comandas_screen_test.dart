@@ -3,18 +3,12 @@
 // del área, vistas, búsqueda, estados vacío y de error, actualización al
 // volver a la app y cierre de sesión (manual o porque la cuenta cambió).
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:pier_pasteleria/config/dependencies.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
 import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/montar_comandas.dart';
 
 const _proximas = '/comandas?vista=proximas';
 const _activas = '/comandas?vista=activas';
@@ -57,61 +51,17 @@ FakeApiClient _backend() => FakeApiClient()
   )
   ..responder('/auth/logout', {'success': true});
 
-/// Monta la agenda con sesión de [rol] dentro de un router con login.
+/// Monta la agenda con sesión de [rol].
 Future<void> _montar(
   WidgetTester tester,
   FakeApiClient api, {
   String rol = 'hornos',
-}) async {
-  tester.view
-    ..physicalSize = const Size(1080, 6000)
-    ..devicePixelRatio = 3;
-  addTearDown(tester.view.reset);
-  // Sin plugin de Google en pruebas: su signOut (al cerrar sesión) responde
-  // al instante.
-  const google = MethodChannel('plugins.flutter.io/google_sign_in');
-  final mensajero = tester.binding.defaultBinaryMessenger
-    ..setMockMethodCallHandler(google, (_) async => null);
-  addTearDown(() => mensajero.setMockMethodCallHandler(google, null));
-  SharedPreferences.setMockInitialValues({});
-  final router = GoRouter(
-    initialLocation: AppRoutes.produccion,
-    routes: [
-      GoRoute(
-        path: AppRoutes.produccion,
-        builder: (_, _) => const AgendaComandasScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.login,
-        builder: (_, _) => const Scaffold(body: Text('LOGIN')),
-      ),
-    ],
-  );
-  // La sesión se abre fuera del build; luego se monta el router.
-  final listo = ValueNotifier(false);
-  late BuildContext contexto;
-  await tester.pumpWidget(
-    MultiProvider(
-      providers: dependencias(api),
-      child: ValueListenableBuilder<bool>(
-        valueListenable: listo,
-        builder: (context, montar, _) {
-          contexto = context;
-          return montar
-              ? MaterialApp.router(routerConfig: router)
-              : const SizedBox();
-        },
-      ),
-    ),
-  );
-  contexto.read<AuthProvider>().abrirSesion({
-    'id': 1,
-    'nombre': 'Rosa',
-    'rol': rol,
-  });
-  listo.value = true;
-  await tester.pumpAndSettle();
-}
+}) => montarComandas(
+  tester,
+  api,
+  pantalla: const AgendaComandasScreen(),
+  rol: rol,
+);
 
 void main() {
   group('AgendaComandasScreen', () {
@@ -244,7 +194,7 @@ void main() {
         ..llamadas.clear();
 
       // Jalar hacia abajo (largo: la pantalla de prueba es muy alta).
-      await tester.drag(find.byType(ListView), const Offset(0, 900));
+      await tester.drag(find.byType(ListView), const Offset(0, 1200));
       await tester.pumpAndSettle();
 
       expect(api.llamo(_proximas), isTrue);
@@ -288,7 +238,7 @@ void main() {
 
       await tester.tap(find.byTooltip('Más opciones'));
       await tester.pumpAndSettle();
-      expect(find.text('Abrir sitio web'), findsOneWidget);
+      expect(find.text('Abrir panel web'), findsOneWidget);
       await tester.tap(find.text('Cerrar sesión'));
       await tester.pumpAndSettle();
 
