@@ -149,6 +149,20 @@ List<ScaleTransition> _escalasPildora(WidgetTester tester, String titulo) =>
         )
         .toList();
 
+/// Si la tarjeta en curso de [numero] tiene armado su contorno dorado (se
+/// montó como recién llegada): ContornoDorado pinta encima de ella.
+bool _conContorno(WidgetTester tester, String numero) => tester
+    .widgetList<CustomPaint>(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text(numero),
+          matching: find.byType(EntregaCard),
+        ),
+        matching: find.byType(CustomPaint),
+      ),
+    )
+    .any((c) => c.foregroundPainter != null);
+
 /// Desplazamiento horizontal que pinta la primera Sacudida.
 double _sacudidaX(WidgetTester tester) => tester
     .widget<Transform>(
@@ -720,22 +734,14 @@ void main() {
         of: find.text('PIER-41'),
         matching: find.byType(EntregaCard),
       );
-      expect(tester.widget<EntregaCard>(nueva).nueva, isTrue);
+      // Se montó marcada como nueva: su contorno dorado quedó armado (la
+      // marca ya se quitó de la lista tras ese cuadro); el de PIER-1 no.
+      expect(_conContorno(tester, 'PIER-41'), isTrue);
       expect(
         find.descendant(of: nueva, matching: find.byType(ContornoDorado)),
         findsOneWidget,
       );
-      expect(
-        tester
-            .widget<EntregaCard>(
-              find.ancestor(
-                of: find.text('PIER-1'),
-                matching: find.byType(EntregaCard),
-              ),
-            )
-            .nueva,
-        isFalse,
-      );
+      expect(_conContorno(tester, 'PIER-1'), isFalse);
 
       // La píldora de «En curso» salta (1 → 2); la de «Disponibles» no.
       await tester.pump(const Duration(milliseconds: 100));
@@ -750,6 +756,68 @@ void main() {
       expect(delPool, findsNothing);
       expect(find.text('PIER-42'), findsOneWidget);
       expect(find.text('Tienes 2 entregas activas para hoy'), findsOneWidget);
+    });
+
+    testWidgets('el brillo de la entrega recién tomada no se repite al volver '
+        'con scroll', (tester) async {
+      final api = await _montar(
+        tester,
+        api: _backend(
+          entregas: [_entrega('1', 'asignada')],
+          pool: [for (var id = 41; id <= 46; id++) _pedido(id)],
+        ),
+      );
+      await tester.pumpAndSettle();
+      api
+        ..responder(ApiConstants.entregasAceptar, {
+          'success': true,
+          'message': 'Tomaste el pedido #PIER-46',
+        })
+        ..responder(
+          ApiConstants.misEntregas,
+          _misEntregas([_entrega('1', 'asignada'), _entrega('46', 'asignada')]),
+        )
+        ..responder(
+          ApiConstants.entregasDisponibles,
+          _pool([for (var id = 41; id <= 45; id++) _pedido(id)]),
+        );
+
+      // Toma el último pedido del pool con «En curso» a la vista: la entrega
+      // llega y su contorno se arma.
+      await tester.scrollUntilVisible(find.text('PIER-46'), 300);
+      await tester.pump();
+      await tester.tap(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('PIER-46'),
+            matching: find.byType(DisponibleCard),
+          ),
+          matching: find.text('Tomar entrega'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(_conContorno(tester, 'PIER-46'), isTrue);
+      await tester.pumpAndSettle();
+
+      // Arriba del todo la sección «En curso» sale de la caché de la lista;
+      // al regresar, su tarjeta se monta otra vez, ya sin brillo.
+      await tester.scrollUntilVisible(
+        find.text('Disponible para entregas'),
+        -300,
+      );
+      await tester.pump();
+      expect(find.byType(EntregaCard, skipOffstage: false), findsNothing);
+      await tester.scrollUntilVisible(
+        find.descendant(
+          of: find.byType(EntregaCard),
+          matching: find.text('PIER-46'),
+        ),
+        300,
+      );
+      await tester.pump();
+      expect(_conContorno(tester, 'PIER-46'), isFalse);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('el número y el estado vuelan de la tarjeta al detalle', (

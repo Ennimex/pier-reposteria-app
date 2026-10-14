@@ -123,8 +123,11 @@ class _ListaEntregasState extends State<_ListaEntregas> {
     if (previas == null || setEquals(previas, ids)) return;
     _nuevas = ids.difference(previas);
     if (_nuevas.isEmpty) return;
+    // Tras ese cuadro la lista se reconstruye ya sin la marca: el ListView
+    // guarda sus hijos, y una tarjeta que el scroll saca de la caché y luego
+    // regresa se volvería a montar marcada (y brillaría otra vez).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _nuevas = const <String>{};
+      if (mounted) setState(() => _nuevas = const <String>{});
     });
   }
 
