@@ -121,9 +121,12 @@ Sin `--flavor` se compila prod (`default-flavor` en `pubspec.yaml`), así que
 como `build/app/outputs/flutter-apk/app-<flavor>-<modo>.apk`. En VS Code hay un
 lanzador por ambiente en `.vscode/launch.json`.
 
-El inicio con Google valida el paquete: en dev y staging solo funciona cuando
-sus paquetes están registrados en Google Cloud (ver #12). Los flavors son solo
-para Android; iOS necesitaría sus *schemes* en Xcode.
+El inicio con Google valida el paquete y la huella SHA-1 de la llave con que se
+firmó la app: cada computadora necesita registrar en Google Cloud los tres
+paquetes (`mx.com.pierreposteria`, `.dev` y `.staging`) con su SHA-1
+(`./gradlew signingReport` dentro de `android/`); si falta, el botón de Google
+da `ApiException: 10`. Los flavors son solo para Android; iOS necesitaría sus
+*schemes* en Xcode.
 
 `--dart-define=AMBIENTE=dev|staging|prod` también elige el backend y tiene
 prioridad sobre el flavor.
@@ -148,6 +151,33 @@ flutter test
 
 Para pagos de prueba con Stripe usa la tarjeta `4242 4242 4242 4242` con cualquier
 fecha futura y CVC.
+
+### Firma de release
+
+Los APK de release se firman con la llave del equipo (`pier-release.jks`), que
+**nunca** se sube al repositorio: vive fuera de él, con una copia de respaldo en
+un lugar seguro (si se pierde, la app ya no se puede actualizar en Google Play).
+Para firmar en una computadora, crea `android/key.properties` (Git lo ignora):
+
+```properties
+storeFile=C:/ruta/a/pier-release.jks
+storePassword=<contraseña>
+keyAlias=pier
+keyPassword=<contraseña>
+```
+
+`storeFile` va con ruta absoluta y diagonales `/`. Sin ese archivo (por ejemplo
+en GitHub Actions) el release se firma con la llave de depuración, así que
+compilar no depende de tenerla. Para comprobar la firma:
+
+```bash
+flutter build apk --release
+apksigner verify --print-certs build/app/outputs/flutter-apk/app-prod-release.apk
+```
+
+El certificado debe ser el del equipo y no `Android Debug`. Su SHA-1 también se
+registra en Google Cloud para `mx.com.pierreposteria`; si falta, el inicio con
+Google falla en los APK de release.
 
 ## Pruebas
 
