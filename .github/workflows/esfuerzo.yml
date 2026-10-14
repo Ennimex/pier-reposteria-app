@@ -42,7 +42,7 @@ env:
   FLUTTER_VERSION: '3.44.4'
   # applicationId del flavor prod (android/app/build.gradle.kts), el que
   # compila `flutter build apk` sin --flavor.
-  PAQUETE: com.example.pier_pasteleria
+  PAQUETE: mx.com.pierreposteria
   # Mismo emulador que integracion.yml, así comparten la caché del AVD.
   API_LEVEL: 34
   AVD_PROFILE: pixel_6
