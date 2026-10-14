@@ -2,7 +2,8 @@
 //
 // Movimiento: el título rueda al cambiar de pestaña y el «?» aparece con un
 // pop; el botón «Nueva Solicitud» se encoge y se apaga siguiendo al dedo
-// (o a la animación de la pestaña) sin reconstruir la pantalla. La lista
+// (o a la animación de la pestaña) sin reconstruir la pantalla, y la página
+// que se va se atenúa (la profundidad de «Mis Pedidos»). La lista
 // pasa del indicador a las solicitudes (o al estado vacío) con un fundido a
 // través y entra en cascada una sola vez: volver de la otra pestaña o
 // recargar no la repite, y la solicitud recién enviada llega con un aro
@@ -257,19 +258,28 @@ class _RefundsScreenState extends State<RefundsScreen>
 
             // ── CONTENIDO ────────────────────────────────────────
             // El ámbito queda fuera de las pestañas: el TabBarView desmonta
-            // la que no se ve, y así volver a ella no repite su entrada.
+            // la que no se ve, y así volver a ella no repite su entrada. Al
+            // deslizar, la página que se va se atenúa (como «Mis Pedidos»).
             Expanded(
               child: AmbitoEntradas(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    ListenableBuilder(
-                      listenable: _vm,
-                      builder: (_, _) => _buildMisSolicitudes(),
+                    PaginaAtenuada(
+                      pestanas: _tabController,
+                      indice: 0,
+                      child: ListenableBuilder(
+                        listenable: _vm,
+                        builder: (_, _) => _buildMisSolicitudes(),
+                      ),
                     ),
-                    ListenableBuilder(
-                      listenable: _vm,
-                      builder: (_, _) => _buildNuevaSolicitud(),
+                    PaginaAtenuada(
+                      pestanas: _tabController,
+                      indice: 1,
+                      child: ListenableBuilder(
+                        listenable: _vm,
+                        builder: (_, _) => _buildNuevaSolicitud(),
+                      ),
                     ),
                   ],
                 ),

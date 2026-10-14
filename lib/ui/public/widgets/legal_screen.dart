@@ -3,7 +3,8 @@
 // Movimiento: al llegar la página, el encabezado de la primera pestaña y
 // sus secciones suben en cascada, una sola vez por visita. Las otras
 // pestañas llegan con el deslizamiento del TabBarView, sin una segunda
-// animación encima, y volver a una ya vista tampoco la repite.
+// animación encima, y volver a una ya vista tampoco la repite. Mientras se
+// desliza, la página que se va se atenúa (la profundidad de «Mis Pedidos»).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -153,24 +154,38 @@ class _LegalScreenState extends State<LegalScreen>
             const SizedBox(height: 12),
 
             // ── CONTENIDO ────────────────────────────────────────
+            // Al deslizar (o tocar otra pestaña), la página que se va se
+            // atenúa y la que llega se aclara, como en «Mis Pedidos».
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildContent(
-                    icon: LucideIcons.shieldAlert,
-                    title: 'Aviso de Privacidad',
-                    sections: _vm.privacidad,
+                  PaginaAtenuada(
+                    pestanas: _tabController,
+                    indice: 0,
+                    child: _buildContent(
+                      icon: LucideIcons.shieldAlert,
+                      title: 'Aviso de Privacidad',
+                      sections: _vm.privacidad,
+                    ),
                   ),
-                  _buildContent(
-                    icon: LucideIcons.fileText,
-                    title: 'Términos y Condiciones',
-                    sections: _vm.terminos,
+                  PaginaAtenuada(
+                    pestanas: _tabController,
+                    indice: 1,
+                    child: _buildContent(
+                      icon: LucideIcons.fileText,
+                      title: 'Términos y Condiciones',
+                      sections: _vm.terminos,
+                    ),
                   ),
-                  _buildContent(
-                    icon: LucideIcons.undo2,
-                    title: 'Política de Devoluciones',
-                    sections: _vm.devoluciones,
+                  PaginaAtenuada(
+                    pestanas: _tabController,
+                    indice: 2,
+                    child: _buildContent(
+                      icon: LucideIcons.undo2,
+                      title: 'Política de Devoluciones',
+                      sections: _vm.devoluciones,
+                    ),
                   ),
                 ],
               ),

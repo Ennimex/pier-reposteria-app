@@ -106,8 +106,9 @@ class FotoAlLlegar extends StatelessWidget {
 
 // ── Tamaño ───────────────────────────────────────────────────────────────
 
-/// AnimatedSize con el ritmo de la casa: lo que crece o se encoge empuja a
-/// lo de alrededor con suavidad en vez de saltar. Con movimiento reducido el
+/// AnimatedSize con el ritmo de la casa (la misma curva enfática con la que
+/// Aparicion abre y cierra espacios): lo que crece o se encoge empuja a lo
+/// de alrededor con suavidad en vez de saltar. Con movimiento reducido el
 /// cambio es inmediato (un milisegundo: AnimatedSize no acepta cero).
 class TamanoSuave extends StatelessWidget {
   const TamanoSuave({
@@ -127,7 +128,7 @@ class TamanoSuave extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedSize(
       duration: AppMovimiento.reducido(context) ? _instante : duracion,
-      curve: AppMovimiento.curvaEstandar,
+      curve: AppMovimiento.curvaEnfasis,
       alignment: alineacion,
       child: child,
     );
@@ -667,106 +668,6 @@ class TextoColorSuave extends StatelessWidget {
   }
 }
 
-/// Un ícono que da un pop y se endereza desde un giro corto cuando [activo]
-/// pasa de falso a verdadero (el pulgar de «útil» al marcarlo). Montarse ya
-/// activo no anima y desmarcar tampoco. Con movimiento reducido, quieto. El
-/// hijo conserva su estado durante el pop (p. ej. un IconoColorSuave sigue
-/// fundiendo su color).
-class PopAlActivar extends StatefulWidget {
-  const PopAlActivar({required this.activo, required this.child, super.key});
-
-  final bool activo;
-  final Widget child;
-
-  @override
-  State<PopAlActivar> createState() => _PopAlActivarState();
-}
-
-class _PopAlActivarState extends State<PopAlActivar>
-    with SingleTickerProviderStateMixin {
-  // Crece, se recoge un poco y asienta en 1.
-  static final Animatable<double> _pop = TweenSequence<double>(
-    <TweenSequenceItem<double>>[
-      TweenSequenceItem<double>(
-        tween: Tween<double>(
-          begin: 1,
-          end: 1.35,
-        ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 30,
-      ),
-      TweenSequenceItem<double>(
-        tween: Tween<double>(
-          begin: 1.35,
-          end: 0.9,
-        ).chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 30,
-      ),
-      TweenSequenceItem<double>(
-        tween: Tween<double>(
-          begin: 0.9,
-          end: 1,
-        ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 40,
-      ),
-    ],
-  );
-
-  // −14° (en radianes): el pulgar se inclina hacia atrás y se endereza.
-  static const double _giroInicial = -14 * math.pi / 180;
-
-  late final AnimationController _control;
-
-  @override
-  void initState() {
-    super.initState();
-    _control = AnimationController(
-      vsync: this,
-      duration: AppMovimiento.enfasis,
-      value: 1,
-    );
-  }
-
-  @override
-  void didUpdateWidget(PopAlActivar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!oldWidget.activo &&
-        widget.activo &&
-        !AppMovimiento.reducido(context)) {
-      _control.forward(from: 0).ignore();
-    }
-  }
-
-  @override
-  void dispose() {
-    _control.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _control,
-      child: widget.child,
-      builder: (context, icono) {
-        // Siempre el mismo árbol (en reposo, sin giro y a escala 1): si los
-        // Transform aparecieran solo durante el pop, el ícono se montaría de
-        // nuevo y perdería su propio estado (el fundido de su color).
-        final t = _control.value;
-        final quieto = t >= 1;
-        return Transform.rotate(
-          angle: quieto
-              ? 0
-              : _giroInicial * (1 - AppMovimiento.curvaRebote.transform(t)),
-          child: Transform.scale(
-            scale: quieto ? 1 : _pop.transform(t),
-            child: icono,
-          ),
-        );
-      },
-    );
-  }
-}
-
 /// Ícono cuyo color pasa al nuevo con un fundido corto, junto con el fondo
 /// del chip o de la píldora donde está.
 class IconoColorSuave extends StatelessWidget {
@@ -792,25 +693,194 @@ class IconoColorSuave extends StatelessWidget {
   }
 }
 
-// ── Lo que acaba de llegar ───────────────────────────────────────────────
+// ── Destello al marcar ───────────────────────────────────────────────────
 
-/// Un aro dorado que sale del borde de una tarjeta recién llegada (una
-/// solicitud nueva al recargar, la reseña que el cliente acaba de publicar)
-/// y se apaga mientras se abre: «aquí está lo tuyo». Una sola vez, después
-/// de la entrada de la tarjeta; [activo] se lee al montarse. Pinta encima
-/// del hijo sin tocar su layout; con movimiento reducido no hay aro.
-class ResaltadoUnaVez extends StatefulWidget {
-  const ResaltadoUnaVez({
+/// El destello de «útil»: el mismo pop (1 → 1.3 → 0.92 → 1) y el mismo aro
+/// con puntos de azúcar que DestelloCorazon le da al «útil» del detalle del
+/// producto, alrededor de un ícono chico (el pulgar dentro de su píldora).
+/// Sale cuando [activo] pasa de falso a verdadero (en Opiniones solo un
+/// toque marca: recargar no cambia lo marcado); montarse ya activo y
+/// desmarcar no destellan. Pinta detrás del ícono sin medirlo ni recortarlo
+/// (DestelloCorazon mete su pintura en un cuadro de radio × 2 + 8 que no
+/// admite un hijo más ancho, como la píldora completa) y el ícono conserva
+/// su estado (su color sigue fundiéndose). Con movimiento reducido, nada.
+class DestelloAlMarcar extends StatefulWidget {
+  const DestelloAlMarcar({
     required this.activo,
-    required this.radio,
     required this.child,
+    this.color = Colors.red,
+    this.radio = 14,
     super.key,
   });
 
   final bool activo;
 
+  /// El ícono tal cual.
+  final Widget child;
+
+  /// Color del aro y de la mitad de los puntos (la otra mitad es dorado).
+  final Color color;
+
+  /// Alcance del destello desde el centro del ícono, en dp (el del «útil»
+  /// del detalle).
+  final double radio;
+
+  @override
+  State<DestelloAlMarcar> createState() => _DestelloAlMarcarState();
+}
+
+class _DestelloAlMarcarState extends State<DestelloAlMarcar>
+    with SingleTickerProviderStateMixin {
+  // El pop de DestelloCorazon: crece, se recoge un poco y asienta en 1.
+  static final Animatable<double> _pop = TweenSequence<double>(
+    <TweenSequenceItem<double>>[
+      TweenSequenceItem<double>(
+        tween: Tween<double>(
+          begin: 1,
+          end: 1.3,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem<double>(
+        tween: Tween<double>(
+          begin: 1.3,
+          end: 0.92,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem<double>(
+        tween: Tween<double>(
+          begin: 0.92,
+          end: 1,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+    ],
+  );
+
+  late final AnimationController _control;
+  late final Animation<double> _escala;
+
+  @override
+  void initState() {
+    super.initState();
+    _control = AnimationController(
+      vsync: this,
+      duration: AppMovimiento.enfasis,
+    );
+    _escala = _control.drive(_pop);
+  }
+
+  @override
+  void didUpdateWidget(DestelloAlMarcar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.activo &&
+        widget.activo &&
+        !AppMovimiento.reducido(context)) {
+      _control.forward(from: 0).ignore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _control.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Siempre el mismo árbol: el ícono no se vuelve a montar al destellar.
+    return CustomPaint(
+      painter: _PintorDestello(
+        avance: _control,
+        radio: widget.radio,
+        colores: <Color>[widget.color, AppColors.pierDorado],
+      ),
+      child: ScaleTransition(scale: _escala, child: widget.child),
+    );
+  }
+}
+
+/// El aro que se abre y se adelgaza y los puntos de azúcar que se alejan y
+/// se apagan (los de DestelloCorazon), centrados en el ícono.
+class _PintorDestello extends CustomPainter {
+  _PintorDestello({
+    required this.avance,
+    required this.radio,
+    required this.colores,
+  }) : super(repaint: avance);
+
+  static const int _puntos = 8;
+
+  final Animation<double> avance;
+  final double radio;
+  final List<Color> colores;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = avance.value;
+    if (t <= 0 || t >= 1) return;
+    final centro = size.center(Offset.zero);
+    final salida = Curves.easeOutCubic.transform(t);
+    final alfa = 1 - t;
+
+    canvas.drawCircle(
+      centro,
+      radio * (0.45 + 0.55 * salida),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3 * (1 - t)
+        ..color = colores.first.withValues(alpha: alfa * 0.8),
+    );
+
+    final pincel = Paint();
+    for (var i = 0; i < _puntos; i++) {
+      final angulo = -math.pi / 2 + i * 2 * math.pi / _puntos;
+      final distancia = radio * (0.55 + 0.45 * salida);
+      pincel.color = colores[i % colores.length].withValues(alpha: alfa);
+      canvas.drawCircle(
+        centro + Offset(math.cos(angulo), math.sin(angulo)) * distancia,
+        2.2 * (1 - 0.5 * t),
+        pincel,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PintorDestello oldDelegate) =>
+      oldDelegate.radio != radio ||
+      oldDelegate.colores.first != colores.first ||
+      oldDelegate.colores.last != colores.last;
+}
+
+// ── Lo que acaba de llegar o de cambiar ──────────────────────────────────
+
+/// Un aro dorado que sale del borde de una tarjeta y se apaga mientras se
+/// abre: «aquí está lo tuyo». Sale una vez al montarse si llega [activo]
+/// (una solicitud nueva al recargar, la reseña que el cliente acaba de
+/// publicar), después de la entrada de la tarjeta; y otra vez cada vez que
+/// [disparo] cambia a un valor nuevo (una reseña que cambió en sitio al
+/// recargar), en cuanto su contenido se acomoda. Pinta encima del hijo sin
+/// tocar su layout ni su estado; con movimiento reducido no hay aro.
+class ResaltadoUnaVez extends StatefulWidget {
+  const ResaltadoUnaVez({
+    required this.activo,
+    required this.radio,
+    required this.child,
+    this.disparo,
+    super.key,
+  });
+
+  /// Si la tarjeta es la recién llegada (se lee al montarse).
+  final bool activo;
+
   /// Esquinas de la tarjeta.
   final BorderRadius radio;
+
+  /// Un valor que la pantalla cambia cuando la tarjeta cambió en sitio (un
+  /// contador): cada valor nuevo no nulo vuelve a encender el aro. Montarse
+  /// con uno no lo enciende.
+  final Object? disparo;
 
   final Widget child;
 
@@ -837,15 +907,34 @@ class _ResaltadoUnaVezState extends State<ResaltadoUnaVez>
     if (_preparado) return;
     _preparado = true;
     if (!widget.activo || AppMovimiento.reducido(context)) return;
-    _resalta = true;
-    // Primero termina de entrar la tarjeta; luego el aro (dos rellenos).
-    const espera = AppMovimiento.entrada;
-    final total = espera + AppMovimiento.relleno * 2;
-    _inicio = espera.inMicroseconds / total.inMicroseconds;
-    _control.duration = total;
+    // Primero termina de entrar la tarjeta; luego el aro.
+    _encender(AppMovimiento.entrada);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _control.forward().ignore();
     });
+  }
+
+  @override
+  void didUpdateWidget(ResaltadoUnaVez oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final disparo = widget.disparo;
+    if (disparo == null ||
+        disparo == oldWidget.disparo ||
+        AppMovimiento.reducido(context)) {
+      return;
+    }
+    // La tarjeta ya estaba en su lugar: el aro sale en cuanto su contenido
+    // termina de acomodarse (un cambio en sitio dura un cambio corto).
+    _encender(AppMovimiento.corta);
+    _control.forward(from: 0).ignore();
+  }
+
+  /// Deja listo el aro: sale tras [espera] y vive dos rellenos.
+  void _encender(Duration espera) {
+    _resalta = true;
+    final total = espera + AppMovimiento.relleno * 2;
+    _inicio = espera.inMicroseconds / total.inMicroseconds;
+    _control.duration = total;
   }
 
   @override
@@ -856,14 +945,17 @@ class _ResaltadoUnaVezState extends State<ResaltadoUnaVez>
 
   @override
   Widget build(BuildContext context) {
-    if (!_resalta) return widget.child;
+    // Siempre el mismo árbol: encender el aro después (un cambio en sitio)
+    // no vuelve a montar la tarjeta ni le quita su estado.
     return CustomPaint(
-      foregroundPainter: _PintorResalte(
-        avance: _control,
-        inicio: _inicio,
-        radio: widget.radio,
-        color: AppColors.pierDorado,
-      ),
+      foregroundPainter: _resalta
+          ? _PintorResalte(
+              avance: _control,
+              inicio: _inicio,
+              radio: widget.radio,
+              color: AppColors.pierDorado,
+            )
+          : null,
       // La tarjeta en su propia capa: el aro se repinta en cada cuadro sin
       // volver a pintar la tarjeta.
       child: RepaintBoundary(child: widget.child),
@@ -911,6 +1003,53 @@ class _PintorResalte extends CustomPainter {
       oldDelegate.color != color;
 }
 
+// ── Pestañas ─────────────────────────────────────────────────────────────
+
+/// Una página de un TabBarView con la profundidad de «Mis Pedidos»: mientras
+/// se desliza (o se toca otra pestaña), la página que se va se atenúa hasta
+/// 0.55 y la que llega se aclara. Sigue a la animación del TabController
+/// (también al dedo) sin reconstruir la pantalla; en reposo queda a 1.
+class PaginaAtenuada extends StatelessWidget {
+  const PaginaAtenuada({
+    required this.pestanas,
+    required this.indice,
+    required this.child,
+    super.key,
+  });
+
+  final TabController pestanas;
+
+  /// Lugar de esta página en el TabBarView.
+  final int indice;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final avance = pestanas.animation;
+    if (avance == null) return child;
+    return FadeTransition(
+      opacity: avance.drive(_AtenuadoDePagina(indice)),
+      child: child,
+    );
+  }
+}
+
+/// Opacidad de la página [indice] según la posición de las pestañas (0 la
+/// primera, 1 la segunda…): 1 donde está, 0.55 a una página o más.
+class _AtenuadoDePagina extends Animatable<double> {
+  const _AtenuadoDePagina(this.indice);
+
+  // El mismo tono que Activos ↔ Historial en «Mis Pedidos».
+  static const double _lejos = 0.55;
+
+  final int indice;
+
+  @override
+  double transform(double t) =>
+      1 - (1 - _lejos) * clampDouble((t - indice).abs(), 0, 1);
+}
+
 // ── Entradas que esperan a verse (pantallas de contenido fijo) ───────────
 
 /// Alrededor de una pantalla con scroll y contenido fijo (Nosotros). Los
@@ -918,6 +1057,12 @@ class _PintorResalte extends CustomPainter {
 /// cuando la pantalla llega, en cascada después de [retrasoLlegada]; los
 /// demás esperan a que el scroll los traiga y entonces entran, en cascada de
 /// arriba abajo, en lugar de gastar su entrada fuera de la pantalla.
+///
+/// Es una excepción deliberada, la de las pantallas editoriales (como el
+/// Inicio, con el mismo umbral): en las listas de la app lo que llega con
+/// scroll llega quieto, pero Nosotros se lee como una historia y cada
+/// bloque se revela al llegar a él (sus íconos dan su pop y sus cifras se
+/// cuentan a la vista).
 class VistaRevelada extends StatefulWidget {
   const VistaRevelada({
     required this.child,

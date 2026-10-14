@@ -3,11 +3,12 @@
 // tocada se endereza) y la etiqueta rueda; sin calificación se sacuden las
 // estrellas y con un comentario corto, el campo; el diálogo trae chispas
 // solo si la reseña quedó publicada. Mis reseñas: el contador aparece con
-// un pop y las estrellas de la hoja de edición también lo dan. Opiniones:
-// las barras se llenan desde cero, un filtro reparte las opiniones otra
-// vez, «útil» hace su pop y su cuenta rueda, recargar no repite entradas y
-// solo la opinión recién llegada trae el aro dorado; con movimiento
-// reducido todo llega en su lugar. Sin red.
+// un pop, las estrellas de la hoja de edición también lo dan y la reseña
+// que cambia al recargar trae el aro dorado. Opiniones: las barras se
+// llenan desde cero, un filtro reparte las opiniones otra vez, «útil» da el
+// pop con destello del detalle y su cuenta rueda, recargar no repite
+// entradas ni destellos y solo la opinión recién llegada trae el aro
+// dorado; con movimiento reducido todo llega en su lugar. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -314,6 +315,67 @@ void main() {
       await tester.pumpAndSettle();
       expect(_movimientoDeEstrella(4), findsNothing);
     });
+
+    testWidgets('la reseña que cambia al recargar trae el aro dorado y las '
+        'demás no', (tester) async {
+      final resenas = <Map<String, Object>>[
+        {
+          'id': 7,
+          'rating': 4,
+          'comentario': 'Muy esponjoso',
+          'estado': 'aprobada',
+          'producto_nombre': 'Fresa Matcha Bliss',
+        },
+        {
+          'id': 8,
+          'rating': 2,
+          'comentario': 'Llegó tarde',
+          'estado': 'en_revision',
+          'producto_nombre': 'Red Velvet',
+        },
+      ];
+      final api = FakeApiClient(
+        respuestas: {
+          ApiConstants.misResenas: (LlamadaApi _) => <String, dynamic>{
+            'success': true,
+            'resenas': [...resenas],
+          },
+        },
+      );
+      final vm = MyReviewsViewModel(repo: ResenasRepositoryRemote(api: api));
+      await tester.pumpApp(MyReviewsScreen(viewModel: vm), api: api);
+      await tester.pump();
+      await tester.pumpAndSettle();
+      CustomPaint aroDe(String comentario) => tester.widget<CustomPaint>(
+        find
+            .descendant(
+              of: find
+                  .ancestor(
+                    of: find.text(comentario),
+                    matching: find.byType(ResaltadoUnaVez),
+                  )
+                  .first,
+              matching: find.byType(CustomPaint),
+            )
+            .first,
+      );
+      // La primera carga no resalta nada.
+      expect(aroDe('Muy esponjoso').foregroundPainter, isNull);
+      expect(aroDe('Llegó tarde').foregroundPainter, isNull);
+
+      // Recargar sin cambios tampoco.
+      await vm.cargar(silenciosa: true);
+      await tester.pump();
+      expect(aroDe('Muy esponjoso').foregroundPainter, isNull);
+
+      // La editada cambia en sitio y trae el aro; la otra no.
+      resenas[0] = {...resenas[0], 'comentario': 'Muy esponjoso y fresco'};
+      await vm.cargar(silenciosa: true);
+      await tester.pump();
+      expect(aroDe('Muy esponjoso y fresco').foregroundPainter, isNotNull);
+      expect(aroDe('Llegó tarde').foregroundPainter, isNull);
+      await tester.pumpAndSettle();
+    });
   });
 
   group('Opiniones del producto', () {
@@ -377,27 +439,21 @@ void main() {
       expect(opacidadEn(tester, _entradaDe('El mejor pastel')), 1);
     });
 
-    testWidgets('«útil» hace su pop y la cuenta rueda hasta el valor nuevo', (
-      tester,
-    ) async {
+    testWidgets('«útil» da el pop con destello del detalle, su pulgar funde '
+        'el color y la cuenta rueda; recargar no lo repite', (tester) async {
       final api = _backendOpiniones([
         _opinion(1, 5, 'El mejor pastel', util: 3),
       ]);
-      await _montarOpiniones(tester, api);
+      final vm = await _montarOpiniones(tester, api);
       await tester.iniciarSesion(find.byType(ProductReviewsScreen));
       await tester.pumpAndSettle();
       final cuenta = find.byType(CuentaRodante).first;
-      // El giro y la escala del pulgar son la identidad mientras no se
-      // mueve (el árbol es siempre el mismo, así su color se funde).
-      bool pulgarQuieto() => tester
-          .widgetList<Transform>(
-            find.descendant(
-              of: find.byType(PopAlActivar).first,
-              matching: find.byType(Transform),
-            ),
-          )
-          .every((t) => t.transform.isIdentity());
-      expect(pulgarQuieto(), isTrue);
+      final destello = find.byType(DestelloAlMarcar).first;
+      Color? colorPulgar() =>
+          tester.widget<Icon>(find.byIcon(LucideIcons.thumbsUp).first).color;
+      final apagado = colorPulgar();
+      // Quieto mientras nadie lo marca.
+      expect(escalaEn(tester, destello), 1);
 
       await tester.tap(find.byIcon(LucideIcons.thumbsUp).first);
       await tester.pump();
@@ -408,15 +464,26 @@ void main() {
         find.descendant(of: cuenta, matching: find.byType(Text)),
         findsNWidgets(2),
       );
-      expect(pulgarQuieto(), isFalse);
+      expect(tester.widget<DestelloAlMarcar>(destello).activo, isTrue);
+      expect(escalaEn(tester, destello), greaterThan(1));
+      // El pulgar va a medio camino entre los dos colores (no salta).
+      expect(colorPulgar(), isNot(apagado));
 
       await tester.pumpAndSettle();
       expect(
         find.descendant(of: cuenta, matching: find.byType(Text)),
         findsOneWidget,
       );
-      expect(pulgarQuieto(), isTrue);
+      expect(escalaEn(tester, destello), 1);
       expect(api.llamo(ApiConstants.likeResena('1')), isTrue);
+
+      // Una recarga deja la marca como estaba y no vuelve a destellar.
+      await vm.cargar();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(tester.widget<DestelloAlMarcar>(destello).activo, isTrue);
+      expect(escalaEn(tester, destello), 1);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('con movimiento reducido el resumen y las barras ya están', (

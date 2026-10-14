@@ -1,13 +1,14 @@
 // test/widget/public/movimiento_contenido_test.dart — el movimiento de las
 // pantallas de contenido: las piezas de movimiento_contenido.dart (espera de
 // la página, pop de entrada, estrellas, insignia de éxito, sacudida por
-// aviso, cuenta rodante, pulgar de «útil», aro de lo recién llegado,
-// entradas que esperan a verse y cifras que se cuentan) y lo que hacen en
-// Nosotros (paralaje, título que se desvanece, cifras al verse), Contacto
-// (sacudida de los campos inválidos, insignia sin chispas), Preguntas
-// frecuentes (tarjeta que se eleva, categoría que cierra las preguntas,
-// chip centrado) y Marco legal (solo la primera pestaña entra). Con
-// movimiento reducido todo queda en su lugar. Sin red.
+// aviso, cuenta rodante, destello del pulgar de «útil», aro de lo recién
+// llegado o cambiado, entradas que esperan a verse y cifras que se cuentan)
+// y lo que hacen en Nosotros (paralaje, título que se desvanece, cifras al
+// verse), Contacto (sacudida de los campos inválidos, insignia sin
+// chispas), Preguntas frecuentes (tarjeta que se eleva, categoría que
+// cierra las preguntas, chip centrado) y Marco legal (solo la primera
+// pestaña entra y la página que se va se atenúa). Con movimiento reducido,
+// cada pieza queda en su lugar. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -354,11 +355,11 @@ void main() {
       expect(find.text('4'), findsNothing);
     });
 
-    testWidgets('PopAlActivar solo da su pop al marcarse y el ícono sigue '
+    testWidgets('DestelloAlMarcar solo destella al marcarse y el ícono sigue '
         'fundiendo su color', (tester) async {
       const apagado = Color(0xFF000000);
       const encendido = Color(0xFF00FF00);
-      Widget pulgar({required bool activo}) => PopAlActivar(
+      Widget pulgar({required bool activo}) => DestelloAlMarcar(
         activo: activo,
         child: IconoColorSuave(
           Icons.thumb_up,
@@ -366,27 +367,19 @@ void main() {
           color: activo ? encendido : apagado,
         ),
       );
-      // El giro y la escala del pulgar son la identidad mientras no se
-      // mueve (el árbol es siempre el mismo).
-      bool quieto() => tester
-          .widgetList<Transform>(
-            find.descendant(
-              of: find.byType(PopAlActivar),
-              matching: find.byType(Transform),
-            ),
-          )
-          .every((t) => t.transform.isIdentity());
+      // La escala del pop (1 en reposo; el árbol es siempre el mismo).
+      double escala() => escalaEn(tester, find.byType(DestelloAlMarcar));
       Color? color() => tester.widget<Icon>(find.byIcon(Icons.thumb_up)).color;
 
-      // Montarse ya marcado no anima.
+      // Montarse ya marcado no destella.
       await montarMovimiento(tester, pulgar(activo: true));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(quieto(), isTrue);
+      expect(escala(), 1);
 
       // Desmarcar tampoco.
       await montarMovimiento(tester, pulgar(activo: false));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(quieto(), isTrue);
+      expect(escala(), 1);
       await tester.pumpAndSettle();
       expect(color(), apagado);
 
@@ -394,12 +387,27 @@ void main() {
       await montarMovimiento(tester, pulgar(activo: true));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
-      expect(quieto(), isFalse);
+      expect(escala(), greaterThan(1));
       expect(color(), isNot(apagado));
       expect(color(), isNot(encendido));
       await tester.pumpAndSettle();
-      expect(quieto(), isTrue);
+      expect(escala(), 1);
       expect(color(), encendido);
+    });
+
+    testWidgets('con movimiento reducido DestelloAlMarcar no destella', (
+      tester,
+    ) async {
+      Widget pulgar({required bool activo}) => DestelloAlMarcar(
+        activo: activo,
+        child: const Icon(Icons.thumb_up),
+      );
+      await montarMovimiento(tester, pulgar(activo: false), reducido: true);
+      await montarMovimiento(tester, pulgar(activo: true), reducido: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(escalaEn(tester, find.byType(DestelloAlMarcar)), 1);
+      expect(tester.hasRunningAnimations, isFalse);
     });
 
     testWidgets('ResaltadoUnaVez pinta su aro solo si llega activo', (
@@ -437,6 +445,68 @@ void main() {
       expect(pintura()?.foregroundPainter, isNotNull);
       // Termina solo.
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('ResaltadoUnaVez vuelve a encender el aro con cada disparo '
+        'nuevo, sin montar otra vez la tarjeta', (tester) async {
+      Widget tarjeta(Object? disparo) => ResaltadoUnaVez(
+        activo: false,
+        disparo: disparo,
+        radio: BorderRadius.circular(16),
+        child: const SizedBox(key: ValueKey('tarjeta'), width: 100, height: 60),
+      );
+      CustomPaint pintura() => tester.widget<CustomPaint>(
+        find
+            .descendant(
+              of: find.byType(ResaltadoUnaVez),
+              matching: find.byType(CustomPaint),
+            )
+            .first,
+      );
+
+      // Montarse con un disparo no enciende nada.
+      await montarMovimiento(tester, tarjeta(1));
+      expect(pintura().foregroundPainter, isNull);
+      final antes = tester.element(find.byKey(const ValueKey('tarjeta')));
+
+      await montarMovimiento(tester, tarjeta(2));
+      expect(pintura().foregroundPainter, isNotNull);
+      // Es la misma tarjeta (no perdió su estado).
+      expect(
+        tester.element(find.byKey(const ValueKey('tarjeta'))),
+        same(antes),
+      );
+      await tester.pumpAndSettle();
+
+      // El mismo disparo otra vez no repite: el aro ya terminó.
+      await montarMovimiento(tester, tarjeta(2));
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
+    testWidgets('con movimiento reducido un disparo nuevo no enciende el aro', (
+      tester,
+    ) async {
+      Widget tarjeta(Object? disparo) => ResaltadoUnaVez(
+        activo: false,
+        disparo: disparo,
+        radio: BorderRadius.circular(16),
+        child: const SizedBox(width: 100, height: 60),
+      );
+      await montarMovimiento(tester, tarjeta(null), reducido: true);
+      await montarMovimiento(tester, tarjeta(1), reducido: true);
+      expect(
+        tester
+            .widget<CustomPaint>(
+              find
+                  .descendant(
+                    of: find.byType(ResaltadoUnaVez),
+                    matching: find.byType(CustomPaint),
+                  )
+                  .first,
+            )
+            .foregroundPainter,
+        isNull,
+      );
     });
 
     testWidgets('CifraQueCuenta cuenta hasta el texto exacto y lo que no es '
@@ -892,6 +962,38 @@ void main() {
         1,
       );
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('al cambiar de pestaña la página que se va se atenúa y en '
+        'reposo nada queda atenuado', (tester) async {
+      final api = FakeApiClient()
+        ..fallar(ApiConstants.configuracionSeccion('legales'), 'Sin conexión');
+      await tester.pumpApp(
+        LegalScreen(
+          viewModel: LegalViewModel(
+            repo: ConfiguracionRepositoryRemote(api: api),
+          ),
+        ),
+        api: api,
+      );
+      await tester.pumpAndSettle();
+      Finder pagina(int indice) => find.byWidgetPredicate(
+        (w) => w is PaginaAtenuada && w.indice == indice,
+      );
+      expect(opacidadEn(tester, pagina(0)), 1);
+
+      await tester.tap(find.text('Términos'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      // A media vuelta: la que se va, apagada pero nunca bajo 0.55; la que
+      // llega, todavía aclarándose.
+      expect(opacidadEn(tester, pagina(0)), lessThan(1));
+      expect(opacidadEn(tester, pagina(0)), greaterThanOrEqualTo(0.55));
+      expect(opacidadEn(tester, pagina(1)), lessThan(1));
+
+      await tester.pumpAndSettle();
+      expect(opacidadEn(tester, pagina(1)), 1);
+      expect(find.text('Proceso de Compra'), findsOneWidget);
     });
   });
 }

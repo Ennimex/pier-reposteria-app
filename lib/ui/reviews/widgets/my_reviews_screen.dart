@@ -5,8 +5,9 @@
 // través; las tarjetas entran en cascada una sola vez (recargar o volver con
 // scroll no la repite), sus fotos aparecen con fundido y, si una reseña
 // cambia al recargar (editada, respondida, aprobada), su tarjeta ajusta el
-// alto y el estado cambia de color en sitio. La hoja de edición sube con la
-// curva de la casa, su contenido entra en cascada y sus estrellas dan pop.
+// alto, el estado cambia de color en sitio y un aro dorado señala cuál fue.
+// La hoja de edición sube con la curva de la casa, su contenido entra en
+// cascada y sus estrellas dan pop.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -32,10 +33,45 @@ class MyReviewsScreen extends StatefulWidget {
   State<MyReviewsScreen> createState() => _MyReviewsScreenState();
 }
 
+/// Lo que una tarjeta muestra de su reseña: calificación, título,
+/// comentario, estado, respuesta de Pier y motivo de rechazo.
+typedef _Firma = (double, String, String, EstadoResena, String?, String?);
+
 class _MyReviewsScreenState extends State<MyReviewsScreen> {
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final MyReviewsViewModel _vm =
       widget.viewModel ?? MyReviewsViewModel(repo: context.read<ResenasRepository>());
+
+  // Lo que mostraba cada reseña la última vez: si al recargar una cambia en
+  // sitio (editada, respondida, aprobada), su tarjeta trae el aro dorado una
+  // vez. Solo de la vista: el ViewModel no cambia.
+  final Map<String, _Firma> _firmas = {};
+  final Map<String, int> _cambios = {};
+  List<MiResena>? _listaAnotada;
+
+  /// Anota la lista que llegó y cuenta un cambio por cada reseña ya vista
+  /// cuyo contenido es otro (las nuevas no cuentan: no cambiaron en sitio).
+  void _anotarCambios(List<MiResena> resenas) {
+    if (identical(resenas, _listaAnotada)) return;
+    _listaAnotada = resenas;
+    for (final r in resenas) {
+      final firma = _firma(r);
+      final antes = _firmas[r.id];
+      _firmas[r.id] = firma;
+      if (antes != null && antes != firma) {
+        _cambios[r.id] = (_cambios[r.id] ?? 0) + 1;
+      }
+    }
+  }
+
+  static _Firma _firma(MiResena r) => (
+        r.rating,
+        r.titulo,
+        r.comentario,
+        r.estado,
+        r.respuestaNegocio,
+        r.motivoRechazo,
+      );
 
   @override
   void initState() {
@@ -109,6 +145,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         child: _buildEmptyState(espera),
       );
     } else {
+      _anotarCambios(resenas);
       cuerpo = KeyedSubtree(
         key: const ValueKey('lista'),
         child: RefreshIndicator(
@@ -119,12 +156,18 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             itemCount: resenas.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             // Cada reseña entra una sola vez, en cascada con las que
-            // llegan juntas.
+            // llegan juntas; la que cambia al recargar (p. ej. la que se
+            // acaba de editar) trae el aro dorado cuando se acomoda.
             itemBuilder: (context, i) => EntradaSuave(
               key: ValueKey<String>(resenas[i].id),
               id: resenas[i].id,
               retraso: espera,
-              child: _buildCard(resenas[i]),
+              child: ResaltadoUnaVez(
+                activo: false,
+                disparo: _cambios[resenas[i].id],
+                radio: BorderRadius.circular(16),
+                child: _buildCard(resenas[i]),
+              ),
             ),
           ),
         ),

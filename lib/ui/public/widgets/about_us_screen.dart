@@ -4,7 +4,9 @@
 // asienta y al subir se queda atrás (paralaje) mientras el título se
 // desvanece; cada bloque entra una sola vez y, si está más abajo de lo que
 // se ve, espera a que el scroll lo traiga (los íconos dan un pop con su
-// bloque y las cifras se cuentan).
+// bloque y las cifras se cuentan). Revelar al hacer scroll es la excepción
+// editorial de la app, la misma del Inicio: en las listas, lo que llega con
+// scroll llega quieto.
 import 'dart:async';
 
 import 'package:flutter/material.dart';

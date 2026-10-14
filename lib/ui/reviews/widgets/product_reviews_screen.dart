@@ -6,9 +6,10 @@
 // llegan los filtros desde la derecha y las opiniones en cascada. Un filtro
 // o un orden nuevo vuelve a repartir las opiniones (las que no son se van al
 // instante, sin animación de salida) y centra su chip. «Útil» se hunde al
-// tocarlo, el pulgar da un pop y cambia de color junto con la píldora, y la
-// cuenta rueda. Recargar no repite las entradas, y la opinión que el
-// cliente acaba de publicar llega con un aro dorado.
+// tocarlo; al marcarlo, el pulgar da el pop con destello verde del detalle
+// del producto y cambia de color junto con la píldora, y la cuenta rueda.
+// Recargar no repite las entradas, y la opinión que el cliente acaba de
+// publicar llega con un aro dorado.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -833,8 +834,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           const SizedBox(height: 12),
 
           // «Útil»: la píldora se hunde al tocarla y cambia de color junto
-          // con el pulgar y la cuenta; al marcarla el pulgar da un pop y la
-          // cuenta rueda (también hacia abajo si el backend la revierte).
+          // con el pulgar y la cuenta; al marcarla, el pulgar da el pop con
+          // destello verde del «útil» del detalle del producto y la cuenta
+          // rueda (también hacia abajo si el backend la revierte).
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -864,8 +866,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        PopAlActivar(
+                        DestelloAlMarcar(
                           activo: util,
+                          color: AppColors.pierVerde,
                           child: IconoColorSuave(
                             LucideIcons.thumbsUp,
                             tamano: 14,
