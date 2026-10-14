@@ -1,0 +1,123 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: PRUEBAS DE RENDIMIENTO
+#
+# Qué prueba: el tiempo de arranque, la fluidez al desplazar el catálogo y el
+#   paso al checkout (trazas de integration_test en modo profile) y el peso
+#   del APK de release.
+# Para qué sirve: comparar cada versión candidata con la línea base que deja
+#   el Sprint 3 y detectar cuándo la app se vuelve más lenta o más pesada
+#   ANTES de liberarla.
+# Cuándo corre: a mano (Actions → Pruebas de rendimiento → Run workflow).
+#   Cuando #61 deje la línea base se agrega el disparador por tag de versión
+#   para que corra en cada liberación.
+# Dónde corre: Flutter no permite medir tiempos en emuladores (el modo
+#   profile exige un dispositivo real), así que se miden en el Samsung
+#   SM-N975U del equipo conectado a un runner propio (self-hosted) con la
+#   etiqueta android-device. El peso del APK sí se mide en GitHub.
+# Estado: «Peso del APK» funciona desde hoy. «Arranque y fluidez en el
+#   celular» queda escrito pero solo corre al marcar la casilla
+#   medir_en_celular, hasta que existan el runner y las pruebas de
+#   integration_test/rendimiento/ (#61).
+# Si falla: no bloquea ningún Pull Request; la versión no se libera hasta
+#   revisar las trazas guardadas.
+# Issues: #61 (Sprint 3, línea base) y #71 (Sprint 5, versión candidata).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Pruebas de rendimiento
+
+on:
+  workflow_dispatch:
+    inputs:
+      medir_en_celular:
+        description: Medir arranque y fluidez en el celular (requiere el runner propio, #61)
+        type: boolean
+        default: false
+  # Se activa al cerrar #61:
+  # push:
+  #   tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  # Número de serie del Samsung SM-N975U del equipo (adb devices).
+  DISPOSITIVO: RF8M835TANV
+
+jobs:
+  peso-del-apk:
+    name: Peso del APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      # Gradle compila el APK sobre Java.
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # --analyze-size desglosa el peso por paquete Dart y librería nativa y
+      # escribe build/apk-code-size-analysis_01.json (se abre en DevTools).
+      # Se compila solo arm64, la arquitectura del celular del equipo. Sin
+      # keystore (#11) el release se firma con la llave de depuración: el
+      # peso es el mismo.
+      - name: Compilar el APK de release y analizar su peso
+        run: flutter build apk --release --analyze-size --target-platform android-arm64
+
+      - name: Guardar el APK y el desglose del peso
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendimiento-apk-${{ github.sha }}
+          path: |
+            build/app/outputs/flutter-apk/*-release.apk
+            build/apk-code-size-analysis_*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  tiempos:
+    name: Arranque y fluidez en el celular
+    # Solo cuando se marca la casilla al lanzar el workflow (ver cabecera).
+    if: inputs.medir_en_celular
+    runs-on: [self-hosted, android-device]
+    timeout-minutes: 30
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      # El runner propio ya tiene Flutter, el SDK de Android y adb.
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # flutter drive en modo profile graba con traceAction los cuadros
+      # dibujados durante el arranque, el desplazamiento del catálogo y el
+      # paso al checkout. El driver guarda el resumen (promedio y percentil
+      # 90 del tiempo por cuadro) en build/*.timeline_summary.json, que se
+      # compara con la línea base del Sprint 3.
+      - name: Medir con traceAction en modo profile
+        run: >
+          flutter drive
+          --driver=test_driver/perf_driver.dart
+          --target=integration_test/rendimiento/rendimiento_test.dart
+          --profile --no-dds
+          -d ${{ env.DISPOSITIVO }}
+
+      - name: Guardar las trazas y el resumen
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendimiento-tiempos-${{ github.sha }}
+          path: build/*.timeline_summary.json
+          if-no-files-found: error
+          retention-days: 30
