@@ -2,9 +2,9 @@
 // «Reembolsos»: el botón «Nueva Solicitud» sigue a la animación de las
 // pestañas (se apaga, deja de recibir toques y sale del árbol; con
 // movimiento reducido no se encoge), el título rueda y el «?» aparece y se
-// va, volver a «Mis Solicitudes» no repite la entrada de las tarjetas, solo
-// la solicitud recién llegada trae el aro dorado y enviar incompleto sacude
-// los campos con error. Sin red.
+// va, la página que se va se atenúa, volver a «Mis Solicitudes» no repite
+// la entrada de las tarjetas, solo la solicitud recién llegada trae el aro
+// dorado y enviar incompleto sacude los campos con error. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -151,6 +151,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Reembolsos'), findsOneWidget);
       expect(find.byIcon(LucideIcons.circleHelp), findsNothing);
+    });
+
+    testWidgets('al ir a Nueva Solicitud, Mis Solicitudes se atenúa; en '
+        'reposo nada queda atenuado', (tester) async {
+      await _montar(tester, _backend([_reembolso(3, 'PIER-9')]));
+      await tester.pumpAndSettle();
+      Finder pagina(int indice) => find.byWidgetPredicate(
+        (w) => w is PaginaAtenuada && w.indice == indice,
+      );
+      expect(opacidadEn(tester, pagina(0)), 1);
+
+      await _irANueva(tester);
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(opacidadEn(tester, pagina(0)), lessThan(1));
+      expect(opacidadEn(tester, pagina(0)), greaterThanOrEqualTo(0.55));
+      expect(opacidadEn(tester, pagina(1)), lessThan(1));
+
+      await tester.pumpAndSettle();
+      expect(opacidadEn(tester, pagina(1)), 1);
     });
 
     testWidgets('volver a Mis Solicitudes no repite la entrada', (
