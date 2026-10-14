@@ -1,8 +1,21 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // kotlin-android eliminado: Flutter 3.44+ compila Kotlin con Built-in Kotlin.
     // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Firma de release (#11). La llave del equipo vive fuera del repositorio y
+// android/key.properties (Git lo ignora) dice dónde está y sus contraseñas.
+// Sin ese archivo (GitHub Actions, otra computadora) el release se firma con
+// la llave de depuración, como antes: compilar no depende de tener la llave.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val hayLlaveRelease = keystorePropertiesFile.exists()
+val keystoreProperties = Properties().apply {
+    if (hayLlaveRelease) FileInputStream(keystorePropertiesFile).use { load(it) }
 }
 
 android {
@@ -58,11 +71,21 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hayLlaveRelease) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig =
+                signingConfigs.getByName(if (hayLlaveRelease) "release" else "debug")
         }
     }
 }
