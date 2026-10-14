@@ -1,4 +1,22 @@
-name: Integración Android
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: PRUEBAS DE INTEGRACIÓN
+#
+# Qué prueba: que varias historias funcionan juntas en un flujo completo
+#   (por ejemplo iniciar sesión, ver el catálogo, llenar el carrito y llegar
+#   al pago) con la app instalada y corriendo en un emulador Android real.
+#   Hoy usa el cliente de API falso (FakeApiClient) y no toca el backend;
+#   contra staging correrá cuando existan los ambientes (#12 y #13).
+# Para qué sirve: encontrar fallos que las unitarias no ven: navegación,
+#   estado compartido entre pantallas, permisos y comportamiento en Android.
+# Cuándo corre: solo en Pull Requests que tocan código de la app (lib/,
+#   integration_test/, android/, dependencias o este archivo) porque tarda
+#   más que los demás (unos 8 minutos con el AVD en caché), y a mano.
+# Si falla: el Pull Request muestra el check en rojo para que el revisor lo
+#   vea; no es check obligatorio porque no corre en todos los PR.
+# Dónde viven: integration_test/ (hoy app_smoke_test.dart).
+# Issues: #21 (Sprint 1), #58 (Sprint 2), #65 (Sprint 4) y #69 (Sprint 5).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Pruebas de integración
 
 on:
   pull_request:
@@ -16,11 +34,14 @@ on:
 permissions:
   contents: read
 
+# Si llega otro commit al mismo Pull Request, se cancela la corrida anterior.
 concurrency:
   group: integracion-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
+  FLUTTER_VERSION: '3.44.4'
+  # Emulador: Android 14 (API 34), perfil Pixel 6, sin ventana ni sonido.
   API_LEVEL: 34
   AVD_PROFILE: pixel_6
   EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
@@ -31,34 +52,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Descargar el código
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      # Gradle (compila el APK) y el emulador necesitan Java.
+      - name: Instalar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Flutter
+      - name: Instalar Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.4'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: flutter pub get
 
       # Sin esto el emulador corre sin aceleración de hardware en ubuntu-latest
       # y tarda cinco minutos en arrancar (ver run 37573804253).
-      - name: Enable KVM
+      - name: Habilitar KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Cache AVD snapshot
+      # La imagen del emulador (AVD) se guarda entre corridas: crearla desde
+      # cero toma varios minutos; con caché la corrida bajó de 23 a 8 minutos.
+      - name: Restaurar el AVD de la caché
         id: avd-cache
         uses: actions/cache@v4
         with:
@@ -67,7 +91,9 @@ jobs:
             ~/.android/adb*
           key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
 
-      - name: Generate AVD snapshot for caching
+      # Solo cuando no había caché: arranca el emulador una vez y guarda la
+      # instantánea para las siguientes corridas.
+      - name: Generar el AVD para la caché
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -77,9 +103,12 @@ jobs:
           force-avd-creation: false
           emulator-options: ${{ env.EMULATOR_OPTIONS }}
           disable-animations: false
-          script: echo "Generated AVD snapshot for caching."
+          script: echo "AVD generado para la caché."
 
-      - name: Run integration tests in emulator
+      # Arranca el emulador, compila e instala la app y corre los flujos de
+      # integration_test/ dentro del dispositivo. --no-pub evita repetir la
+      # descarga de dependencias.
+      - name: Correr las pruebas de integración en el emulador
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ env.API_LEVEL }}

@@ -157,9 +157,9 @@ MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
 | Tipo | Qué comprueba | Dónde vive | Cuándo corre |
 |---|---|---|---|
-| Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Cada Pull Request (`ci.yml`) |
-| Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`ci.yml`) |
-| Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`ci.yml`) |
+| Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Cada Pull Request (`unitarias.yml`) |
+| Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`analisis-estatico.yml`) |
+| Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`aceptacion.yml`) |
 | Integración | Smoke tests del login y catálogo en emulador Android, con `FakeApiClient` y sin backend | `integration_test/app_smoke_test.dart` | Pull Requests que tocan código de app (`integracion.yml`) |
 | Regresión | Toda la suite acumulada sobre la rama o tag | `test/` e `integration_test/` | Martes 08:00 UTC, cada tag y a mano (`regresion.yml`) |
 | Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
@@ -173,7 +173,7 @@ viven en `test/unitarias/`, con una carpeta por épica (`auth`, `catalogo`,
 `test/widget/`. El smoke test de integración también usa `FakeApiClient`, por
 lo que no contacta el backend ni requiere credenciales.
 El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
-están en `analysis_options.yaml`. El workflow de CI compara el resultado con el
+están en `analysis_options.yaml`. El workflow `analisis-estatico.yml` compara el resultado con el
 baseline de `tool/check_analysis.sh` (0 errores, 0 warnings y 151 infos, medido
 con Flutter 3.44.4, la versión del CI) y falla si empeora; al corregir avisos,
 el baseline se baja en el mismo Pull Request.
@@ -185,7 +185,9 @@ flutter test --coverage          # igual, con reporte en coverage/lcov.info
 flutter test integration_test    # smoke tests, con emulador o celular conectado
 ```
 
-El workflow de CI requiere configurar `SONAR_TOKEN` como secreto del repositorio
+Cada tipo de prueba tiene su propio workflow en `.github/workflows/`, con la
+explicación de qué prueba, cuándo corre y qué pasa si falla en los comentarios
+del archivo. El de análisis estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
 y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
 resultado del quality gate de SonarCloud; el quality gate y su umbral de
 cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.

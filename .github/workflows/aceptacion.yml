@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: PRUEBAS DE ACEPTACIÓN
+#
+# Qué prueba: que cada historia de usuario cumple sus criterios de
+#   aceptación. Cada escenario Gherkin de la historia («Dado… Cuando…
+#   Entonces…») tiene una prueba que recorre la pantalla real con datos
+#   simulados (FakeApiClient), sin emulador: son pruebas de widget.
+# Para qué sirve: una historia se da por terminada solo cuando todos sus
+#   escenarios pasan, y se detecta cuándo un cambio rompe el comportamiento
+#   acordado con el Product Owner.
+# Cuándo corre: al abrir o actualizar un Pull Request hacia main, en cada
+#   push a main y a mano.
+# Si falla: el Pull Request queda bloqueado (check obligatorio del ruleset
+#   «Proteger main»).
+# Dónde viven: test/aceptacion/<épica>/, un archivo por historia y una prueba
+#   por escenario (hoy: auth y carrito_checkout).
+# Issues: #53 (Sprint 1), #56 y #57 (Sprint 2), #60 y #131 (Sprint 3),
+#   #64 y #135 (Sprint 4), #68 (Sprint 5).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Pruebas de aceptación
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Si llega otro commit al mismo Pull Request, se cancela la corrida anterior.
+concurrency:
+  group: aceptacion-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+
+jobs:
+  aceptacion:
+    name: Escenarios Gherkin
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # --reporter expanded imprime el nombre de cada escenario conforme pasa,
+      # así el log de la corrida se lee como la lista de criterios cumplidos.
+      - name: Correr los escenarios de aceptación
+        run: flutter test test/aceptacion --reporter expanded
