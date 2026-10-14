@@ -53,11 +53,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Gradle (compila el APK) y el emulador necesitan Java.
       - name: Instalar Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -84,7 +84,7 @@ jobs:
       # cero toma varios minutos; con caché la corrida bajó de 23 a 8 minutos.
       - name: Restaurar el AVD de la caché
         id: avd-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.android/avd/*
