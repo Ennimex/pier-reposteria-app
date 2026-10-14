@@ -14,6 +14,7 @@ import '../../fakes/fake_api_client.dart';
 const String _mis = ApiConstants.misReembolsos;
 const String _crear = ApiConstants.crearReembolso;
 const String _pedidos = ApiConstants.misPedidos;
+const String _subir = ApiConstants.uploadImagen;
 
 final Map<String, dynamic> _conDatos = {
   _mis: {
@@ -24,7 +25,7 @@ final Map<String, dynamic> _conDatos = {
         'pedido_id': 9,
         'pedido_numero': 'PIER-9',
         'monto': '640.00',
-        'motivo': 'Producto dañado',
+        'motivo': 'producto_danado',
         'estado': 'en_revision',
         'respuesta_admin': 'Lo estamos revisando',
         'created_at': '2026-10-01T18:00:00Z',
@@ -44,12 +45,42 @@ final Map<String, dynamic> _conDatos = {
   _crear: {'success': true, 'reembolso': {'id': 5}},
 };
 
+/// Sube cada archivo a `https://cdn/` + su nombre.
+Map<String, dynamic> _subida(LlamadaApi l) {
+  final ruta = l.body!['filePath'].toString();
+  return {
+    'success': true,
+    'imagen': {'url': 'https://cdn/${ruta.split('/').last}'},
+  };
+}
+
 RefundsViewModel _vm(FakeApiClient api) => RefundsViewModel(
       reembolsosRepo: ReembolsosRepositoryRemote(api: api),
       pedidosRepo: PedidosRepositoryRemote(api: api),
     );
 
 void main() {
+  group('Motivos (#118)', () {
+    test('son los códigos del ENUM motivo_reembolso, como en la web', () {
+      expect(RefundsViewModel.motivos.keys, [
+        'producto_danado',
+        'no_satisfecho',
+        'pedido_incorrecto',
+        'tardanza',
+        'cantidad_incorrecta',
+        'otro',
+      ]);
+      expect(RefundsViewModel.motivos['tardanza'], 'Tardanza en preparación');
+    });
+
+    test('el texto traduce el código; uno desconocido se muestra tal cual',
+        () {
+      // El reembolso automático de una cancelación llega con 'otro'.
+      expect(Reembolso.fromJson({'motivo': 'otro'}).motivoTexto, 'Otro motivo');
+      expect(Reembolso.fromJson({'motivo': 'raro'}).motivoTexto, 'raro');
+    });
+  });
+
   group('Reembolso y repositorio', () {
     test('listarMisReembolsos tipa, tolera faltantes e ignora basura',
         () async {
@@ -64,12 +95,15 @@ void main() {
       expect(r.estado, EstadoReembolso.enRevision);
       expect(r.respuestaAdmin, 'Lo estamos revisando');
       expect(r.creadoEn, isNotNull);
+      expect(r.motivo, 'producto_danado');
+      expect(r.motivoTexto, 'Producto dañado');
       // Sin número usa el id del pedido; estado desconocido = pendiente;
       // respuesta vacía = sin respuesta.
       expect(lista[1].pedidoNumero, '12');
       expect(lista[1].estado, EstadoReembolso.pendiente);
       expect(lista[1].respuestaAdmin, isNull);
       expect(lista[1].motivo, isNull);
+      expect(lista[1].motivoTexto, isNull);
       expect(api.llamo(_mis, metodo: 'GET-Auth'), isTrue);
     });
 
@@ -90,7 +124,7 @@ void main() {
         repo.solicitar(
           pedidoId: '9',
           monto: 640,
-          motivo: 'Otro',
+          motivo: 'otro',
           descripcion: 'Llegó aplastado',
         ),
         throwsA(isA<ApiException>().having((e) => e.message, 'message',
@@ -99,9 +133,137 @@ void main() {
       expect(api.ultima(_crear)?.body, {
         'pedido_id': 9,
         'monto': 640.0,
-        'motivo': 'Otro',
+        'motivo': 'otro',
         'descripcion': 'Llegó aplastado',
       });
+    });
+  });
+
+  group('Fotos de evidencia: modelo y repositorio (#117)', () {
+    test('el historial trae las fotos guardadas; sin fotos queda vacío', () {
+      final con = Reembolso.fromJson({
+        'id': 1,
+        'fotos_evidencia': ['https://cdn/a.jpg', 7, '', 'https://cdn/b.jpg'],
+      });
+      final sin = Reembolso.fromJson({'id': 2, 'fotos_evidencia': null});
+
+      expect(con.fotos, ['https://cdn/a.jpg', 'https://cdn/b.jpg']);
+      expect(sin.fotos, isEmpty);
+    });
+
+    test('subirEvidencia sube como «reembolso» y devuelve la URL', () async {
+      final api = FakeApiClient()
+        ..responder(_subir, {
+          'success': true,
+          'imagen': {'url': 'https://cdn/f.jpg'},
+        });
+      final repo = ReembolsosRepositoryRemote(api: api);
+
+      expect(await repo.subirEvidencia('/tmp/f.jpg'), 'https://cdn/f.jpg');
+      expect(api.ultima(_subir)!.body,
+          {'filePath': '/tmp/f.jpg', 'tipo': 'reembolso'});
+
+      api.responder(_subir, {'success': true});
+      await expectLater(repo.subirEvidencia('/tmp/f.jpg'),
+          throwsA(isA<ApiException>()));
+    });
+
+    test('solicitar manda fotos_evidencia solo si hay fotos', () async {
+      final api = FakeApiClient(respuestas: _conDatos);
+      final repo = ReembolsosRepositoryRemote(api: api);
+
+      await repo.solicitar(
+        pedidoId: '9',
+        monto: 640,
+        motivo: 'producto_danado',
+        descripcion: 'Llegó aplastado',
+        fotos: const ['https://cdn/a.jpg', 'https://cdn/b.jpg'],
+      );
+
+      expect(api.ultima(_crear)?.body, {
+        'pedido_id': 9,
+        'monto': 640.0,
+        'motivo': 'producto_danado',
+        'descripcion': 'Llegó aplastado',
+        'fotos_evidencia': ['https://cdn/a.jpg', 'https://cdn/b.jpg'],
+      });
+    });
+  });
+
+  group('RefundsViewModel: fotos de evidencia (#117)', () {
+    test('admite hasta 3 fotos y se pueden quitar', () {
+      final vm = _vm(FakeApiClient())
+        ..agregarFoto('/fotos/1.jpg')
+        ..agregarFoto('/fotos/2.jpg')
+        ..agregarFoto('/fotos/3.jpg');
+      expect(vm.puedeAgregarFoto, isFalse);
+
+      vm.agregarFoto('/fotos/4.jpg');
+      expect(vm.fotos, ['/fotos/1.jpg', '/fotos/2.jpg', '/fotos/3.jpg']);
+
+      vm.quitarFoto('/fotos/2.jpg');
+      expect(vm.fotos, ['/fotos/1.jpg', '/fotos/3.jpg']);
+      expect(vm.puedeAgregarFoto, isTrue);
+    });
+
+    test('sube cada foto, la manda con la solicitud y limpia', () async {
+      final api = FakeApiClient(respuestas: {..._conDatos, _subir: _subida});
+      final vm = _vm(api);
+      await vm.cargar();
+      vm
+        ..seleccionarMotivo('producto_danado')
+        ..agregarFoto('/fotos/1.jpg')
+        ..agregarFoto('/fotos/2.jpg');
+
+      final error = await vm.enviar(descripcion: 'Llegó aplastado');
+
+      expect(error, isNull);
+      expect(
+          api.llamadas
+              .where((l) => l.endpoint == _subir)
+              .map((l) => l.body!['tipo']),
+          ['reembolso', 'reembolso']);
+      expect(api.ultima(_crear)?.body?['fotos_evidencia'],
+          ['https://cdn/1.jpg', 'https://cdn/2.jpg']);
+      expect(vm.fotos, isEmpty);
+    });
+
+    test('si una foto no sube no manda la solicitud y conserva las fotos',
+        () async {
+      final api = FakeApiClient(respuestas: _conDatos)
+        ..fallar(_subir, 'Error al subir imagen');
+      final vm = _vm(api);
+      await vm.cargar();
+      vm
+        ..seleccionarMotivo('otro')
+        ..agregarFoto('/fotos/1.jpg');
+
+      final error = await vm.enviar(descripcion: 'Llegó aplastado');
+
+      expect(error, 'No se pudo subir una de las fotos. Intenta de nuevo.');
+      expect(api.llamo(_crear), isFalse);
+      expect(vm.fotos, ['/fotos/1.jpg']);
+      expect(vm.enviando, isFalse);
+    });
+
+    test('al reintentar no vuelve a subir las fotos que ya subieron',
+        () async {
+      final api = FakeApiClient(respuestas: {..._conDatos, _subir: _subida})
+        ..fallar(_crear, 'Pedido no encontrado');
+      final vm = _vm(api);
+      await vm.cargar();
+      vm
+        ..seleccionarMotivo('otro')
+        ..agregarFoto('/fotos/1.jpg');
+
+      expect(await vm.enviar(descripcion: 'Llegó aplastado'),
+          'Pedido no encontrado');
+      api.responder(_crear, {'success': true});
+      expect(await vm.enviar(descripcion: 'Llegó aplastado'), isNull);
+
+      expect(api.llamadas.where((l) => l.endpoint == _subir).length, 1);
+      expect(api.ultima(_crear)?.body?['fotos_evidencia'],
+          ['https://cdn/1.jpg']);
     });
   });
 
@@ -134,7 +296,7 @@ void main() {
       });
       final vm = _vm(api);
       await vm.cargar();
-      vm.seleccionarMotivo('Otro');
+      vm.seleccionarMotivo('otro');
 
       expect(vm.pedidoSeleccionado, isNull);
       expect(await vm.enviar(descripcion: 'Llegó aplastado'),
@@ -149,7 +311,7 @@ void main() {
       await vm.cargar();
       vm
         ..seleccionarPedido(vm.pedidos[1])
-        ..seleccionarMotivo('Pedido incompleto');
+        ..seleccionarMotivo('cantidad_incorrecta');
       final antes = api.llamadas.where((l) => l.endpoint == _mis).length;
 
       final error = await vm.enviar(descripcion: '  Faltó un pay  ');
@@ -159,7 +321,7 @@ void main() {
       expect(api.ultima(_crear)?.body, {
         'pedido_id': 11,
         'monto': 150.0,
-        'motivo': 'Pedido incompleto',
+        'motivo': 'cantidad_incorrecta',
         'descripcion': 'Faltó un pay',
       });
       expect(vm.enviando, isFalse);
@@ -174,13 +336,13 @@ void main() {
         ..fallar(_crear, 'Pedido no encontrado');
       final vm = _vm(api);
       await vm.cargar();
-      vm.seleccionarMotivo('Otro');
+      vm.seleccionarMotivo('otro');
 
       final error = await vm.enviar(descripcion: 'Llegó aplastado');
 
       expect(error, 'Pedido no encontrado');
       expect(vm.enviando, isFalse);
-      expect(vm.motivo, 'Otro');
+      expect(vm.motivo, 'otro');
     });
 
     test('si falla la recarga se queda el historial anterior', () async {

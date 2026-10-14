@@ -1,6 +1,7 @@
 // lib/ui/roles/widgets/panel_web_screen.dart
 //
-// Pantalla para los roles internos (empleado, gerencia, direccion_general).
+// Pantalla para los roles internos (empleado, gerencia, direccion_general,
+// hornos y decoracion).
 // Estos roles operan desde el panel web; la app móvil no tiene sus vistas.
 // Se les da la bienvenida con su identidad de rol y se les invita a abrir el
 // sitio web para tener una mejor perspectiva de su trabajo.
@@ -51,6 +52,16 @@ class _RolInfo {
           icono: LucideIcons.award,
           acento: Color(0xFF5A3D7A),
           acentoOscuro: Color(0xFF2D1B4E),
+        );
+      case 'hornos':
+      case 'decoracion':
+        return const _RolInfo(
+          panel: 'Panel de Producción',
+          descripcion:
+              'Agenda de comandas y confirmación de «Enterado» para hornos y decoración.',
+          icono: LucideIcons.chefHat,
+          acento: Color(0xFF8A4B2A),
+          acentoOscuro: Color(0xFF4A2414),
         );
       case 'empleado':
       default:

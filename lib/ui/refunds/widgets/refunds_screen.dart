@@ -12,6 +12,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/reembolsos_repository.dart';
@@ -22,6 +23,7 @@ import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:pier_pasteleria/ui/refunds/view_model/refunds_view_model.dart';
+import 'package:pier_pasteleria/ui/refunds/widgets/evidencia_fotos.dart';
 import 'package:provider/provider.dart';
 
 class RefundsScreen extends StatefulWidget {
@@ -45,6 +47,7 @@ class _RefundsScreenState extends State<RefundsScreen>
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
   final _descripcionCtrl = TextEditingController();
+  final _picker = ImagePicker();
 
   // Para saber qué campo no pasó la validación y sacudir solo ese.
   final _motivoKey = GlobalKey<FormFieldState<String>>();
@@ -111,6 +114,20 @@ class _RefundsScreenState extends State<RefundsScreen>
     _showSnack('Solicitud enviada con éxito', AppColors.pierVerde);
     _descripcionCtrl.clear();
     _tabController.animateTo(0);
+  }
+
+  /// Cámara o galería (#117); la foto elegida va al ViewModel.
+  Future<void> _elegirFoto(ImageSource fuente) async {
+    try {
+      final img = await _picker.pickImage(
+        source: fuente,
+        imageQuality: 70,
+        maxWidth: 1280,
+      );
+      if (img != null) _vm.agregarFoto(img.path);
+    } on Exception {
+      if (mounted) _showSnack('No se pudo acceder a la imagen', AppColors.error);
+    }
   }
 
   void _showSnack(String msg, Color color) {
@@ -507,7 +524,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                               color: AppColors.textSecondary.withValues(alpha: 0.5),
                               fontWeight: FontWeight.w500)),
                       const SizedBox(height: 4),
-                      Text(r.motivo ?? '—',
+                      Text(r.motivoTexto ?? '—',
                           style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -534,6 +551,8 @@ class _RefundsScreenState extends State<RefundsScreen>
               ],
             ),
           ),
+
+          if (r.fotos.isNotEmpty) FotosGuardadas(urls: r.fotos),
 
           // ── RESPUESTA DE PIER ─────────────────────────────────
           if (respuesta != null)
@@ -709,10 +728,12 @@ class _RefundsScreenState extends State<RefundsScreen>
                             color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 14)),
                     icon: Icon(LucideIcons.chevronDown,
                         color: AppColors.pierVerde),
-                    items: RefundsViewModel.motivos
+                    // El valor es el código del ENUM del backend; se muestra
+                    // su texto.
+                    items: RefundsViewModel.motivos.entries
                         .map((m) => DropdownMenuItem(
-                            value: m,
-                            child: Text(m,
+                            value: m.key,
+                            child: Text(m.value,
                                 style: const TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textPrimary))))
@@ -764,6 +785,16 @@ class _RefundsScreenState extends State<RefundsScreen>
                         ? 'Mínimo 10 caracteres'
                         : null,
               ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── FOTOS DE EVIDENCIA ─────────────────────────────
+            EvidenciaFotos(
+              fotos: _vm.fotos,
+              maximo: RefundsViewModel.maxFotos,
+              onCamara: () => _elegirFoto(ImageSource.camera),
+              onGaleria: () => _elegirFoto(ImageSource.gallery),
+              onQuitar: _vm.quitarFoto,
             ),
             const SizedBox(height: 32),
 

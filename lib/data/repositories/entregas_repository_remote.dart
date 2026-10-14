@@ -6,6 +6,7 @@
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/api_exception.dart';
 import 'package:pier_pasteleria/data/repositories/entregas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/subir_imagen.dart';
 import 'package:pier_pasteleria/data/services/api_client.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 
@@ -92,18 +93,8 @@ class EntregasRepositoryRemote implements EntregasRepository {
   }
 
   @override
-  Future<String> subirEvidencia(String filePath) async {
-    const porDefecto = 'No se pudo subir la foto';
-    final r = await _exigir(
-      _api.uploadImageAuth(
-          ApiConstants.uploadImagen, filePath, {'tipo': 'entrega'}),
-      porDefecto,
-    );
-    final imagen = r['imagen'];
-    final url = imagen is Map ? imagen['url']?.toString() : null;
-    if (url == null || url.isEmpty) throw const ApiException(porDefecto);
-    return url;
-  }
+  Future<String> subirEvidencia(String filePath) =>
+      subirImagen(_api, filePath, tipo: 'entrega');
 
   /// Los elementos Map de [data] convertidos con [desdeJson]; nada si no es
   /// lista.

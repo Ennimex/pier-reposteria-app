@@ -1,7 +1,7 @@
 // lib/config/dependencies.dart
 //
 // Inyección de dependencias (MVVM, Fase 3.5). Registra una sola vez el
-// ApiClient, los 15 repositorios (contrato abstracto → implementación Remote)
+// ApiClient, los 17 repositorios (contrato abstracto → implementación Remote)
 // y los providers globales. Vistas y ViewModels piden su repositorio con
 // `context.read<XRepository>()` en vez de instanciarlo.
 //
@@ -11,6 +11,8 @@ import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
 import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
 import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/comandas_repository.dart';
+import 'package:pier_pasteleria/data/repositories/comandas_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
 import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
@@ -31,6 +33,8 @@ import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_pasteleria/data/repositories/publicaciones_repository.dart';
+import 'package:pier_pasteleria/data/repositories/publicaciones_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
 import 'package:pier_pasteleria/data/repositories/quejas_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/reembolsos_repository.dart';
@@ -59,6 +63,9 @@ List<SingleChildWidget> dependencias(ApiClient api) => [
       ),
       Provider<CarritoRepository>(
         create: (context) => CarritoRepositoryRemote(api: context.read()),
+      ),
+      Provider<ComandasRepository>(
+        create: (context) => ComandasRepositoryRemote(api: context.read()),
       ),
       Provider<ConfiguracionRepository>(
         create: (context) => ConfiguracionRepositoryRemote(api: context.read()),
@@ -90,6 +97,9 @@ List<SingleChildWidget> dependencias(ApiClient api) => [
       ),
       Provider<ProductosRepository>(
         create: (context) => ProductosRepositoryRemote(api: context.read()),
+      ),
+      Provider<PublicacionesRepository>(
+        create: (context) => PublicacionesRepositoryRemote(api: context.read()),
       ),
       Provider<QuejasRepository>(
         create: (context) => QuejasRepositoryRemote(api: context.read()),

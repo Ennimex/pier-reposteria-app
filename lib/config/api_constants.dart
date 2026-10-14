@@ -1,9 +1,11 @@
 // lib/config/api_constants.dart
 //
 // La URL del backend depende del ambiente, que se elige al compilar:
+//   flutter run --flavor dev                 (#12: app aparte, «Pier DEV»)
 //   flutter run --dart-define=AMBIENTE=dev
 //   flutter run --dart-define=AMBIENTE=dev --dart-define=API_BASE_URL=http://192.168.1.50:3000/api
-// Sin --dart-define el ambiente es prod (el build de siempre).
+// Sin flavor ni --dart-define el ambiente es prod (el build de siempre).
+import 'package:flutter/services.dart' show appFlavor;
 
 enum Ambiente { dev, staging, prod }
 
@@ -14,11 +16,16 @@ class ApiConstants {
   /// celular físico usar API_BASE_URL con la IP de la PC en la red.
   static const String devUrl = 'http://10.0.2.2:3000/api';
 
-  static const String _ambienteDefine =
-      String.fromEnvironment('AMBIENTE', defaultValue: 'prod');
+  static const String _ambienteDefine = String.fromEnvironment('AMBIENTE');
   static const String _urlForzada = String.fromEnvironment('API_BASE_URL');
 
-  static Ambiente get ambiente => ambienteDesde(_ambienteDefine);
+  static Ambiente get ambiente => ambienteDesde(
+        _ambienteDefine,
+        // Sin --flavor el analizador ve null y lo cree redundante, pero
+        // quitarlo haría que --flavor dev no cambiara de backend.
+        // ignore: avoid_redundant_argument_values
+        flavor: appFlavor,
+      );
 
   static String get baseUrl => resolverBaseUrl(
         ambiente,
@@ -28,11 +35,15 @@ class ApiConstants {
         urlForzada: _urlForzada,
       );
 
-  /// Valor de AMBIENTE a enum; vacío o desconocido es prod.
-  static Ambiente ambienteDesde(String valor) => Ambiente.values.firstWhere(
-        (a) => a.name == valor.trim().toLowerCase(),
-        orElse: () => Ambiente.prod,
-      );
+  /// Valor de AMBIENTE a enum. Si AMBIENTE no vino, manda el [flavor] con
+  /// el que se compiló (--flavor dev); vacío o desconocido es prod.
+  static Ambiente ambienteDesde(String valor, {String? flavor}) {
+    final elegido = valor.trim().isNotEmpty ? valor : flavor ?? '';
+    return Ambiente.values.firstWhere(
+      (a) => a.name == elegido.trim().toLowerCase(),
+      orElse: () => Ambiente.prod,
+    );
+  }
 
   static String resolverBaseUrl(Ambiente ambiente, {String urlForzada = ''}) {
     if (urlForzada.isNotEmpty) return urlForzada;
@@ -145,6 +156,36 @@ class ApiConstants {
   static String entregaEstado(String id)   => '/entregas/$id/estado';
   // Aviso "llegué al domicilio": notifica al cliente sin cambiar estado
   static String entregaLlegue(String id)   => '/entregas/$id/llegue';
+
+  // ── COMANDAS (personal y producción; rol releído de la base) ──────
+  // Agenda: ?vista=proximas|activas|entregadas|canceladas&busqueda=folio|nombre
+  static const String comandas = '/comandas';
+  static String agendaComandas(String vista, {String busqueda = ''}) =>
+      '$comandas?vista=$vista'
+      '${busqueda.isEmpty ? '' : '&busqueda=${Uri.encodeQueryComponent(busqueda)}'}';
+  static String comandaDetalle(int id)   => '$comandas/$id';
+  // «Enterado» de producción: {version} que se leyó (409 si cambió)
+  static String comandaConfirmar(int id) => '$comandas/$id/confirmar';
+  static String comandaEntregar(int id)  => '$comandas/$id/entregar';  // PUT {saldo_cobrado}
+  static String comandaCancelar(int id)  => '$comandas/$id/cancelar';  // PUT {motivo}
+
+  // ── PUBLICACIONES (inicio del cliente; rol releído de la base) ────
+  // Feed por páginas: el cursor es la última publicación vista
+  // (antes = fecha con microsegundos, antes_id = id).
+  static String publicacionesFeed({String? antes, int? antesId, int limite = 8}) =>
+      '/publicaciones/feed?limite=$limite'
+      '${antes == null ? '' : '&antes=${Uri.encodeQueryComponent(antes)}&antes_id=$antesId'}';
+  static const String publicacionesPromociones = '/publicaciones/promociones';
+  static String publicacionesSugerencias(int pagina) =>
+      '/publicaciones/sugerencias?pagina=$pagina';
+  // «Me encanta»: PUT pone (cuerpo vacío), DELETE quita; idempotente
+  static String publicacionCorazon(int id) => '/publicaciones/$id/corazon';
+  // Comentarios visibles por páginas de 20, después del comentario despues_id
+  static String publicacionComentarios(int id, {int? despuesId}) =>
+      '/publicaciones/$id/comentarios?limite=20'
+      '${despuesId == null ? '' : '&despues_id=$despuesId'}';
+  static String publicacionComentar(int id) => '/publicaciones/$id/comentarios'; // POST {texto}
+  static String comentarioPublicacion(int id) => '/publicaciones/comentarios/$id'; // DELETE (los propios)
 
   // ── DEMANDA NO ATENDIDA (público, registro silencioso) ────────────
   // Espejo de src/utils/demandaNoAtendida.ts de la web. Alimentan el reporte

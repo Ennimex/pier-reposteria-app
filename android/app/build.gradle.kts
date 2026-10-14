@@ -28,6 +28,31 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Pruebas instrumentadas para Firebase Test Lab (#75). androidx.test
+        // (runner, rules, espresso) ya lo trae el plugin integration_test.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Ambientes (#12): cada flavor se instala aparte (sufijo en el paquete) y
+    // se distingue en el launcher. El backend lo elige la app con appFlavor
+    // (lib/config/api_constants.dart). Sin --flavor se compila prod
+    // (default-flavor en pubspec.yaml), así que `flutter run` no cambia.
+    flavorDimensions += "ambiente"
+    productFlavors {
+        create("dev") {
+            dimension = "ambiente"
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "Pier DEV")
+        }
+        create("staging") {
+            dimension = "ambiente"
+            applicationIdSuffix = ".staging"
+            resValue("string", "app_name", "Pier STAGING")
+        }
+        create("prod") {
+            dimension = "ambiente"
+            resValue("string", "app_name", "Pier Repostería")
+        }
     }
 
     buildTypes {

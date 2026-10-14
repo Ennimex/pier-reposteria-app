@@ -107,20 +107,32 @@ flutter run -d <device-id>
 
 ### Ambientes
 
-La app apunta al backend de producción salvo que se indique otro ambiente al
-compilar con `--dart-define`:
+Hay un *flavor* por ambiente. Cada uno se instala como una app aparte (los tres
+pueden convivir en el mismo teléfono) y apunta a su backend:
 
-| Ambiente | Comando | Backend |
-|---|---|---|
-| prod (por defecto) | `flutter run` | `https://pier-reposteria-backend.onrender.com/api` |
-| dev | `flutter run --dart-define=AMBIENTE=dev` | Backend local, `http://10.0.2.2:3000/api` (localhost de la PC visto desde el emulador) |
-| staging | `flutter run --dart-define=AMBIENTE=staging` | Producción, mientras no exista un backend de staging |
+| Ambiente | Comando | Paquete | Nombre en el launcher | Backend |
+|---|---|---|---|---|
+| prod (por defecto) | `flutter run` (o `--flavor prod`) | `com.example.pier_pasteleria` | Pier Repostería | `https://pier-reposteria-backend.onrender.com/api` |
+| dev | `flutter run --flavor dev` | `com.example.pier_pasteleria.dev` | Pier DEV | Backend local, `http://10.0.2.2:3000/api` (localhost de la PC visto desde el emulador) |
+| staging | `flutter run --flavor staging` | `com.example.pier_pasteleria.staging` | Pier STAGING | Producción, mientras no exista un backend de staging |
+
+Sin `--flavor` se compila prod (`default-flavor` en `pubspec.yaml`), así que
+`flutter run`, `flutter build apk` y el CI funcionan igual que antes; el APK sale
+como `build/app/outputs/flutter-apk/app-<flavor>-<modo>.apk`. En VS Code hay un
+lanzador por ambiente en `.vscode/launch.json`.
+
+El inicio con Google valida el paquete: en dev y staging solo funciona cuando
+sus paquetes están registrados en Google Cloud (ver #12). Los flavors son solo
+para Android; iOS necesitaría sus *schemes* en Xcode.
+
+`--dart-define=AMBIENTE=dev|staging|prod` también elige el backend y tiene
+prioridad sobre el flavor.
 
 En un celular físico, `10.0.2.2` no llega a la PC: usa la IP de la PC en la red
 con `--dart-define=API_BASE_URL`, que tiene prioridad sobre el ambiente:
 
 ```bash
-flutter run --dart-define=AMBIENTE=dev --dart-define=API_BASE_URL=http://192.168.1.50:3000/api
+flutter run --flavor dev --dart-define=API_BASE_URL=http://192.168.1.50:3000/api
 ```
 
 El backend local usa http, que Android solo permite en los builds debug. Al
@@ -145,9 +157,9 @@ MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
 | Tipo | Qué comprueba | Dónde vive | Cuándo corre |
 |---|---|---|---|
-| Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Cada Pull Request (`ci.yml`) |
-| Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`ci.yml`) |
-| Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`ci.yml`) |
+| Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Cada Pull Request (`unitarias.yml`) |
+| Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`analisis-estatico.yml`) |
+| Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`aceptacion.yml`) |
 | Integración | Smoke tests del login y catálogo en emulador Android, con `FakeApiClient` y sin backend | `integration_test/app_smoke_test.dart` | Pull Requests que tocan código de app (`integracion.yml`) |
 | Regresión | Toda la suite acumulada sobre la rama o tag | `test/` e `integration_test/` | Martes 08:00 UTC, cada tag y a mano (`regresion.yml`) |
 | Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
@@ -161,7 +173,7 @@ viven en `test/unitarias/`, con una carpeta por épica (`auth`, `catalogo`,
 `test/widget/`. El smoke test de integración también usa `FakeApiClient`, por
 lo que no contacta el backend ni requiere credenciales.
 El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
-están en `analysis_options.yaml`. El workflow de CI compara el resultado con el
+están en `analysis_options.yaml`. El workflow `analisis-estatico.yml` compara el resultado con el
 baseline de `tool/check_analysis.sh` (0 errores, 0 warnings y 151 infos, medido
 con Flutter 3.44.4, la versión del CI) y falla si empeora; al corregir avisos,
 el baseline se baja en el mismo Pull Request.
@@ -173,7 +185,9 @@ flutter test --coverage          # igual, con reporte en coverage/lcov.info
 flutter test integration_test    # smoke tests, con emulador o celular conectado
 ```
 
-El workflow de CI requiere configurar `SONAR_TOKEN` como secreto del repositorio
+Cada tipo de prueba tiene su propio workflow en `.github/workflows/`, con la
+explicación de qué prueba, cuándo corre y qué pasa si falla en los comentarios
+del archivo. El de análisis estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
 y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
 resultado del quality gate de SonarCloud; el quality gate y su umbral de
 cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.

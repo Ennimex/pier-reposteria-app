@@ -122,8 +122,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   /// Lo que hace el «+» de una tarjeta. [botonContext] es el del botón
-  /// tocado: de ahí sale la miniatura que vuela al carrito. Devuelve true si
-  /// el producto se agregó (el botón lo celebra).
+  /// tocado: de ahí sale la miniatura que vuela al carrito si el backend
+  /// acepta el alta. Devuelve true si se pidió el alta (el botón lo celebra
+  /// al toque); el aviso de «agregado» espera a que el backend la acepte.
   bool _addToCart(Product p, BuildContext botonContext) {
     // Agotado: el botón es "Avísame" (registra interés)
     if (p.agotado) {
@@ -137,11 +138,27 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           .ignore();
       return false;
     }
+    unawaited(_confirmarAlta(p, botonContext));
+    return true;
+  }
+
+  /// Espera al backend: si acepta el alta, la miniatura vuela al carrito y
+  /// se avisa «agregado»; si la rechaza, se muestra el motivo y no vuela
+  /// nada. Mientras responde, la insignia del carrito espera a la miniatura
+  /// en lugar de rebotar.
+  Future<void> _confirmarAlta(Product p, BuildContext botonContext) async {
     final cart = Provider.of<CartProvider>(context, listen: false);
-    unawaited(cart.addItem(p));
-    // En el mismo bloque que el alta (que suma al instante): la insignia del
-    // carrito ve la miniatura en el aire y la espera en lugar de rebotar.
-    VueloAlCarrito.lanzar(botonContext, imagenUrl: p.imagenUrl);
+    final error = await VueloAlCarrito.lanzarAlConfirmar(
+      botonContext,
+      cart.addItem(p),
+      imagenUrl: p.imagenUrl,
+    );
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: AppColors.error));
+      return;
+    }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
@@ -152,7 +169,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
       ));
-    return true;
   }
 
   @override

@@ -87,6 +87,13 @@ FakeApiClient _backend() => FakeApiClient(respuestas: {
         'tipos': <String>[],
       },
       ApiConstants.clicsAgotados: {'success': true},
+      ApiConstants.login: {
+        'success': true,
+        'token': 'jwt',
+        'user': {'id': 1, 'email': 'ana@pier.mx', 'rol': 'cliente'},
+      },
+      ApiConstants.favoritosIds: {'success': true, 'ids': <int>[]},
+      ApiConstants.carrito: {'success': true},
     });
 
 Future<FakeApiClient> _montar(WidgetTester tester) async {
@@ -250,6 +257,28 @@ void main() {
       expect(find.text('Detalle abierto'), findsNothing);
       expect(find.text('Cheesecake'), findsOneWidget);
       expect(find.text('Chocoflan'), findsNothing);
+    });
+
+    testWidgets('con sesión confirma «agregado» solo si el backend acepta',
+        (tester) async {
+      final api = await _montar(tester);
+      await tester.iniciarSesion(find.byType(ProductsScreen));
+      await tester.tap(find.text('Cuadrícula'));
+      await tester.pumpAndSettle();
+
+      api.fallar(ApiConstants.carrito, 'No hay stock suficiente');
+      await tester.tap(find.byIcon(LucideIcons.plus).first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('agregado'), findsNothing);
+      expect(find.text('No hay stock suficiente'), findsOneWidget);
+
+      api.responder(ApiConstants.carrito, {'success': true});
+      await tester.tap(find.byIcon(LucideIcons.plus).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Chocoflan agregado'), findsOneWidget);
+      final alta = api.llamadas.lastWhere((l) =>
+          l.endpoint == ApiConstants.carrito && l.metodo == 'POST-Auth');
+      expect(alta.body, {'producto_id': 1, 'cantidad': 1, 'tamano': 'chico'});
     });
 
     testWidgets('sin sesión, el corazón manda a iniciar sesión', (tester) async {

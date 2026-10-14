@@ -1,0 +1,168 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: PRUEBAS DE ESFUERZO
+#
+# Qué prueba: la app más allá del uso normal, en dos frentes:
+#   · Volumen de datos: catálogo de 1,000 productos y carrito de 100
+#     artículos servidos por FakeApiClient, sin emulador.
+#   · Uso aleatorio: miles de toques, deslizamientos y textos lanzados por la
+#     herramienta monkey de Android sobre la app instalada en un emulador.
+# Para qué sirve: comprobar que la app no se cierra (CRASH) ni se congela
+#   (ANR) bajo carga, antes de subirla al canal interno de Google Play.
+# Cuándo corre: a mano (Actions → Pruebas de esfuerzo → Run workflow),
+#   eligiendo la cantidad de eventos. Al cerrar #70 se agrega el disparador
+#   por tag de versión.
+# Estado: «Uso aleatorio (monkey)» funciona desde hoy. «Volumen de datos»
+#   queda escrito pero solo corre al marcar la casilla correr_volumen, hasta
+#   que existan las pruebas de test/esfuerzo/ (#70).
+# Si falla: no bloquea ningún Pull Request; se revisan las bitácoras
+#   guardadas (monkey.txt y logcat.txt) para ubicar el cierre o el bloqueo.
+# Issue: #70 (Sprint 5).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Pruebas de esfuerzo
+
+on:
+  workflow_dispatch:
+    inputs:
+      eventos:
+        description: Cantidad de eventos aleatorios de monkey
+        default: '5000'
+        required: false
+      correr_volumen:
+        description: Correr también las pruebas de volumen de test/esfuerzo/ (#70)
+        type: boolean
+        default: false
+  # Se activa al cerrar #70:
+  # push:
+  #   tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  # applicationId del flavor prod (android/app/build.gradle.kts), el que
+  # compila `flutter build apk` sin --flavor.
+  PAQUETE: com.example.pier_pasteleria
+  # Mismo emulador que integracion.yml, así comparten la caché del AVD.
+  API_LEVEL: 34
+  AVD_PROFILE: pixel_6
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+
+jobs:
+  volumen:
+    name: Volumen de datos
+    # Solo cuando se marca la casilla al lanzar el workflow (ver cabecera).
+    if: inputs.correr_volumen
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Las pruebas de test/esfuerzo/ cargan el catálogo y el carrito con
+      # FakeApiClient y miden que las pantallas sigan respondiendo.
+      - name: Catálogo de 1,000 productos y carrito de 100 artículos
+        run: flutter test test/esfuerzo --reporter expanded
+
+  monkey:
+    name: Uso aleatorio (monkey)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Sin --flavor compila prod: build/app/outputs/flutter-apk/app-prod-debug.apk
+      - name: Compilar el APK de depuración
+        run: flutter build apk --debug
+
+      # Aceleración de hardware para el emulador (ver integracion.yml).
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Restaurar el AVD de la caché
+        id: avd-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
+
+      - name: Generar el AVD para la caché
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: false
+          script: echo "AVD generado para la caché."
+
+      # monkey, de Android: -s 42 fija la semilla (misma secuencia de toques
+      # en cada corrida, reproducible); --throttle 100 deja 100 ms entre
+      # eventos, como un uso rápido pero humano; --pct-syskeys 0 evita las
+      # teclas del sistema (Home, Back…) para no salirse de la app.
+      # monkey escribe «// CRASH» si la app se cerró y «// NOT RESPONDING» /
+      # «ANR in» si se congeló: cualquiera de los tres hace fallar el job.
+      - name: Instalar la app y lanzar los eventos aleatorios
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: |
+            adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
+            adb logcat -c
+            adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ inputs.eventos || '5000' }} | tee monkey.txt
+            adb logcat -d -v time > logcat.txt
+            if grep -E "CRASH|ANR in|NOT RESPONDING" monkey.txt; then
+              echo "::error::La app se cerró o dejó de responder bajo carga; revisa monkey.txt y logcat.txt."
+              exit 1
+            fi
+
+      # Las bitácoras se guardan aunque el job falle: son la evidencia.
+      - name: Guardar las bitácoras
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: esfuerzo-${{ github.sha }}
+          path: |
+            monkey.txt
+            logcat.txt
+          if-no-files-found: warn
+          retention-days: 30

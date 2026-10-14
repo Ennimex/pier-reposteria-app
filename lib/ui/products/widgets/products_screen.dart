@@ -184,8 +184,8 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   /// [boton] es el botón tocado: de ahí sale la miniatura que vuela al
-  /// carrito.
-  void _addToCart(Product p, BuildContext boton) {
+  /// carrito si el backend acepta el alta.
+  Future<void> _addToCart(Product p, BuildContext boton) async {
     // Agotado: el botón es "Avísame" (registra interés; sin sesión, como web)
     if (p.agotado) {
       _vm.avisarme(p);
@@ -198,13 +198,23 @@ class _ProductsScreenState extends State<ProductsScreen>
       return;
     }
     PierLog.info('🛒 Agregando al carrito desde catálogo: ${p.nombre}');
-    unawaited(context.read<CartProvider>().addItem(p));
-    // En el mismo bloque que el alta: cuando la insignia de la barra cambia
-    // con el +1 ya ve la miniatura en el aire y espera a que llegue.
-    VueloAlCarrito.lanzar(boton, imagenUrl: p.imagenUrl);
-    // Con «reducir movimiento» el botón no rebota (como el «+» de favoritos).
+    // El botón responde al toque; con «reducir movimiento» no rebota (como
+    // el «+» de favoritos).
     if (!AppMovimiento.reducido(context)) {
       _getCartController(p.id).forward(from: 0).ignore();
+    }
+    // Solo se confirma «agregado» si el backend acepta el alta; mientras
+    // responde, la insignia de la barra espera a la miniatura en vez de
+    // rebotar, y si lo rechaza no sale ninguna.
+    final error = await VueloAlCarrito.lanzarAlConfirmar(
+      boton,
+      context.read<CartProvider>().addItem(p),
+      imagenUrl: p.imagenUrl,
+    );
+    if (!mounted) return;
+    if (error != null) {
+      _error(error);
+      return;
     }
     _aviso('${p.nombre} agregado',
         icono: Icons.check_circle_rounded, color: AppColors.pierVerde);
@@ -216,9 +226,12 @@ class _ProductsScreenState extends State<ProductsScreen>
       return;
     }
     final error = await _vm.alternarFavorito(id);
-    if (error == null || !mounted) return;
+    if (error != null && mounted) _error(error);
+  }
+
+  void _error(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error),
+      content: Text(mensaje),
       backgroundColor: AppColors.error,
     ));
   }

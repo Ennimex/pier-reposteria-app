@@ -1,7 +1,23 @@
-name: Regresión
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: PRUEBAS DE REGRESIÓN
+#
+# Qué prueba: vuelve a correr TODA la suite acumulada (análisis estático,
+#   unitarias, aceptación e integración en emulador) sobre main o sobre un
+#   tag de versión, y compila el APK de depuración de esa versión.
+# Para qué sirve: confirmar que lo nuevo del sprint no rompió lo anterior.
+#   Es el respaldo de la entrega: el producto verificable de cada sprint se
+#   presenta con la regresión en verde y su APK guardado como artefacto.
+# Cuándo corre: sola el martes de cierre de cada sprint (08:00 UTC = 02:00
+#   en México), en cada tag de versión (v1.2.0, v1.2.1…) y a mano.
+# Si falla: el job «Open issue on failure» abre automáticamente un issue con
+#   la etiqueta bug en el tablero, con el enlace al log de la corrida.
+# Issues: #59 (Sprint 2), #62 (Sprint 3), #66 (Sprint 4) y #72 (Sprint 5).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Pruebas de regresión
 
 on:
   schedule:
+    # Minuto 0, hora 8 UTC, cualquier día del mes y mes, martes (2).
     - cron: '0 8 * * 2'
   push:
     tags:
@@ -11,83 +27,99 @@ on:
 permissions:
   contents: read
 
+env:
+  FLUTTER_VERSION: '3.44.4'
+  # Mismo emulador que integracion.yml, así comparten la caché del AVD.
+  API_LEVEL: 34
+  AVD_PROFILE: pixel_6
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+
 jobs:
   regression:
     name: Full suite and debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - name: Checkout
+      - name: Descargar el código
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Instalar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Flutter
+      - name: Instalar Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.4'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: flutter pub get
 
-      - name: Enable KVM
+      # Aceleración de hardware para el emulador (ver integracion.yml).
+      - name: Habilitar KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Cache AVD snapshot
+      - name: Restaurar el AVD de la caché
         id: avd-cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-34-pixel_6-x86_64
+          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
 
-      - name: Generate AVD snapshot for caching
+      - name: Generar el AVD para la caché
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          profile: pixel_6
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
           arch: x86_64
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
           disable-animations: false
-          script: echo "Generated AVD snapshot for caching."
+          script: echo "AVD generado para la caché."
 
-      - name: Run integration smoke tests
+      # 1) Integración: los flujos de integration_test/ en el emulador.
+      - name: Correr las pruebas de integración en el emulador
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          profile: pixel_6
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
           arch: x86_64
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
           script: flutter test integration_test --no-pub
 
-      - name: Check static analysis against baseline
+      # 2) Análisis estático contra la línea base (ver analisis-estatico.yml).
+      - name: Comparar flutter analyze con la línea base
         run: bash tool/check_analysis.sh
 
-      - name: Run complete test suite with coverage
+      # 3) Unitarias, de widget y de aceptación: toda la carpeta test/.
+      - name: Correr la suite completa con cobertura
         run: flutter test --coverage
 
-      - name: Build debug APK
+      # 4) El APK de la versión probada. Sin --flavor compila prod
+      #    (default-flavor del pubspec, #12).
+      - name: Compilar el APK de depuración
         run: flutter build apk --debug
 
-      - name: Upload regression artifacts
+      # APK y cobertura quedan 30 días en la pestaña Artifacts de la corrida:
+      # es lo que se muestra en la revisión de cierre de sprint.
+      - name: Guardar el APK y la cobertura
         uses: actions/upload-artifact@v4
         with:
           name: regression-${{ github.run_number }}
           path: |
-            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/app-prod-debug.apk
             coverage/lcov.info
           if-no-files-found: error
           retention-days: 30
@@ -96,11 +128,14 @@ jobs:
     name: Open issue on failure
     runs-on: ubuntu-latest
     needs: regression
+    # Solo corre si el job anterior falló.
     if: failure()
     permissions:
       issues: write
     steps:
-      - name: Create regression issue
+      # Crea el issue con el token automático del workflow: no necesita
+      # ninguna credencial personal.
+      - name: Abrir el issue de regresión
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

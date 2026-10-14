@@ -11,3 +11,30 @@ class ApiException implements Exception {
   @override
   String toString() => 'ApiException: $message';
 }
+
+/// El backend rechazó la sesión (`codigo: 'SESION_INVALIDA'`): la cuenta se
+/// desactivó o cambió de rol. Comandas y publicaciones releen al usuario en
+/// cada petición; la vista debe cerrar la sesión y volver al login.
+class SesionInvalidaException extends ApiException {
+  const SesionInvalidaException(super.message);
+}
+
+/// 409 al confirmar «Enterado» de una comanda: [cambio] si otra persona la
+/// editó mientras se leía (`VERSION_DESACTUALIZADA`, con [versionActual]);
+/// si no, otra persona del área ya confirmó esa versión (`YA_CONFIRMADA`).
+class ConflictoComandaException extends ApiException {
+  const ConflictoComandaException(
+    super.message, {
+    required this.cambio,
+    this.versionActual,
+  });
+
+  final bool cambio;
+  final int? versionActual;
+}
+
+/// La publicación ya no está (la repostería la eliminó): 404
+/// «Publicación no encontrada» del backend.
+class PublicacionNoDisponibleException extends ApiException {
+  const PublicacionNoDisponibleException(super.message);
+}
