@@ -486,6 +486,43 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('si desmarcar «útil» falla, la marca vuelve sin destello', (
+      tester,
+    ) async {
+      final api = _backendOpiniones([
+        _opinion(1, 5, 'El mejor pastel', util: 3),
+      ]);
+      await _montarOpiniones(tester, api);
+      await tester.iniciarSesion(find.byType(ProductReviewsScreen));
+      await tester.pumpAndSettle();
+      final destello = find.byType(DestelloAlMarcar).first;
+      final pulgar = find.byIcon(LucideIcons.thumbsUp).first;
+      await tester.tap(pulgar);
+      await tester.pumpAndSettle();
+      expect(tester.widget<DestelloAlMarcar>(destello).activo, isTrue);
+
+      // Desmarcar: se apaga al instante y el backend tarda en fallar.
+      api
+        ..fallar(ApiConstants.likeResena('1'), 'Sin conexión')
+        ..demorar(
+          ApiConstants.likeResena('1'),
+          const Duration(milliseconds: 100),
+        );
+      await tester.tap(pulgar);
+      await tester.pump();
+      expect(tester.widget<DestelloAlMarcar>(destello).activo, isFalse);
+
+      // La marca vuelve sola (la cuenta también): no la pidió el toque, así
+      // que no se celebra.
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.widget<DestelloAlMarcar>(destello).activo, isTrue);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(escalaEn(tester, destello), 1);
+      await tester.pumpAndSettle();
+      expect(tester.widget<CuentaRodante>(find.byType(CuentaRodante)).valor, 4);
+    });
+
     testWidgets('con movimiento reducido el resumen y las barras ya están', (
       tester,
     ) async {

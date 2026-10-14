@@ -410,6 +410,22 @@ void main() {
       expect(tester.hasRunningAnimations, isFalse);
     });
 
+    testWidgets('DestelloAlMarcar no celebra una marca que no pidió un toque', (
+      tester,
+    ) async {
+      Widget pulgar({required bool activo}) => DestelloAlMarcar(
+        activo: activo,
+        porToque: false,
+        child: const Icon(Icons.thumb_up),
+      );
+      await montarMovimiento(tester, pulgar(activo: false));
+      await montarMovimiento(tester, pulgar(activo: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(escalaEn(tester, find.byType(DestelloAlMarcar)), 1);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
     testWidgets('ResaltadoUnaVez pinta su aro solo si llega activo', (
       tester,
     ) async {

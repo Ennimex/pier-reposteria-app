@@ -698,22 +698,29 @@ class IconoColorSuave extends StatelessWidget {
 /// El destello de «útil»: el mismo pop (1 → 1.3 → 0.92 → 1) y el mismo aro
 /// con puntos de azúcar que DestelloCorazon le da al «útil» del detalle del
 /// producto, alrededor de un ícono chico (el pulgar dentro de su píldora).
-/// Sale cuando [activo] pasa de falso a verdadero (en Opiniones solo un
-/// toque marca: recargar no cambia lo marcado); montarse ya activo y
-/// desmarcar no destellan. Pinta detrás del ícono sin medirlo ni recortarlo
-/// (DestelloCorazon mete su pintura en un cuadro de radio × 2 + 8 que no
-/// admite un hijo más ancho, como la píldora completa) y el ícono conserva
-/// su estado (su color sigue fundiéndose). Con movimiento reducido, nada.
+/// Sale cuando [activo] pasa de falso a verdadero por un toque ([porToque]);
+/// montarse ya activo, desmarcar y una marca que vuelve sola (el backend no
+/// pudo quitarla) no destellan, como en el detalle. Pinta detrás del ícono
+/// sin medirlo ni recortarlo (DestelloCorazon mete su pintura en un cuadro
+/// de radio × 2 + 8 que no admite un hijo más ancho, como la píldora
+/// completa) y el ícono conserva su estado (su color sigue fundiéndose).
+/// Con movimiento reducido, nada.
 class DestelloAlMarcar extends StatefulWidget {
   const DestelloAlMarcar({
     required this.activo,
     required this.child,
+    this.porToque = true,
     this.color = Colors.red,
     this.radio = 14,
     super.key,
   });
 
   final bool activo;
+
+  /// Si una marca que llegue ahora la pidió el cliente con un toque (solo
+  /// entonces se celebra). En falso, p. ej. cuando el toque fue para
+  /// desmarcar y el backend la devolvió.
+  final bool porToque;
 
   /// El ícono tal cual.
   final Widget child;
@@ -776,6 +783,7 @@ class _DestelloAlMarcarState extends State<DestelloAlMarcar>
     super.didUpdateWidget(oldWidget);
     if (!oldWidget.activo &&
         widget.activo &&
+        widget.porToque &&
         !AppMovimiento.reducido(context)) {
       _control.forward(from: 0).ignore();
     }

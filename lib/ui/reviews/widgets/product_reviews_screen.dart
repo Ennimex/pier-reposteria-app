@@ -61,6 +61,11 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   // de publicar) se resalta una vez.
   Set<String>? _conocidas;
 
+  // La opinión que el cliente acaba de marcar «útil» con un toque: solo su
+  // pulgar destella. Si el toque era para desmarcar y el backend devuelve
+  // la marca, no hay nada que celebrar.
+  String? _marcadaConToque;
+
   @override
   void initState() {
     super.initState();
@@ -101,6 +106,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
       _irALogin();
       return;
     }
+    _marcadaConToque = _vm.esUtil(resena.id) ? null : resena.id;
     unawaited(_vm.alternarUtil(resena.id));
   }
 
@@ -868,6 +874,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                       children: [
                         DestelloAlMarcar(
                           activo: util,
+                          porToque: _marcadaConToque == r.id,
                           color: AppColors.pierVerde,
                           child: IconoColorSuave(
                             LucideIcons.thumbsUp,
