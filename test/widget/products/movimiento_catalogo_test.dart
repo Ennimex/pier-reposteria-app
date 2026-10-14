@@ -5,11 +5,13 @@
 // de la fila, el estado vacío entra y termina quieto, el «+» rebota, vuelve a
 // su tamaño y pasa a palomita, el detalle arma su hoja después del push, el
 // total rueda hasta el valor exacto, «−» en 1 sacude la píldora, «Añadir»
-// rechazado no se queda agrandado y la foto de un recomendado comparte ámbito
-// con el detalle que abre; con movimiento reducido todo queda en su lugar. En
-// el shell, la primera tanda del catálogo espera a que se abra su pestaña, el
-// «+» lanza la miniatura al carrito y la foto de la tarjeta vuela al detalle,
-// cuyo «Añadir» también la lanza. También las piezas de
+// rechazado no se queda agrandado, el «+» de un recomendado rebota al tocarlo
+// (sin esperar al backend) y la foto de un recomendado comparte ámbito con el
+// detalle que abre; con movimiento reducido todo queda en su lugar y ningún
+// botón de agregar rebota. En el shell, la primera tanda del catálogo espera a
+// que se abra su pestaña, el «+» lanza la miniatura al carrito (la insignia
+// del encabezado la espera en vez de adelantarse) y la foto de la tarjeta
+// vuela al detalle, cuyo «Añadir» también la lanza. También las piezas de
 // movimiento_catalogo.dart. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +24,7 @@ import 'package:pier_pasteleria/ui/core/ui/tarjeta_producto_angosta.dart';
 import 'package:pier_pasteleria/ui/main/widgets/main_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/catalogo_secciones.dart';
 import 'package:pier_pasteleria/ui/products/widgets/detalle_galeria.dart';
+import 'package:pier_pasteleria/ui/products/widgets/detalle_recomendaciones.dart';
 import 'package:pier_pasteleria/ui/products/widgets/movimiento_catalogo.dart';
 import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_pasteleria/ui/products/widgets/producto_catalogo_card.dart';
@@ -206,6 +209,19 @@ Future<void> _hastaQueAparezca(WidgetTester tester, Finder finder) async {
   }
   expect(finder, findsOneWidget);
 }
+
+/// Escalas del rebote de los botones «agregar» dentro de [de]: el
+/// ScaleTransition que anima la pantalla alrededor de su PresionEscala.
+Iterable<double> _rebotes(WidgetTester tester, Finder de) => tester
+    .widgetList<ScaleTransition>(
+      find.descendant(
+        of: de,
+        matching: find.byWidgetPredicate(
+          (w) => w is ScaleTransition && w.child is PresionEscala,
+        ),
+      ),
+    )
+    .map((t) => t.scale.value);
 
 /// La entrada (EntradaSuave) más cercana al texto [nombre].
 Finder _entradaDe(String nombre) => find
@@ -550,6 +566,34 @@ void main() {
       },
     );
 
+    testWidgets('con «reducir movimiento» el + no rebota y pasa a palomita', (
+      tester,
+    ) async {
+      activarReducirMovimientoIos(tester);
+      _pantallaAlta(tester);
+      final carrito = _Carrito();
+      await tester.pumpApp(
+        const ProductsScreen(),
+        api: _backendCatalogo(carrito: carrito),
+      );
+      await tester.iniciarSesion(find.byType(ProductsScreen));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(LucideIcons.plus).first);
+      await tester.pump();
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          _rebotes(tester, find.byType(ProductoCatalogoCard)),
+          everyElement(1),
+        );
+      }
+      await tester.pumpAndSettle();
+      expect(find.byIcon(LucideIcons.check), findsOneWidget);
+      expect(find.text('Chocoflan agregado'), findsOneWidget);
+      expect(carrito.lineas, hasLength(1));
+    });
+
     testWidgets(
       'una categoría pedida desde el inicio fuera de la vista llega a la fila',
       (tester) async {
@@ -709,6 +753,66 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('el + de un recomendado rebota al tocarlo, sin esperar al '
+        'backend (como «Añadir»)', (tester) async {
+      final api = await _abrirDetalle(tester, conSesion: true);
+      api.demorar(ApiConstants.carrito, const Duration(seconds: 1));
+      final recomendado = find.byType(ProductoRelacionadoCard);
+
+      await tester.tap(find.byIcon(LucideIcons.plus).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      // El backend aún no responde y el botón ya va a media animación.
+      expect(find.text('Pay de queso agregado'), findsNothing);
+      expect(_rebotes(tester, recomendado).single, isNot(1));
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(find.text('Pay de queso agregado'), findsOneWidget);
+      expect(_rebotes(tester, recomendado).single, 1);
+    });
+
+    testWidgets('con «reducir movimiento» ni «Añadir» ni el + de un '
+        'recomendado rebotan', (tester) async {
+      activarReducirMovimientoIos(tester);
+      final api = await _abrirDetalle(tester, conSesion: true);
+      final recomendado = find.byType(ProductoRelacionadoCard);
+      double anadir() => tester
+          .widget<ScaleTransition>(
+            find
+                .ancestor(
+                  of: find.text('Añadir'),
+                  matching: find.byType(ScaleTransition),
+                )
+                .first,
+          )
+          .scale
+          .value;
+
+      await tester.tap(find.byIcon(LucideIcons.plus).last);
+      await tester.pump();
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_rebotes(tester, recomendado), everyElement(1));
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('Pay de queso agregado'), findsOneWidget);
+      // Se va el aviso (2 s) para que el del rechazo no espere en la cola.
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+
+      // Rechazado: el detalle sigue abierto y se puede mirar el botón.
+      api.fallar(ApiConstants.carrito, 'No hay stock suficiente');
+      await tester.tap(find.text('Añadir'));
+      await tester.pump();
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(anadir(), 1);
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('No hay stock suficiente'), findsOneWidget);
+    });
+
     testWidgets('la foto de un recomendado vuela con el ámbito de su detalle', (
       tester,
     ) async {
@@ -779,8 +883,16 @@ void main() {
       await tester.tap(find.byIcon(LucideIcons.plus).first);
       await tester.pump();
       expect(find.byType(ClipOval), findsNWidgets(antes + 1));
+      // El carrito del encabezado no se adelanta: su insignia espera a que la
+      // miniatura llegue a la barra para aparecer.
+      final insigniaEncabezado = find.descendant(
+        of: find.byType(CatalogoHeader),
+        matching: find.byType(InsigniaCarrito),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(escalaEn(tester, insigniaEncabezado), 0);
 
-      await tester.pump(AppMovimiento.vuelo);
+      await tester.pump(AppMovimiento.vuelo - const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 50));
       expect(find.byType(ClipOval), findsNWidgets(antes));
       // Aterrizó: la insignia de la barra ya muestra el producto.
@@ -791,6 +903,9 @@ void main() {
         ),
         findsOneWidget,
       );
+      // ...y la del encabezado empieza a crecer junto con ella.
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(escalaEn(tester, insigniaEncabezado), greaterThan(0));
       await _desmontar(tester);
     });
 

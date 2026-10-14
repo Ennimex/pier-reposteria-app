@@ -6,9 +6,11 @@
 //
 // Movimiento: las tarjetas entran al compás de su sección (las de temporada
 // desde la derecha), se hunden al tocarlas y sus fotos aparecen con un
-// fundido. En el banner la flama parpadea, una luz cruza el código de
-// descuento y la flecha del botón empuja dos veces; cada título hace su
-// gesto (el rayo se sacude, los brillos destellan). Todo una sola vez.
+// fundido; las de temporada y destacadas vuelan al detalle que abren, como
+// las de los carruseles de productos. En el banner la flama parpadea, una
+// luz cruza el código de descuento y la flecha del botón empuja dos veces;
+// cada título hace su gesto (el rayo se sacude, los brillos destellan). Todo
+// una sola vez.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/promociones_inicio.dart';
@@ -23,9 +25,11 @@ import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 /// Abre el detalle del producto de [promo] si ya está en el catálogo
-/// cargado; si no, lleva al catálogo.
+/// cargado; si no, lleva al catálogo. Con [ambitoFoto] (el de la foto de la
+/// tarjeta tocada) la foto vuela al detalle.
 void _abrirProductoDePromo(
-    BuildContext context, Map<String, dynamic> promo, String origen) {
+    BuildContext context, Map<String, dynamic> promo, String origen,
+    {String? ambitoFoto}) {
   final productoId = promo['producto_id']?.toString();
   final producto = context
       .read<ProductProvider>()
@@ -37,13 +41,40 @@ void _abrirProductoDePromo(
     return;
   }
   PierLog.nav('→ ProductDetailScreen desde $origen');
-  Navigator.push(context,
-      MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: producto))).ignore();
+  Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+          builder: (_) => ProductDetailScreen(
+              product: producto, ambitoFoto: ambitoFoto))).ignore();
 }
 
 /// Lo que devuelve el `frameBuilder` de las fotos de las ofertas.
 Widget _fundido(BuildContext _, Widget foto, int? cuadro, bool sincrona) =>
     FotoConFundido(foto: foto, cuadro: cuadro, sincrona: sincrona);
+
+/// La foto de una oferta que abre su producto: vuela al detalle como las de
+/// los carruseles de productos. Cada tarjeta lleva su propio ámbito (sección
+/// e índice): un producto puede repetirse entre ofertas y en los carruseles.
+/// Mientras vuela, la tarjeta deja ver su propio fondo (el tinte o la arena
+/// de mientras la foto llega).
+Widget _fotoQueVuela({
+  required Map<String, dynamic> promo,
+  required String ambito,
+  required String imagenUrl,
+  required BorderRadius radio,
+  required Widget foto,
+}) {
+  final productoId = promo['producto_id']?.toString();
+  if (productoId == null) return foto;
+  return FotoProductoHero(
+    productoId: productoId,
+    imagenUrl: imagenUrl,
+    ambito: ambito,
+    radio: radio,
+    marcador: false,
+    child: foto,
+  );
+}
 
 /// Banner de la promoción tipo 'banner'.
 class HomePromoBanner extends StatelessWidget {
@@ -306,6 +337,9 @@ class HomeOfertasRelampago extends StatelessWidget {
                   orden: idx + 1,
                   child: PresionEscala(
                     child: GestureDetector(
+                      // Sin vuelo de foto: aquí la foto es el fondo, bajo un
+                      // degradado del color de la tarjeta; si volara saldría
+                      // sin ese tinte, como si fuera otra foto.
                       onTap: () => _abrirProductoDePromo(context, promo, 'relámpago'),
                       child: Container(
                         margin: EdgeInsets.only(
@@ -506,6 +540,8 @@ class HomeOfertasTemporada extends StatelessWidget {
                     precioFinal > 0 ? '\$${precioFinal.toStringAsFixed(0)}' : '';
                 final tiempo =
                     tiempoRestante(promo['fecha_fin']?.toString());
+                // La foto vuela al detalle que abre la tarjeta.
+                final ambitoFoto = 'inicio-temporada-$idx';
                 // Las primeras llegan desde la derecha, una tras otra; las
                 // que aparecen al desplazar ya están en su lugar.
                 return EntradaInicio(
@@ -514,6 +550,8 @@ class HomeOfertasTemporada extends StatelessWidget {
                   child: PresionEscala(
                     child: _buildTemporadaCard(
                       idx: idx,
+                      promo: promo,
+                      ambitoFoto: ambitoFoto,
                       imagenUrl: imagenUrl,
                       titulo: titulo,
                       subtitulo: subtitulo.isNotEmpty
@@ -523,7 +561,9 @@ class HomeOfertasTemporada extends StatelessWidget {
                       precioOriginal:
                           porcentaje > 0 ? '\$${precioBruto.toStringAsFixed(0)}' : null,
                       accent: accent,
-                      onTap: () => _abrirProductoDePromo(context, promo, 'temporada'),
+                      onTap: () => _abrirProductoDePromo(
+                          context, promo, 'temporada',
+                          ambitoFoto: ambitoFoto),
                     ),
                   ),
                 );
@@ -537,6 +577,8 @@ class HomeOfertasTemporada extends StatelessWidget {
 
   Widget _buildTemporadaCard({
     required int idx,
+    required Map<String, dynamic> promo,
+    required String ambitoFoto,
     required String imagenUrl,
     required String titulo,
     required String subtitulo,
@@ -572,13 +614,20 @@ class HomeOfertasTemporada extends StatelessWidget {
                   if (imagenUrl.isNotEmpty) ...[
                     // El tinte mientras la foto llega.
                     ColoredBox(color: fondoFoto),
-                    Image.network(imagenUrl, fit: BoxFit.cover,
-                        frameBuilder: _fundido,
-                        errorBuilder: (_, _, _) => ColoredBox(
-                          color: fondoFoto,
-                          child: Icon(LucideIcons.cake,
-                              color: accent, size: 40),
-                        )),
+                    _fotoQueVuela(
+                      promo: promo,
+                      ambito: ambitoFoto,
+                      imagenUrl: imagenUrl,
+                      radio: const BorderRadius.vertical(
+                          top: Radius.circular(18)),
+                      foto: Image.network(imagenUrl, fit: BoxFit.cover,
+                          frameBuilder: _fundido,
+                          errorBuilder: (_, _, _) => ColoredBox(
+                            color: fondoFoto,
+                            child: Icon(LucideIcons.cake,
+                                color: accent, size: 40),
+                          )),
+                    ),
                   ] else
                     ColoredBox(
                       color: fondoFoto,
@@ -775,9 +824,12 @@ class HomePromoDestacado extends StatelessWidget {
                 : precioOriginal;
             final fechaFin = promo['fecha_fin']?.toString();
             final tiempo = tiempoRestante(fechaFin);
+            // La foto vuela al detalle que abre la fila.
+            final ambitoFoto = 'inicio-destacado-$indice';
 
             final fila = GestureDetector(
-              onTap: () => _abrirProductoDePromo(context, promo, 'destacado'),
+              onTap: () => _abrirProductoDePromo(context, promo, 'destacado',
+                  ambitoFoto: ambitoFoto),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 height: 110,
@@ -800,14 +852,21 @@ class HomePromoDestacado extends StatelessWidget {
                           if (imagenUrl.isNotEmpty) ...[
                             // La arena mientras la foto llega.
                             ColoredBox(color: AppColors.pierArena),
-                            Image.network(imagenUrl,
-                                fit: BoxFit.cover,
-                                frameBuilder: _fundido,
-                                errorBuilder: (_, _, _) => ColoredBox(
-                                  color: AppColors.pierArena,
-                                  child: Icon(LucideIcons.cake,
-                                      color: AppColors.pierDorado, size: 36),
-                                )),
+                            _fotoQueVuela(
+                              promo: promo,
+                              ambito: ambitoFoto,
+                              imagenUrl: imagenUrl,
+                              radio: const BorderRadius.horizontal(
+                                  left: Radius.circular(16)),
+                              foto: Image.network(imagenUrl,
+                                  fit: BoxFit.cover,
+                                  frameBuilder: _fundido,
+                                  errorBuilder: (_, _, _) => ColoredBox(
+                                    color: AppColors.pierArena,
+                                    child: Icon(LucideIcons.cake,
+                                        color: AppColors.pierDorado, size: 36),
+                                  )),
+                            ),
                           ] else
                             ColoredBox(
                               color: AppColors.pierArena,

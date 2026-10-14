@@ -32,6 +32,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // Ámbito del Hero de las fotos del carrusel de favoritos (y del detalle que
+  // abren): distinto de la etiqueta de siempre que usa Mis Favoritos.
+  static const String _ambitoFavoritos = 'perfil';
+
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ProfileViewModel _vm = widget.viewModel ??
       ProfileViewModel(
@@ -427,7 +431,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// Carrusel de hasta 5 favoritos: las tarjetas llegan desde la derecha en
-  /// cascada (una sola vez) y la foto vuela al detalle del producto.
+  /// cascada (una sola vez) y la foto vuela al detalle del producto. Usa su
+  /// propio ámbito de Hero: Mis Favoritos (que se abre desde aquí) usa la
+  /// etiqueta de siempre, y con la misma, al regresar de Favoritos todas sus
+  /// fotos volarían de la cuadrícula al carrusel.
   Widget _carruselFavoritos(List<Product> favoritos) {
     return SizedBox(
       height: 160,
@@ -451,7 +458,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => ProductDetailScreen(product: p)),
+                          builder: (_) => ProductDetailScreen(
+                              product: p, ambitoFoto: _ambitoFavoritos)),
                     );
                   },
                   child: SizedBox(
@@ -464,6 +472,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: FotoProductoHero(
                             productoId: p.id,
                             imagenUrl: p.imagenUrl,
+                            ambito: _ambitoFavoritos,
                             radio: BorderRadius.circular(12),
                             // ✅ FIX: (_, e, __) en lugar de (_, _, _)
                             child: Image.network(

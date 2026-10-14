@@ -10,6 +10,13 @@
 // Si los slides del panel reemplazan a los de respaldo, cada slide pasa al
 // nuevo con un fundido. Con movimiento reducido no hay paralaje y el
 // carrusel salta de slide en vez de deslizarse.
+//
+// Solo avanza a la vista: en una pestaña oculta o bajo otra ruta sus tickers
+// están apagados, el deslizamiento quedaría congelado y barrería de golpe al
+// volver. Del último slide pasa al primero hacia adelante: después del último
+// va una copia del primero y, al quedar quieto en ella, salta al primero de
+// verdad (se ven igual, así que no se nota). Antes regresaba barriendo hacia
+// atrás por todos los slides, como un rebobinado.
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -54,30 +61,68 @@ class HomeCarrusel extends StatefulWidget {
 class _HomeCarruselState extends State<HomeCarrusel> {
   final PageController _pageController = PageController();
   late final Timer _timer;
+
+  // Página del PageView. Con dos slides o más puede ser la copia del primero
+  // (la página `slides.length`), solo hasta que el carrusel queda quieto.
   int _pagina = 0;
   bool _reducido = false;
+
+  /// Con dos slides o más, después del último va una copia del primero.
+  bool get _conCopia => widget.slides.length > 1;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(widget.intervalo, (_) {
-      if (!mounted || widget.slides.isEmpty) return;
-      final siguiente = (_pagina + 1) % widget.slides.length;
-      setState(() => _pagina = siguiente);
-      if (_pageController.hasClients) {
-        // Con movimiento reducido salta (animateToPage no acepta duración
-        // cero).
-        if (_reducido) {
-          _pageController.jumpToPage(siguiente);
-        } else {
-          _pageController
-              .animateToPage(siguiente,
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeInOut)
-              .ignore();
-        }
-      }
-    });
+    _timer = Timer.periodic(widget.intervalo, (_) => _avanzar());
+  }
+
+  void _avanzar() {
+    // Fuera de la vista (pestaña oculta o bajo otra ruta) no avanza.
+    if (!mounted ||
+        !_conCopia ||
+        !TickerMode.getValuesNotifier(context).value.enabled) {
+      return;
+    }
+    final total = widget.slides.length;
+    if (_pagina >= total && _pageController.hasClients) {
+      // Sigue en la copia (no ha quedado quieto): parte del primero de verdad.
+      _pageController.jumpToPage(0);
+      _pagina = 0;
+    }
+    final siguiente = _pagina + 1;
+    if (_reducido || !_pageController.hasClients) {
+      // Con movimiento reducido salta (animateToPage no acepta duración
+      // cero), y nunca a la copia.
+      setState(() => _pagina = siguiente % total);
+      if (_pageController.hasClients) _pageController.jumpToPage(_pagina);
+      return;
+    }
+    // Del último va hacia adelante, a la copia del primero.
+    setState(() => _pagina = siguiente);
+    _pageController
+        .animateToPage(siguiente,
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeInOut)
+        .ignore();
+  }
+
+  /// Cuando el carrusel queda quieto (solo o tras el dedo), si quedó en la
+  /// copia del primer slide salta al primero de verdad. Se espera a que
+  /// termine el aviso: saltar mientras se reparte movería el ScrollPosition
+  /// a media actividad.
+  bool _alQuedarQuieto(ScrollEndNotification aviso) {
+    if (aviso.depth == 0 && _conCopia) scheduleMicrotask(_salirDeLaCopia);
+    return false;
+  }
+
+  void _salirDeLaCopia() {
+    if (!mounted || !_conCopia || !_pageController.hasClients) return;
+    // El dedo ya lo mueve otra vez: espera a que vuelva a quedar quieto.
+    if (_pageController.position.isScrollingNotifier.value) return;
+    final enLaCopia =
+        (_paginaDe(_pageController, _pagina) - widget.slides.length).abs() <
+            0.001;
+    if (enLaCopia) _pageController.jumpToPage(0);
   }
 
   @override
@@ -89,7 +134,8 @@ class _HomeCarruselState extends State<HomeCarrusel> {
   @override
   void didUpdateWidget(HomeCarrusel anterior) {
     super.didUpdateWidget(anterior);
-    // Si la lista se acorta con el carrusel avanzado, volver al inicio.
+    // Si la lista se acorta con el carrusel avanzado (o estaba en la copia
+    // del primero), volver al inicio.
     if (_pagina >= widget.slides.length) {
       _pagina = 0;
       if (_pageController.hasClients) _pageController.jumpToPage(0);
@@ -133,17 +179,24 @@ class _HomeCarruselState extends State<HomeCarrusel> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              PageView.builder(
-                controller: _pageController,
-                itemCount: slides.length,
-                onPageChanged: (i) => setState(() => _pagina = i),
-                itemBuilder: (context, i) => _PaginaCarrusel(
-                  slide: slides[i],
-                  indice: i,
-                  control: _pageController,
-                  paginaFija: _pagina,
-                  reducido: _reducido,
-                  alAbrir: () => _abrir(slides[i]),
+              NotificationListener<ScrollEndNotification>(
+                onNotification: _alQuedarQuieto,
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: _conCopia ? slides.length + 1 : slides.length,
+                  onPageChanged: (i) => setState(() => _pagina = i),
+                  itemBuilder: (context, i) {
+                    // La última página es la copia del primer slide.
+                    final slide = slides[i % slides.length];
+                    return _PaginaCarrusel(
+                      slide: slide,
+                      indice: i,
+                      control: _pageController,
+                      paginaFija: _pagina,
+                      reducido: _reducido,
+                      alAbrir: () => _abrir(slide),
+                    );
+                  },
                 ),
               ),
               Positioned(
@@ -156,7 +209,14 @@ class _HomeCarruselState extends State<HomeCarrusel> {
                     final actual = _paginaDe(_pageController, _pagina);
                     return Row(
                       children: List.generate(slides.length, (i) {
-                        final cerca = clampDouble(1 - (actual - i).abs(), 0, 1);
+                        // El primer punto también se acerca desde la copia
+                        // del primer slide (después del último).
+                        var distancia = (actual - i).abs();
+                        if (i == 0 && _conCopia) {
+                          final hastaCopia = (actual - slides.length).abs();
+                          if (hastaCopia < distancia) distancia = hastaCopia;
+                        }
+                        final cerca = clampDouble(1 - distancia, 0, 1);
                         return Container(
                           margin: const EdgeInsets.only(left: 4),
                           width: 6 + 12 * cerca,

@@ -6,9 +6,11 @@
 // mostraba; los gestos de los íconos y el barrido de luz terminan en reposo;
 // la campana se mece y su insignia crece, salta y se va; el aviso del pedido
 // cambia de estado sin duplicar textos y late al quedar listo; el carrusel
-// hace paralaje solo mientras desliza y, con movimiento reducido, salta de
-// slide; mientras cargan los productos se ve su esqueleto y la foto de una
-// tarjeta vuela al detalle con el ámbito de su carrusel. Con movimiento
+// hace paralaje solo mientras desliza, oculto no avanza (al volver no barre
+// de golpe), del último slide pasa al primero hacia adelante y, con
+// movimiento reducido, salta de slide; mientras cargan los productos se ve su
+// esqueleto y la foto de una tarjeta (también la de una oferta de temporada
+// o destacada) vuela al detalle con su propio ámbito. Con movimiento
 // reducido todo queda en su lugar. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +21,7 @@ import 'package:pier_pasteleria/ui/core/ui/tarjeta_producto_angosta.dart';
 import 'package:pier_pasteleria/ui/home/view_model/home_view_model.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_carrusel.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_encabezado.dart';
+import 'package:pier_pasteleria/ui/home/widgets/home_promociones.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
 import 'package:pier_pasteleria/ui/home/widgets/home_secciones.dart';
 import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
@@ -113,7 +116,21 @@ Map<String, dynamic> _producto(int id, String nombre, {bool popular = false}) =>
       'reviews': 3,
     };
 
-FakeApiClient _backend() => FakeApiClient(
+/// Una oferta de [tipo] del producto [productoId], con foto.
+Map<String, dynamic> _promo(String tipo, int productoId, String nombre) => {
+  'tipo': tipo,
+  'producto_id': productoId,
+  'producto_nombre': nombre,
+  'producto_imagen': 'https://pier.mx/$tipo-$productoId.png',
+  'precio_chico': 300,
+  'descuento_porcentaje': 10,
+  'titulo_banner': 'Promo $nombre',
+  'nombre_temporada': 'Temporada de $nombre',
+};
+
+FakeApiClient _backend({
+  List<Map<String, dynamic>> promociones = const [],
+}) => FakeApiClient(
   respuestas: {
     ApiConstants.productos: {
       'success': true,
@@ -124,7 +141,7 @@ FakeApiClient _backend() => FakeApiClient(
     },
     ApiConstants.promocionesActivas: {
       'success': true,
-      'promociones': <Map<String, dynamic>>[],
+      'promociones': promociones,
     },
     ApiConstants.categorias: {
       'success': true,
@@ -829,6 +846,79 @@ void main() {
       expect(paralaje(tester), everyElement(0));
       await _desmontar(tester);
     });
+
+    /// Página actual del carrusel (con decimales mientras desliza).
+    double pagina(WidgetTester tester) =>
+        tester.widget<PageView>(find.byType(PageView)).controller!.page!;
+
+    /// Avanza [total] en cuadros de 100 ms, como una pantalla de verdad.
+    Future<void> esperar(WidgetTester tester, Duration total) async {
+      for (var t = Duration.zero; t < total; t += const Duration(milliseconds: 100)) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    testWidgets('oculto no avanza: al volver a verse no barre de golpe', (
+      tester,
+    ) async {
+      Widget carrusel({required bool visible}) => TickerMode(
+        enabled: visible,
+        child: const SizedBox(
+          width: 360,
+          child: HomeCarrusel(slides: slides, intervalo: Duration(seconds: 2)),
+        ),
+      );
+      // Dos intervalos en una pestaña oculta (o bajo otra ruta).
+      await montarMovimiento(tester, carrusel(visible: false));
+      await esperar(tester, const Duration(milliseconds: 4500));
+      expect(pagina(tester), 0);
+
+      // Al volver no quedó un deslizamiento congelado que se suelte ahora.
+      await montarMovimiento(tester, carrusel(visible: true));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(pagina(tester), 0);
+      }
+      expect(puntos(tester), [18, 6, 6]);
+
+      // Y sigue con su ritmo: un slide en el siguiente intervalo.
+      await esperar(tester, const Duration(milliseconds: 1600));
+      expect(pagina(tester), 1);
+      await _desmontar(tester);
+    });
+
+    testWidgets('del último slide pasa al primero hacia adelante (sin '
+        'rebobinar) y sigue desde el primero', (tester) async {
+      await montarMovimiento(
+        tester,
+        const SizedBox(
+          width: 360,
+          child: HomeCarrusel(slides: slides, intervalo: Duration(seconds: 2)),
+        ),
+      );
+      await esperar(tester, const Duration(milliseconds: 4900));
+      expect(pagina(tester), 2);
+      expect(puntos(tester), [6, 6, 18]);
+
+      // A media vuelta va de 2 hacia 3 (la copia del primero), no hacia 0.
+      await esperar(tester, const Duration(milliseconds: 1500));
+      expect(pagina(tester), inExclusiveRange(2, 3));
+      expect(find.text('Tradición en cada\nRebanada'), findsOneWidget);
+
+      // Al quedar quieto salta al primero de verdad, sin que se note.
+      await esperar(tester, const Duration(milliseconds: 600));
+      expect(pagina(tester), 0);
+      expect(puntos(tester), [18, 6, 6]);
+      expect(paralaje(tester), everyElement(0));
+      expect(find.text('Tradición en cada\nRebanada'), findsOneWidget);
+
+      // El siguiente avanza del primero al segundo, también hacia adelante.
+      await esperar(tester, const Duration(milliseconds: 1500));
+      expect(pagina(tester), inExclusiveRange(0, 1));
+      await esperar(tester, const Duration(milliseconds: 600));
+      expect(pagina(tester), 1);
+      await _desmontar(tester);
+    });
   });
 
   group('HomeScreen', () {
@@ -883,6 +973,72 @@ void main() {
       );
       expect(galeria.productoId, '2');
       expect(galeria.ambito, 'inicio-Mejor calificados');
+      await _desmontar(tester);
+    });
+
+    testWidgets('la foto de una oferta de temporada o destacada también vuela '
+        'al detalle, con su propio ámbito', (tester) async {
+      _pantalla(tester);
+      await tester.pumpApp(
+        const HomeScreen(),
+        api: _backend(
+          promociones: [
+            _promo('temporada', 1, 'Chocoflan'),
+            _promo('destacado', 1, 'Chocoflan'),
+            _promo('relampago', 2, 'Rosca'),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      // Chocoflan está en una oferta de temporada, en una destacada y en dos
+      // carruseles: cada tarjeta tiene su propia etiqueta.
+      final etiquetas = tester
+          .widgetList<Hero>(find.byType(Hero))
+          .map((hero) => hero.tag)
+          .toList();
+      expect(etiquetas.toSet(), hasLength(etiquetas.length));
+      expect(
+        etiquetas,
+        containsAll(<Object>[
+          FotoProductoHero.etiqueta('1', ambito: 'inicio-temporada-0'),
+          FotoProductoHero.etiqueta('1', ambito: 'inicio-destacado-0'),
+          FotoProductoHero.etiqueta('1', ambito: 'inicio-Destacados'),
+        ]),
+      );
+      // La relámpago no vuela: su foto es el fondo, bajo el degradado.
+      expect(
+        find.descendant(
+          of: find.byType(HomeOfertasRelampago),
+          matching: find.byType(Hero),
+        ),
+        findsNothing,
+      );
+
+      final fotoTemporada = find.descendant(
+        of: find.descendant(
+          of: find.byType(HomeOfertasTemporada),
+          matching: find.byType(FotoProductoHero),
+        ),
+        matching: find.byType(Image),
+      );
+      expect(fotoTemporada, findsOneWidget);
+
+      await tester.tap(find.text('Temporada de Chocoflan'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      // A medio vuelo la foto ya no está en la tarjeta: va en el aire.
+      expect(fotoTemporada, findsNothing);
+
+      await tester.pump(const Duration(seconds: 1));
+      final galeria = tester.widget<FotoProductoHero>(
+        find.descendant(
+          of: find.byType(DetalleGaleria),
+          matching: find.byType(FotoProductoHero),
+        ),
+      );
+      expect(galeria.productoId, '1');
+      expect(galeria.ambito, 'inicio-temporada-0');
       await _desmontar(tester);
     });
 

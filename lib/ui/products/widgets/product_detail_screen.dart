@@ -184,7 +184,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final cantidad = _vm.cantidad;
     PierLog.info('🛒 Agregando: ${_producto.nombre} ($tamano) x$cantidad');
     _agregando = true;
-    _cartAnimController.forward(from: 0).ignore();
+    // Con «reducir movimiento» el botón no rebota.
+    if (!AppMovimiento.reducido(context)) {
+      _cartAnimController.forward(from: 0).ignore();
+    }
     // Si el backend acepta, la miniatura sale de este botón y vuela al
     // carrito antes del pop (la foto regresa sola a su tarjeta); mientras
     // responde, la insignia de la barra la espera en vez de rebotar.
@@ -216,6 +219,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       return;
     }
     PierLog.info('🛒 Agregando relacionado: ${p.nombre}');
+    // El botón responde al toque, como «Añadir»; solo la miniatura espera a
+    // que el backend acepte.
+    _pulsoRecomendado(p.id);
     final error = await VueloAlCarrito.lanzarAlConfirmar(
       boton,
       context.read<CartProvider>().addItem(p),
@@ -226,23 +232,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _error(error);
       return;
     }
-    // Hunde, rebota y asienta en 1 (antes el botón se quedaba al 130 %). La
-    // primera vez se repinta el detalle para que la tarjeta reciba su rebote.
-    var pulso = _relatedCartControllers[p.id];
-    if (pulso == null) {
-      final nuevo =
-          AnimationController(vsync: this, duration: AppMovimiento.enfasis);
-      setState(() {
-        _relatedCartControllers[p.id] = nuevo;
-        _relatedCartAnims[p.id] = nuevo.drive(AppMovimiento.pulso);
-      });
-      pulso = nuevo;
-    }
-    pulso.forward(from: 0).ignore();
     _aviso('${p.nombre} agregado',
         icono: Icons.check_circle_rounded,
         color: AppColors.pierVerde,
         segundos: 2);
+  }
+
+  /// Pulso del «+» del recomendado [id]: hunde, rebota y asienta en 1 (antes
+  /// el botón se quedaba al 130 %). La primera vez se repinta el detalle para
+  /// que la tarjeta reciba su rebote. Con «reducir movimiento» no rebota.
+  void _pulsoRecomendado(String id) {
+    if (AppMovimiento.reducido(context)) return;
+    var pulso = _relatedCartControllers[id];
+    if (pulso == null) {
+      final nuevo =
+          AnimationController(vsync: this, duration: AppMovimiento.enfasis);
+      setState(() {
+        _relatedCartControllers[id] = nuevo;
+        _relatedCartAnims[id] = nuevo.drive(AppMovimiento.pulso);
+      });
+      pulso = nuevo;
+    }
+    pulso.forward(from: 0).ignore();
   }
 
   Future<void> _compartir() async {

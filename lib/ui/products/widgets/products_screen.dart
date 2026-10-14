@@ -202,7 +202,10 @@ class _ProductsScreenState extends State<ProductsScreen>
     // En el mismo bloque que el alta: cuando la insignia de la barra cambia
     // con el +1 ya ve la miniatura en el aire y espera a que llegue.
     VueloAlCarrito.lanzar(boton, imagenUrl: p.imagenUrl);
-    _getCartController(p.id).forward(from: 0).ignore();
+    // Con «reducir movimiento» el botón no rebota (como el «+» de favoritos).
+    if (!AppMovimiento.reducido(context)) {
+      _getCartController(p.id).forward(from: 0).ignore();
+    }
     _aviso('${p.nombre} agregado',
         icono: Icons.check_circle_rounded, color: AppColors.pierVerde);
   }

@@ -85,7 +85,9 @@ class CatalogoHeader extends StatelessWidget {
                         child: const Icon(LucideIcons.shoppingCart, color: Colors.white, size: 22),
                       ),
                       // Como la de la barra: aparece creciendo, rebota solo
-                      // cuando sube y se encoge al vaciarse el carrito.
+                      // cuando sube y se encoge al vaciarse el carrito. Con
+                      // una miniatura volando a la barra solo cambia el
+                      // número: la reacción es el trago de la barra.
                       Positioned(
                         right: -6, top: -6,
                         child: InsigniaCarrito(

@@ -92,6 +92,14 @@ class VueloAlCarrito extends StatefulWidget {
     );
   }
 
+  /// Cuántas miniaturas van en el aire o están reservadas en el ámbito que
+  /// rodea a [context] (las mismas que cuenta DestinoVuelo.enCamino); null
+  /// sin ámbito. Es para un contador del carrito que no es el destino (el
+  /// carrito del encabezado del catálogo): con miniaturas en camino no se
+  /// adelanta y la única reacción es el trago del carrito de la barra.
+  static ValueListenable<int>? enCamino(BuildContext context) =>
+      context.findAncestorStateOfType<_VueloAlCarritoState>()?._enCamino;
+
   /// El ámbito de [context]; null si `context` ya se desmontó, si no hay
   /// ámbito o con movimiento reducido.
   static _VueloAlCarritoState? _ambitoDe(BuildContext context) {
@@ -119,7 +127,7 @@ class _VueloAlCarritoState extends State<VueloAlCarrito> {
   final ValueNotifier<int> _llegadas = ValueNotifier<int>(0);
 
   // Miniaturas en el aire más las reservadas por altas que esperan al
-  // backend (lo que ve DestinoVuelo.enCamino).
+  // backend (lo que ven DestinoVuelo.enCamino y VueloAlCarrito.enCamino).
   final ValueNotifier<int> _enCamino = ValueNotifier<int>(0);
   int _reservas = 0;
 

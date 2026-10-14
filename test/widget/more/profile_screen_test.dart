@@ -1,11 +1,17 @@
 // test/widget/more/profile_screen_test.dart — la vista de «Mi Perfil» pinta
-// lo que expone su ViewModel (MVVM, Fase 3), sin red.
+// lo que expone su ViewModel (MVVM, Fase 3), sin red. La foto de un favorito
+// vuela al detalle con su propio ámbito (Mis Favoritos usa la etiqueta de
+// siempre: al regresar de ahí no se cruzan fotos).
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_pasteleria/config/api_constants.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/more/view_model/profile_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
+import 'package:pier_pasteleria/ui/products/widgets/detalle_galeria.dart';
+import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
@@ -69,6 +75,44 @@ void main() {
       expect(find.text('En preparación'), findsOneWidget);
       expect(find.text('2x Fresa Matcha..., 1x más'), findsOneWidget);
       expect(find.text(r'$640'), findsOneWidget);
+    });
+
+    testWidgets('la foto de un favorito vuela al detalle con el ámbito del '
+        'perfil, no con la etiqueta de Mis Favoritos', (tester) async {
+      final api = FakeApiClient(
+        respuestas: {
+          ApiConstants.favoritos: {
+            'success': true,
+            'favoritos': [
+              {'id': 36, 'nombre': 'Fresa Matcha Bliss', 'categoria': 'Pasteles'},
+            ],
+          },
+          ApiConstants.misPedidos: {'success': true, 'pedidos': <Object>[]},
+        },
+      );
+      await _montar(tester, api);
+      await tester.pump(const Duration(seconds: 1));
+
+      final heroe = tester.widget<Hero>(
+        find.descendant(
+          of: find.byType(FotoProductoHero),
+          matching: find.byType(Hero),
+        ),
+      );
+      expect(heroe.tag, FotoProductoHero.etiqueta('36', ambito: 'perfil'));
+      expect(heroe.tag, isNot(FotoProductoHero.etiqueta('36')));
+
+      await tester.tap(find.text('Fresa Matcha Bliss'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ProductDetailScreen), findsOneWidget);
+      final galeria = tester.widget<FotoProductoHero>(
+        find.descendant(
+          of: find.byType(DetalleGaleria),
+          matching: find.byType(FotoProductoHero),
+        ),
+      );
+      expect(galeria.ambito, 'perfil');
     });
   });
 }
