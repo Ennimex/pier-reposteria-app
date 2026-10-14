@@ -45,7 +45,7 @@ Salen:
 - Prueba: `build/app/outputs/apk/androidTest/prod/debug/app-prod-debug-androidTest.apk`
 
 El arranque de la prueba instrumentada está en
-`android/app/src/androidTest/java/com/example/pier_pasteleria/MainActivityTest.java`
+`android/app/src/androidTest/java/mx/com/pierreposteria/MainActivityTest.java`
 (debe estar en el mismo paquete que `MainActivity`).
 
 ## Lanzar la corrida

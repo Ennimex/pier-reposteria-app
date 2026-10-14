@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pier_pasteleria"
+    namespace = "mx.com.pierreposteria"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,8 +20,11 @@ android {
     // el jvmTarget de Kotlin lo maneja el Flutter Gradle Plugin.
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.pier_pasteleria"
+        // Identificador en Google Play (#10; Play no acepta com.example.*). El
+        // inicio con Google lo valida junto con la SHA-1 de la llave: cada
+        // computadora que compila necesita su cliente OAuth Android en Google
+        // Cloud para este paquete (y .dev / .staging) o da ApiException 10.
+        applicationId = "mx.com.pierreposteria"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion // Required for flutter_stripe

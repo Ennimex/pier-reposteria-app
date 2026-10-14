@@ -112,9 +112,9 @@ pueden convivir en el mismo teléfono) y apunta a su backend:
 
 | Ambiente | Comando | Paquete | Nombre en el launcher | Backend |
 |---|---|---|---|---|
-| prod (por defecto) | `flutter run` (o `--flavor prod`) | `com.example.pier_pasteleria` | Pier Repostería | `https://pier-reposteria-backend.onrender.com/api` |
-| dev | `flutter run --flavor dev` | `com.example.pier_pasteleria.dev` | Pier DEV | Backend local, `http://10.0.2.2:3000/api` (localhost de la PC visto desde el emulador) |
-| staging | `flutter run --flavor staging` | `com.example.pier_pasteleria.staging` | Pier STAGING | Producción, mientras no exista un backend de staging |
+| prod (por defecto) | `flutter run` (o `--flavor prod`) | `mx.com.pierreposteria` | Pier Repostería | `https://pier-reposteria-backend.onrender.com/api` |
+| dev | `flutter run --flavor dev` | `mx.com.pierreposteria.dev` | Pier DEV | Backend local, `http://10.0.2.2:3000/api` (localhost de la PC visto desde el emulador) |
+| staging | `flutter run --flavor staging` | `mx.com.pierreposteria.staging` | Pier STAGING | Producción, mientras no exista un backend de staging |
 
 Sin `--flavor` se compila prod (`default-flavor` en `pubspec.yaml`), así que
 `flutter run`, `flutter build apk` y el CI funcionan igual que antes; el APK sale

@@ -1,6 +1,6 @@
 // Arranque de las pruebas de integration_test/ como prueba instrumentada de
 // Android, para correrlas en Firebase Test Lab (#75). Ver tool/test_lab.md.
-package com.example.pier_pasteleria;
+package mx.com.pierreposteria;
 
 import androidx.test.rule.ActivityTestRule;
 import dev.flutter.plugins.integration_test.FlutterTestRunner;

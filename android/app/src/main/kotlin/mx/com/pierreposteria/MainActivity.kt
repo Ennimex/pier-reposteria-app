@@ -1,4 +1,4 @@
-package com.example.pier_pasteleria
+package mx.com.pierreposteria
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
