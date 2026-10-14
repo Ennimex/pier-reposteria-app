@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo del arranque nativo: el tono promedio de la foto verde del splash
+         de Flutter bajo su velo negro (40 %). Así no hay destello blanco entre
+         el lanzamiento y el primer cuadro del splash. -->
+    <color name="fondo_lanzamiento">#FF36402B</color>
+</resources>

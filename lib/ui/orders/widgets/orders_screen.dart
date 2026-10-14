@@ -1,8 +1,15 @@
 // lib/ui/orders/widgets/orders_screen.dart
+//
+// «Mis Pedidos»: activos e historial en dos pestañas. Movimiento: de los
+// esqueletos a la lista con un fundido a través; las tarjetas entran en
+// cascada una sola vez (cambiar de pestaña, recargar o volver con scroll no
+// la repiten; un pedido nuevo sí entra); la pestaña que se va se atenúa
+// mientras se desliza; la insignia «N activos» aparece con un pop y su
+// número rueda; cada tarjeta se hunde al tocarla y su chip de estado vuela
+// al encabezado del detalle.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
@@ -11,9 +18,11 @@ import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
 import 'package:pier_pasteleria/ui/orders/view_model/orders_view_model.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/estado_pedido.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/movimiento_pedidos.dart';
 import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
 import 'package:pier_pasteleria/utils/formatters.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +39,14 @@ class OrdersScreen extends StatefulWidget {
 
 class _OrdersScreenState extends State<OrdersScreen>
     with SingleTickerProviderStateMixin {
+  // Profundidad entre Activos e Historial: mientras se desliza (o se toca
+  // una pestaña), la que se va se atenúa. La animación del TabController va
+  // de 0 (Activos) a 1 (Historial).
+  static final Animatable<double> _atenuarActivos =
+      Tween<double>(begin: 1, end: 0.55);
+  static final Animatable<double> _atenuarHistorial =
+      Tween<double>(begin: 0.55, end: 1);
+
   late final TabController _tabController =
       TabController(length: 2, vsync: this);
   NavigationProvider? _nav;
@@ -105,21 +122,35 @@ class _OrdersScreenState extends State<OrdersScreen>
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary)),
                   const Spacer(),
-                  // Badge total activos
-                  if (activos.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.pierVerde,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text('${activos.length} activo${activos.length == 1 ? '' : 's'}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold)),
-                    ),
+                  // Badge total activos: aparece (y se va) con un pop; si
+                  // cambia la cuenta, el número rueda y la píldora ajusta su
+                  // ancho hacia la izquierda.
+                  CambioAnimado(
+                    tipo: TipoCambio.escalar,
+                    alineacion: AlignmentDirectional.centerEnd,
+                    child: activos.isEmpty
+                        ? const SizedBox.shrink(key: ValueKey('sin-activos'))
+                        : Container(
+                            key: const ValueKey('activos'),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.pierVerde,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TamanoSuave(
+                              alineacion: AlignmentDirectional.centerEnd,
+                              child: ContadorRodante(
+                                  valor: activos.length,
+                                  texto: '${activos.length} activo${activos.length == 1 ? '' : 's'}',
+                                  alineacion: AlignmentDirectional.centerEnd,
+                                  estilo: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                  ),
                 ],
               ),
             ),
@@ -164,52 +195,45 @@ class _OrdersScreenState extends State<OrdersScreen>
             const SizedBox(height: 12),
 
             // ── CONTENIDO ────────────────────────────────────────
+            // De los esqueletos a la lista con un fundido a través (los
+            // esqueletos salen del árbol al terminar).
             Expanded(
-              child: _vm.cargando
-                  ? ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                      itemCount: 5,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (_, _) => const OrderSkeletonCard(),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: () => _cargarPedidos(silent: true),
-                      color: AppColors.pierVerde,
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: context.watch<AuthProvider>().isAuthenticated
-                            ? [
-                                _buildOrdersList(
-                                  activos,
-                                  'No tienes pedidos activos',
-                                  'Cuando realices un pedido\naparecerá aquí.',
-                                  LucideIcons.receiptText,
-                                ),
-                                _buildOrdersList(
-                                  _vm.finalizados,
-                                  'Sin historial aún',
-                                  'Tus pedidos completados\naparecerán aquí.',
-                                  LucideIcons.history,
-                                ),
-                              ]
-                            : [
-                                _buildOrdersList(
-                                  const [],
-                                  'Inicia sesión',
-                                  'Inicia sesión para ver\ntus pedidos.',
-                                  LucideIcons.logIn,
-                                  conLogin: true,
-                                ),
-                                _buildOrdersList(
-                                  const [],
-                                  'Inicia sesión',
-                                  'Inicia sesión para ver\ntu historial.',
-                                  LucideIcons.logIn,
-                                  conLogin: true,
-                                ),
-                              ],
+              child: CambioAnimado(
+                tipo: TipoCambio.atravesar,
+                child: _vm.cargando
+                    ? KeyedSubtree(
+                        key: const ValueKey('esqueletos'),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                          itemCount: 5,
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (_, _) => const OrderSkeletonCard(),
+                        ),
+                      )
+                    : KeyedSubtree(
+                        key: const ValueKey('pedidos'),
+                        child: RefreshIndicator(
+                          onRefresh: () => _cargarPedidos(silent: true),
+                          color: AppColors.pierVerde,
+                          // Un solo ámbito para las dos pestañas: cada pedido
+                          // entra una vez aunque su página se reconstruya al
+                          // ir y volver; los que llegan después (recarga) son
+                          // otra tanda y también entran.
+                          child: AmbitoEntradas(
+                            soloPrimeraTanda: false,
+                            child: TabBarView(
+                              controller: _tabController,
+                              children: _paginas(
+                                activos,
+                                conSesion: context
+                                    .watch<AuthProvider>()
+                                    .isAuthenticated,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+              ),
             ),
           ],
         ),
@@ -217,180 +241,271 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
-  Widget _buildOrdersList(List<Order> orders, String title,
-      String subtitle, IconData icon, {bool conLogin = false}) {
-    if (orders.isEmpty) {
-      return LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-            Container(
-              width: 100, height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.pierVerde.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon,
-                  size: 46,
-                  color: AppColors.pierVerde.withValues(alpha: 0.5)),
+  /// Las dos páginas (Activos e Historial), cada una atenuada según cuánto
+  /// se ha deslizado hacia la otra.
+  List<Widget> _paginas(List<Order> activos, {required bool conSesion}) {
+    final avance = _tabController.animation ?? kAlwaysDismissedAnimation;
+    final paginas = conSesion
+        ? [
+            _buildOrdersList(
+              activos,
+              'No tienes pedidos activos',
+              'Cuando realices un pedido\naparecerá aquí.',
+              LucideIcons.receiptText,
+              pagina: 'activos',
             ),
-            const SizedBox(height: 20),
-            Text(title,
-                style: const TextStyle(
-                    fontFamily: 'Playfair Display',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text(subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 14, color: Colors.grey[500])),
-            if (conLogin) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const LoginScreen())),
-                icon: const Icon(LucideIcons.logIn,
-                    size: 18, color: Colors.white),
-                label: const Text('Iniciar sesión',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.pierVerde,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 28, vertical: 13),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
+            _buildOrdersList(
+              _vm.finalizados,
+              'Sin historial aún',
+              'Tus pedidos completados\naparecerán aquí.',
+              LucideIcons.history,
+              pagina: 'historial',
+            ),
+          ]
+        : [
+            _buildOrdersList(
+              const [],
+              'Inicia sesión',
+              'Inicia sesión para ver\ntus pedidos.',
+              LucideIcons.logIn,
+              pagina: 'activos',
+              conLogin: true,
+            ),
+            _buildOrdersList(
+              const [],
+              'Inicia sesión',
+              'Inicia sesión para ver\ntu historial.',
+              LucideIcons.logIn,
+              pagina: 'historial',
+              conLogin: true,
+            ),
+          ];
+    return [
+      FadeTransition(
+          opacity: avance.drive(_atenuarActivos), child: paginas.first),
+      FadeTransition(
+          opacity: avance.drive(_atenuarHistorial), child: paginas.last),
+    ];
+  }
+
+  /// Una página: la lista de pedidos o, si no hay, su estado vacío. Todo
+  /// entra una sola vez dentro del AmbitoEntradas de las dos páginas (por
+  /// eso los bloques del estado vacío también llevan id, con [pagina] y el
+  /// título para no confundirse con los de la otra página).
+  Widget _buildOrdersList(List<Order> orders, String title,
+      String subtitle, IconData icon,
+      {required String pagina, bool conLogin = false}) {
+    if (orders.isEmpty) {
+      final id = 'vacio-$pagina-$title';
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final espera = esperaDeLlegada(context);
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    EntradaSuave(
+                      key: ValueKey('$id-icono'),
+                      id: '$id-icono',
+                      retraso: espera,
+                      escalaInicial: 0.85,
+                      desplazamiento: Offset.zero,
+                      child: Container(
+                        width: 100, height: 100,
+                        decoration: BoxDecoration(
+                          color: AppColors.pierVerde.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon,
+                            size: 46,
+                            color: AppColors.pierVerde.withValues(alpha: 0.5)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    EntradaSuave(
+                      key: ValueKey('$id-titulo'),
+                      id: '$id-titulo',
+                      retraso: espera,
+                      child: Text(title,
+                          style: const TextStyle(
+                              fontFamily: 'Playfair Display',
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                    ),
+                    const SizedBox(height: 8),
+                    EntradaSuave(
+                      key: ValueKey('$id-texto'),
+                      id: '$id-texto',
+                      retraso: espera,
+                      child: Text(subtitle,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 14, color: Colors.grey[500])),
+                    ),
+                    if (conLogin) ...[
+                      const SizedBox(height: 24),
+                      EntradaSuave(
+                        key: ValueKey('$id-boton'),
+                        id: '$id-boton',
+                        retraso: espera,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginScreen())),
+                          icon: const Icon(LucideIcons.logIn,
+                              size: 18, color: Colors.white),
+                          label: const Text('Iniciar sesión',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.pierVerde,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 28, vertical: 13),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ],
-                ],
-              ),
             ),
-          ),
-        ),
+          );
+        },
       );
     }
 
+    // Con la Key de cada pedido, un pedido que llega o se va no reconstruye
+    // a los demás: conservan su estado y no vuelven a entrar. Solo entran en
+    // cascada los primeros (lo que cabe en pantalla); los que aparecen al
+    // hacer scroll llegan quietos.
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       itemCount: orders.length,
+      findItemIndexCallback: (clave) {
+        final i = orders.indexWhere((o) => ValueKey(_idTarjeta(o)) == clave);
+        return i < 0 ? null : i;
+      },
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, i) => _buildOrderCard(orders[i])
-          .animate()
-          .fadeIn(
-            duration: 350.ms,
-            delay: (50 * (i % 6)).ms,
-            curve: Curves.easeOut,
-          )
-          .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
+      itemBuilder: (context, i) => EntradaSuave(
+        key: ValueKey(_idTarjeta(orders[i])),
+        id: _idTarjeta(orders[i]),
+        retraso: esperaDeLlegada(context),
+        animar: i < AppMovimiento.pasosMaximos,
+        child: _buildOrderCard(orders[i]),
+      ),
     );
   }
 
+  static String _idTarjeta(Order pedido) => 'pedido-${pedido.id}';
+
+  /// La tarjeta se hunde un poco al tocarla y su chip de estado vuela al
+  /// encabezado del detalle.
   Widget _buildOrderCard(Order order) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => OrderDetailScreen(
-                order: order, alCambiar: _vm.actualizarPedido)),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4))
-          ],
+    return PresionEscala(
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => OrderDetailScreen(
+                  order: order, alCambiar: _vm.actualizarPedido)),
         ),
-        child: Column(
-          children: [
-            // ── HEADER CARD ───────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42, height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.pierVerde.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4))
+            ],
+          ),
+          child: Column(
+            children: [
+              // ── HEADER CARD ───────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42, height: 42,
+                      decoration: BoxDecoration(
+                        color: AppColors.pierVerde.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(LucideIcons.shoppingBag,
+                          color: AppColors.pierVerde, size: 20),
                     ),
-                    child: Icon(LucideIcons.shoppingBag,
-                        color: AppColors.pierVerde, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ← Corregido: usa order.numero
-                        Text(order.numero,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: AppColors.textPrimary)),
-                        Text(fechaCorta(order.createdAt),
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[500])),
-                      ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ← Corregido: usa order.numero
+                          Text(order.numero,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppColors.textPrimary)),
+                          Text(fechaCorta(order.createdAt),
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[500])),
+                        ],
+                      ),
                     ),
-                  ),
-                  // Chip de estado
-                  EstadoPedidoChip(pedido: order),
-                ],
+                    // Chip de estado (vuela al encabezado del detalle)
+                    EstadoPedidoHero(pedido: order),
+                  ],
+                ),
               ),
-            ),
 
-            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1)),
+              Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1)),
 
-            // ── FOOTER CARD ───────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-              child: Row(
-                children: [
-                  // Items resumen
-                  Expanded(
-                    child: Text(
-                      order.items.isEmpty
-                          ? 'Sin productos'
-                          : order.items.length == 1
-                              ? order.items.first.nombre
-                              : '${order.items.first.nombre} +${order.items.length - 1} más',
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey[600]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              // ── FOOTER CARD ───────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Row(
+                  children: [
+                    // Items resumen
+                    Expanded(
+                      child: Text(
+                        order.items.isEmpty
+                            ? 'Sin productos'
+                            : order.items.length == 1
+                                ? order.items.first.nombre
+                                : '${order.items.first.nombre} +${order.items.length - 1} más',
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.grey[600]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text('\$${order.total.toStringAsFixed(0)} MXN',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          color: AppColors.pierDoradoOscuro)),
-                  const SizedBox(width: 6),
-                  const Icon(LucideIcons.chevronRight,
-                      color: Colors.grey, size: 18),
-                ],
+                    const SizedBox(width: 12),
+                    Text('\$${order.total.toStringAsFixed(0)} MXN',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: AppColors.pierDoradoOscuro)),
+                    const SizedBox(width: 6),
+                    const Icon(LucideIcons.chevronRight,
+                        color: Colors.grey, size: 18),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

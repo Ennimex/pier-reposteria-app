@@ -3,11 +3,16 @@
 // Hoja para reportar una entrega fallida (MVVM, Fase 5). Marca la entrega
 // como «fallida» con un motivo obligatorio y se cierra con true si tuvo
 // éxito. El estado vive en ReportarFalloViewModel.
+//
+// Movimiento: el contenido se arma en cascada mientras la hoja sube; los
+// motivos se hunden al tocarlos y cambian de color sin cambiar de tamaño;
+// el campo del detalle se sacude si falta.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/domain/models/entrega_model.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/repartidor/view_model/reportar_fallo_view_model.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
 import 'package:provider/provider.dart';
@@ -41,6 +46,10 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
       );
   final _detalleController = TextEditingController();
 
+  // Veces que se intentó reportar sin detalle: cada una sacude el campo (el
+  // aviso de siempre explica qué falta).
+  int _faltas = 0;
+
   @override
   void dispose() {
     _detalleController.dispose();
@@ -55,6 +64,9 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
       Navigator.pop(context, true);
     } else {
       mostrarAviso(context, r.mensaje);
+      if (r.mensaje == ReportarFalloViewModel.faltaDetalle) {
+        setState(() => _faltas++);
+      }
     }
   }
 
@@ -71,6 +83,13 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
       ),
     );
   }
+
+  /// Un bloque de la cascada: entra cuando la hoja ya va subiendo.
+  static Widget _paso(int orden, Widget hijo) => EntradaSuave(
+        orden: orden,
+        retraso: AppMovimiento.trasEmpuje,
+        child: hijo,
+      );
 
   Widget _contenido() {
     final enviando = _vm.enviando;
@@ -95,119 +114,152 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
           ),
         ),
         const SizedBox(height: 18),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Reportar entrega fallida',
-                style: TextStyle(
-                  fontFamily: 'Playfair Display',
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(LucideIcons.x, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Selecciona el motivo',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary.withValues(alpha: 0.9),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (final m in ReportarFalloViewModel.motivos)
-              _ChipMotivo(
-                texto: m,
-                elegido: _vm.motivo == m,
-                onTap: () => _vm.elegirMotivo(m),
-              ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'Motivo del fallo (Requerido)',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _detalleController,
-          maxLines: 3,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            hintText: 'Describe brevemente lo ocurrido…',
-            fillColor: AppColors.pierArena,
-            filled: true,
-            border: bordeCampo,
-            enabledBorder: bordeCampo,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.error.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
+        _paso(
+          0,
+          Row(
             children: [
-              Icon(LucideIcons.info,
-                  size: 20, color: AppColors.error.withValues(alpha: 0.9)),
-              const SizedBox(width: 10),
-              Expanded(
+              const Expanded(
                 child: Text(
-                  'Esta acción marcará el pedido como no entregado y notificará al cliente.',
+                  'Reportar entrega fallida',
                   style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.error.withValues(alpha: 0.9),
+                    fontFamily: 'Playfair Display',
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
                   ),
                 ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon:
+                    const Icon(LucideIcons.x, color: AppColors.textSecondary),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: enviando ? null : _reportar,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
+        const SizedBox(height: 8),
+        _paso(
+          1,
+          Text(
+            'Selecciona el motivo',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary.withValues(alpha: 0.9),
             ),
-            icon: IconoCargando(
-              icono: LucideIcons.triangleAlert,
-              cargando: enviando,
-              color: Colors.white,
-            ),
-            label: Text(enviando ? 'Reportando…' : 'Reportar fallo'),
           ),
         ),
-        const SizedBox(height: 6),
-        Center(
-          child: TextButton(
-            onPressed: enviando ? null : () => Navigator.pop(context),
-            child: Text(
-              'Cancelar',
-              style: TextStyle(
-                color: AppColors.pierVerde,
-                fontWeight: FontWeight.bold,
-              ),
+        const SizedBox(height: 12),
+        _paso(
+          2,
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final m in ReportarFalloViewModel.motivos)
+                _ChipMotivo(
+                  texto: m,
+                  elegido: _vm.motivo == m,
+                  onTap: () => _vm.elegirMotivo(m),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _paso(
+          3,
+          // Se sacude si falta el detalle.
+          Sacudida(
+            disparo: _faltas == 0 ? null : _faltas,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Motivo del fallo (Requerido)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _detalleController,
+                  maxLines: 3,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'Describe brevemente lo ocurrido…',
+                    fillColor: AppColors.pierArena,
+                    filled: true,
+                    border: bordeCampo,
+                    enabledBorder: bordeCampo,
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _paso(
+          4,
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(LucideIcons.info,
+                    size: 20, color: AppColors.error.withValues(alpha: 0.9)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Esta acción marcará el pedido como no entregado y notificará al cliente.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.error.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        _paso(
+          5,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: enviando ? null : _reportar,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                  ),
+                  icon: IconoCargando(
+                    icono: LucideIcons.triangleAlert,
+                    cargando: enviando,
+                    color: Colors.white,
+                  ),
+                  label: Text(enviando ? 'Reportando…' : 'Reportar fallo'),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Center(
+                child: TextButton(
+                  onPressed: enviando ? null : () => Navigator.pop(context),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: AppColors.pierVerde,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -215,7 +267,9 @@ class _ReportarFalloSheetState extends State<ReportarFalloSheet> {
   }
 }
 
-/// Categoría del fallo; la elegida va con borde.
+/// Categoría del fallo; la elegida va con borde. El borde siempre ocupa su
+/// lugar (transparente si no está elegida): elegir no cambia el tamaño del
+/// chip ni reacomoda la fila; el color y el borde pasan con un fundido.
 class _ChipMotivo extends StatelessWidget {
   const _ChipMotivo({
     required this.texto,
@@ -229,25 +283,33 @@ class _ChipMotivo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: elegido
-              ? AppColors.error
-              : AppColors.error.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(50),
-          border: elegido
-              ? Border.all(color: AppColors.textPrimary, width: 2)
-              : null,
-        ),
-        child: Text(
-          texto,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+    return PresionEscala(
+      escala: AppMovimiento.escalaPresionChica,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: AppMovimiento.duracion(context, AppMovimiento.corta),
+          curve: AppMovimiento.curvaEstandar,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: elegido
+                ? AppColors.error
+                : AppColors.error.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(
+              color: elegido
+                  ? AppColors.textPrimary
+                  : AppColors.textPrimary.withValues(alpha: 0),
+              width: 2,
+            ),
+          ),
+          child: Text(
+            texto,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),

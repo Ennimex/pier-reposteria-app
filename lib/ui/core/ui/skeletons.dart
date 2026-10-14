@@ -5,13 +5,21 @@
 // (donde no se puede envolver todo el grid/lista de una sola vez).
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
 import 'package:shimmer/shimmer.dart';
 
-/// Envuelve un contenido en el shimmer con los colores de la paleta.
-Widget _shimmer({required Widget child}) => Shimmer.fromColors(
-      baseColor: AppColors.textSecondary.withValues(alpha: 0.14),
-      highlightColor: AppColors.textSecondary.withValues(alpha: 0.04),
-      child: child,
+/// Envuelve un contenido en el shimmer con los colores de la paleta: base
+/// arena oscura y un brillo casi blanco, como azúcar glas. El
+/// RepaintBoundary aísla el repintado de cada cuadro del brillo; con
+/// movimiento reducido el brillo no corre (queda la forma quieta).
+Widget _shimmer(BuildContext context, {required Widget child}) =>
+    RepaintBoundary(
+      child: Shimmer.fromColors(
+        baseColor: AppColors.pierArenaOscuro,
+        highlightColor: Colors.white.withValues(alpha: 0.9),
+        enabled: !AppMovimiento.reducido(context),
+        child: child,
+      ),
     );
 
 Widget _box(double h, double w, {double radius = 8}) => Container(
@@ -30,6 +38,7 @@ class ProductSkeletonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _shimmer(
+      context,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -75,6 +84,7 @@ class OrderSkeletonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _shimmer(
+      context,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

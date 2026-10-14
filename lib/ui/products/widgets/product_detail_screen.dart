@@ -4,7 +4,8 @@
 // ProductDetailViewModel (galería, reseñas, favorito, recomendaciones,
 // tamaño y cantidad). Aquí solo queda lo que es de la interfaz: navegar,
 // mandar a iniciar sesión, los avisos (SnackBar), el rebote de los botones de
-// carrito y compartir con el menú del sistema.
+// carrito, el vuelo de la miniatura al carrito, la entrada de la hoja de
+// información y compartir con el menú del sistema.
 import 'dart:async';
 import 'dart:io';
 
@@ -19,6 +20,7 @@ import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/products/view_model/product_detail_view_model.dart';
 import 'package:pier_pasteleria/ui/products/widgets/detalle_badges.dart';
 import 'package:pier_pasteleria/ui/products/widgets/detalle_compra.dart';
@@ -32,12 +34,23 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ProductDetailScreen extends StatefulWidget {
-  const ProductDetailScreen({required this.product, super.key, this.viewModel});
+  const ProductDetailScreen({
+    required this.product,
+    super.key,
+    this.viewModel,
+    this.ambitoFoto,
+  });
 
   final Product product;
 
   /// Para pruebas; si es null la pantalla crea el suyo.
   final ProductDetailViewModel? viewModel;
+
+  /// Ámbito del Hero de la foto (FotoProductoHero.ambito): lo pasa quien
+  /// abre el detalle desde una tarjeta con ese mismo ámbito (los
+  /// recomendados de otro detalle) para que la foto vuele. Sin ámbito, la
+  /// etiqueta es la de siempre (catálogo, favoritos).
+  final String? ambitoFoto;
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -45,6 +58,11 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen>
     with TickerProviderStateMixin {
+  // Cada detalle tiene su propio ámbito para las fotos de sus recomendados:
+  // un producto recomendado en dos detalles apilados nunca repite etiqueta
+  // de Hero.
+  static int _detallesAbiertos = 0;
+
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ProductDetailViewModel _vm = widget.viewModel ??
       ProductDetailViewModel(
@@ -63,6 +81,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   final Map<String, AnimationController> _relatedCartControllers = {};
   final Map<String, Animation<double>> _relatedCartAnims = {};
 
+  // El botón «Añadir»: de ahí sale la miniatura que vuela al carrito.
+  final GlobalKey _botonAnadir = GlobalKey();
+  final String _ambitoRecomendados = 'recomendado-${_detallesAbiertos++}';
+
   Product get _producto => widget.product;
   bool get _autenticado => context.read<AuthProvider>().isAuthenticated;
 
@@ -70,10 +92,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void initState() {
     super.initState();
     PierLog.nav('→ ProductDetailScreen: ${_producto.nombre}');
-    _cartAnimController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
-    _cartAnim = Tween<double>(begin: 1, end: 1.08).animate(
-        CurvedAnimation(parent: _cartAnimController, curve: Curves.elasticOut));
+    _cartAnimController =
+        AnimationController(vsync: this, duration: AppMovimiento.enfasis);
+    // Hunde, rebota y asienta en 1 (antes se quedaba al 108 % si el backend
+    // rechazaba el alta y el detalle seguía abierto).
+    _cartAnim = _cartAnimController.drive(AppMovimiento.pulso);
     unawaited(_vm.cargar(autenticado: _autenticado));
     // Catálogo/promos: no-op si ya están cargados; las tarjetas de
     // recomendados los usan para precio con descuento y datos completos.
@@ -161,10 +184,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final cantidad = _vm.cantidad;
     PierLog.info('🛒 Agregando: ${_producto.nombre} ($tamano) x$cantidad');
     _agregando = true;
-    _cartAnimController.forward(from: 0);
-    final error = await context
-        .read<CartProvider>()
-        .addItem(_producto, cantidad, tamano, _vm.precioBase);
+    // Con «reducir movimiento» el botón no rebota.
+    if (!AppMovimiento.reducido(context)) {
+      _cartAnimController.forward(from: 0).ignore();
+    }
+    // Si el backend acepta, la miniatura sale de este botón y vuela al
+    // carrito antes del pop (la foto regresa sola a su tarjeta); mientras
+    // responde, la insignia de la barra la espera en vez de rebotar.
+    final error = await VueloAlCarrito.lanzarAlConfirmar(
+      context,
+      context
+          .read<CartProvider>()
+          .addItem(_producto, cantidad, tamano, _vm.precioBase),
+      imagenUrl: _producto.imagenUrl,
+      origen: _botonAnadir,
+    );
     _agregando = false;
     if (!mounted) return;
     if (error != null) {
@@ -177,29 +211,49 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     Navigator.pop(context);
   }
 
-  Future<void> _addRelatedToCart(Product p) async {
+  /// [boton] es el botón tocado en la tarjeta del recomendado: de ahí sale
+  /// la miniatura que vuela al carrito si el backend acepta.
+  Future<void> _addRelatedToCart(Product p, BuildContext boton) async {
     if (!_autenticado) {
       _irALogin();
       return;
     }
     PierLog.info('🛒 Agregando relacionado: ${p.nombre}');
-    final error = await context.read<CartProvider>().addItem(p);
+    // El botón responde al toque, como «Añadir»; solo la miniatura espera a
+    // que el backend acepte.
+    _pulsoRecomendado(p.id);
+    final error = await VueloAlCarrito.lanzarAlConfirmar(
+      boton,
+      context.read<CartProvider>().addItem(p),
+      imagenUrl: p.imagenUrl,
+    );
     if (!mounted) return;
     if (error != null) {
       _error(error);
       return;
     }
-    _relatedCartControllers.putIfAbsent(p.id, () {
-      final c = AnimationController(
-          vsync: this, duration: const Duration(milliseconds: 500));
-      _relatedCartAnims[p.id] = Tween<double>(begin: 1, end: 1.3).animate(
-          CurvedAnimation(parent: c, curve: Curves.elasticOut));
-      return c;
-    }).forward(from: 0);
     _aviso('${p.nombre} agregado',
         icono: Icons.check_circle_rounded,
         color: AppColors.pierVerde,
         segundos: 2);
+  }
+
+  /// Pulso del «+» del recomendado [id]: hunde, rebota y asienta en 1 (antes
+  /// el botón se quedaba al 130 %). La primera vez se repinta el detalle para
+  /// que la tarjeta reciba su rebote. Con «reducir movimiento» no rebota.
+  void _pulsoRecomendado(String id) {
+    if (AppMovimiento.reducido(context)) return;
+    var pulso = _relatedCartControllers[id];
+    if (pulso == null) {
+      final nuevo =
+          AnimationController(vsync: this, duration: AppMovimiento.enfasis);
+      setState(() {
+        _relatedCartControllers[id] = nuevo;
+        _relatedCartAnims[id] = nuevo.drive(AppMovimiento.pulso);
+      });
+      pulso = nuevo;
+    }
+    pulso.forward(from: 0).ignore();
   }
 
   Future<void> _compartir() async {
@@ -256,6 +310,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 esFavorito: _vm.esFavorito,
                 onFavorito: _toggleFavorito,
                 onCompartir: _compartir,
+                ambitoFoto: widget.ambitoFoto,
+                grande: _vm.tieneTamanos && _vm.tamano == 1,
               ),
             ),
             SliverToBoxAdapter(
@@ -267,49 +323,75 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                  // La hoja se arma mientras la foto aterriza: cada bloque
+                  // entra un escalón después del anterior (lo que queda
+                  // abajo del pliegue ya no se anima al abrir).
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _encabezado(),
+                      _entrada(0, 'encabezado', _encabezado()),
                       const SizedBox(height: 12),
-                      Text(
-                        _producto.nombre,
-                        style: const TextStyle(
-                            fontFamily: 'Playfair Display',
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                            height: 1.2),
+                      _entrada(
+                        1,
+                        'titulo',
+                        Text(
+                          _producto.nombre,
+                          style: const TextStyle(
+                              fontFamily: 'Playfair Display',
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                              height: 1.2),
+                        ),
                       ),
                       const SizedBox(height: 6),
-                      ..._precioYPromo(promociones),
-                      Text(
-                        _producto.descripcion,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                            height: 1.5),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
+                      _entrada(2, 'precio', _precioYPromo(promociones)),
+                      _entrada(
+                        3,
+                        'descripcion',
+                        Text(
+                          _producto.descripcion,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                              height: 1.5),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      if (_vm.tieneTamanos) ...[
-                        const SizedBox(height: 28),
-                        const Text('Selecciona el tamaño',
-                            style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary)),
-                        const SizedBox(height: 14),
-                        DetalleSelectorTamano(
-                            viewModel: _vm, promociones: promociones),
-                      ],
+                      if (_vm.tieneTamanos)
+                        _entrada(
+                          4,
+                          'tamanos',
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 28),
+                              const Text('Selecciona el tamaño',
+                                  style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary)),
+                              const SizedBox(height: 14),
+                              DetalleSelectorTamano(
+                                  viewModel: _vm, promociones: promociones),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 24),
-                      DetalleBarraCompra(
-                        viewModel: _vm,
-                        promociones: promociones,
-                        animacion: _cartAnim,
-                        onAgregar: _addToCart,
-                        onAvisarme: _avisarme,
+                      _entrada(
+                        5,
+                        'compra',
+                        DetalleBarraCompra(
+                          viewModel: _vm,
+                          promociones: promociones,
+                          animacion: _cartAnim,
+                          onAgregar: _addToCart,
+                          onAvisarme: _avisarme,
+                          claveBoton: _botonAnadir,
+                        ),
+                        // La barra de compra llega con un pequeño pop.
+                        escalaInicial: 0.96,
                       ),
                       ..._ingredientes(),
                       const SizedBox(height: 32),
@@ -325,12 +407,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         recomendaciones: _vm.recomendaciones,
                         catalogo: promociones,
                         animaciones: _relatedCartAnims,
+                        ambitoFoto: _ambitoRecomendados,
                         // push (no pushReplacement): atrás regresa al
-                        // producto de origen.
+                        // producto de origen. Con el mismo ámbito que la
+                        // tarjeta, la foto vuela al nuevo detalle.
                         onAbrir: (p) => Navigator.push(
                             context,
                             MaterialPageRoute<void>(
-                                builder: (_) => ProductDetailScreen(product: p))),
+                                builder: (_) => ProductDetailScreen(
+                                    product: p,
+                                    ambitoFoto: _ambitoRecomendados))),
                         onAgregar: _addRelatedToCart,
                       ),
                       const SizedBox(height: 40),
@@ -344,6 +430,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ),
     );
   }
+
+  /// Un bloque de la hoja de información: entra en el escalón [orden] cuando
+  /// la página ya casi llegó, una sola vez (la Key lo mantiene aunque el
+  /// detalle se repinte con cada cambio del ViewModel).
+  Widget _entrada(int orden, String bloque, Widget hijo,
+          {double escalaInicial = 1}) =>
+      EntradaSuave(
+        key: ValueKey<String>('detalle-$bloque'),
+        orden: orden,
+        retraso: AppMovimiento.trasEmpuje,
+        escalaInicial: escalaInicial,
+        child: hijo,
+      );
 
   /// Categoría, tipo, sabor y calificación.
   Widget _encabezado() {
@@ -386,9 +485,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   /// Precio con descuento (tachado el original) y badges del tipo de promo.
-  List<Widget> _precioYPromo(ProductProvider promociones) {
+  /// Si las promociones llegan con el detalle ya abierto, el bloque abre su
+  /// espacio y aparece en vez de empujar de golpe lo de abajo.
+  Widget _precioYPromo(ProductProvider promociones) {
     final id = _producto.id;
-    if (!promociones.tieneDescuento(id)) return const [];
+    final tienePromo = promociones.tieneDescuento(id);
+    return Aparicion(
+      visible: tienePromo,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: tienePromo ? _lineasDePrecio(promociones) : const [],
+      ),
+    );
+  }
+
+  List<Widget> _lineasDePrecio(ProductProvider promociones) {
+    final id = _producto.id;
     final precioFinal = promociones.precioConDescuento(id, _producto.precio);
     return [
       Row(children: [

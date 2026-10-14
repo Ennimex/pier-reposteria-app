@@ -6,11 +6,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
 import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
 import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_pasteleria/domain/models/product_model.dart';
 import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:pier_pasteleria/ui/more/view_model/profile_view_model.dart';
 import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
@@ -30,6 +32,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // Ámbito del Hero de las fotos del carrusel de favoritos (y del detalle que
+  // abren): distinto de la etiqueta de siempre que usa Mis Favoritos.
+  static const String _ambitoFavoritos = 'perfil';
+
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ProfileViewModel _vm = widget.viewModel ??
       ProfileViewModel(
@@ -113,6 +119,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // AnimatedSize no acepta duración cero: «instantáneo» es un milisegundo.
+  static const Duration _instante = Duration(milliseconds: 1);
+
   Widget _buildPantalla(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final favoritos = _vm.favoritos;
@@ -128,6 +137,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         user?['foto_url']?.toString();
     final saludo =
         '$nombre ${apellido.isNotEmpty ? '${apellido[0]}.' : ''}'.trim();
+    // La página llega con un push: sus bloques entran en cascada cuando ya
+    // se deslizó casi toda (una sola vez).
+    const retraso = AppMovimiento.trasEmpuje;
+    final duracionTamano = AppMovimiento.reducido(context)
+        ? _instante
+        : AppMovimiento.media;
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -136,73 +151,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
           slivers: [
             // ── HEADER ────────────────────────────────────────
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Mi Perfil',
-                              style: TextStyle(
-                                  fontFamily: 'Playfair Display',
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary)),
-                          const SizedBox(height: 2),
-                          Text('Hola, $saludo',
-                              style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary)),
-                        ],
+              child: EntradaSuave(
+                retraso: retraso,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Mi Perfil',
+                                style: TextStyle(
+                                    fontFamily: 'Playfair Display',
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary)),
+                            const SizedBox(height: 2),
+                            Text('Hola, $saludo',
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary)),
+                          ],
+                        ),
                       ),
-                    ),
-                    // Avatar circular — toca para editar perfil
-                    GestureDetector(
-                      onTap: () {
-                        PierLog.nav('→ EditProfileScreen');
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  const EditProfileScreen()),
-                        );
-                      },
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 52, height: 52,
-                            decoration: BoxDecoration(
-                              color: AppColors.pierVerde,
-                              shape: BoxShape.circle,
-                            ),
-                            child: fotoUrl != null && fotoUrl.isNotEmpty
-                                ? ClipOval(
-                                    child: Image.network(
-                                      fotoUrl,
-                                      width: 52, height: 52,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, e, _) =>
-                                          _buildAvatarIniciales(iniciales),
-                                    ),
-                                  )
-                                : _buildAvatarIniciales(iniciales),
-                          ),
-                          Positioned(
-                            bottom: 0, right: 0,
-                            child: Container(
-                              width: 16, height: 16,
-                              decoration: BoxDecoration(
-                                color: AppColors.pierVerde,
-                                shape: BoxShape.circle,
+                      // Avatar circular — toca para editar perfil
+                      PresionEscala(
+                        escala: AppMovimiento.escalaPresionChica,
+                        child: GestureDetector(
+                          onTap: () {
+                            PierLog.nav('→ EditProfileScreen');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const EditProfileScreen()),
+                            );
+                          },
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 52, height: 52,
+                                decoration: BoxDecoration(
+                                  color: AppColors.pierVerde,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: fotoUrl != null && fotoUrl.isNotEmpty
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          fotoUrl,
+                                          width: 52, height: 52,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, e, _) =>
+                                              _buildAvatarIniciales(
+                                                  iniciales),
+                                        ),
+                                      )
+                                    : _buildAvatarIniciales(iniciales),
                               ),
-                            ),
+                              Positioned(
+                                bottom: 0, right: 0,
+                                child: Container(
+                                  width: 16, height: 16,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.pierVerde,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -211,170 +233,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // ── MIS FAVORITOS ─────────────────────────────────
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Mis Favoritos',
-                        style: TextStyle(
-                            fontFamily: 'Playfair Display',
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary)),
-                    GestureDetector(
-                      onTap: () {
-                        PierLog.nav('→ FavoritesScreen');
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    const FavoritesScreen()));
-                      },
-                      child: Text('Ver todo',
+              child: EntradaSuave(
+                orden: 1,
+                retraso: retraso,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Mis Favoritos',
                           style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.pierVerde,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ],
+                              fontFamily: 'Playfair Display',
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                      PresionEscala(
+                        escala: AppMovimiento.escalaPresionChica,
+                        child: GestureDetector(
+                          onTap: () {
+                            PierLog.nav('→ FavoritesScreen');
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const FavoritesScreen()));
+                          },
+                          child: Text('Ver todo',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.pierVerde,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
+            // Indicador → vacío o carrusel: fundido a través y el espacio
+            // crece o se encoge con el contenido. Anclados arriba, como el
+            // espacio: centrado, el indicador bajaría fuera del recorte al
+            // cruzarse con el carrusel y el «vacío» brincaría al quedarse
+            // solo.
             SliverToBoxAdapter(
-              child: _vm.cargandoFavoritos
-                  ? Center(
-                      child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: CircularProgressIndicator(
-                          color: AppColors.pierVerde),
-                    ))
-                  : favoritos.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 20),
-                          child: Text('Sin favoritos aún',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14)),
-                        )
-                      : SizedBox(
-                          height: 160,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20),
-                            scrollDirection: Axis.horizontal,
-                            // ✅ FIX: (_, i) en lugar de (_, _)
-                            separatorBuilder: (_, i) =>
-                                const SizedBox(width: 12),
-                            itemCount:
-                                favoritos.take(5).length,
-                            itemBuilder: (context, i) {
-                              final p = favoritos[i];
-                              return GestureDetector(
-                                onTap: () {
-                                  PierLog.nav(
-                                      '→ ProductDetailScreen: ${p.nombre}');
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) =>
-                                            ProductDetailScreen(
-                                                product: p)),
-                                  );
-                                },
-                                child: SizedBox(
-                                  width: 120,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                        // ✅ FIX: (_, e, __) en lugar de (_, _, _)
-                                        child: Image.network(
-                                          p.imagenUrl,
-                                          width: 120,
-                                          height: 100,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, e, _) =>
-                                              Container(
-                                            width: 120,
-                                            height: 100,
-                                            color: AppColors.pierArena,
-                                            child: Icon(
-                                                LucideIcons.cake,
-                                                color:
-                                                    AppColors.pierVerde),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(p.nombre,
-                                          style: const TextStyle(
-                                              fontWeight:
-                                                  FontWeight.w600,
-                                              fontSize: 13,
-                                              color:
-                                                  AppColors.textPrimary),
-                                          maxLines: 1,
-                                          overflow:
-                                              TextOverflow.ellipsis),
-                                      Row(children: [
-                                        Text(
-                                            '\$${p.precio.toStringAsFixed(0)}',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                color:
-                                                    AppColors.pierVerde,
-                                                fontWeight:
-                                                    FontWeight.w700)),
-                                        const Spacer(),
-                                        const Icon(
-                                            Icons.favorite_rounded,
-                                            color: Colors.red,
-                                            size: 14),
-                                      ]),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+              child: EntradaSuave(
+                orden: 2,
+                retraso: retraso,
+                child: AnimatedSize(
+                  duration: duracionTamano,
+                  curve: AppMovimiento.curvaEnfasis,
+                  alignment: AlignmentDirectional.topStart,
+                  child: CambioAnimado(
+                    tipo: TipoCambio.atravesar,
+                    alineacion: AlignmentDirectional.topStart,
+                    child: _vm.cargandoFavoritos
+                        ? KeyedSubtree(
+                            key: const ValueKey<String>('cargando'),
+                            child: Center(
+                                child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: CircularProgressIndicator(
+                                  color: AppColors.pierVerde),
+                            )),
+                          )
+                        : favoritos.isEmpty
+                            ? const Padding(
+                                key: ValueKey<String>('vacio'),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 20),
+                                child: Text('Sin favoritos aún',
+                                    style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14)),
+                              )
+                            : KeyedSubtree(
+                                key: const ValueKey<String>('favoritos'),
+                                child: _carruselFavoritos(favoritos),
+                              ),
+                  ),
+                ),
+              ),
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
             // ── HISTORIAL DE PEDIDOS ──────────────────────────
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Historial de Pedidos',
-                        style: TextStyle(
-                            fontFamily: 'Playfair Display',
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary)),
-                    GestureDetector(
-                      onTap: () {
-                        PierLog.nav('→ OrdersScreen');
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    const OrdersScreen()));
-                      },
-                      child: const Icon(LucideIcons.history,
-                          color: AppColors.textSecondary, size: 22),
-                    ),
-                  ],
+              child: EntradaSuave(
+                orden: 3,
+                retraso: retraso,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Historial de Pedidos',
+                          style: TextStyle(
+                              fontFamily: 'Playfair Display',
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                      PresionEscala(
+                        escala: AppMovimiento.escalaPresionChica,
+                        child: GestureDetector(
+                          onTap: () {
+                            PierLog.nav('→ OrdersScreen');
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const OrdersScreen()));
+                          },
+                          child: const Icon(LucideIcons.history,
+                              color: AppColors.textSecondary, size: 22),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -382,58 +358,163 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             if (_vm.cargandoPedidos)
               SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: CircularProgressIndicator(
-                        color: AppColors.pierVerde),
+                child: EntradaSuave(
+                  orden: 4,
+                  retraso: retraso,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: CircularProgressIndicator(
+                          color: AppColors.pierVerde),
+                    ),
                   ),
                 ),
               )
             else if (pedidos.isEmpty)
+              // Con su propia Key: llega cuando el indicador se va (no hereda
+              // el estado de la entrada del indicador) y sube en ese momento.
               const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text('Sin pedidos aún',
-                      style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14)),
+                child: EntradaSuave(
+                  key: ValueKey<String>('sin-pedidos'),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text('Sin pedidos aún',
+                        style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14)),
+                  ),
                 ),
               )
             else
-              SliverPadding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) {
-                              final p = pedidos[i];
-                              final items = p.items;
-                              final imagen = items.isNotEmpty
-                                  ? items.first.imagenUrl ?? ''
-                                  : '';
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                    bottom: 12),
-                                child: _buildPedidoCard(
-                                  numero: p.numero,
-                                  fecha: _formatFechaPedido(p.createdAt),
-                                  estadoTexto: p.statusText,
-                                  estadoColor: p.statusColor,
-                                  resumen: _resumenPedido(items),
-                                  total: p.total,
-                                  imagenUrl: imagen,
-                                  reordenando: _vm.reordenandoId == p.id,
-                                  onReordenar: () => _reordenar(p.id),
-                                ),
-                              );
-                            },
-                            childCount: pedidos.take(5).length,
+              // Las tarjetas llegan en cascada la primera vez (cada pedido
+              // entra una sola vez aunque la lista se reconstruya).
+              AmbitoEntradas(
+                child: SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) {
+                        final p = pedidos[i];
+                        final items = p.items;
+                        final imagen = items.isNotEmpty
+                            ? items.first.imagenUrl ?? ''
+                            : '';
+                        return EntradaSuave(
+                          key: ValueKey<String>(p.id),
+                          id: p.id,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildPedidoCard(
+                              numero: p.numero,
+                              fecha: _formatFechaPedido(p.createdAt),
+                              estadoTexto: p.statusText,
+                              estadoColor: p.statusColor,
+                              resumen: _resumenPedido(items),
+                              total: p.total,
+                              imagenUrl: imagen,
+                              reordenando: _vm.reordenandoId == p.id,
+                              onReordenar: () => _reordenar(p.id),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
+                      childCount: pedidos.take(5).length,
+                    ),
+                  ),
+                ),
+              ),
 
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Carrusel de hasta 5 favoritos: las tarjetas llegan desde la derecha en
+  /// cascada (una sola vez) y la foto vuela al detalle del producto. Usa su
+  /// propio ámbito de Hero: Mis Favoritos (que se abre desde aquí) usa la
+  /// etiqueta de siempre, y con la misma, al regresar de Favoritos todas sus
+  /// fotos volarían de la cuadrícula al carrusel.
+  Widget _carruselFavoritos(List<Product> favoritos) {
+    return SizedBox(
+      height: 160,
+      child: AmbitoEntradas(
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: Axis.horizontal,
+          // ✅ FIX: (_, i) en lugar de (_, _)
+          separatorBuilder: (_, i) => const SizedBox(width: 12),
+          itemCount: favoritos.take(5).length,
+          itemBuilder: (context, i) {
+            final p = favoritos[i];
+            return EntradaSuave(
+              key: ValueKey<String>(p.id),
+              id: p.id,
+              desplazamiento: const Offset(AppMovimiento.distanciaLarga, 0),
+              child: PresionEscala(
+                child: GestureDetector(
+                  onTap: () {
+                    PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ProductDetailScreen(
+                              product: p, ambitoFoto: _ambitoFavoritos)),
+                    );
+                  },
+                  child: SizedBox(
+                    width: 120,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: FotoProductoHero(
+                            productoId: p.id,
+                            imagenUrl: p.imagenUrl,
+                            ambito: _ambitoFavoritos,
+                            radio: BorderRadius.circular(12),
+                            // ✅ FIX: (_, e, __) en lugar de (_, _, _)
+                            child: Image.network(
+                              p.imagenUrl,
+                              width: 120,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, e, _) => Container(
+                                width: 120,
+                                height: 100,
+                                color: AppColors.pierArena,
+                                child: Icon(LucideIcons.cake,
+                                    color: AppColors.pierVerde),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(p.nombre,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: AppColors.textPrimary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        Row(children: [
+                          Text('\$${p.precio.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.pierVerde,
+                                  fontWeight: FontWeight.w700)),
+                          const Spacer(),
+                          const Icon(Icons.favorite_rounded,
+                              color: Colors.red, size: 14),
+                        ]),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -532,39 +613,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            GestureDetector(
-              onTap: reordenando ? null : onReordenar,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color:
-                          AppColors.textSecondary.withValues(alpha: 0.25)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (reordenando)
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.pierVerde),
-                      )
-                    else
-                      const Icon(LucideIcons.rotateCcw,
-                          size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(reordenando ? 'Agregando…' : 'Reordenar',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500)),
-                  ],
+            // La píldora se hunde al tocarla (mientras reordena no recibe el
+            // toque: no se hunde); el ícono y el texto cambian en sitio y su
+            // ancho se ajusta sin saltos.
+            IgnorePointer(
+              ignoring: reordenando,
+              child: PresionEscala(
+                escala: AppMovimiento.escalaPresionChica,
+                child: GestureDetector(
+                  onTap: reordenando ? null : onReordenar,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: AppColors.textSecondary
+                              .withValues(alpha: 0.25)),
+                    ),
+                    child: AnimatedSize(
+                      duration: AppMovimiento.reducido(context)
+                          ? _instante
+                          : AppMovimiento.corta,
+                      curve: AppMovimiento.curvaEnfasis,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CambioAnimado(
+                            tipo: TipoCambio.escalar,
+                            alineacion: Alignment.center,
+                            child: reordenando
+                                ? SizedBox(
+                                    key: const ValueKey<String>('cargando'),
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.pierVerde),
+                                  )
+                                : const Icon(LucideIcons.rotateCcw,
+                                    key: ValueKey<String>('reordenar'),
+                                    size: 14,
+                                    color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(width: 4),
+                          CambioAnimado(
+                            child: Text(
+                                reordenando ? 'Agregando…' : 'Reordenar',
+                                key: ValueKey<bool>(reordenando),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

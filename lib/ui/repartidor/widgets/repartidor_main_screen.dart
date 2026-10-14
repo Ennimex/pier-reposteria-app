@@ -10,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/ui/animated_indexed_stack.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/entregas_screen.dart';
 import 'package:pier_pasteleria/ui/repartidor/widgets/historial_repartidor_screen.dart';
@@ -73,20 +74,23 @@ class _RepartidorMainScreenState extends State<RepartidorMainScreen> {
         selectedLabelStyle:
             const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
         unselectedLabelStyle: const TextStyle(fontSize: 12),
+        // IconoPestana en las dos ranuras (mismo estado): al elegir la
+        // pestaña crece una píldora detrás del ícono y el ícono da un pop;
+        // al dejarla, la píldora se encoge y se apaga.
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(LucideIcons.truck),
-            activeIcon: Icon(LucideIcons.truck),
+            icon: IconoPestana(LucideIcons.truck, activo: false),
+            activeIcon: IconoPestana(LucideIcons.truck),
             label: 'Entregas',
           ),
           BottomNavigationBarItem(
-            icon: Icon(LucideIcons.history),
-            activeIcon: Icon(LucideIcons.history),
+            icon: IconoPestana(LucideIcons.history, activo: false),
+            activeIcon: IconoPestana(LucideIcons.history),
             label: 'Historial',
           ),
           BottomNavigationBarItem(
-            icon: Icon(LucideIcons.user),
-            activeIcon: Icon(LucideIcons.user),
+            icon: IconoPestana(LucideIcons.user, activo: false),
+            activeIcon: IconoPestana(LucideIcons.user),
             label: 'Perfil',
           ),
         ],

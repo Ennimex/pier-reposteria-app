@@ -5,6 +5,11 @@
 // (tarjetas en notificaciones_partes.dart). Tocar una la marca como leída.
 // El estado vive en NotificationsViewModel; si el backend rechaza algo se
 // avisa con un SnackBar.
+//
+// Movimiento: carga, error, vacío y lista cambian con un fundido a través;
+// las tarjetas entran una sola vez (las que llegan por el sondeo con la
+// pantalla abierta también entran, arriba, sin repetir las demás); «Leer
+// todas» y la insignia aparecen y se van con suavidad y el número rueda.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -13,8 +18,10 @@ import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
 import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_pasteleria/ui/notifications/view_model/notifications_view_model.dart';
 import 'package:pier_pasteleria/ui/notifications/widgets/notificaciones_partes.dart';
+import 'package:pier_pasteleria/ui/orders/widgets/movimiento_pedidos.dart';
 import 'package:pier_pasteleria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
@@ -95,36 +102,51 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
-                ],
+          PresionEscala(
+            escala: AppMovimiento.escalaPresionChica,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2))
+                  ],
+                ),
+                child: const Icon(LucideIcons.chevronLeft,
+                    size: 16, color: AppColors.textPrimary),
               ),
-              child: const Icon(LucideIcons.chevronLeft,
-                  size: 16, color: AppColors.textPrimary),
             ),
           ),
           const Spacer(),
-          if (_vm.noLeidas > 0)
-            GestureDetector(
-              onTap: () => _hacer(_vm.marcarTodas,
-                  exito: 'Todas marcadas como leídas'),
-              child: Text('Leer todas',
-                  style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.pierVerde,
-                      fontWeight: FontWeight.w600)),
-            ),
+          // Aparece con un fundido cuando hay algo por leer y, cuando ya no
+          // queda nada, se apaga y sale del árbol.
+          CambioAnimado(
+            alineacion: AlignmentDirectional.centerEnd,
+            child: _vm.noLeidas > 0
+                ? KeyedSubtree(
+                    key: const ValueKey('leer-todas'),
+                    child: PresionEscala(
+                      escala: AppMovimiento.escalaPresionChica,
+                      child: GestureDetector(
+                        onTap: () => _hacer(_vm.marcarTodas,
+                            exito: 'Todas marcadas como leídas'),
+                        child: Text('Leer todas',
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.pierVerde,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('sin-leer-todas')),
+          ),
         ],
       ),
     );
@@ -147,85 +169,151 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
           ),
-          if (noLeidas > 0) ...[
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.pierVerde,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text('$noLeidas',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold)),
-            ),
-          ],
+          // La insignia aparece (y se va) con un pop y su número rueda: hacia
+          // abajo al leer, hacia arriba si llega una nueva.
+          CambioAnimado(
+            tipo: TipoCambio.escalar,
+            child: noLeidas > 0
+                ? Padding(
+                    key: const ValueKey('insignia'),
+                    padding: const EdgeInsetsDirectional.only(start: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.pierVerde,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: TamanoSuave(
+                        alineacion: Alignment.center,
+                        child: ContadorRodante(
+                            valor: noLeidas,
+                            texto: '$noLeidas',
+                            alineacion: Alignment.center,
+                            estilo: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('sin-insignia')),
+          ),
         ],
       ),
     );
   }
 
   // ── LISTA ─────────────────────────────────────────────────────────
+  /// Carga, error, vacío o lista. Cambian con un fundido a través: lo que se
+  /// va se apaga rápido y sale del árbol.
   Widget _cuerpo() {
+    final (estado, contenido) = _estadoDelCuerpo();
+    return CambioAnimado(
+      tipo: TipoCambio.atravesar,
+      child: KeyedSubtree(key: ValueKey(estado), child: contenido),
+    );
+  }
+
+  (String, Widget) _estadoDelCuerpo() {
     if (_vm.cargando) {
-      return Center(
-          child: CircularProgressIndicator(color: AppColors.pierVerde));
+      return (
+        'cargando',
+        Center(child: CircularProgressIndicator(color: AppColors.pierVerde)),
+      );
     }
     final error = _vm.errorCarga;
     if (error != null) {
-      return AvisoNotificaciones(
-        icono: LucideIcons.wifiOff,
-        titulo: 'Algo salió mal',
-        texto: error,
-        boton: 'Reintentar',
-        iconoBoton: LucideIcons.refreshCw,
-        onPressed: _vm.cargar,
+      return (
+        'error',
+        AvisoNotificaciones(
+          icono: LucideIcons.wifiOff,
+          titulo: 'Algo salió mal',
+          texto: error,
+          boton: 'Reintentar',
+          iconoBoton: LucideIcons.refreshCw,
+          onPressed: _vm.cargar,
+        ),
       );
     }
     if (_vm.notificaciones.isEmpty) {
-      return AvisoNotificaciones(
-        icono: LucideIcons.bellOff,
-        titulo: 'Sin notificaciones',
-        texto: 'Aquí aparecerán tus pedidos, promociones y novedades de '
-            'Pier Repostería.',
-        boton: 'Explorar Menú',
-        iconoBoton: LucideIcons.cake,
-        onPressed: _explorarMenu,
+      return (
+        'vacia',
+        AvisoNotificaciones(
+          icono: LucideIcons.bellOff,
+          titulo: 'Sin notificaciones',
+          texto: 'Aquí aparecerán tus pedidos, promociones y novedades de '
+              'Pier Repostería.',
+          boton: 'Explorar Menú',
+          iconoBoton: LucideIcons.cake,
+          onPressed: _explorarMenu,
+          mecerIcono: true,
+        ),
       );
+    }
+    return ('lista', _lista());
+  }
+
+  /// La lista agrupada. Cada separador y cada tarjeta entra una sola vez:
+  /// las que ya se vieron no se repiten al refrescar ni con el sondeo, y las
+  /// que llegan con la pantalla abierta entran como una tanda nueva. Solo
+  /// las primeras posiciones animan; lo que se construye al hacer scroll
+  /// llega quieto.
+  Widget _lista() {
+    final espera = esperaDeLlegada(context);
+    final hijos = <Widget>[];
+    // Cada elemento lleva su Key: una notificación que llega arriba no
+    // reconstruye a las demás.
+    Widget entrada(String id, Widget hijo) => EntradaSuave(
+          key: ValueKey(id),
+          id: id,
+          retraso: espera,
+          animar: hijos.length < _posicionesAnimadas,
+          child: hijo,
+        );
+    for (final grupo in _vm.grupos) {
+      // ── SEPARADOR DE GRUPO ─────────
+      hijos.add(entrada(
+        'grupo-${grupo.titulo}',
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Center(
+            child: Text(grupo.titulo,
+                style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3)),
+          ),
+        ),
+      ));
+      for (final n in grupo.notificaciones) {
+        hijos.add(entrada(
+          'notificacion-${n.id}',
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: NotificacionTarjeta(
+              notificacion: n,
+              cuando: _vm.cuando(n),
+              onTap: () => _hacer(() => _vm.marcarLeida(n)),
+            ),
+          ),
+        ));
+      }
     }
     return RefreshIndicator(
       onRefresh: () => _hacer(_vm.refrescar),
       color: AppColors.pierVerde,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-        children: [
-          for (final grupo in _vm.grupos) ...[
-            // ── SEPARADOR DE GRUPO ─────────
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Center(
-                child: Text(grupo.titulo,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3)),
-              ),
-            ),
-            for (final n in grupo.notificaciones)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: NotificacionTarjeta(
-                  notificacion: n,
-                  cuando: _vm.cuando(n),
-                  onTap: () => _hacer(() => _vm.marcarLeida(n)),
-                ),
-              ),
-          ],
-        ],
+      child: AmbitoEntradas(
+        soloPrimeraTanda: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+          children: hijos,
+        ),
       ),
     );
   }
+
+  /// Posiciones de la lista que entran animadas (lo que cabe en pantalla).
+  static const int _posicionesAnimadas = 8;
 }

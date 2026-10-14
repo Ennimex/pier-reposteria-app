@@ -1,9 +1,9 @@
 // lib/ui/core/themes/app_theme.dart
-import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
 import 'package:pier_pasteleria/ui/core/themes/app_dimensions.dart';
 import 'package:pier_pasteleria/ui/core/themes/text_styles.dart';
+import 'package:pier_pasteleria/ui/core/themes/transicion_pagina_pier.dart';
 
 class AppTheme {
   AppTheme._();
@@ -11,7 +11,6 @@ class AppTheme {
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.pierVerde,
-      brightness: Brightness.light,
     ).copyWith(
       primary: AppColors.pierVerde,
       secondary: AppColors.pierDorado,
@@ -31,12 +30,12 @@ class AppTheme {
       textTheme: AppTextStyles.textTheme(base.textTheme),
 
       // Transición de rutas: slide desde la derecha con parallax (estilo
-      // Cupertino) para TODOS los Navigator.push; en iOS además habilita
-      // el gesto de regresar deslizando desde el borde.
-      pageTransitionsTheme: PageTransitionsTheme(
+      // Cupertino) para TODOS los Navigator.push, en 400 ms; en iOS además
+      // habilita el gesto de regresar deslizando desde el borde.
+      pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: const CupertinoPageTransitionsBuilder(),
-          TargetPlatform.iOS: const CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: TransicionPaginaPier(),
+          TargetPlatform.iOS: TransicionPaginaPier(),
         },
       ),
 
