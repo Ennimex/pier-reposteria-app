@@ -199,7 +199,8 @@ Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarClou
 `reactivecircus/android-emulator-runner` y GitHub Actions. Las pruebas unitarias
 viven en `test/unitarias/`, con una carpeta por épica (`auth`, `catalogo`,
 `carrito_checkout`, `pedidos`, `resenas`, `reembolsos_quejas`, `repartidor`,
-`alexa` y `comun` para lo transversal); las de widget de cada pantalla, en
+`alexa`, `comun` para lo transversal y `ci` para el script de resultados de
+los pipelines); las de widget de cada pantalla, en
 `test/widget/`. El smoke test de integración también usa `FakeApiClient`, por
 lo que no contacta el backend ni requiere credenciales.
 El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
@@ -217,7 +218,18 @@ flutter test integration_test    # smoke tests, con emulador o celular conectado
 
 Cada tipo de prueba tiene su propio workflow en `.github/workflows/`, con la
 explicación de qué prueba, cuándo corre y qué pasa si falla en los comentarios
-del archivo. El de análisis estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
+del archivo.
+
+**Resultados.** Cada workflow muestra sus resultados en la página de la corrida
+(**Actions → corrida → Summary**), sin descargar artifacts: totales y cobertura
+por carpeta en unitarias; cada escenario con ✅/❌ en aceptación, integración y
+volumen; la tabla contra la línea base y los avisos por regla en análisis
+estático; el peso del APK en rendimiento; cierres y congelamientos de monkey en
+esfuerzo, y una fila por etapa en regresión. Si algo falla, el resumen muestra
+la prueba o el aviso con su archivo, línea y error. Los arma
+`tool/resumen_pruebas.dart` a partir de lo que deja cada paso (por ejemplo,
+`flutter test --file-reporter json:build/resultados/unitarias.json`); solo los
+APK se siguen guardando como artifact. El de análisis estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
 y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
 resultado del quality gate de SonarCloud; el quality gate y su umbral de
 cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.

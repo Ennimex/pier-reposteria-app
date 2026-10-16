@@ -16,6 +16,11 @@ fi
 
 cat "$output_file"
 
+# Copia para el resumen de la corrida (tool/resumen_pruebas.dart analisis,
+# #157); se guarda aunque el análisis falle, que es cuando más se necesita.
+mkdir -p build/resultados
+cp "$output_file" build/resultados/analisis.txt
+
 if [ "$analyze_status" -ne 0 ]; then
   echo "::error::flutter analyze failed (exit $analyze_status)."
   exit "$analyze_status"

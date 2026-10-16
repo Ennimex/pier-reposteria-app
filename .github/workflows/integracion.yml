@@ -1,19 +1,24 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE INTEGRACIÓN
 #
-# Qué prueba: que varias historias funcionan juntas en un flujo completo
-#   (por ejemplo iniciar sesión, ver el catálogo, llenar el carrito y llegar
-#   al pago) con la app instalada y corriendo en un emulador Android real.
-#   Hoy usa el cliente de API falso (FakeApiClient) y no toca el backend;
-#   contra staging correrá cuando existan los ambientes (#12 y #13).
-# Para qué sirve: encontrar fallos que las unitarias no ven: navegación,
-#   estado compartido entre pantallas, permisos y comportamiento en Android.
-# Cuándo corre: solo en Pull Requests que tocan código de la app (lib/,
-#   integration_test/, android/, dependencias o este archivo) porque tarda
-#   más que los demás (unos 8 minutos con el AVD en caché), y a mano.
-# Si falla: el Pull Request muestra el check en rojo para que el revisor lo
-#   vea; no es check obligatorio porque no corre en todos los PR.
-# Dónde viven: integration_test/ (hoy app_smoke_test.dart).
+# Qué revisa: que las partes de la app funcionan juntas, con la app completa
+#   instalada en un celular Android virtual (emulador) que corre dentro de la
+#   computadora de GitHub. Las pruebas de hoy abren la app, intentan entrar
+#   con una contraseña incorrecta y cargan el catálogo.
+# Para qué sirve: encuentra fallos que las pruebas por pieza no ven; por
+#   ejemplo, una pantalla que no lleva a la siguiente o algo que solo falla
+#   en un celular Android.
+# Cómo lo hace: también usa el servidor de mentira (FakeApiClient), así que
+#   no toca el servidor real. Cuando existan los ambientes de prueba (#12 y
+#   #13) correrá contra un servidor de pruebas.
+# Cuándo corre: solo en los Pull Requests que cambian la app (lib/,
+#   integration_test/, android/, las librerías o este archivo), porque tarda
+#   unos 8 minutos; también se puede lanzar a mano.
+# Si falla: el Pull Request muestra la prueba en rojo para que quien lo
+#   revise lo vea. No bloquea la unión porque no corre en todos los PR.
+# Dónde ver el resultado: Actions → la corrida → Summary: cada prueba con ✅
+#   o ❌ y el error de las que fallen.
+# Dónde están las pruebas: integration_test/ (hoy app_smoke_test.dart).
 # Issues: #21 (Sprint 1), #58 (Sprint 2), #65 (Sprint 4) y #69 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de integración
@@ -34,14 +39,16 @@ on:
 permissions:
   contents: read
 
-# Si llega otro commit al mismo Pull Request, se cancela la corrida anterior.
+# Si llega un cambio nuevo al mismo Pull Request, se cancela la corrida
+# anterior: ya no tiene caso revisar una versión que cambió.
 concurrency:
   group: integracion-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: '3.44.4'
-  # Emulador: Android 14 (API 34), perfil Pixel 6, sin ventana ni sonido.
+  # El celular virtual: Android 14 (API 34) con las medidas de un Pixel 6,
+  # sin ventana ni sonido porque nadie lo está mirando.
   API_LEVEL: 34
   AVD_PROFILE: pixel_6
   EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
@@ -55,7 +62,8 @@ jobs:
       - name: Descargar el código
         uses: actions/checkout@v7
 
-      # Gradle (compila el APK) y el emulador necesitan Java.
+      # Java hace falta para armar el APK (el archivo que se instala en el
+      # celular) y para el emulador.
       - name: Instalar Java
         uses: actions/setup-java@v6
         with:
@@ -72,16 +80,17 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Sin esto el emulador corre sin aceleración de hardware en ubuntu-latest
-      # y tarda cinco minutos en arrancar (ver run 37573804253).
+      # Deja que el emulador use el procesador directamente. Sin esto corre en
+      # modo lento y tarda cinco minutos solo en encender (corrida 37573804253).
       - name: Habilitar KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # La imagen del emulador (AVD) se guarda entre corridas: crearla desde
-      # cero toma varios minutos; con caché la corrida bajó de 23 a 8 minutos.
+      # El celular virtual ya creado (AVD) se guarda entre corridas, porque
+      # crearlo desde cero toma varios minutos. Con esto la corrida bajó de 23
+      # a 8 minutos.
       - name: Restaurar el AVD de la caché
         id: avd-cache
         uses: actions/cache@v6
@@ -91,8 +100,8 @@ jobs:
             ~/.android/adb*
           key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
 
-      # Solo cuando no había caché: arranca el emulador una vez y guarda la
-      # instantánea para las siguientes corridas.
+      # Solo si no había uno guardado: crea el celular virtual, lo enciende una
+      # vez y lo guarda para las siguientes corridas.
       - name: Generar el AVD para la caché
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -105,9 +114,10 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
-      # Arranca el emulador, compila e instala la app y corre los flujos de
-      # integration_test/ dentro del dispositivo. --no-pub evita repetir la
-      # descarga de dependencias.
+      # Enciende el celular virtual, instala la app y corre dentro de él las
+      # pruebas de integration_test/. --no-pub evita volver a descargar las
+      # librerías y --file-reporter guarda el resultado de cada prueba en un
+      # archivo, con el que se arma el resumen.
       - name: Correr las pruebas de integración en el emulador
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -117,4 +127,14 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
-          script: flutter test integration_test --no-pub
+          script: flutter test integration_test --no-pub --file-reporter json:build/resultados/integracion.json
+
+      # Escribe el resumen: cada prueba con ✅ o ❌. Corre aunque fallen
+      # pruebas; si el celular virtual no encendió, el resumen lo avisa.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/integracion.json
+          --titulo "Pruebas de integración en el emulador (Android 14)"
+          --detalle

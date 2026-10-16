@@ -1,18 +1,26 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: ANÁLISIS DE CÓDIGO ESTÁTICO
 #
-# Qué prueba: revisa todo el código de cada Pull Request SIN ejecutar la app.
-#   Busca errores, malas prácticas, código duplicado, vulnerabilidades y
-#   cobertura insuficiente en el código nuevo.
-# Para qué sirve: que main nunca reciba código con errores conocidos y que la
-#   deuda técnica se mida sprint a sprint en SonarCloud.
-# Cuándo corre: al abrir o actualizar un Pull Request hacia main, en cada push
-#   a main (para que SonarCloud actualice la rama principal) y a mano.
-# Si falla: el Pull Request queda bloqueado. Los dos jobs son checks
-#   obligatorios del ruleset «Proteger main».
-# Herramientas: flutter analyze con las reglas de very_good_analysis
-#   (analysis_options.yaml) y SonarCloud con su quality gate (cobertura nueva
-#   ≥ 80 %, duplicación ≤ 3 %, sin errores ni vulnerabilidades nuevas).
+# Qué revisa: el código escrito, SIN ejecutar la app. Busca errores y malas
+#   prácticas; por ejemplo, una variable que nunca se usa, un error que se
+#   atrapa sin decir de qué tipo es, o el mismo código copiado en dos lugares.
+# Cómo lo hace: con dos revisores automáticos.
+#   · flutter analyze, con las reglas de very_good_analysis (la lista está en
+#     analysis_options.yaml). Cuenta errores, advertencias y avisos, y los
+#     compara con la línea base: el máximo permitido hoy, guardado en
+#     tool/check_analysis.sh (0 errores, 0 advertencias y 151 avisos).
+#   · SonarCloud, un servicio externo que además exige que al menos el 80 %
+#     del código nuevo tenga pruebas y que no más del 3 % esté repetido. A
+#     esa condición le llama quality gate.
+# Cuándo corre: cada vez que se abre o se actualiza un Pull Request (la
+#   solicitud para unir cambios a main, la versión oficial del código),
+#   cuando algo se une a main (así SonarCloud tiene al día la versión
+#   oficial) y cuando alguien lo lanza a mano.
+# Si falla: GitHub no deja unir el Pull Request; los dos revisores son
+#   obligatorios en la regla «Proteger main».
+# Dónde ver el resultado: Actions → la corrida → Summary: la tabla contra la
+#   línea base, los errores y advertencias con archivo y línea, los avisos
+#   agrupados por regla y el veredicto de SonarCloud con su enlace.
 # Issues: #18, #20 y #52 (Sprint 1).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Análisis de código estático
@@ -28,13 +36,15 @@ permissions:
   contents: read
   pull-requests: read
 
-# Si llega otro commit al mismo Pull Request, se cancela la corrida anterior.
+# Si llega un cambio nuevo al mismo Pull Request, se cancela la corrida
+# anterior: ya no tiene caso revisar una versión que cambió.
 concurrency:
   group: analisis-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  # Misma versión con la que se midió la línea base de tool/check_analysis.sh.
+  # La misma versión de Flutter con la que se midió la línea base: otra
+  # versión puede contar los avisos de forma distinta.
   FLUTTER_VERSION: '3.44.4'
 
 jobs:
@@ -42,6 +52,8 @@ jobs:
     name: Línea base de flutter analyze
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Los tres primeros pasos preparan la computadora que presta GitHub:
+    # descargan el código, instalan Flutter y las librerías que usa la app.
     steps:
       - name: Descargar el código
         uses: actions/checkout@v7
@@ -56,29 +68,39 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # tool/check_analysis.sh corre `flutter analyze` y compara el conteo de
-      # errores, avisos e informativos con la línea base (0 / 0 / 151). Si
-      # cualquiera de los tres sube, el paso falla: ningún Pull Request agrega
-      # deuda nueva. Al corregir avisos, la línea base se baja en el mismo PR.
+      # Corre flutter analyze y compara cuántos errores, advertencias y avisos
+      # encontró contra la línea base. Si cualquiera de los tres sube, el paso
+      # falla: ningún Pull Request puede agregar problemas nuevos. Quien
+      # corrige avisos baja la línea base en ese mismo Pull Request.
       - name: Comparar flutter analyze con la línea base
         run: bash tool/check_analysis.sh
+
+      # Escribe el resumen con lo que encontró flutter analyze (el paso
+      # anterior lo deja en build/resultados/analisis.txt). Corre aunque ese
+      # paso falle, que es justo cuando más se necesita.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: dart run tool/resumen_pruebas.dart analisis
 
   sonarcloud:
     name: SonarCloud quality gate
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # No vale la pena escanear si el análisis básico ya falló.
+    # Solo corre si flutter analyze pasó: no vale la pena el segundo revisor
+    # si el primero ya encontró problemas.
     needs: flutter-analyze
     steps:
       - name: Descargar el código con todo el historial
         uses: actions/checkout@v7
         with:
-          # SonarCloud necesita el historial completo para distinguir qué
-          # líneas son nuevas en este Pull Request.
+          # SonarCloud usa el historial completo para saber qué líneas son
+          # nuevas en este Pull Request.
           fetch-depth: 0
 
-      # SONAR_PROJECT_KEY es una variable del repositorio y SONAR_TOKEN un
-      # secreto (Settings → Secrets and variables → Actions).
+      # Revisa que estén configurados el nombre del proyecto en SonarCloud
+      # (variable SONAR_PROJECT_KEY) y su clave de acceso (secreto SONAR_TOKEN),
+      # en Settings → Secrets and variables → Actions. Si falta alguno, lo
+      # dice con un mensaje claro en vez de fallar más adelante.
       - name: Verificar la configuración de SonarCloud
         env:
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
@@ -93,7 +115,7 @@ jobs:
             exit 1
           fi
 
-      # El scanner de SonarCloud corre sobre Java.
+      # El programa que envía el código a SonarCloud funciona con Java.
       - name: Instalar Java
         uses: actions/setup-java@v6
         with:
@@ -107,17 +129,19 @@ jobs:
           channel: stable
           cache: true
 
-      # El quality gate exige cobertura en el código nuevo y la toma de
-      # coverage/lcov.info (ver sonar-project.properties), así que este job
-      # corre la suite completa por su cuenta: no depende de otro workflow.
+      # SonarCloud necesita saber qué parte del código ejecutan las pruebas
+      # (la cobertura), así que este paso corre todas las pruebas y lo anota
+      # en coverage/lcov.info.
       - name: Instalar dependencias y generar la cobertura
         run: |
           flutter pub get
           flutter test --coverage
 
-      # sonar.qualitygate.wait=true hace que el paso espere el veredicto de
-      # SonarCloud y falle si el quality gate no se cumple.
+      # Envía el código y la cobertura a SonarCloud y espera su veredicto. Si
+      # no se cumple el quality gate (80 % de cobertura y máximo 3 % repetido
+      # en el código nuevo), el paso falla.
       - name: Escanear con SonarCloud y esperar el quality gate
+        id: sonar
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -127,3 +151,29 @@ jobs:
             -Dsonar.organization=ennimex
             -Dsonar.dart.lcov.reportPaths=coverage/lcov.info
             -Dsonar.qualitygate.wait=true
+
+      # Agrega al resumen el veredicto de SonarCloud y el enlace a su reporte
+      # (el del Pull Request o el de la rama).
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        env:
+          RESULTADO: ${{ steps.sonar.outcome }}
+          PROYECTO: ${{ vars.SONAR_PROJECT_KEY }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          RAMA: ${{ github.ref_name }}
+        run: |
+          if [ -n "$PULL_REQUEST" ]; then
+            reporte="https://sonarcloud.io/dashboard?id=$PROYECTO&pullRequest=$PULL_REQUEST"
+          else
+            reporte="https://sonarcloud.io/dashboard?id=$PROYECTO&branch=$RAMA"
+          fi
+          case "$RESULTADO" in
+            success) veredicto="✅ Quality gate aprobado" ;;
+            failure) veredicto="❌ Quality gate no aprobado o el escaneo falló: revisa el log del paso" ;;
+            *) veredicto="⏭️ No se escaneó: falló un paso anterior" ;;
+          esac
+          {
+            echo "### ☁️ SonarCloud"
+            echo
+            echo "$veredicto · [Ver el reporte en SonarCloud]($reporte)"
+          } >> "$GITHUB_STEP_SUMMARY"

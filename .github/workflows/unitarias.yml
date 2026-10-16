@@ -1,19 +1,23 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS UNITARIAS
 #
-# Qué prueba: cada pieza de la app por separado (validadores, ViewModels,
-#   repositorios, providers y los widgets de cada pantalla) con datos
-#   simulados: sin red, sin backend y sin emulador, gracias a FakeApiClient.
-# Para qué sirve: comprobar en segundos que un cambio no rompió ninguna
-#   pieza. Es la primera red de seguridad y produce el reporte de cobertura
-#   (coverage/lcov.info) que se puede descargar de cada corrida.
-# Cuándo corre: al abrir o actualizar un Pull Request hacia main, en cada
-#   push a main y a mano.
-# Si falla: el Pull Request queda bloqueado (check obligatorio del ruleset
-#   «Proteger main»).
-# Dónde viven: test/unitarias/<épica>/ (lógica), test/widget/<pantalla>/
-#   (widgets) y los tres archivos de la raíz de test/ (arranque y versión de
-#   la app). Las de aceptación (test/aceptacion/) tienen su propio pipeline.
+# Qué revisa: cada pieza de la app por separado, sin abrir la app completa.
+#   Ejemplos reales: que agregar dos veces el mismo producto sume la cantidad
+#   en lugar de repetir la línea del carrito, o que si el servidor rechaza
+#   una cantidad (porque no hay existencias) el carrito regrese a la anterior.
+# Cómo lo hace: las pruebas no usan el servidor real. Usan un servidor de
+#   mentira (FakeApiClient) que contesta lo que cada prueba le prepara: no
+#   hace falta internet y no se toca la base de datos.
+# Cuándo corre: cada vez que se abre o se actualiza un Pull Request (la
+#   solicitud para unir cambios a main, la versión oficial del código),
+#   cuando algo se une a main y cuando alguien lo lanza a mano.
+# Si falla: GitHub no deja unir el Pull Request hasta que se corrija.
+# Dónde ver el resultado: Actions → la corrida → Summary. Dice cuántas
+#   pruebas pasaron, muestra el error de las que fallaron y qué porcentaje
+#   del código ejecutaron las pruebas (cobertura), carpeta por carpeta.
+# Dónde están las pruebas: test/unitarias/ (una carpeta por tema: auth,
+#   catalogo, pedidos…), test/widget/ (cada pantalla por separado) y tres
+#   archivos sueltos en test/ que revisan el arranque y la versión de la app.
 # Issues: #15, #16 y #17 (Sprint 1), #54 y #55 (Sprint 2), #63 (Sprint 4)
 #   y #67 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -29,7 +33,8 @@ on:
 permissions:
   contents: read
 
-# Si llega otro commit al mismo Pull Request, se cancela la corrida anterior.
+# Si llega un cambio nuevo al mismo Pull Request, se cancela la corrida
+# anterior: ya no tiene caso revisar una versión que cambió.
 concurrency:
   group: unitarias-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -42,6 +47,9 @@ jobs:
     name: Unitarias y de widget, con cobertura
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Los tres primeros pasos preparan la computadora que presta GitHub:
+    # descargan el código, instalan Flutter (la misma versión en todos los
+    # pipelines) y las librerías que usa la app.
     steps:
       - name: Descargar el código
         uses: actions/checkout@v7
@@ -56,25 +64,27 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Se listan las carpetas a propósito para no repetir aquí las pruebas de
-      # aceptación (test/aceptacion/), que corren en aceptacion.yml.
-      # --coverage escribe en coverage/lcov.info qué líneas se ejecutaron.
+      # Corre las pruebas. Las carpetas se nombran una por una para no repetir
+      # aquí las de aceptación, que tienen su propio pipeline.
+      # --coverage anota qué líneas del código se ejecutaron (la cobertura) y
+      # --file-reporter guarda el resultado de cada prueba en un archivo, con
+      # el que se arma el resumen.
       - name: Correr las pruebas unitarias y de widget
         run: >
           flutter test --coverage
+          --file-reporter json:build/resultados/unitarias.json
           test/unitarias
           test/widget
           test/app_test.dart
           test/app_version_test.dart
           test/app_widget_test.dart
 
-      # El reporte queda descargable en la pestaña Artifacts de la corrida,
-      # para revisar qué líneas faltan por cubrir.
-      - name: Guardar el reporte de cobertura
-        if: always() && hashFiles('coverage/lcov.info') != ''
-        uses: actions/upload-artifact@v7
-        with:
-          name: cobertura-unitarias
-          path: coverage/lcov.info
-          if-no-files-found: error
-          retention-days: 14
+      # Escribe el resumen de la corrida con esos dos archivos. Corre aunque
+      # fallen pruebas, que es justo cuando más se necesita.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/unitarias.json
+          --titulo "Pruebas unitarias y de widget"
+          --cobertura coverage/lcov.info
