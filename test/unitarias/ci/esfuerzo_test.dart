@@ -40,6 +40,28 @@ Events injected: 500
 // Monkey finished
 ''';
 
+// Fragmento real de la corrida del 15-oct (esfuerzo.yml, 1,000 eventos): el
+// reporte del ANR llega por la salida de errores de monkey y trae datos del
+// sistema hasta un renglón vacío; después viene el uso de CPU.
+const _monkeyAnrReal = '''
+:Monkey: seed=42 count=1000
+:Sending Touch (ACTION_DOWN): 0:(1008.0,972.0)
+    // Injection Failed
+// NOT RESPONDING: mx.com.pierreposteria (pid 2395)
+ANR in mx.com.pierreposteria (mx.com.pierreposteria/.MainActivity)
+PID: 2395
+Reason: Input dispatching timed out (Application does not have a focused window)
+Parent: mx.com.pierreposteria/.MainActivity
+----- Output from /proc/pressure/cpu -----
+some avg10=52.28 avg60=24.39 avg300=6.10 total=18916649
+----- End output from /proc/pressure/cpu -----
+
+CPU usage from 14495ms to -1ms ago (2026-10-16 04:22:41.505 to 2026-10-16 04:22:56.001):
+  24% 506/system_server: 17% user + 7.8% kernel / faults: 35225 minor 62 major
+** Monkey aborted due to error.
+Events injected: 5
+''';
+
 void main() {
   group('leerMonkey', () {
     test('lee semilla, eventos y tiempo de una corrida limpia', () {
@@ -77,6 +99,28 @@ void main() {
         '// NOT RESPONDING: mx.com.pierreposteria (pid 99)\n'
         'ANR in mx.com.pierreposteria (mx.com.pierreposteria/.MainActivity)\n'
         'Reason: Input dispatching timed out',
+      );
+    });
+  });
+
+  group('leerMonkey con la bitácora real', () {
+    test('el bloque del ANR trae el motivo y no se lleva el uso de CPU', () {
+      final corrida = leerMonkey(_monkeyAnrReal);
+
+      expect(corrida.congelamientos, hasLength(1));
+      expect(
+        corrida.congelamientos.single,
+        contains('Reason: Input dispatching timed out'),
+      );
+      expect(corrida.congelamientos.single, isNot(contains('CPU usage')));
+      expect(corrida.eventosLanzados, 5);
+      expect(corrida.termino, isFalse);
+    });
+
+    test('el resumen marca la corrida como fallida', () {
+      expect(
+        resumenMonkey(leerMonkey(_monkeyAnrReal)),
+        contains('| ❌ Falló | 1,000 | 5 | 0 | 1 |'),
       );
     });
   });

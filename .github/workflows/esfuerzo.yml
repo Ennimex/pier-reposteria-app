@@ -149,6 +149,9 @@ jobs:
       # teclas del sistema (Home, Back…) para no salirse de la app.
       # monkey escribe «// CRASH» si la app se cerró y «// NOT RESPONDING» /
       # «ANR in» si se congeló: cualquiera de los tres hace fallar el job.
+      # Esos reportes salen por la salida de errores, por eso 2>&1 antes de
+      # tee: sin él no llegan a monkey.txt. android-emulator-runner corre cada
+      # renglón del script por separado, así que el if va en un solo renglón.
       - name: Instalar la app y lanzar los eventos aleatorios
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -161,12 +164,9 @@ jobs:
           script: |
             adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
             adb logcat -c
-            adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ inputs.eventos || '5000' }} | tee monkey.txt
+            adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ inputs.eventos || '5000' }} 2>&1 | tee monkey.txt
             adb logcat -d -v time > logcat.txt
-            if grep -E "CRASH|ANR in|NOT RESPONDING" monkey.txt; then
-              echo "::error::La app se cerró o dejó de responder bajo carga; revisa monkey.txt y logcat.txt."
-              exit 1
-            fi
+            if grep -qE "CRASH|ANR in|NOT RESPONDING" monkey.txt; then echo "::error::La app se cerró o dejó de responder bajo carga; revisa el resumen de la corrida."; exit 1; fi
 
       # Eventos lanzados, cierres y congelamientos en el resumen de la
       # corrida; si la app se cerró o se congeló, también el bloque del error
