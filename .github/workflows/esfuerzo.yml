@@ -1,23 +1,28 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE ESFUERZO
 #
-# Qué prueba: la app más allá del uso normal, en dos frentes:
-#   · Volumen de datos: catálogo de 1,000 productos y carrito de 100
-#     artículos servidos por FakeApiClient, sin emulador.
-#   · Uso aleatorio: miles de toques, deslizamientos y textos lanzados por la
-#     herramienta monkey de Android sobre la app instalada en un emulador.
-# Para qué sirve: comprobar que la app no se cierra (CRASH) ni se congela
-#   (ANR) bajo carga, antes de subirla al canal interno de Google Play.
+# Qué revisa: cómo se porta la app cuando se le exige más de lo normal.
+#   · Uso aleatorio: monkey, una herramienta de Android, toca, desliza y
+#     escribe al azar miles de veces sobre la app instalada en un celular
+#     virtual (emulador): más rápido y con menos orden que cualquier persona.
+#   · Volumen de datos: un catálogo de 1,000 productos y un carrito de 100
+#     artículos, con el servidor de mentira (FakeApiClient).
+# Para qué sirve: comprobar que la app no se cierra sola ni se congela (el
+#   aviso «La app no responde» de Android, llamado ANR) antes de publicarla
+#   en Google Play.
 # Cuándo corre: a mano (Actions → Pruebas de esfuerzo → Run workflow),
-#   eligiendo la cantidad de eventos. Al cerrar #70 se agrega el disparador
-#   por tag de versión.
-# Estado: «Uso aleatorio (monkey)» funciona desde hoy. «Volumen de datos»
-#   queda escrito pero solo corre al marcar la casilla correr_volumen, hasta
-#   que existan las pruebas de test/esfuerzo/ (#70).
-# Si falla: no bloquea ningún Pull Request; el resumen de la corrida muestra
-#   el bloque del cierre o del bloqueo y los errores de logcat para ubicarlo.
-# Resultados: en el resumen de la corrida (pestaña Summary): eventos
-#   lanzados, cierres, congelamientos y cada prueba de volumen (#157).
+#   eligiendo cuántos toques dar (5,000 si no se cambia). Al cerrar #70
+#   correrá sola con cada versión nueva.
+# Estado: el uso aleatorio ya funciona. El volumen solo corre si se marca la
+#   casilla correr_volumen, y todavía faltan sus pruebas en test/esfuerzo/
+#   (#70).
+# Ojo: monkey usa la app normal, así que lo que toque sí llega al servidor
+#   real. Como la app recién instalada no tiene sesión iniciada, casi todo es
+#   navegar por el catálogo.
+# Si falla: no bloquea ningún Pull Request.
+# Dónde ver el resultado: Actions → la corrida → Summary: cuántos toques se
+#   dieron, cuántas veces se cerró o se congeló la app y, si pasó, el reporte
+#   del error y los mensajes de error del celular (logcat).
 # Issue: #70 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de esfuerzo
@@ -33,7 +38,7 @@ on:
         description: Correr también las pruebas de volumen de test/esfuerzo/ (#70)
         type: boolean
         default: false
-  # Se activa al cerrar #70:
+  # Se activará al cerrar #70 (correr con cada versión nueva):
   # push:
   #   tags: ['v*']
 
@@ -42,10 +47,11 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.44.4'
-  # applicationId del flavor prod (android/app/build.gradle.kts), el que
-  # compila `flutter build apk` sin --flavor.
+  # Nombre con el que Android identifica a la app (versión de producción,
+  # la que se arma sin --flavor; ver android/app/build.gradle.kts).
   PAQUETE: mx.com.pierreposteria
-  # Mismo emulador que integracion.yml, así comparten la caché del AVD.
+  # El mismo celular virtual que integracion.yml, así reutilizan el que ya
+  # está guardado.
   API_LEVEL: 34
   AVD_PROFILE: pixel_6
   EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
@@ -53,7 +59,7 @@ env:
 jobs:
   volumen:
     name: Volumen de datos
-    # Solo cuando se marca la casilla al lanzar el workflow (ver cabecera).
+    # Solo corre si se marca la casilla correr_volumen al lanzarlo.
     if: inputs.correr_volumen
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -71,14 +77,14 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Las pruebas de test/esfuerzo/ cargan el catálogo y el carrito con
-      # FakeApiClient y miden que las pantallas sigan respondiendo.
+      # Las pruebas de test/esfuerzo/ llenan el catálogo y el carrito con el
+      # servidor de mentira y revisan que las pantallas sigan respondiendo.
       - name: Catálogo de 1,000 productos y carrito de 100 artículos
         run: >
           flutter test test/esfuerzo --reporter expanded
           --file-reporter json:build/resultados/esfuerzo.json
 
-      # Cada prueba de volumen con ✅ o ❌ en el resumen de la corrida.
+      # Escribe el resumen: cada prueba de volumen con ✅ o ❌.
       - name: Mostrar el resultado en el resumen
         if: ${{ !cancelled() }}
         run: >
@@ -111,17 +117,21 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Sin --flavor compila prod: build/app/outputs/flutter-apk/app-prod-debug.apk
+      # Arma el APK de la versión de producción (sin --flavor), que queda en
+      # build/app/outputs/flutter-apk/app-prod-debug.apk.
       - name: Compilar el APK de depuración
         run: flutter build apk --debug
 
-      # Aceleración de hardware para el emulador (ver integracion.yml).
+      # Deja que el emulador use el procesador directamente (más detalle en
+      # integracion.yml).
       - name: Habilitar KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Recupera el celular virtual guardado o, si no hay, lo crea (igual que
+      # en integracion.yml).
       - name: Restaurar el AVD de la caché
         id: avd-cache
         uses: actions/cache@v6
@@ -143,15 +153,18 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
-      # monkey, de Android: -s 42 fija la semilla (misma secuencia de toques
-      # en cada corrida, reproducible); --throttle 100 deja 100 ms entre
-      # eventos, como un uso rápido pero humano; --pct-syskeys 0 evita las
-      # teclas del sistema (Home, Back…) para no salirse de la app.
-      # monkey escribe «// CRASH» si la app se cerró y «// NOT RESPONDING» /
-      # «ANR in» si se congeló: cualquiera de los tres hace fallar el job.
-      # Esos reportes salen por la salida de errores, por eso 2>&1 antes de
-      # tee: sin él no llegan a monkey.txt. android-emulator-runner corre cada
-      # renglón del script por separado, así que el if va en un solo renglón.
+      # Instala la app en el celular virtual y suelta a monkey:
+      #   · -s 42 fija la «semilla»: cada corrida hace exactamente los mismos
+      #     toques, así un error se puede repetir para estudiarlo.
+      #   · --throttle 100 deja 100 ms entre toques, rápido pero posible.
+      #   · --pct-syskeys 0 no usa los botones del sistema (Inicio, Atrás…),
+      #     para que monkey no se salga de la app.
+      # Lo que hace monkey se guarda en monkey.txt y los mensajes del celular
+      # en logcat.txt. Si monkey reporta que la app se cerró (CRASH) o se
+      # congeló (ANR / NOT RESPONDING), el paso falla.
+      # Dos detalles: esos reportes salen por la salida de errores, por eso
+      # 2>&1 los junta antes de guardarlos; y cada renglón de este script corre
+      # por separado, por eso la revisión final va en un solo renglón.
       - name: Instalar la app y lanzar los eventos aleatorios
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -168,10 +181,9 @@ jobs:
             adb logcat -d -v time > logcat.txt
             if grep -qE "CRASH|ANR in|NOT RESPONDING" monkey.txt; then echo "::error::La app se cerró o dejó de responder bajo carga; revisa el resumen de la corrida."; exit 1; fi
 
-      # Eventos lanzados, cierres y congelamientos en el resumen de la
-      # corrida; si la app se cerró o se congeló, también el bloque del error
-      # de monkey.txt y los errores de logcat.txt. Corre aunque el job falle:
-      # es la evidencia.
+      # Escribe el resumen: cuántos toques se dieron, cuántas veces se cerró o
+      # se congeló la app y, si pasó, el reporte del error y los mensajes de
+      # error de logcat. Corre aunque el paso anterior falle: es la evidencia.
       - name: Mostrar el resultado en el resumen
         if: ${{ !cancelled() }}
         run: dart run tool/resumen_pruebas.dart monkey monkey.txt logcat.txt

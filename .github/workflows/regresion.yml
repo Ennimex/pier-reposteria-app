@@ -1,25 +1,29 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE REGRESIÓN
 #
-# Qué prueba: vuelve a correr TODA la suite acumulada (análisis estático,
-#   unitarias, aceptación e integración en emulador) sobre main o sobre un
-#   tag de versión, y compila el APK de depuración de esa versión.
-# Para qué sirve: confirmar que lo nuevo del sprint no rompió lo anterior.
-#   Es el respaldo de la entrega: el producto verificable de cada sprint se
-#   presenta con la regresión en verde y su APK guardado como artefacto.
-# Cuándo corre: sola el martes de cierre de cada sprint (08:00 UTC = 02:00
-#   en México), en cada tag de versión (v1.2.0, v1.2.1…) y a mano.
-# Si falla: el job «Open issue on failure» abre automáticamente un issue con
-#   la etiqueta bug en el tablero, con el enlace al log de la corrida.
-# Resultados: en el resumen de la corrida (pestaña Summary), una fila por
-#   etapa y las pruebas que fallaron (#157). El APK sigue en Artifacts.
+# Qué revisa: que lo nuevo no rompió lo que ya funcionaba. Vuelve a correr
+#   TODAS las pruebas acumuladas (integración en el emulador, análisis del
+#   código, unitarias y aceptación) y arma el APK (el archivo que se instala
+#   en el celular) de esa versión.
+#   Ejemplo: si un cambio del Sprint 4 en el carrito rompe el inicio de
+#   sesión que se entregó en el Sprint 1, aquí aparece.
+# Para qué sirve: es el respaldo de cada entrega. El sprint se presenta con
+#   la regresión en verde y su APK listo para instalar.
+# Cuándo corre: sola, el martes de cierre de cada sprint a las 02:00 de
+#   México (08:00 UTC); cuando se publica una versión nueva (v1.2.0,
+#   v1.2.1…) y cuando alguien la lanza a mano.
+# Si falla: abre sola un issue con la etiqueta bug en el tablero, con el
+#   enlace a la corrida.
+# Dónde ver el resultado: Actions → la corrida → Summary: una fila por etapa
+#   con ✅, ❌ o ⏭️ (no corrió porque falló una anterior) y, debajo, las
+#   pruebas que fallaron. El APK se descarga desde Artifacts.
 # Issues: #59 (Sprint 2), #62 (Sprint 3), #66 (Sprint 4) y #72 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de regresión
 
 on:
   schedule:
-    # Minuto 0, hora 8 UTC, cualquier día del mes y mes, martes (2).
+    # Minuto 0, hora 8 UTC, cualquier día del mes, cualquier mes, en martes (2).
     - cron: '0 8 * * 2'
   push:
     tags:
@@ -31,7 +35,8 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.44.4'
-  # Mismo emulador que integracion.yml, así comparten la caché del AVD.
+  # El mismo celular virtual que integracion.yml, así reutilizan el que ya
+  # está guardado.
   API_LEVEL: 34
   AVD_PROFILE: pixel_6
   EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
@@ -61,13 +66,16 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Aceleración de hardware para el emulador (ver integracion.yml).
+      # Deja que el emulador use el procesador directamente (más detalle en
+      # integracion.yml).
       - name: Habilitar KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Recupera el celular virtual guardado o, si no hay, lo crea (igual que
+      # en integracion.yml).
       - name: Restaurar el AVD de la caché
         id: avd-cache
         uses: actions/cache@v6
@@ -89,8 +97,9 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
-      # 1) Integración: los flujos de integration_test/ en el emulador. Cada
-      #    etapa guarda su resultado en build/resultados/ para el resumen.
+      # Etapa 1, integración: las pruebas de integration_test/ en el celular
+      # virtual. Cada etapa guarda su resultado en build/resultados/ para el
+      # resumen.
       - name: Correr las pruebas de integración en el emulador
         id: integracion
         uses: reactivecircus/android-emulator-runner@v2
@@ -103,25 +112,26 @@ jobs:
           disable-animations: true
           script: flutter test integration_test --no-pub --file-reporter json:build/resultados/integracion.json
 
-      # 2) Análisis estático contra la línea base (ver analisis-estatico.yml).
+      # Etapa 2, análisis del código contra la línea base (como en
+      # analisis-estatico.yml).
       - name: Comparar flutter analyze con la línea base
         id: analisis
         run: bash tool/check_analysis.sh
 
-      # 3) Unitarias, de widget y de aceptación: toda la carpeta test/.
+      # Etapa 3, todas las pruebas de la carpeta test/ (unitarias, de widget
+      # y de aceptación), con su cobertura.
       - name: Correr la suite completa con cobertura
         id: suite
         run: flutter test --coverage --file-reporter json:build/resultados/suite.json
 
-      # 4) El APK de la versión probada. Sin --flavor compila prod
-      #    (default-flavor del pubspec, #12).
+      # Etapa 4, el APK de la versión probada. Sin --flavor se arma la versión
+      # de producción (#12).
       - name: Compilar el APK de depuración
         id: apk
         run: flutter build apk --debug
 
-      # Una fila por etapa con su resultado (✅, ❌ o ⏭️ si no corrió porque
-      # falló una anterior) y, debajo, las pruebas que fallaron, en el resumen
-      # de la corrida. Corre aunque falle una etapa.
+      # Escribe el resumen: una fila por etapa con su resultado y, debajo, las
+      # pruebas que fallaron. Corre aunque falle una etapa.
       - name: Mostrar el resultado en el resumen
         if: ${{ !cancelled() }}
         run: >
@@ -131,9 +141,9 @@ jobs:
           --suite ${{ steps.suite.outcome }}
           --apk ${{ steps.apk.outcome }}
 
-      # El APK queda 30 días en la pestaña Artifacts de la corrida: es el
-      # producto que se muestra en la revisión de cierre de sprint (los
-      # resultados ya están en el resumen).
+      # Guarda el APK 30 días en la pestaña Artifacts de la corrida, para
+      # instalarlo en la revisión de cierre de sprint. Es lo único que se
+      # guarda como archivo: los resultados ya están en el resumen.
       - name: Guardar el APK
         uses: actions/upload-artifact@v7
         with:
@@ -146,13 +156,13 @@ jobs:
     name: Open issue on failure
     runs-on: ubuntu-latest
     needs: regression
-    # Solo corre si el job anterior falló.
+    # Solo corre si la regresión falló.
     if: failure()
     permissions:
       issues: write
     steps:
-      # Crea el issue con el token automático del workflow: no necesita
-      # ninguna credencial personal.
+      # Crea el issue con el permiso automático que GitHub le da al workflow:
+      # no usa la cuenta ni la contraseña de nadie.
       - name: Abrir el issue de regresión
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

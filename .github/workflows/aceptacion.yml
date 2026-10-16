@@ -1,21 +1,25 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE ACEPTACIÓN
 #
-# Qué prueba: que cada historia de usuario cumple sus criterios de
-#   aceptación. Cada escenario Gherkin de la historia («Dado… Cuando…
-#   Entonces…») tiene una prueba que recorre la pantalla real con datos
-#   simulados (FakeApiClient), sin emulador: son pruebas de widget.
-# Para qué sirve: una historia se da por terminada solo cuando todos sus
-#   escenarios pasan, y se detecta cuándo un cambio rompe el comportamiento
-#   acordado con el Product Owner.
-# Cuándo corre: al abrir o actualizar un Pull Request hacia main, en cada
-#   push a main y a mano.
-# Si falla: el Pull Request queda bloqueado (check obligatorio del ruleset
-#   «Proteger main»).
-# Dónde viven: test/aceptacion/<épica>/, un archivo por historia y una prueba
-#   por escenario (hoy: auth y carrito_checkout).
-# Resultados: en el resumen de la corrida (pestaña Summary), cada escenario
-#   con ✅ o ❌ agrupado por historia (#157).
+# Qué revisa: que cada historia de usuario hace lo que se acordó con el
+#   Product Owner. Cada criterio se escribe como un escenario «Dado…
+#   Cuando… Entonces…» (formato Gherkin) y tiene su propia prueba.
+#   Ejemplo real (#34): «Dado que tengo una cuenta verificada, cuando envío
+#   una contraseña incorrecta, entonces la app muestra el mensaje de error y
+#   sigo en la misma pantalla».
+# Cómo lo hace: dibuja las pantallas reales de la app en memoria (sin celular
+#   ni emulador), toca botones y escribe en los campos como lo haría una
+#   persona. En vez del servidor real usa el servidor de mentira
+#   (FakeApiClient), que contesta lo que cada escenario necesita.
+# Cuándo corre: cada vez que se abre o se actualiza un Pull Request (la
+#   solicitud para unir cambios a main, la versión oficial del código),
+#   cuando algo se une a main y cuando alguien lo lanza a mano.
+# Si falla: GitHub no deja unir el Pull Request hasta que se corrija. Una
+#   historia se da por terminada solo cuando pasan todos sus escenarios.
+# Dónde ver el resultado: Actions → la corrida → Summary: cada escenario con
+#   ✅ o ❌, agrupado por historia (#33, #34…).
+# Dónde están las pruebas: test/aceptacion/, un archivo por historia (hoy:
+#   registro, inicio de sesión, carrito y pago).
 # Issues: #53 (Sprint 1), #56 y #57 (Sprint 2), #60 y #131 (Sprint 3),
 #   #64 y #135 (Sprint 4), #68 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -31,7 +35,8 @@ on:
 permissions:
   contents: read
 
-# Si llega otro commit al mismo Pull Request, se cancela la corrida anterior.
+# Si llega un cambio nuevo al mismo Pull Request, se cancela la corrida
+# anterior: ya no tiene caso revisar una versión que cambió.
 concurrency:
   group: aceptacion-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -44,6 +49,8 @@ jobs:
     name: Escenarios Gherkin
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Los tres primeros pasos preparan la computadora que presta GitHub:
+    # descargan el código, instalan Flutter y las librerías que usa la app.
     steps:
       - name: Descargar el código
         uses: actions/checkout@v7
@@ -58,16 +65,16 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # --reporter expanded imprime el nombre de cada escenario conforme pasa,
-      # así el log de la corrida se lee como la lista de criterios cumplidos.
-      # --file-reporter guarda además el resultado en JSON para el resumen.
+      # Corre los escenarios. --reporter expanded escribe en el registro de la
+      # corrida el nombre de cada escenario conforme pasa, y --file-reporter
+      # guarda el resultado en un archivo, con el que se arma el resumen.
       - name: Correr los escenarios de aceptación
         run: >
           flutter test test/aceptacion --reporter expanded
           --file-reporter json:build/resultados/aceptacion.json
 
-      # Cada escenario con ✅ o ❌, agrupado por historia (#33, #34…), en el
-      # resumen de la corrida. Corre aunque falle algún escenario.
+      # Escribe el resumen: cada escenario con ✅ o ❌, agrupado por historia.
+      # Corre aunque falle algún escenario.
       - name: Mostrar el resultado en el resumen
         if: ${{ !cancelled() }}
         run: >
