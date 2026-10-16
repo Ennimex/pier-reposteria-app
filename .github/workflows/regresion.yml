@@ -11,6 +11,8 @@
 #   en México), en cada tag de versión (v1.2.0, v1.2.1…) y a mano.
 # Si falla: el job «Open issue on failure» abre automáticamente un issue con
 #   la etiqueta bug en el tablero, con el enlace al log de la corrida.
+# Resultados: en el resumen de la corrida (pestaña Summary), una fila por
+#   etapa y las pruebas que fallaron (#157). El APK sigue en Artifacts.
 # Issues: #59 (Sprint 2), #62 (Sprint 3), #66 (Sprint 4) y #72 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de regresión
@@ -87,8 +89,10 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
-      # 1) Integración: los flujos de integration_test/ en el emulador.
+      # 1) Integración: los flujos de integration_test/ en el emulador. Cada
+      #    etapa guarda su resultado en build/resultados/ para el resumen.
       - name: Correr las pruebas de integración en el emulador
+        id: integracion
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ env.API_LEVEL }}
@@ -97,30 +101,44 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
-          script: flutter test integration_test --no-pub
+          script: flutter test integration_test --no-pub --file-reporter json:build/resultados/integracion.json
 
       # 2) Análisis estático contra la línea base (ver analisis-estatico.yml).
       - name: Comparar flutter analyze con la línea base
+        id: analisis
         run: bash tool/check_analysis.sh
 
       # 3) Unitarias, de widget y de aceptación: toda la carpeta test/.
       - name: Correr la suite completa con cobertura
-        run: flutter test --coverage
+        id: suite
+        run: flutter test --coverage --file-reporter json:build/resultados/suite.json
 
       # 4) El APK de la versión probada. Sin --flavor compila prod
       #    (default-flavor del pubspec, #12).
       - name: Compilar el APK de depuración
+        id: apk
         run: flutter build apk --debug
 
-      # APK y cobertura quedan 30 días en la pestaña Artifacts de la corrida:
-      # es lo que se muestra en la revisión de cierre de sprint.
-      - name: Guardar el APK y la cobertura
+      # Una fila por etapa con su resultado (✅, ❌ o ⏭️ si no corrió porque
+      # falló una anterior) y, debajo, las pruebas que fallaron, en el resumen
+      # de la corrida. Corre aunque falle una etapa.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: >
+          dart run tool/resumen_pruebas.dart regresion
+          --integracion ${{ steps.integracion.outcome }}
+          --analisis ${{ steps.analisis.outcome }}
+          --suite ${{ steps.suite.outcome }}
+          --apk ${{ steps.apk.outcome }}
+
+      # El APK queda 30 días en la pestaña Artifacts de la corrida: es el
+      # producto que se muestra en la revisión de cierre de sprint (los
+      # resultados ya están en el resumen).
+      - name: Guardar el APK
         uses: actions/upload-artifact@v7
         with:
           name: regression-${{ github.run_number }}
-          path: |
-            build/app/outputs/flutter-apk/app-prod-debug.apk
-            coverage/lcov.info
+          path: build/app/outputs/flutter-apk/app-prod-debug.apk
           if-no-files-found: error
           retention-days: 30
 

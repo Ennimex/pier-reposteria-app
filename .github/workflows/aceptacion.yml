@@ -14,6 +14,8 @@
 #   «Proteger main»).
 # Dónde viven: test/aceptacion/<épica>/, un archivo por historia y una prueba
 #   por escenario (hoy: auth y carrito_checkout).
+# Resultados: en el resumen de la corrida (pestaña Summary), cada escenario
+#   con ✅ o ❌ agrupado por historia (#157).
 # Issues: #53 (Sprint 1), #56 y #57 (Sprint 2), #60 y #131 (Sprint 3),
 #   #64 y #135 (Sprint 4), #68 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -58,5 +60,18 @@ jobs:
 
       # --reporter expanded imprime el nombre de cada escenario conforme pasa,
       # así el log de la corrida se lee como la lista de criterios cumplidos.
+      # --file-reporter guarda además el resultado en JSON para el resumen.
       - name: Correr los escenarios de aceptación
-        run: flutter test test/aceptacion --reporter expanded
+        run: >
+          flutter test test/aceptacion --reporter expanded
+          --file-reporter json:build/resultados/aceptacion.json
+
+      # Cada escenario con ✅ o ❌, agrupado por historia (#33, #34…), en el
+      # resumen de la corrida. Corre aunque falle algún escenario.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/aceptacion.json
+          --titulo "Escenarios de aceptación (Gherkin)"
+          --detalle

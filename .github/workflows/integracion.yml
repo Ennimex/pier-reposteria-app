@@ -14,6 +14,8 @@
 # Si falla: el Pull Request muestra el check en rojo para que el revisor lo
 #   vea; no es check obligatorio porque no corre en todos los PR.
 # Dónde viven: integration_test/ (hoy app_smoke_test.dart).
+# Resultados: en el resumen de la corrida (pestaña Summary), cada prueba con
+#   ✅ o ❌ y el error de las que fallen (#157).
 # Issues: #21 (Sprint 1), #58 (Sprint 2), #65 (Sprint 4) y #69 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de integración
@@ -107,7 +109,8 @@ jobs:
 
       # Arranca el emulador, compila e instala la app y corre los flujos de
       # integration_test/ dentro del dispositivo. --no-pub evita repetir la
-      # descarga de dependencias.
+      # descarga de dependencias; --file-reporter guarda el resultado de cada
+      # prueba en JSON para el resumen.
       - name: Correr las pruebas de integración en el emulador
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -117,4 +120,14 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
-          script: flutter test integration_test --no-pub
+          script: flutter test integration_test --no-pub --file-reporter json:build/resultados/integracion.json
+
+      # Cada prueba con ✅ o ❌ en el resumen de la corrida. Corre aunque
+      # fallen pruebas; si el emulador no arrancó, el resumen lo avisa.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/integracion.json
+          --titulo "Pruebas de integración en el emulador (Android 14)"
+          --detalle

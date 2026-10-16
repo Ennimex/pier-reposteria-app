@@ -5,12 +5,13 @@
 #   repositorios, providers y los widgets de cada pantalla) con datos
 #   simulados: sin red, sin backend y sin emulador, gracias a FakeApiClient.
 # Para qué sirve: comprobar en segundos que un cambio no rompió ninguna
-#   pieza. Es la primera red de seguridad y produce el reporte de cobertura
-#   (coverage/lcov.info) que se puede descargar de cada corrida.
+#   pieza. Es la primera red de seguridad y mide la cobertura del código.
 # Cuándo corre: al abrir o actualizar un Pull Request hacia main, en cada
 #   push a main y a mano.
 # Si falla: el Pull Request queda bloqueado (check obligatorio del ruleset
 #   «Proteger main»).
+# Resultados: en el resumen de la corrida (pestaña Summary): cuántas pruebas
+#   pasaron, el error de cada una que falle y la cobertura por carpeta (#157).
 # Dónde viven: test/unitarias/<épica>/ (lógica), test/widget/<pantalla>/
 #   (widgets) y los tres archivos de la raíz de test/ (arranque y versión de
 #   la app). Las de aceptación (test/aceptacion/) tienen su propio pipeline.
@@ -59,22 +60,24 @@ jobs:
       # Se listan las carpetas a propósito para no repetir aquí las pruebas de
       # aceptación (test/aceptacion/), que corren en aceptacion.yml.
       # --coverage escribe en coverage/lcov.info qué líneas se ejecutaron.
+      # --file-reporter guarda además el resultado de cada prueba en JSON
+      # para el resumen, sin cambiar lo que se ve en el log.
       - name: Correr las pruebas unitarias y de widget
         run: >
           flutter test --coverage
+          --file-reporter json:build/resultados/unitarias.json
           test/unitarias
           test/widget
           test/app_test.dart
           test/app_version_test.dart
           test/app_widget_test.dart
 
-      # El reporte queda descargable en la pestaña Artifacts de la corrida,
-      # para revisar qué líneas faltan por cubrir.
-      - name: Guardar el reporte de cobertura
-        if: always() && hashFiles('coverage/lcov.info') != ''
-        uses: actions/upload-artifact@v7
-        with:
-          name: cobertura-unitarias
-          path: coverage/lcov.info
-          if-no-files-found: error
-          retention-days: 14
+      # Totales, pruebas que fallaron con su error y cobertura por carpeta en
+      # el resumen de la corrida. Corre aunque fallen pruebas.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/unitarias.json
+          --titulo "Pruebas unitarias y de widget"
+          --cobertura coverage/lcov.info

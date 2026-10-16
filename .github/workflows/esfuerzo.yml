@@ -14,8 +14,10 @@
 # Estado: «Uso aleatorio (monkey)» funciona desde hoy. «Volumen de datos»
 #   queda escrito pero solo corre al marcar la casilla correr_volumen, hasta
 #   que existan las pruebas de test/esfuerzo/ (#70).
-# Si falla: no bloquea ningún Pull Request; se revisan las bitácoras
-#   guardadas (monkey.txt y logcat.txt) para ubicar el cierre o el bloqueo.
+# Si falla: no bloquea ningún Pull Request; el resumen de la corrida muestra
+#   el bloque del cierre o del bloqueo y los errores de logcat para ubicarlo.
+# Resultados: en el resumen de la corrida (pestaña Summary): eventos
+#   lanzados, cierres, congelamientos y cada prueba de volumen (#157).
 # Issue: #70 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de esfuerzo
@@ -72,7 +74,18 @@ jobs:
       # Las pruebas de test/esfuerzo/ cargan el catálogo y el carrito con
       # FakeApiClient y miden que las pantallas sigan respondiendo.
       - name: Catálogo de 1,000 productos y carrito de 100 artículos
-        run: flutter test test/esfuerzo --reporter expanded
+        run: >
+          flutter test test/esfuerzo --reporter expanded
+          --file-reporter json:build/resultados/esfuerzo.json
+
+      # Cada prueba de volumen con ✅ o ❌ en el resumen de la corrida.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/esfuerzo.json
+          --titulo "Volumen de datos"
+          --detalle
 
   monkey:
     name: Uso aleatorio (monkey)
@@ -155,14 +168,10 @@ jobs:
               exit 1
             fi
 
-      # Las bitácoras se guardan aunque el job falle: son la evidencia.
-      - name: Guardar las bitácoras
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: esfuerzo-${{ github.sha }}
-          path: |
-            monkey.txt
-            logcat.txt
-          if-no-files-found: warn
-          retention-days: 30
+      # Eventos lanzados, cierres y congelamientos en el resumen de la
+      # corrida; si la app se cerró o se congeló, también el bloque del error
+      # de monkey.txt y los errores de logcat.txt. Corre aunque el job falle:
+      # es la evidencia.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: dart run tool/resumen_pruebas.dart monkey monkey.txt logcat.txt

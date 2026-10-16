@@ -10,6 +10,9 @@
 #   a main (para que SonarCloud actualice la rama principal) y a mano.
 # Si falla: el Pull Request queda bloqueado. Los dos jobs son checks
 #   obligatorios del ruleset «Proteger main».
+# Resultados: en el resumen de la corrida (pestaña Summary): la tabla contra
+#   la línea base, los errores y advertencias con archivo y línea, los avisos
+#   por regla y el veredicto de SonarCloud con su enlace (#157).
 # Herramientas: flutter analyze con las reglas de very_good_analysis
 #   (analysis_options.yaml) y SonarCloud con su quality gate (cobertura nueva
 #   ≥ 80 %, duplicación ≤ 3 %, sin errores ni vulnerabilidades nuevas).
@@ -62,6 +65,13 @@ jobs:
       # deuda nueva. Al corregir avisos, la línea base se baja en el mismo PR.
       - name: Comparar flutter analyze con la línea base
         run: bash tool/check_analysis.sh
+
+      # check_analysis.sh deja la salida en build/resultados/analisis.txt y
+      # este paso la convierte en el resumen de la corrida. Corre aunque el
+      # paso anterior falle, que es cuando más se necesita.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: dart run tool/resumen_pruebas.dart analisis
 
   sonarcloud:
     name: SonarCloud quality gate
@@ -118,6 +128,7 @@ jobs:
       # sonar.qualitygate.wait=true hace que el paso espere el veredicto de
       # SonarCloud y falle si el quality gate no se cumple.
       - name: Escanear con SonarCloud y esperar el quality gate
+        id: sonar
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -127,3 +138,29 @@ jobs:
             -Dsonar.organization=ennimex
             -Dsonar.dart.lcov.reportPaths=coverage/lcov.info
             -Dsonar.qualitygate.wait=true
+
+      # El veredicto y el enlace al reporte de SonarCloud (del Pull Request o
+      # de la rama) quedan en el resumen, debajo de la tabla de flutter analyze.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        env:
+          RESULTADO: ${{ steps.sonar.outcome }}
+          PROYECTO: ${{ vars.SONAR_PROJECT_KEY }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          RAMA: ${{ github.ref_name }}
+        run: |
+          if [ -n "$PULL_REQUEST" ]; then
+            reporte="https://sonarcloud.io/dashboard?id=$PROYECTO&pullRequest=$PULL_REQUEST"
+          else
+            reporte="https://sonarcloud.io/dashboard?id=$PROYECTO&branch=$RAMA"
+          fi
+          case "$RESULTADO" in
+            success) veredicto="✅ Quality gate aprobado" ;;
+            failure) veredicto="❌ Quality gate no aprobado o el escaneo falló: revisa el log del paso" ;;
+            *) veredicto="⏭️ No se escaneó: falló un paso anterior" ;;
+          esac
+          {
+            echo "### ☁️ SonarCloud"
+            echo
+            echo "$veredicto · [Ver el reporte en SonarCloud]($reporte)"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -19,7 +19,10 @@
 #   medir_en_celular, hasta que existan el runner y las pruebas de
 #   integration_test/rendimiento/ (#61).
 # Si falla: no bloquea ningún Pull Request; la versión no se libera hasta
-#   revisar las trazas guardadas.
+#   revisar el resultado.
+# Resultados: en el resumen de la corrida (pestaña Summary): peso del APK y
+#   lo que más ocupa, y los tiempos por cuadro cuando se mide en el celular
+#   (#157). El APK sigue en Artifacts.
 # Issues: #61 (Sprint 3, línea base) y #71 (Sprint 5, versión candidata).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de rendimiento
@@ -70,20 +73,26 @@ jobs:
         run: flutter pub get
 
       # --analyze-size desglosa el peso por paquete Dart y librería nativa y
-      # escribe build/apk-code-size-analysis_01.json (se abre en DevTools).
+      # escribe ~/.flutter-devtools/apk-code-size-analysis_01.json.
       # Se compila solo arm64, la arquitectura del celular del equipo. Sin
       # keystore (#11) el release se firma con la llave de depuración: el
       # peso es el mismo.
       - name: Compilar el APK de release y analizar su peso
         run: flutter build apk --release --analyze-size --target-platform android-arm64
 
-      - name: Guardar el APK y el desglose del peso
+      # Peso total, lo que más ocupa dentro del APK y los paquetes de Dart
+      # que más pesan, en el resumen de la corrida.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: dart run tool/resumen_pruebas.dart peso
+
+      # El APK medido queda 30 días en la pestaña Artifacts (es el producto;
+      # el resultado de la medición ya está en el resumen).
+      - name: Guardar el APK
         uses: actions/upload-artifact@v7
         with:
           name: rendimiento-apk-${{ github.sha }}
-          path: |
-            build/app/outputs/flutter-apk/*-release.apk
-            build/apk-code-size-analysis_*.json
+          path: build/app/outputs/flutter-apk/*-release.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -114,10 +123,9 @@ jobs:
           --profile --no-dds
           -d ${{ env.DISPOSITIVO }}
 
-      - name: Guardar las trazas y el resumen
-        uses: actions/upload-artifact@v7
-        with:
-          name: rendimiento-tiempos-${{ github.sha }}
-          path: build/*.timeline_summary.json
-          if-no-files-found: error
-          retention-days: 30
+      # Una columna por medición (cuadros dibujados, tiempo promedio, p90 y
+      # peor por cuadro, y cuadros de más de 16 ms) en el resumen de la
+      # corrida.
+      - name: Mostrar el resultado en el resumen
+        if: ${{ !cancelled() }}
+        run: dart run tool/resumen_pruebas.dart tiempos
