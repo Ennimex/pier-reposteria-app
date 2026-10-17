@@ -190,7 +190,7 @@ MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 | Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Cada Pull Request (`unitarias.yml`) |
 | Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`analisis-estatico.yml`) |
 | Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`aceptacion.yml`) |
-| Integración | Smoke tests del login y catálogo en emulador Android, con `FakeApiClient` y sin backend | `integration_test/app_smoke_test.dart` | Pull Requests que tocan código de app (`integracion.yml`) |
+| Integración | Smoke tests del login y catálogo con `FakeApiClient`, y el flujo de compra (login → carrito → checkout → intento de pago) contra el servidor real con una cuenta de prueba, en emulador Android | `integration_test/app_smoke_test.dart` y `integration_test/flujos/` | Pull Requests que tocan código de app (`integracion.yml`) |
 | Regresión | Toda la suite acumulada sobre la rama o tag | `test/` e `integration_test/` | Martes 08:00 UTC, cada tag y a mano (`regresion.yml`) |
 | Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
 | Esfuerzo | Catálogo de 1,000 productos, carrito de 100 artículos y 5,000 toques de monkey | `test/esfuerzo/` | Cada tag y a mano (`esfuerzo.yml`) |
@@ -202,7 +202,12 @@ viven en `test/unitarias/`, con una carpeta por épica (`auth`, `catalogo`,
 `alexa`, `comun` para lo transversal y `ci` para el script de resultados de
 los pipelines); las de widget de cada pantalla, en
 `test/widget/`. El smoke test de integración también usa `FakeApiClient`, por
-lo que no contacta el backend ni requiere credenciales.
+lo que no contacta el backend ni requiere credenciales. El flujo de compra de
+`integration_test/flujos/` (#58) sí usa el servidor real: inicia sesión con la
+cuenta de prueba de los secretos `USUARIO_PRUEBA` y `CLAVE_PRUEBA`, crea el
+intento de pago en Stripe (modo de prueba) y cierra la hoja sin pagar, así que
+no crea pedidos; sin esas credenciales se omite, y el escenario del pago se omite
+fuera del horario de la tienda.
 El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
 están en `analysis_options.yaml`. El workflow `analisis-estatico.yml` compara el resultado con el
 baseline de `tool/check_analysis.sh` (0 errores, 0 warnings y 151 infos, medido
@@ -213,7 +218,8 @@ Para ejecutar localmente:
 ```bash
 flutter test                     # unitarias, aceptación y esfuerzo
 flutter test --coverage          # igual, con reporte en coverage/lcov.info
-flutter test integration_test    # smoke tests, con emulador o celular conectado
+flutter test integration_test/app_smoke_test.dart   # smoke tests, con emulador o celular
+flutter test integration_test/flujos --dart-define=USUARIO_PRUEBA=<correo> --dart-define=CLAVE_PRUEBA=<clave>   # flujo de compra contra el servidor real
 ```
 
 Cada tipo de prueba tiene su propio workflow en `.github/workflows/`, con la
