@@ -96,16 +96,20 @@ FakeApiClient _backend() => FakeApiClient(respuestas: {
       ApiConstants.carrito: {'success': true},
     });
 
-Future<FakeApiClient> _montar(WidgetTester tester) async {
+Future<FakeApiClient> _montar(WidgetTester tester, {FakeApiClient? api}) async {
   // Pantalla alta para que el grid construya todas las tarjetas.
   tester.view.physicalSize = const Size(1080, 4000);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final api = _backend();
-  await tester.pumpApp(const ProductsScreen(), api: api);
+  final backend = api ?? _backend();
+  await tester.pumpApp(const ProductsScreen(), api: backend);
   await tester.pumpAndSettle();
-  return api;
+  return backend;
 }
+
+/// El texto que ApiService devuelve cuando no hay red (#112).
+const _sinRed =
+    'No pudimos conectar con Pier. Revisa tu internet e intenta de nuevo.';
 
 void main() {
   group('ProductsScreen', () {
@@ -213,6 +217,44 @@ void main() {
       await tester.tap(find.text('Limpiar filtros'));
       await tester.pumpAndSettle();
       expect(find.text('Chocoflan'), findsOneWidget);
+    });
+
+    // Escenario (#160): sin conexión
+    //   Dado que no hay internet
+    //   Cuando abro el catálogo
+    //   Entonces veo que no se pudo cargar, con el motivo y «Reintentar»,
+    //     y no «Sin resultados / Limpiar filtros».
+    testWidgets(
+        'sin conexión avisa y ofrece «Reintentar» en vez de «Sin resultados»',
+        (tester) async {
+      await _montar(
+        tester,
+        api: _backend()..fallar(ApiConstants.productos, _sinRed),
+      );
+
+      expect(find.text('No pudimos cargar el catálogo'), findsOneWidget);
+      expect(find.text(_sinRed), findsOneWidget);
+      expect(find.text('Reintentar'), findsOneWidget);
+      expect(find.text('Sin resultados'), findsNothing);
+      expect(find.text('Limpiar filtros'), findsNothing);
+    });
+
+    testWidgets('«Reintentar» vuelve a cargar el catálogo cuando hay red',
+        (tester) async {
+      final api = await _montar(
+        tester,
+        api: _backend()..fallar(ApiConstants.productos, _sinRed),
+      );
+      api.responder(ApiConstants.productos, {
+        'success': true,
+        'productos': [_p(1, 'Chocoflan')],
+      });
+
+      await tester.tap(find.text('Reintentar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chocoflan'), findsOneWidget);
+      expect(find.text('Reintentar'), findsNothing);
     });
 
     testWidgets('el botón de borrar búsqueda vacía el buscador', (tester) async {
