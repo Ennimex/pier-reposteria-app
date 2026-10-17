@@ -2,9 +2,10 @@
 # PIPELINE: PRUEBAS DE REGRESIÓN
 #
 # Qué revisa: que lo nuevo no rompió lo que ya funcionaba. Vuelve a correr
-#   TODAS las pruebas acumuladas (integración en el emulador, análisis del
-#   código, unitarias y aceptación) y arma el APK (el archivo que se instala
-#   en el celular) de esa versión.
+#   TODAS las pruebas acumuladas (integración en el emulador, incluido el
+#   flujo de compra contra el servidor real; análisis del código, unitarias y
+#   aceptación) y arma el APK (el archivo que se instala en el celular) de esa
+#   versión.
 #   Ejemplo: si un cambio del Sprint 4 en el carrito rompe el inicio de
 #   sesión que se entregó en el Sprint 1, aquí aparece.
 # Para qué sirve: es el respaldo de cada entrega. El sprint se presenta con
@@ -97,20 +98,34 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
-      # Etapa 1, integración: las pruebas de integration_test/ en el celular
-      # virtual. Cada etapa guarda su resultado en build/resultados/ para el
+      # El flujo de compra (#58) usa el servidor real, que se duerme si nadie
+      # lo usa: se despierta antes (más detalle en integracion.yml).
+      - name: Despertar el servidor
+        run: >
+          curl --silent --show-error --fail --output /dev/null
+          --retry 5 --retry-delay 10 --retry-all-errors --max-time 90
+          https://pier-reposteria-backend.onrender.com/api/pagos/config
+
+      # Etapa 1, integración: todas las pruebas de integration_test/ en el
+      # celular virtual, incluido el flujo de compra con la cuenta de prueba y
+      # el celular en hora de México (igual que en integracion.yml, donde se
+      # explica también por qué se quitan los saltos de renglón de los
+      # secretos). Cada etapa guarda su resultado en build/resultados/ para el
       # resumen.
       - name: Correr las pruebas de integración en el emulador
         id: integracion
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          USUARIO_PRUEBA: ${{ secrets.USUARIO_PRUEBA }}
+          CLAVE_PRUEBA: ${{ secrets.CLAVE_PRUEBA }}
         with:
           api-level: ${{ env.API_LEVEL }}
           profile: ${{ env.AVD_PROFILE }}
           arch: x86_64
           force-avd-creation: false
-          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          emulator-options: -no-snapshot-save -timezone America/Mexico_City ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
-          script: flutter test integration_test --no-pub --file-reporter json:build/resultados/integracion.json
+          script: flutter test integration_test --no-pub --dart-define=USUARIO_PRUEBA="$(printf '%s' "$USUARIO_PRUEBA" | tr -d '\r\n')" --dart-define=CLAVE_PRUEBA="$(printf '%s' "$CLAVE_PRUEBA" | tr -d '\r\n')" --file-reporter json:build/resultados/integracion.json
 
       # Etapa 2, análisis del código contra la línea base (como en
       # analisis-estatico.yml).

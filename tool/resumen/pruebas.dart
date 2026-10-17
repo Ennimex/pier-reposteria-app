@@ -218,7 +218,16 @@ String seccionFallas(Corrida corrida) {
     texto
       ..writeln('**${prueba.titulo}**  ')
       ..writeln('`${prueba.ubicacion}`');
-    if (prueba.detalle.isNotEmpty) texto.write(bloque(prueba.detalle));
+    if (prueba.detalle.isNotEmpty) {
+      texto.write(bloque(prueba.detalle));
+    } else {
+      // En el emulador, flutter test imprime el error en el log pero no lo
+      // manda al reporte JSON.
+      texto.writeln(
+        '> El reporte no trae el detalle del error: búscalo en el log del '
+        'paso que corrió las pruebas.',
+      );
+    }
     texto.writeln();
   }
   if (fallas.length > _maximoDeFallas) {

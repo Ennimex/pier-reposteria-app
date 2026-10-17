@@ -292,6 +292,32 @@ void main() {
       );
     });
 
+    test(
+        'si el reporte no trae el error (pruebas en el emulador), dice dónde '
+        'verlo', () {
+      final texto = resumenPruebas(
+        leerReporte(
+          _lineas([
+            ..._corridaVerde(),
+            _inicio(6, '#34 Inicio de sesión Escenario: en el emulador'),
+            _fin(6, resultado: 'error'),
+          ]),
+          raiz: _raiz,
+        ),
+        titulo: 'Flujo de compra',
+      );
+
+      expect(
+        texto,
+        contains(
+          '**#34 Inicio de sesión › Escenario: en el emulador**  \n'
+          '`test/aceptacion/auth/inicio_sesion_test.dart:10`\n'
+          '> El reporte no trae el detalle del error: búscalo en el log del '
+          'paso que corrió las pruebas.\n',
+        ),
+      );
+    });
+
     test('muestra hasta 20 fallas y avisa cuántas más hay', () {
       final texto = resumenPruebas(
         leerReporte(
