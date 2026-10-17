@@ -165,6 +165,15 @@ class _ProductsScreenState extends State<ProductsScreen>
     _vm.limpiarTodo();
   }
 
+  /// Deslizar para recargar y «Reintentar» (catálogo sin conexión, #160). No
+  /// se limpia el imageCache global: recargar los datos basta y evita que
+  /// TODA la app vuelva a descargar imágenes.
+  Future<void> _recargar() async {
+    await context.read<ProductProvider>().refrescar();
+    await _vm.cargarCategorias();
+    await _vm.cargarFiltros();
+  }
+
   void _aviso(String texto,
       {required IconData icono, required Color color, int segundos = 2}) {
     ScaffoldMessenger.of(context)
@@ -279,13 +288,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               CatalogoCategorias(viewModel: _vm),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () async {
-                    // No se limpia el imageCache global: recargar los datos
-                    // basta y evita que TODA la app vuelva a descargar imágenes.
-                    await context.read<ProductProvider>().refrescar();
-                    await _vm.cargarCategorias();
-                    await _vm.cargarFiltros();
-                  },
+                  onRefresh: _recargar,
                   color: AppColors.pierVerde,
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -302,6 +305,16 @@ class _ProductsScreenState extends State<ProductsScreen>
                       ),
                       if (productProvider.isLoading)
                         _grid((context, i) => const ProductSkeletonCard(), 6)
+                      // El catálogo no pudo cargar (p. ej. sin internet): no
+                      // es «Sin resultados» de los filtros (#160).
+                      else if (productProvider.errorMessage != null &&
+                          productProvider.productos.isEmpty)
+                        SliverFillRemaining(
+                          child: CatalogoVacio.sinConexion(
+                            mensaje: productProvider.errorMessage!,
+                            onReintentar: _recargar,
+                          ),
+                        )
                       else if (products.isEmpty)
                         SliverFillRemaining(
                             child: CatalogoVacio(onLimpiar: _limpiarTodo))
