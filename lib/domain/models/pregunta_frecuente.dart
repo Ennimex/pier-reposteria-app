@@ -3,7 +3,7 @@
 // Una pregunta de «Preguntas Frecuentes». Fuente: GET /api/configuracion/faq
 // -> config{preguntas[{categoria, pregunta, respuesta}]} (misma fuente que
 // FAQ.tsx de la web).
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_reposteria/utils/config_format.dart';
 
 class PreguntaFrecuente {
   const PreguntaFrecuente({

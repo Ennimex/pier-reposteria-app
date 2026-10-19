@@ -6,12 +6,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/products/view_model/products_view_model.dart';
-import 'package:pier_pasteleria/ui/products/widgets/catalogo_sheets.dart';
-import 'package:pier_pasteleria/ui/products/widgets/movimiento_catalogo.dart';
+import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
+import 'package:pier_reposteria/ui/products/widgets/catalogo_sheets.dart';
+import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
 import 'package:provider/provider.dart';
 
 IconData _iconoDeCategoria(String nombre) {

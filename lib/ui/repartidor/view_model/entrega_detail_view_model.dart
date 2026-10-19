@@ -5,8 +5,8 @@
 // También permite entregar DIRECTO desde asignada (repartidor que ya está en
 // la zona) y, en camino, «Avisar que llegué» (notifica al cliente sin cambiar
 // el estado). Arma además los enlaces para llamar, escribir y navegar.
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/accion_entrega_view_model.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/accion_entrega_view_model.dart';
 
 class EntregaDetailViewModel extends AccionEntregaViewModel {
   EntregaDetailViewModel({

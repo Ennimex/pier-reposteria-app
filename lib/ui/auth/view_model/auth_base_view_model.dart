@@ -5,7 +5,7 @@
 // (ApiException) y no avisa a la vista si ya se cerró. Los TextEditingController
 // y la validación de los formularios se quedan en las vistas.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
 
 abstract class AuthBaseViewModel extends ChangeNotifier {
   bool _cerrado = false;

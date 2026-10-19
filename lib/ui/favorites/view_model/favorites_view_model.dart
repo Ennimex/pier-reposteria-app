@@ -6,10 +6,10 @@
 // estaba (la pantalla no muestra error, como antes). El carrito y la sesión
 // no se tocan desde aquí: la vista decide si agrega o manda a iniciar sesión.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
 
 /// Registra el interés en un producto agotado (demanda no atendida).
 typedef RegistrarInteres = void Function(String productoId);

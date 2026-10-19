@@ -5,7 +5,7 @@
 // endpoint devuelve datos de la entrega + un snapshot del pedido y del cliente.
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 
 /// Estados que maneja el backend para una entrega.
 enum EstadoEntrega { asignada, enCamino, entregada, fallida, desconocido }

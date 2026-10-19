@@ -5,7 +5,7 @@
 // dentro del builder de showDialog, junto con AppMovimiento.estiloDialogo.
 // Usa la animación de la propia ruta del diálogo: no crea controladores.
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class EntradaDialogo extends StatelessWidget {
   const EntradaDialogo({required this.child, super.key});

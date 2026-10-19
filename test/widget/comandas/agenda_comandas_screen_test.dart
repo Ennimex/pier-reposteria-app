@@ -4,7 +4,7 @@
 // volver a la app y cierre de sesión (manual o porque la cuenta cambió).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_screen.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_screen.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';

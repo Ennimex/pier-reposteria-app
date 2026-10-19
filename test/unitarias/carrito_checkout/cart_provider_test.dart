@@ -1,12 +1,12 @@
 // test/unitarias/carrito_checkout/cart_provider_test.dart — lógica del carrito (#16) sin red: el
 // backend es un FakeApiClient y se afirma qué se le pidió.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/cart_item_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 
 import '../../fakes/fake_api_client.dart';
 

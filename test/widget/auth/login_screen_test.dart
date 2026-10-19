@@ -2,11 +2,11 @@
 // sesión (#17), sin red: el backend es un FakeApiClient montado con pumpApp.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/login_view_model.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_reposteria/ui/auth/view_model/login_view_model.dart';
+import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';

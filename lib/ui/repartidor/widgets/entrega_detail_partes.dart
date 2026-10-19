@@ -4,10 +4,10 @@
 // dirección con «Cómo llegar», «Llamar» y «WhatsApp», y resumen de cobro.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/movimiento_repartidor.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/repartidor_ui.dart';
 
 /// Tarjeta blanca con sombra suave.
 class TarjetaDetalle extends StatelessWidget {

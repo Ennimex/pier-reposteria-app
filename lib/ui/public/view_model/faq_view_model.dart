@@ -5,10 +5,10 @@
 // reemplazan todas por esas. Si el backend falla se quedan las de la app (la
 // pantalla nunca muestra error). También lleva el filtro por categoría.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/domain/models/pregunta_frecuente.dart';
 
 class FaqViewModel extends ChangeNotifier {
   FaqViewModel({required ConfiguracionRepository repo}) : _repo = repo;

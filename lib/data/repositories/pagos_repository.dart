@@ -7,7 +7,7 @@
 // clase abstracta; la implementación HTTP es PagosRepositoryRemote, registrada
 // una sola vez en lib/config/dependencies.dart.
 
-import 'package:pier_pasteleria/domain/models/pago.dart';
+import 'package:pier_reposteria/domain/models/pago.dart';
 
 abstract class PagosRepository {
   /// GET /pagos/config: publishable key (público).

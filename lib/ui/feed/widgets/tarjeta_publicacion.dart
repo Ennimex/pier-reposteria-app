@@ -7,8 +7,8 @@
 // #134.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/publicacion.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 
 const _mesesCortos = [
   'ene',

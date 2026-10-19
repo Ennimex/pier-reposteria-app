@@ -7,12 +7,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/domain/models/queja.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/data/repositories/quejas_repository.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/domain/models/queja.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// Resultado de enviar: el ticket creado o el mensaje de error.
 typedef EnvioQueja = ({String? ticket, String? error});

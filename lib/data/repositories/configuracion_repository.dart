@@ -10,10 +10,10 @@
 // Fase 3: las secciones que ya tienen ViewModel tienen su método tipado
 // (contacto, nosotros, faq, legales) y lanzan ApiException si el backend
 // falla.
-import 'package:pier_pasteleria/domain/models/info_contacto.dart';
-import 'package:pier_pasteleria/domain/models/info_nosotros.dart';
-import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
-import 'package:pier_pasteleria/domain/models/textos_legales.dart';
+import 'package:pier_reposteria/domain/models/info_contacto.dart';
+import 'package:pier_reposteria/domain/models/info_nosotros.dart';
+import 'package:pier_reposteria/domain/models/pregunta_frecuente.dart';
+import 'package:pier_reposteria/domain/models/textos_legales.dart';
 
 abstract class ConfiguracionRepository {
   /// GET /configuracion/:seccion -> {success, config: {clave: valor}}.

@@ -2,10 +2,10 @@
 // Alexa» (MVVM, Fase 3) sin red. Las pruebas con cuenta regresiva corren en
 // testWidgets para avanzar el reloj simulado con tester.pump(duración).
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
-import 'package:pier_pasteleria/ui/more/view_model/vincular_alexa_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository_remote.dart';
+import 'package:pier_reposteria/ui/more/view_model/vincular_alexa_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

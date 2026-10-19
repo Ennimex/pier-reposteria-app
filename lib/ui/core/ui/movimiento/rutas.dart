@@ -20,8 +20,8 @@
 // animation.drive con Animatables estáticos.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 /// Página para una ruta de go_router a la que se llega con context.go.
 ///

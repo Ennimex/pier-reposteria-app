@@ -8,14 +8,14 @@
 // prueba equivale a «arrancar con el backend caído».
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
-import 'package:pier_pasteleria/ui/splash/widgets/splash_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
+import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
+import 'package:pier_reposteria/ui/core/state/product_provider.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_screen.dart';
+import 'package:pier_reposteria/ui/splash/widgets/splash_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'fakes/fake_api_client.dart';

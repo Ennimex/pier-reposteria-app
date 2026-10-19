@@ -1,10 +1,10 @@
 // test/widget/public/faq_screen_test.dart — la vista de «Preguntas
 // Frecuentes» pinta lo que expone su ViewModel (MVVM, Fase 3), sin red.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
-import 'package:pier_pasteleria/ui/public/view_model/faq_view_model.dart';
-import 'package:pier_pasteleria/ui/public/widgets/faq_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_reposteria/ui/public/view_model/faq_view_model.dart';
+import 'package:pier_reposteria/ui/public/widgets/faq_screen.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';

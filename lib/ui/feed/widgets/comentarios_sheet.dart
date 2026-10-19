@@ -9,11 +9,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/feed/view_model/comentarios_view_model.dart';
-import 'package:pier_pasteleria/ui/feed/view_model/feed_view_model.dart';
-import 'package:pier_pasteleria/ui/feed/widgets/tarjeta_publicacion.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/feed/view_model/comentarios_view_model.dart';
+import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
+import 'package:pier_reposteria/ui/feed/widgets/tarjeta_publicacion.dart';
 import 'package:provider/provider.dart';
 
 const _maxComentario = 1000;

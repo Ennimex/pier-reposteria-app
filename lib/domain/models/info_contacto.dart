@@ -5,7 +5,7 @@
 // direccion, horarios[{sucursal, horario, descripcion}]}. El horario vive
 // dentro de 'contacto' (no existe una sección 'horarios' pública). Cada campo
 // es null si no se capturó; la app conserva entonces el de BusinessInfo.
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_reposteria/utils/config_format.dart';
 
 class InfoContacto {
   const InfoContacto({

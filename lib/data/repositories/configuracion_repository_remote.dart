@@ -3,14 +3,14 @@
 // Implementación HTTP de ConfiguracionRepository. Recibe el ApiClient por constructor:
 // en la app, el ApiService único de lib/config/dependencies.dart; en
 // pruebas, FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/domain/models/info_contacto.dart';
-import 'package:pier_pasteleria/domain/models/info_nosotros.dart';
-import 'package:pier_pasteleria/domain/models/pregunta_frecuente.dart';
-import 'package:pier_pasteleria/domain/models/textos_legales.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/domain/models/info_contacto.dart';
+import 'package:pier_reposteria/domain/models/info_nosotros.dart';
+import 'package:pier_reposteria/domain/models/pregunta_frecuente.dart';
+import 'package:pier_reposteria/domain/models/textos_legales.dart';
 
 /// Implementación de [ConfiguracionRepository] contra el backend vía [ApiClient].
 class ConfiguracionRepositoryRemote implements ConfiguracionRepository {

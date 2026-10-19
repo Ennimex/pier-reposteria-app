@@ -2,10 +2,10 @@
 // sin red: el repositorio manda PUT /usuarios/perfil/actualizar y el ViewModel
 // lleva cambios, iniciales y el guardado.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
-import 'package:pier_pasteleria/ui/more/view_model/edit_profile_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository_remote.dart';
+import 'package:pier_reposteria/ui/more/view_model/edit_profile_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

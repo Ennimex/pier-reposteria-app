@@ -3,11 +3,11 @@
 // Implementación HTTP de PagosRepository. Recibe el ApiClient por constructor:
 // en la app, el ApiService único de lib/config/dependencies.dart; en
 // pruebas, FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pagos_repository.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/domain/models/pago.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/pagos_repository.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/domain/models/pago.dart';
 
 /// Implementación de [PagosRepository] contra el backend vía [ApiClient].
 class PagosRepositoryRemote implements PagosRepository {

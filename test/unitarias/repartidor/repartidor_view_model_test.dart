@@ -2,10 +2,10 @@
 // Fase 5) sin red: carga entregas, disponibilidad y pool, separa en curso e
 // historial, toma pedidos y cambia la disponibilidad con reversión.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/repartidor_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

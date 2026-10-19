@@ -8,12 +8,12 @@
 // manda al backend.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/app.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/verify_email_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/main/widgets/main_screen.dart';
+import 'package:pier_reposteria/app.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/auth/widgets/verify_email_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/main/widgets/main_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';

@@ -2,10 +2,10 @@
 // (MVVM, Fase 5) sin red: convierte las respuestas en modelos y lanza
 // ApiException con el mensaje del backend o uno por defecto.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

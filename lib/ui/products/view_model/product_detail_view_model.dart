@@ -6,14 +6,14 @@
 // "Avísame" de los agotados. Precios con descuento y carrito siguen en sus
 // providers globales; la vista decide si manda a iniciar sesión.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/demanda_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/domain/models/resena_producto.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/resena_producto.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 class ProductDetailViewModel extends ChangeNotifier {
   ProductDetailViewModel({

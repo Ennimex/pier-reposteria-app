@@ -6,7 +6,7 @@
 // eso, A → B → A duplica hijos) y el layout alinea al inicio (el de fábrica
 // centra y hace saltar los textos).
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 /// Variantes de CambioAnimado.
 enum TipoCambio {

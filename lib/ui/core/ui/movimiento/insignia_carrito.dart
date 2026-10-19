@@ -15,8 +15,8 @@
 // catálogo, que así no reacciona antes de que el producto llegue).
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/vuelo_al_carrito.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/vuelo_al_carrito.dart';
 
 class InsigniaCarrito extends StatefulWidget {
   const InsigniaCarrito({

@@ -27,10 +27,10 @@ Map<String, dynamic> _analisisDePeso() => {
                   'children': [
                     {'n': 'package:flutter', 'value': 3 * _mb},
                     {
-                      'n': 'package:pier_pasteleria',
+                      'n': 'package:pier_reposteria',
                       'children': [
-                        {'n': 'package:pier_pasteleria/ui', 'value': _mb},
-                        {'n': 'package:pier_pasteleria/data', 'value': _mb},
+                        {'n': 'package:pier_reposteria/ui', 'value': _mb},
+                        {'n': 'package:pier_reposteria/data', 'value': _mb},
                       ],
                     },
                     {'n': 'dart:core', 'value': _mb ~/ 2},
@@ -73,7 +73,7 @@ void main() {
 
       expect(paquetes.map((p) => p.nombre), [
         'package:flutter',
-        'package:pier_pasteleria',
+        'package:pier_reposteria',
         'dart:core',
       ]);
       expect(paquetes[1].bytes, 2 * _mb);

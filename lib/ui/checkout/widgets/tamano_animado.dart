@@ -6,7 +6,7 @@
 // en vez de saltar. Con movimiento reducido el cambio es casi instantáneo
 // (AnimatedSize no admite duración cero: se resuelve al cuadro siguiente).
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 class TamanoAnimado extends StatelessWidget {
   const TamanoAnimado({

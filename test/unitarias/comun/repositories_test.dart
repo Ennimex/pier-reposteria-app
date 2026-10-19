@@ -3,13 +3,13 @@
 // respuesta tal cual (o, los ya tipados, el modelo o ApiException). Ninguna
 // prueba toca la red.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
 
 import '../../fakes/fake_api_client.dart';
 

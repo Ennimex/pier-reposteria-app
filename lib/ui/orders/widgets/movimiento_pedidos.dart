@@ -8,7 +8,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 /// Cuánto debe esperar la entrada de un bloque que se monta en este momento
 /// (el `retraso` de EntradaSuave), según dónde está su pantalla:

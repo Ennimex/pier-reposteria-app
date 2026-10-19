@@ -13,7 +13,7 @@
 // alto y las etiquetas (con las que las pruebas encuentran las pestañas) no
 // se mueven. Su color sale del IconTheme de la barra (sigue la paleta).
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class IconoPestana extends StatefulWidget {
   const IconoPestana(this.icono, {this.activo = true, super.key});

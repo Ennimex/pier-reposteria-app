@@ -9,8 +9,8 @@
 //
 // Fase 3: los métodos tipados (crearResena, listarMisResenas, editarResena,
 // listarDeProducto, alternarUtil) lanzan ApiException si el backend falla.
-import 'package:pier_pasteleria/domain/models/mi_resena.dart';
-import 'package:pier_pasteleria/domain/models/resena_producto.dart';
+import 'package:pier_reposteria/domain/models/mi_resena.dart';
+import 'package:pier_reposteria/domain/models/resena_producto.dart';
 
 abstract class ResenasRepository {
   /// GET /resenas/mis-resenas

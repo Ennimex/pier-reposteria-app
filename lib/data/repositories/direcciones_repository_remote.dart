@@ -3,12 +3,12 @@
 // Implementación HTTP de DireccionesRepository. Recibe el ApiClient por constructor:
 // en la app, el ApiService único de lib/config/dependencies.dart; en
 // pruebas, FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/direcciones_repository.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/domain/models/direccion_model.dart';
-import 'package:pier_pasteleria/domain/models/zona_colonia.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/direcciones_repository.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/domain/models/direccion_model.dart';
+import 'package:pier_reposteria/domain/models/zona_colonia.dart';
 
 /// Implementación de [DireccionesRepository] contra el backend vía [ApiClient].
 class DireccionesRepositoryRemote implements DireccionesRepository {

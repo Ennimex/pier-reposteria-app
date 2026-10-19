@@ -5,10 +5,10 @@
 // pago.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/tamano_animado.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/tamano_animado.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 /// Fondo blanco redondeado con sombra suave de las secciones.
 BoxDecoration decoracionTarjeta() => BoxDecoration(

@@ -1,6 +1,6 @@
 //app/lib/core/constants/app_colors.dart
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/tema_catalogo.dart';
+import 'package:pier_reposteria/ui/core/themes/tema_catalogo.dart';
 
 /// Fachada de color de la app. Los tokens de MARCA ya no son const: leen la
 /// paleta ACTIVA del tema de temporada, que TemaProvider aplica con

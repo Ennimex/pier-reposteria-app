@@ -1,8 +1,8 @@
 // test/unitarias/comandas/comanda_model_test.dart — modelo del resumen de la
 // agenda de comandas (#127) y textos de fechas de la agenda.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/comandas_formato.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/comandas_formato.dart';
 
 import '../../fakes/comandas_json.dart';
 

@@ -6,10 +6,10 @@
 // el inicio actualice su contador al cerrar la hoja. Lo crea
 // ComentariosSheet.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/publicaciones_repository.dart';
-import 'package:pier_pasteleria/domain/models/publicacion.dart';
-import 'package:pier_pasteleria/utils/command.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/publicaciones_repository.dart';
+import 'package:pier_reposteria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/utils/command.dart';
 
 class ComentariosViewModel extends ChangeNotifier {
   ComentariosViewModel({

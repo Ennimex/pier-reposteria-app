@@ -4,13 +4,13 @@
 // entrega en curso (abre el detalle) y pedido del pool con «Tomar entrega».
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/entrega_detail_screen.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_ui.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/repartidor_view_model.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/entrega_detail_screen.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/movimiento_repartidor.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/repartidor_ui.dart';
 
 /// Abre el detalle de [entrega]; lo que cambie ahí recarga el panel.
 Future<bool?> abrirEntrega(

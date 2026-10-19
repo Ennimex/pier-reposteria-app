@@ -5,17 +5,17 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/demanda_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/data/repositories/notificaciones_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/pagos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/demanda_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/direcciones_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/data/repositories/notificaciones_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';

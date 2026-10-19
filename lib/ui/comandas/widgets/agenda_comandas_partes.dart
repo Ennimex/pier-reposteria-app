@@ -6,12 +6,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/comandas_formato.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/utils/moneda.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/comandas_formato.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/utils/moneda.dart';
 import 'package:provider/provider.dart';
 
 /// Pendientes que se ven antes de «Ver las N pendientes».

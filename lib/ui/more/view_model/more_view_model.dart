@@ -5,12 +5,12 @@
 // muestra lo de BusinessInfo o 0, como antes. La sesión, la navegación y el
 // cierre de sesión siguen en la vista (usan los providers globales).
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/domain/models/info_contacto.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
+import 'package:pier_reposteria/domain/models/info_contacto.dart';
 
 class MoreViewModel extends ChangeNotifier {
   MoreViewModel({

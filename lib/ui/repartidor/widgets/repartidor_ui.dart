@@ -4,11 +4,11 @@
 // avisos, chip de estado, avatar, ícono con texto, ícono que se vuelve
 // indicador de carga y el switch de disponibilidad.
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/movimiento_repartidor.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/repartidor_view_model.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/movimiento_repartidor.dart';
 
 /// Formatea un monto a "$1,250 MXN" (sin decimales, con separador de miles).
 String formatMoneyMxn(double value) {

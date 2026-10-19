@@ -7,13 +7,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
-import 'package:pier_pasteleria/ui/cart/view_model/cart_view_model.dart';
-import 'package:pier_pasteleria/ui/cart/widgets/cart_linea.dart';
-import 'package:pier_pasteleria/ui/cart/widgets/cart_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_reposteria/ui/cart/view_model/cart_view_model.dart';
+import 'package:pier_reposteria/ui/cart/widgets/cart_linea.dart';
+import 'package:pier_reposteria/ui/cart/widgets/cart_screen.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 

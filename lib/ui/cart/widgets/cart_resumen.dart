@@ -6,11 +6,11 @@
 // abriendo y cerrando su espacio (el panel crece o se encoge sin saltos).
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/cart/view_model/cart_view_model.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/tamano_animado.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/core/ui/precios_carrito.dart';
+import 'package:pier_reposteria/ui/cart/view_model/cart_view_model.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/tamano_animado.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/precios_carrito.dart';
 
 class CartResumen extends StatelessWidget {
   const CartResumen({required this.viewModel, required this.onPagar, super.key});

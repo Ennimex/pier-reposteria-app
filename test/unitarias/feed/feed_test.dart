@@ -2,10 +2,10 @@
 // (#132): modelos, cómo se intercalan promociones y sugerencias (igual que la
 // web, src/cliente/feed/estado.ts), repositorio y FeedViewModel.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/publicaciones_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/publicacion.dart';
-import 'package:pier_pasteleria/ui/feed/view_model/feed_view_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/publicaciones_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../fakes/publicaciones_json.dart';

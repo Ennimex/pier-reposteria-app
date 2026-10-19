@@ -6,9 +6,9 @@
 // pestaña, al jalar para refrescar) y le dice si hay sesión. Si un pedido
 // cambia en su detalle (p. ej. se cancela), se reacomoda aquí sin recargar.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
 
 class OrdersViewModel extends ChangeNotifier {
   OrdersViewModel({required PedidosRepository repo}) : _repo = repo;

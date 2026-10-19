@@ -4,8 +4,8 @@
 // comentario, validación y envío. Los TextEditingController, la revisión de
 // sesión (lleva a login) y el diálogo de éxito se quedan en la vista.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 
 class CreateReviewViewModel extends ChangeNotifier {
   CreateReviewViewModel({

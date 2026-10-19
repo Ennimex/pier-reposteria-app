@@ -6,10 +6,10 @@
 // backend falla se queda BusinessInfo. Los TextEditingController, la
 // validación del Form, el diálogo y abrir WhatsApp se quedan en la vista.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository.dart';
 
 class ContactViewModel extends ChangeNotifier {
   ContactViewModel({

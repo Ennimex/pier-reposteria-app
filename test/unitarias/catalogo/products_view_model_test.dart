@@ -2,12 +2,12 @@
 // Fase 4) sin red: filtrado local, orden, categorías, opciones por categoría,
 // favoritos optimistas y registro de demanda no atendida.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/demanda_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/products/view_model/products_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/demanda_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

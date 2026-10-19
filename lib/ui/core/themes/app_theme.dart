@@ -1,9 +1,9 @@
 // lib/ui/core/themes/app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_dimensions.dart';
-import 'package:pier_pasteleria/ui/core/themes/text_styles.dart';
-import 'package:pier_pasteleria/ui/core/themes/transicion_pagina_pier.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/app_dimensions.dart';
+import 'package:pier_reposteria/ui/core/themes/text_styles.dart';
+import 'package:pier_reposteria/ui/core/themes/transicion_pagina_pier.dart';
 
 class AppTheme {
   AppTheme._();

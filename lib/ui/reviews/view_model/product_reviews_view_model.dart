@@ -5,10 +5,10 @@
 // «útil». Si la carga falla la lista se queda como estaba (la pantalla no
 // muestra error, como antes). La sesión la revisa la vista.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/domain/models/resena_producto.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
+import 'package:pier_reposteria/domain/models/resena_producto.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// Orden de la lista; «recientes» respeta el del backend.
 enum OrdenResenas { recientes, mejor, peor }

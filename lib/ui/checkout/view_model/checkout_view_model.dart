@@ -10,16 +10,16 @@
 // reintenta la confirmación: nunca se vuelve a cobrar.
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/direcciones_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pagos_repository.dart';
-import 'package:pier_pasteleria/data/services/pasarela_pago.dart';
-import 'package:pier_pasteleria/domain/models/direccion_model.dart';
-import 'package:pier_pasteleria/domain/models/pago.dart';
-import 'package:pier_pasteleria/utils/command.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/data/repositories/direcciones_repository.dart';
+import 'package:pier_reposteria/data/repositories/pagos_repository.dart';
+import 'package:pier_reposteria/data/services/pasarela_pago.dart';
+import 'package:pier_reposteria/domain/models/direccion_model.dart';
+import 'package:pier_reposteria/domain/models/pago.dart';
+import 'package:pier_reposteria/utils/command.dart';
+import 'package:pier_reposteria/utils/config_format.dart';
 
 enum TipoEntrega { pickup, domicilio }
 

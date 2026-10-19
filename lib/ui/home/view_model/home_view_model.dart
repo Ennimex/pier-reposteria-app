@@ -8,17 +8,17 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/domain/models/category_model.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/domain/models/promociones_inicio.dart';
-import 'package:pier_pasteleria/domain/models/slide_hero.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
+import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/promociones_inicio.dart';
+import 'package:pier_reposteria/domain/models/slide_hero.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// "2d 5h", "3h 20m", "45m", "Expirada"; vacío si no hay fecha válida.
 String tiempoRestante(String? fechaFin, {DateTime? ahora}) {

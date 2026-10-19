@@ -3,7 +3,7 @@
 // el flavor (--flavor dev, #12); la URL se puede forzar con
 // --dart-define=API_BASE_URL=...
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
 
 void main() {
   group('ApiConstants.ambienteDesde', () {

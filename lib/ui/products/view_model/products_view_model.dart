@@ -11,14 +11,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/demanda_repository.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/domain/models/category_model.dart';
-import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository.dart';
+import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/filtros_catalogo.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// Criterios de orden del catálogo.
 enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }

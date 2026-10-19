@@ -3,12 +3,12 @@
 // avisar llegada, enlaces de contacto), la confirmación con evidencia y el
 // reporte de fallo. Al cambiar la entrega avisan al panel.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/confirmar_entrega_view_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/entrega_detail_view_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/reportar_fallo_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/confirmar_entrega_view_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/entrega_detail_view_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/reportar_fallo_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

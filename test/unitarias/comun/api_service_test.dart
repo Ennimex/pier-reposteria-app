@@ -8,8 +8,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Ejecuta [accion] con un cliente que registra la petición y responde

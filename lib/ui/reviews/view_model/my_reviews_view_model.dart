@@ -7,9 +7,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository.dart';
-import 'package:pier_pasteleria/domain/models/mi_resena.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
+import 'package:pier_reposteria/domain/models/mi_resena.dart';
 
 class MyReviewsViewModel extends ChangeNotifier {
   MyReviewsViewModel({required ResenasRepository repo}) : _repo = repo;

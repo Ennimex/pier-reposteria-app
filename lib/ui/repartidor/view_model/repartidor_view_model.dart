@@ -6,10 +6,10 @@
 // muestran cortes distintos de los mismos datos. El detalle, la confirmación
 // y el reporte de fallo avisan con [recargar] cuando cambian una entrega.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/accion_entrega_view_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/accion_entrega_view_model.dart';
 
 class RepartidorViewModel extends ChangeNotifier {
   RepartidorViewModel({required EntregasRepository repo}) : _repo = repo;

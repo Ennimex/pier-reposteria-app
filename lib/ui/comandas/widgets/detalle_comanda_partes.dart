@@ -5,9 +5,9 @@
 // barra y diálogo de «Enterado» y visor de fotos a pantalla completa.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_partes.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 
 const _ambar = Color(0xFFB45309);
 

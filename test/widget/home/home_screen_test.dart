@@ -3,11 +3,11 @@
 // por tipo, categorías, productos, reseñas, sucursales y pedido activo.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_screen.dart';
+import 'package:pier_reposteria/ui/orders/widgets/order_detail_screen.dart';
+import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_reposteria/ui/public/widgets/contact_screen.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';

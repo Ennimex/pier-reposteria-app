@@ -2,10 +2,10 @@
 // sin red: el repositorio interpreta configuracion/faq y el ViewModel reemplaza
 // las preguntas por defecto y filtra por categoría.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
-import 'package:pier_pasteleria/ui/public/view_model/faq_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_reposteria/ui/public/view_model/faq_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

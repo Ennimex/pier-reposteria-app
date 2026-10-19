@@ -2,13 +2,13 @@
 // Fase 4) sin red ni Stripe: validaciones, direcciones, horarios y cada
 // camino del pago (incluido no volver a cobrar si la confirmación falla).
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/pagos_repository_remote.dart';
-import 'package:pier_pasteleria/data/services/pasarela_pago.dart';
-import 'package:pier_pasteleria/ui/checkout/view_model/checkout_view_model.dart';
-import 'package:pier_pasteleria/ui/checkout/view_model/direccion_form_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/direcciones_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
+import 'package:pier_reposteria/data/services/pasarela_pago.dart';
+import 'package:pier_reposteria/ui/checkout/view_model/checkout_view_model.dart';
+import 'package:pier_reposteria/ui/checkout/view_model/direccion_form_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

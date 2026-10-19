@@ -1,6 +1,6 @@
 // test/unitarias/comun/config_format_test.dart — helpers puros de configuracion/* (utils).
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_reposteria/utils/config_format.dart';
 
 void main() {
   group('parseConfigValor', () {

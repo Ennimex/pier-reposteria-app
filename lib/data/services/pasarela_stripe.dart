@@ -3,8 +3,8 @@
 // Implementación de PasarelaPago con la Payment Sheet de Stripe.
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:pier_pasteleria/data/services/pasarela_pago.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/data/services/pasarela_pago.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 
 /// Cobra con la Payment Sheet de Stripe.
 class PasarelaStripe implements PasarelaPago {

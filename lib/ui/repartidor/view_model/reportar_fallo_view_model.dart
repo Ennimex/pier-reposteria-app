@@ -3,8 +3,8 @@
 // Estado de la hoja «Reportar entrega fallida» (MVVM, Fase 5): la categoría
 // elegida y el envío. El motivo que llega al backend combina la categoría
 // (si hay y no es «Otro») con el detalle obligatorio.
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/accion_entrega_view_model.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/accion_entrega_view_model.dart';
 
 class ReportarFalloViewModel extends AccionEntregaViewModel {
   ReportarFalloViewModel({

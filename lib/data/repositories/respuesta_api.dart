@@ -4,7 +4,7 @@
 // cada petición (comandas y publicaciones, middleware usuarioVigente del
 // backend): si la cuenta ya no está vigente responden
 // `codigo: 'SESION_INVALIDA'`.
-import 'package:pier_pasteleria/data/api_exception.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
 
 /// [respuesta] si trae success: true; si no, SesionInvalidaException (cuenta
 /// desactivada o cambiada) o ApiException con su mensaje (o [porDefecto]).

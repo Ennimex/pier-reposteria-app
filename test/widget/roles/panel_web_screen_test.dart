@@ -2,8 +2,8 @@
 // roles internos: cada rol ve su propio panel (#126: hornos y decoración ven
 // el de Producción en lugar de caer en la tienda).
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/roles/widgets/panel_web_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/roles/widgets/panel_web_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../helpers/pump_app.dart';

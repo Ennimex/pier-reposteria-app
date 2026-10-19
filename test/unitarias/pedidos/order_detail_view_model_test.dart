@@ -4,10 +4,10 @@
 // cancelar).
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/orders/view_model/order_detail_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/ui/orders/view_model/order_detail_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

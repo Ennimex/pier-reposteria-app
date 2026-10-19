@@ -3,11 +3,11 @@
 // Implementación HTTP de CuentaRepository. Recibe el ApiClient por constructor:
 // en la app, el ApiService único de lib/config/dependencies.dart; en
 // pruebas, FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/domain/models/codigo_alexa.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/domain/models/codigo_alexa.dart';
 
 /// Implementación de [CuentaRepository] contra el backend vía [ApiClient].
 class CuentaRepositoryRemote implements CuentaRepository {

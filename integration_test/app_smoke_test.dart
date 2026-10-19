@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:pier_pasteleria/app.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/config/dependencies.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
+import 'package:pier_reposteria/app.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/config/dependencies.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../test/fakes/fake_api_client.dart';

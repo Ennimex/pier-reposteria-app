@@ -3,8 +3,8 @@
 // con «reducir movimiento» quedan quietos.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/skeletons.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../helpers/movimiento.dart';

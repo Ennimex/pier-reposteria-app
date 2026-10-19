@@ -5,10 +5,10 @@
 // botón «Cancelar pedido».
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/movimiento_pedidos.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/orders/widgets/movimiento_pedidos.dart';
 
 /// Tarjeta blanca con [titulo] arriba de [child].
 class TarjetaDetalle extends StatelessWidget {

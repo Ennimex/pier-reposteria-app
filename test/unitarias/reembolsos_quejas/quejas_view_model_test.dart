@@ -2,12 +2,12 @@
 // red: el repositorio tipa la lista y el envío, y el ViewModel lleva la
 // lista, la tarjeta abierta, los pedidos y el formulario.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/quejas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/queja.dart';
-import 'package:pier_pasteleria/ui/more/view_model/quejas_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/quejas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/queja.dart';
+import 'package:pier_reposteria/ui/more/view_model/quejas_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

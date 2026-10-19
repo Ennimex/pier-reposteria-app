@@ -18,17 +18,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:pier_pasteleria/app.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/config/dependencies.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
-import 'package:pier_pasteleria/data/services/api_service.dart';
-import 'package:pier_pasteleria/data/services/pasarela_pago.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
+import 'package:pier_reposteria/app.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/config/dependencies.dart';
+import 'package:pier_reposteria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/data/services/api_service.dart';
+import 'package:pier_reposteria/data/services/pasarela_pago.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 const _usuario = String.fromEnvironment('USUARIO_PRUEBA');

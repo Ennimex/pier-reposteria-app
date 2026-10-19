@@ -5,8 +5,8 @@
 // capturado en el panel. Si el backend falla se quedan los textos por defecto
 // (la pantalla nunca muestra error).
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 
 class AboutUsViewModel extends ChangeNotifier {
   /// [anioActual] solo se pasa en pruebas (años de experiencia).

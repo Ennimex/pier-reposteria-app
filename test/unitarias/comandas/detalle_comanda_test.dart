@@ -2,10 +2,10 @@
 // «Enterado» de producción (#128): modelo, repositorio y ViewModel contra el
 // backend falso.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/comandas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/comandas/view_model/detalle_comanda_view_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/comandas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/ui/comandas/view_model/detalle_comanda_view_model.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';

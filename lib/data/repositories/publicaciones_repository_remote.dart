@@ -3,12 +3,12 @@
 // Implementación HTTP de PublicacionesRepository. Recibe el ApiClient por
 // constructor: en la app, el ApiService único de lib/config/dependencies.dart;
 // en pruebas, FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/publicaciones_repository.dart';
-import 'package:pier_pasteleria/data/repositories/respuesta_api.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/publicaciones_repository.dart';
+import 'package:pier_reposteria/data/repositories/respuesta_api.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/domain/models/publicacion.dart';
 
 /// Implementación de [PublicacionesRepository] contra el backend vía
 /// [ApiClient].

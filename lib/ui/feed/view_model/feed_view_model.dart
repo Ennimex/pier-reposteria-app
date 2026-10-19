@@ -8,9 +8,9 @@
 // como promoción. «Me encanta» se marca al instante y queda lo que diga el
 // servidor (#133). Lo crea HomeScreen solo con sesión de cliente.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/publicaciones_repository.dart';
-import 'package:pier_pasteleria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/publicaciones_repository.dart';
+import 'package:pier_reposteria/domain/models/publicacion.dart';
 
 /// Una promoción después de cada tantas publicaciones.
 const publicacionesPorPromocion = 5;

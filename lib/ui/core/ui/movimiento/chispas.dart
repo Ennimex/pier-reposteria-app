@@ -10,8 +10,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 /// Ráfaga de chispas. Va encima del contenido, normalmente como
 /// `Positioned.fill(child: Chispas())` dentro de un Stack: ocupa todo el

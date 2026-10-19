@@ -4,7 +4,7 @@
 // GET /api/configuracion/legales -> config{privacidad, terminos, reembolsos}
 // (texto plano, misma fuente que Legales.tsx). Cada campo es null si no se
 // capturó; la app muestra entonces sus secciones por defecto.
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_reposteria/utils/config_format.dart';
 
 class TextosLegales {
   const TextosLegales({this.privacidad, this.terminos, this.reembolsos});

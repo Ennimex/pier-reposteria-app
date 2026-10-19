@@ -2,10 +2,10 @@
 // tipado (MVVM, Fase 5) y el modelo Notificacion, sin red: FakeApiClient
 // registra cada llamada.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/notificaciones_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/notificacion.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/notificaciones_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/notificacion.dart';
 
 import '../../fakes/fake_api_client.dart';
 

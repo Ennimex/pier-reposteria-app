@@ -10,10 +10,10 @@
 // suave. El mensaje a pantalla completa entra en cascada.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/notificacion.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/movimiento_pedidos.dart';
+import 'package:pier_reposteria/domain/models/notificacion.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/orders/widgets/movimiento_pedidos.dart';
 
 /// Un aviso: ícono según su tipo, título, mensaje (2 líneas) y [cuando].
 class NotificacionTarjeta extends StatelessWidget {

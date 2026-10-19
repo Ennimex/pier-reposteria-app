@@ -3,22 +3,22 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
-import 'package:pier_pasteleria/ui/more/view_model/profile_view_model.dart';
-import 'package:pier_pasteleria/ui/more/widgets/edit_profile_screen.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/orders_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
+import 'package:pier_reposteria/ui/more/view_model/profile_view_model.dart';
+import 'package:pier_reposteria/ui/more/widgets/edit_profile_screen.dart';
+import 'package:pier_reposteria/ui/orders/widgets/orders_screen.dart';
+import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {

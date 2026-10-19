@@ -7,13 +7,13 @@
 // derecha y su foto vuela al detalle que abren.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/product_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/core/ui/tarjeta_producto_angosta.dart';
-import 'package:pier_pasteleria/ui/products/widgets/detalle_badges.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/ui/core/state/product_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/tarjeta_producto_angosta.dart';
+import 'package:pier_reposteria/ui/products/widgets/detalle_badges.dart';
 import 'package:provider/provider.dart';
 
 class DetalleRecomendaciones extends StatelessWidget {

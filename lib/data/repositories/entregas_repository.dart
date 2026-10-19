@@ -6,7 +6,7 @@
 // Contrato (Fase 3.5): vistas y ViewModels dependen de esta clase abstracta;
 // la implementación HTTP es EntregasRepositoryRemote, registrada una sola vez
 // en lib/config/dependencies.dart.
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
 
 abstract class EntregasRepository {
   /// GET /entregas/mis-entregas: las entregas del repartidor (en curso y las

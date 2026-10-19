@@ -4,14 +4,14 @@
 // siempre: al regresar de ahí no se cruzan fotos).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/more/view_model/profile_view_model.dart';
-import 'package:pier_pasteleria/ui/more/widgets/profile_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/detalle_galeria.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/more/view_model/profile_view_model.dart';
+import 'package:pier_reposteria/ui/more/widgets/profile_screen.dart';
+import 'package:pier_reposteria/ui/products/widgets/detalle_galeria.dart';
+import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';

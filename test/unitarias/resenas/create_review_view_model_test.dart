@@ -2,10 +2,10 @@
 // Fase 3) sin red: el repositorio manda POST /resenas y el ViewModel valida
 // y envía.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
-import 'package:pier_pasteleria/ui/reviews/view_model/create_review_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
+import 'package:pier_reposteria/ui/reviews/view_model/create_review_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

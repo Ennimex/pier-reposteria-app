@@ -2,8 +2,8 @@
 //
 // Estado de «Verifica tu correo» (MVVM, Fase 5): validar el código de 6
 // dígitos (abre sesión) y reenviarlo.
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/auth_base_view_model.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository.dart';
+import 'package:pier_reposteria/ui/auth/view_model/auth_base_view_model.dart';
 
 class VerifyEmailViewModel extends AuthBaseViewModel {
   VerifyEmailViewModel({required AuthRepository repo, required this.email})

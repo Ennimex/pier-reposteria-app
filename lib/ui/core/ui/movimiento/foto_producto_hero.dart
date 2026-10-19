@@ -10,8 +10,8 @@
 // Funciona porque MainScreen da un HeroController a cada pestaña. Con
 // movimiento reducido no hay vuelo (push normal).
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class FotoProductoHero extends StatelessWidget {
   const FotoProductoHero({

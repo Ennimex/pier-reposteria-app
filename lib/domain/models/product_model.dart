@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 // lib/data/models/product_model.dart
 class Product {
   final String id;

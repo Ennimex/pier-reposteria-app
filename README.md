@@ -82,7 +82,7 @@ La app sigue la arquitectura MVVM de la
   permite probarlo sin red con `test/fakes/fake_api_client.dart`.
 - **ui** pinta y navega; el estado global vive en `ui/core/state`. Los ViewModels por
   pantalla (`ui/<función>/view_model/`) llegan en la siguiente fase.
-- Los imports son absolutos: `package:pier_pasteleria/...`.
+- Los imports son absolutos: `package:pier_reposteria/...`.
 
 ## Requisitos previos
 

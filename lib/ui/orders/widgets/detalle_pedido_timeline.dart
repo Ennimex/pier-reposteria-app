@@ -11,12 +11,12 @@ import 'dart:ui' show clampDouble;
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/orders/view_model/order_detail_view_model.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/estado_pedido.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/movimiento_pedidos.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/orders/view_model/order_detail_view_model.dart';
+import 'package:pier_reposteria/ui/orders/widgets/estado_pedido.dart';
+import 'package:pier_reposteria/ui/orders/widgets/movimiento_pedidos.dart';
 
 class DetallePedidoTimeline extends StatelessWidget {
   const DetallePedidoTimeline({

@@ -9,10 +9,10 @@
 // lo lea del JWT bastará con cambiar `post` por `postAuth` aquí.
 import 'dart:async';
 
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/demanda_repository.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// Implementación de [DemandaRepository] contra el backend vía [ApiClient].
 class DemandaRepositoryRemote implements DemandaRepository {

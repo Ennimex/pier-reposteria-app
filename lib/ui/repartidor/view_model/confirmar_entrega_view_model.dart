@@ -3,9 +3,9 @@
 // Estado de «Confirmar entrega» (MVVM, Fase 5): la foto de evidencia
 // opcional y el envío. Si la foto no sube no se bloquea la entrega: se
 // confirma sin evidencia y la vista lo avisa ([fotoSinSubir]).
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/accion_entrega_view_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/accion_entrega_view_model.dart';
 
 class ConfirmarEntregaViewModel extends AccionEntregaViewModel {
   ConfirmarEntregaViewModel({

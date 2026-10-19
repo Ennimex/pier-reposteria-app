@@ -7,9 +7,9 @@
 // al mismo ritmo que el total que va debajo.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/domain/models/cart_item_model.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 /// «$90 c/u» y, si la línea tiene descuento, el precio de lista tachado.
 class PrecioUnitario extends StatelessWidget {

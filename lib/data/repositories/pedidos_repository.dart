@@ -11,8 +11,8 @@
 // obtenerPedido, cancelarPedido) lanzan
 // ApiException si el
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
 
 abstract class PedidosRepository {
   /// GET /pedidos/mis-pedidos

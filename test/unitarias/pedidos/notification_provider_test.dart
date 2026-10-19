@@ -4,10 +4,10 @@
 // sondeo cada 2 minutos se prueba con tiempo simulado en
 // test/widget/notifications/notifications_screen_test.dart.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/notificaciones_repository_remote.dart';
-import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/notificaciones_repository_remote.dart';
+import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 
 import '../../fakes/fake_api_client.dart';
 

@@ -7,7 +7,7 @@
 // cierra el espacio. Se apoya en AnimatedSize, que recorta solo mientras
 // crece (en reposo no recorta sombras).
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class Aparicion extends StatefulWidget {
   const Aparicion({
