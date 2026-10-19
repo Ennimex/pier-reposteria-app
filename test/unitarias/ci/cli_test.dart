@@ -333,6 +333,54 @@ void main() {
     });
   });
 
+  // #22: release.yml para la publicación si el tag no es la versión del
+  // pubspec y toma de aquí las notas de la Release.
+  group('version', () {
+    test('el tag coincide con el pubspec', () {
+      _escribir('pubspec.yaml', 'name: x\nversion: 1.2.0+3\n');
+
+      expect(_ejecutar(['version', 'v1.2.0']), 0);
+      expect(_salida.toString(), contains('✅'));
+      expect(_resumen.readAsStringSync(), contains('v1.2.0'));
+    });
+
+    test('un tag distinto detiene la publicación', () {
+      _escribir('pubspec.yaml', 'name: x\nversion: 1.2.0+3\n');
+
+      expect(_ejecutar(['version', 'v1.3.0']), 1);
+      expect(_salida.toString(), contains('❌'));
+    });
+
+    test('sin tag explica el uso', () {
+      expect(_ejecutar(['version']), 64);
+    });
+  });
+
+  group('notas', () {
+    test('escribe las notas de los commits del archivo', () {
+      _escribir(
+        'build/resultados/commits.txt',
+        'Merge pull request #165 from Ennimex/feat/sentry\n'
+            'feat(monitoreo): errores y rendimiento en Sentry\n',
+      );
+
+      expect(
+        _ejecutar(['notas', 'v1.2.0', 'build/resultados/commits.txt']),
+        0,
+      );
+      expect(
+        _salida.toString(),
+        '## Pier Repostería v1.2.0\n\n### ✨ Nuevo\n\n'
+        '- **monitoreo:** errores y rendimiento en Sentry\n',
+      );
+    });
+
+    test('sin la lista de commits no publica notas vacías', () {
+      expect(_ejecutar(['notas', 'v1.2.0', 'no-existe.txt']), 1);
+      expect(_salida.toString(), contains('no-existe.txt'));
+    });
+  });
+
   test('un comando desconocido explica el uso', () {
     expect(_ejecutar(['otro']), 64);
     expect(_salida.toString(), contains('Comandos:'));

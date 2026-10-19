@@ -12,6 +12,7 @@ import 'esfuerzo.dart';
 import 'markdown.dart';
 import 'pruebas.dart';
 import 'regresion.dart';
+import 'release.dart';
 import 'rendimiento.dart';
 
 // Archivos que dejan los pasos de los workflows.
@@ -42,11 +43,17 @@ Comandos:
   regresion --integracion <r> --analisis <r> --suite <r> --apk <r>
       Tabla de etapas de regresion.yml; <r> es steps.<id>.outcome (success,
       failure, skipped o cancelled).
+  version <tag>
+      Comprueba que el tag (vX.Y.Z) sea la versión de pubspec.yaml.
+  notas <tag> <commits.txt>
+      Notas de la Release a partir de git log --format=%s desde el tag
+      anterior.
 ''';
 
 /// Devuelve el código de salida: 0 aunque las pruebas hayan fallado (eso ya
-/// lo marca su propio paso), 1 si falta la línea base y 64 si el comando
-/// está mal escrito.
+/// lo marca su propio paso); 1 si falta la línea base, si el tag no es la
+/// versión del pubspec o si falta la lista de commits; 64 si el comando está
+/// mal escrito.
 int ejecutar(
   List<String> argumentos, {
   required String raiz,
@@ -62,6 +69,8 @@ int ejecutar(
     'tiempos' => _tiempos(opciones, archivos),
     'monkey' => _monkey(opciones, archivos),
     'regresion' => _regresion(opciones, archivos, entorno),
+    'version' => _version(opciones, archivos),
+    'notas' => _notas(opciones, archivos),
     _ => null,
   };
   if (resultado == null) {
@@ -301,6 +310,30 @@ int ejecutar(
     ),
     0,
   );
+}
+
+(String, int)? _version(_Argumentos opciones, _Archivos archivos) {
+  final tag = opciones.posicional(1);
+  if (tag == null) return null;
+  const titulo = '### 🏷️ Versión\n\n';
+  final error = diferenciaDeVersion(tag, archivos.leer('pubspec.yaml') ?? '');
+  if (error != null) return ('$titulo> ❌ $error\n', 1);
+  return ('$titulo✅ El tag `$tag` es la versión de pubspec.yaml.\n', 0);
+}
+
+(String, int)? _notas(_Argumentos opciones, _Archivos archivos) {
+  final tag = opciones.posicional(1);
+  final ruta = opciones.posicional(2);
+  if (tag == null || ruta == null) return null;
+  final commits = archivos.leer(ruta);
+  if (commits == null) {
+    return (
+      '### 📝 Notas de la versión\n\n> ❌ No se generó la lista de commits '
+          '(`$ruta`): revisa el log del paso.\n',
+      1,
+    );
+  }
+  return (notasDeRelease(tag, commits.split('\n')), 0);
 }
 
 String _nombreDe(String ruta) => ruta.replaceAll(r'\', '/').split('/').last;

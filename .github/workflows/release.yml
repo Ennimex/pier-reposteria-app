@@ -1,0 +1,174 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: PUBLICAR UNA VERSIÓN
+#
+# Qué hace: arma el APK final de la app (release), lo firma con la llave del
+#   equipo, con Sentry encendido, y lo publica en GitHub Releases junto con
+#   la lista de cambios desde la versión anterior.
+# Para qué sirve: que cada versión quede guardada y se pueda instalar en los
+#   celulares de los dueños (grupo canary) antes de subirla a Play Store. La
+#   estrategia completa está en docs/LIBERACION.md.
+# Cuándo corre: al subir un tag vX.Y.Z (git tag v1.2.0 && git push origin
+#   v1.2.0). También a mano (Actions → Publicar versión → Run workflow): así
+#   solo arma y firma el APK, sin publicar nada; sirve para probar la llave.
+# Antes de crear el tag: subir la versión en pubspec.yaml y en
+#   lib/config/app_version.dart. Si el tag no coincide, no se publica nada.
+# Secretos (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64   la llave (.jks) en base64
+#   ANDROID_KEYSTORE_PASSWORD la contraseña de la llave (storePassword)
+#   ANDROID_KEY_ALIAS         el alias (keyAlias)
+#   ANDROID_KEY_PASSWORD      la contraseña del alias (keyPassword)
+#   SENTRY_DSN                el DSN del proyecto flutter en Sentry (#23)
+#   Sin los cuatro de la llave el workflow se detiene: nunca publica un APK
+#   firmado con la llave de pruebas.
+# Si falla: no se publica nada. Revisa el paso en rojo; el Summary explica si
+#   fue la versión, la llave o la firma.
+# Dónde ver el resultado: la Release en la página del repositorio (con el APK
+#   adjunto) y, en la corrida, el Summary con las notas de la versión.
+# Issues: #22 (este pipeline), #23 (Sentry), #24 (métricas para decidir el
+#   rollout).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Publicar versión
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  # Huella SHA-1 de la llave de release del equipo (es pública: la misma que
+  # está registrada en Google Cloud para el inicio con Google).
+  HUELLA_RELEASE: F3:A4:02:DF:C1:97:80:28:A1:D4:17:23:66:40:2C:64:AD:C3:B0:C1
+
+jobs:
+  publicar:
+    name: APK firmado y Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Con todo el historial y los tags, para encontrar la versión anterior.
+      - name: Descargar el código
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Instalar Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # El nombre de la versión: el tag, o «prueba-<commit>» si se corrió a
+      # mano.
+      - name: Nombre de la versión
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "nombre=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "nombre=prueba-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # «Acerca de» muestra la versión del pubspec: si el tag dice otra cosa,
+      # la Release mentiría.
+      - name: Comprobar que el tag sea la versión del pubspec
+        if: github.ref_type == 'tag'
+        run: dart run tool/resumen_pruebas.dart version "$GITHUB_REF_NAME"
+
+      # android/app/build.gradle.kts firma con la llave que diga
+      # android/key.properties; aquí se arma ese archivo con los secretos.
+      - name: Preparar la llave de firma
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          faltan=""
+          for secreto in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            [ -n "${!secreto}" ] || faltan="$faltan $secreto"
+          done
+          if [ -n "$faltan" ]; then
+            echo "::error::Faltan secretos de la llave:$faltan"
+            echo "### ❌ Faltan secretos de la llave:$faltan" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/llave-release.jks
+          {
+            echo "storeFile=llave-release.jks"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
+
+      - name: Compilar el APK de release
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          if [ -z "$SENTRY_DSN" ]; then
+            echo "::warning::Sin SENTRY_DSN: esta versión no reportará errores a Sentry."
+          fi
+          flutter build apk --release --flavor prod --dart-define=SENTRY_DSN="$SENTRY_DSN"
+
+      # Si la llave no se cargó, Gradle firma con la de pruebas sin avisar.
+      # Se compara la huella del APK con la del equipo antes de publicarlo.
+      - name: Verificar que el APK lleve la firma del equipo
+        env:
+          VERSION: ${{ steps.version.outputs.nombre }}
+        run: |
+          apk=build/app/outputs/flutter-apk/app-prod-release.apk
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          huella=$("$apksigner" verify --print-certs "$apk" \
+            | grep -m1 'certificate SHA-1 digest' | awk '{print $NF}' \
+            | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')
+          if [ "$huella" != "$HUELLA_RELEASE" ]; then
+            echo "::error::El APK no está firmado con la llave del equipo (huella $huella)."
+            echo "### ❌ El APK no está firmado con la llave del equipo" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          cp "$apk" "build/pier-reposteria-$VERSION.apk"
+          echo "### 🔏 APK firmado con la llave del equipo ($(du -h "$apk" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      # Los commits desde el tag anterior (Conventional Commits), agrupados en
+      # Nuevo, Correcciones y Mantenimiento. También quedan en el Summary.
+      - name: Notas de la versión
+        env:
+          VERSION: ${{ steps.version.outputs.nombre }}
+        run: |
+          anterior=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          mkdir -p build/resultados
+          git log --format=%s "${anterior:+$anterior..}HEAD" > build/resultados/commits.txt
+          dart run tool/resumen_pruebas.dart notas "$VERSION" \
+            build/resultados/commits.txt > build/resultados/notas.md
+
+      - name: Publicar la Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v3
+        with:
+          name: Pier Repostería ${{ github.ref_name }}
+          body_path: build/resultados/notas.md
+          files: build/pier-reposteria-${{ github.ref_name }}.apk
+          fail_on_unmatched_files: true
+
+      # Corrida a mano: el APK firmado queda 7 días en Artifacts, sin Release.
+      - name: Guardar el APK de prueba
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk-release-${{ steps.version.outputs.nombre }}
+          path: build/pier-reposteria-*.apk
+          if-no-files-found: error
+          retention-days: 7
