@@ -6,7 +6,7 @@
 // pantalla siempre leen el valor final. Usa cifras tabulares para que el
 // ancho no cambie a cada cuadro.
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class MontoAnimado extends StatefulWidget {
   const MontoAnimado({

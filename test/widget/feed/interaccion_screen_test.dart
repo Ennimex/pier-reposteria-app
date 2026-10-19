@@ -4,9 +4,9 @@
 // respuesta de Pier, comentar, antispam, borrar los propios).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/data/repositories/publicaciones_repository_remote.dart';
-import 'package:pier_pasteleria/ui/feed/view_model/feed_view_model.dart';
-import 'package:pier_pasteleria/ui/feed/widgets/feed_sliver.dart';
+import 'package:pier_reposteria/data/repositories/publicaciones_repository_remote.dart';
+import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
+import 'package:pier_reposteria/ui/feed/widgets/feed_sliver.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../fakes/publicaciones_json.dart';

@@ -1,6 +1,6 @@
 {
-    "name": "pier_pasteleria",
-    "short_name": "pier_pasteleria",
+    "name": "pier_reposteria",
+    "short_name": "pier_reposteria",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

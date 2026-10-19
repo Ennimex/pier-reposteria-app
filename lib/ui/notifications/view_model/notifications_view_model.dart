@@ -7,10 +7,10 @@
 // su sondeo; este ViewModel lo observa y devuelve a la vista el motivo de
 // cada rechazo del backend.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/domain/models/notificacion.dart';
-import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/utils/formatters.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/domain/models/notificacion.dart';
+import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
+import 'package:pier_reposteria/utils/formatters.dart';
 
 /// Un bloque de la lista: «Hoy», «Ayer» o «Anteriores».
 typedef GrupoNotificaciones = ({

@@ -9,14 +9,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/comandas/view_model/agenda_comandas_view_model.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/agenda_comandas_partes.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/detalle_comanda_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/ui/comandas/view_model/agenda_comandas_view_model.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 

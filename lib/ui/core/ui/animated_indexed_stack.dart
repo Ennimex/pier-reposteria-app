@@ -15,7 +15,7 @@
 // pestaña se ven la primera vez que se abre) y sin Hero (HeroMode: nada de
 // etiquetas repetidas entre pestañas).
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class AnimatedIndexedStack extends StatefulWidget {
   const AnimatedIndexedStack({

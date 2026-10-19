@@ -10,10 +10,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/notificaciones_repository.dart';
-import 'package:pier_pasteleria/domain/models/notificacion.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/notificaciones_repository.dart';
+import 'package:pier_reposteria/domain/models/notificacion.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 class NotificationProvider extends ChangeNotifier {
   NotificationProvider({required NotificacionesRepository repo}) : _repo = repo;

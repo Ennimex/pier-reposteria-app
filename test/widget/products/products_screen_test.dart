@@ -7,10 +7,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
+import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
 import 'package:provider/provider.dart';
 

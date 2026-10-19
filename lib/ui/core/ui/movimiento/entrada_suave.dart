@@ -7,7 +7,7 @@
 // muestra. Nunca usa Timers (las pruebas que terminan en un pump() quedan
 // limpias), nunca bloquea toques y no se repite al reconstruir.
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 /// Entrada de un bloque. Para una cascada se da `orden` 0, 1, 2… (cada
 /// escalón espera AppMovimiento.paso; del séptimo en adelante entran juntos).

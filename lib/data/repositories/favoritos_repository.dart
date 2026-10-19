@@ -9,7 +9,7 @@
 //
 // Fase 3: los métodos tipados (listarIds, listarProductos, quitarFavorito) lanzan ApiException si el
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
 
 abstract class FavoritosRepository {
   /// GET /favoritos/ids: solo ids (para pintar corazones).

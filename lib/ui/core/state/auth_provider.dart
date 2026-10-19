@@ -5,7 +5,7 @@
 // para entrar: los ViewModels de ui/auth/ llaman al AuthRepository y, con el
 // usuario que devuelve, la vista abre aquí la sesión con [abrirSesion].
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository.dart';
 
 class AuthProvider with ChangeNotifier {
   AuthProvider({required AuthRepository auth}) : _authService = auth;

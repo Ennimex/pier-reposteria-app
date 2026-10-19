@@ -4,7 +4,7 @@
 // migración 011). Fuente: /api/publicaciones (routes/publicacionesRoutes.js):
 // el feed por páginas con cursor, las promociones vigentes para intercalar y
 // los productos sugeridos. Los precios llegan como texto (NUMERIC).
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
 
 double _precio(Object? valor) => double.tryParse(valor?.toString() ?? '') ?? 0;
 

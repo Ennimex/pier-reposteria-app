@@ -5,14 +5,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pier_pasteleria/app.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/config/dependencies.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/verify_email_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/products/widgets/products_screen.dart';
+import 'package:pier_reposteria/app.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/config/dependencies.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_reposteria/ui/auth/widgets/verify_email_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'fakes/fake_api_client.dart';

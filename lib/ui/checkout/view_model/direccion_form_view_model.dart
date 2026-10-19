@@ -4,10 +4,10 @@
 // 4): colonias con cobertura y su tarifa, la elegida y el guardado. Los
 // textos viven en los controladores de la vista.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/direcciones_repository.dart';
-import 'package:pier_pasteleria/domain/models/direccion_model.dart';
-import 'package:pier_pasteleria/domain/models/zona_colonia.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/direcciones_repository.dart';
+import 'package:pier_reposteria/domain/models/direccion_model.dart';
+import 'package:pier_reposteria/domain/models/zona_colonia.dart';
 
 class DireccionFormViewModel extends ChangeNotifier {
   DireccionFormViewModel({

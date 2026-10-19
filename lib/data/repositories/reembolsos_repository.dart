@@ -9,7 +9,7 @@
 //
 // Fase 3: los métodos tipados (listarMisReembolsos, solicitar) lanzan
 // ApiException si el backend falla.
-import 'package:pier_pasteleria/domain/models/reembolso.dart';
+import 'package:pier_reposteria/domain/models/reembolso.dart';
 
 abstract class ReembolsosRepository {
   /// GET /reembolsos/mis-reembolsos

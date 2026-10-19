@@ -8,12 +8,12 @@
 // hunden al tocarlas.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
-import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/home/widgets/movimiento_inicio.dart';
+import 'package:pier_reposteria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_reposteria/utils/config_format.dart';
 
 /// Sección de sucursales del inicio.
 class HomeSucursal extends StatelessWidget {

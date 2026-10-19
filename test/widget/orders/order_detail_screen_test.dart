@@ -3,12 +3,12 @@
 // de cancelar, sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/orders/view_model/order_detail_view_model.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/estado_pedido.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/order_detail_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/ui/orders/view_model/order_detail_view_model.dart';
+import 'package:pier_reposteria/ui/orders/widgets/estado_pedido.dart';
+import 'package:pier_reposteria/ui/orders/widgets/order_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';

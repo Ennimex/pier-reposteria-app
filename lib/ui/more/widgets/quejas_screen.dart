@@ -3,14 +3,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/quejas_repository.dart';
-import 'package:pier_pasteleria/domain/models/queja.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/more/view_model/quejas_view_model.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/data/repositories/quejas_repository.dart';
+import 'package:pier_reposteria/domain/models/queja.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/more/view_model/quejas_view_model.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 // Color e icono de cada estado (presentación; el enum vive en domain/).

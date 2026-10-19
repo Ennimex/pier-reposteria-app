@@ -6,7 +6,7 @@
 // así que vale para todos los Navigator.push de la app, también en los
 // Navigators de las pestañas.
 import 'package:flutter/cupertino.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class TransicionPaginaPier extends PageTransitionsBuilder {
   const TransicionPaginaPier();

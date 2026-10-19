@@ -6,9 +6,9 @@
 // repartidor, avisa al panel ([alCambiar]) cuando la entrega cambió de
 // estado y no notifica a la vista si ya se cerró.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository.dart';
-import 'package:pier_pasteleria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository.dart';
+import 'package:pier_reposteria/domain/models/entrega_model.dart';
 
 /// Cómo terminó una acción del repartidor y qué decirle.
 typedef ResultadoEntrega = ({bool ok, String mensaje});

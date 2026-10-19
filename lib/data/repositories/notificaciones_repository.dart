@@ -5,7 +5,7 @@
 // Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
 // clase abstracta; la implementación HTTP es NotificacionesRepositoryRemote, registrada
 // una sola vez en lib/config/dependencies.dart.
-import 'package:pier_pasteleria/domain/models/notificacion.dart';
+import 'package:pier_reposteria/domain/models/notificacion.dart';
 
 abstract class NotificacionesRepository {
   /// GET /notificaciones: las 50 más recientes, la más nueva primero.

@@ -10,11 +10,11 @@
 // Fase 4: el catálogo usa listarCategorias, filtrosDelCatalogo y
 // opcionesDeLaCategoria, y el detalle usa detalleDelProducto y
 // recomendacionesDe; todos tipados y con ApiException si el backend falla.
-import 'package:pier_pasteleria/domain/models/category_model.dart';
-import 'package:pier_pasteleria/domain/models/detalle_producto.dart';
-import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/domain/models/promociones_inicio.dart';
+import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/detalle_producto.dart';
+import 'package:pier_reposteria/domain/models/filtros_catalogo.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/promociones_inicio.dart';
 
 abstract class ProductosRepository {
   /// GET /productos: catálogo activo con precios y stock_online.

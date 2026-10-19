@@ -5,11 +5,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/products/widgets/product_detail_screen.dart';
-import 'package:pier_pasteleria/ui/reviews/widgets/product_reviews_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
+import 'package:pier_reposteria/ui/reviews/widgets/product_reviews_screen.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';

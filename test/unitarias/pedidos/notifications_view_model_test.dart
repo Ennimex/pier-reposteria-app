@@ -3,11 +3,11 @@
 // día (Hoy, Ayer, Anteriores), dice «hace cuánto» y reenvía al
 // NotificationProvider compartido marcar una o todas como leídas.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/notificaciones_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/notificacion.dart';
-import 'package:pier_pasteleria/ui/core/state/notification_provider.dart';
-import 'package:pier_pasteleria/ui/notifications/view_model/notifications_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/notificaciones_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/notificacion.dart';
+import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
+import 'package:pier_reposteria/ui/notifications/view_model/notifications_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

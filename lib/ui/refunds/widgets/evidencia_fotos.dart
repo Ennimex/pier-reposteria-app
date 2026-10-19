@@ -7,7 +7,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 
 /// Selector del formulario. La cámara y la galería las abre la pantalla
 /// ([onCamara], [onGaleria]); aquí solo se pintan las rutas elegidas.

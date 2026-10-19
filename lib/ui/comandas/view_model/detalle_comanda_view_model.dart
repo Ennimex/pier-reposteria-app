@@ -9,10 +9,10 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/comandas_repository.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/utils/command.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/comandas_repository.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/utils/command.dart';
 
 /// Lo que cambió entre la versión que se estaba leyendo (desde) y la que
 /// hay ahora (hasta).

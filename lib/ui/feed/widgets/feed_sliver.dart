@@ -9,13 +9,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/domain/models/publicacion.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/feed/view_model/feed_view_model.dart';
-import 'package:pier_pasteleria/ui/feed/widgets/comentarios_sheet.dart';
-import 'package:pier_pasteleria/ui/feed/widgets/tarjeta_publicacion.dart';
-import 'package:pier_pasteleria/utils/moneda.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
+import 'package:pier_reposteria/ui/feed/widgets/comentarios_sheet.dart';
+import 'package:pier_reposteria/ui/feed/widgets/tarjeta_publicacion.dart';
+import 'package:pier_reposteria/utils/moneda.dart';
 
 /// Agrega [producto] (tamaño chico) al carrito con [precio] de referencia.
 typedef AgregarAlCarrito =

@@ -6,7 +6,7 @@
 // (misma fuente que Nosotros.tsx). Cada campo es null/vacío si no se capturó;
 // la app conserva entonces su texto por defecto. timeline/equipo de la web no
 // se muestran en la app.
-import 'package:pier_pasteleria/utils/config_format.dart';
+import 'package:pier_reposteria/utils/config_format.dart';
 
 class InfoNosotros {
   const InfoNosotros({

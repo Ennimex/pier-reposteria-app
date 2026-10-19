@@ -4,7 +4,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/data/services/storage_service.dart';
+import 'package:pier_reposteria/data/services/storage_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _token = 'pierreposteria_token';

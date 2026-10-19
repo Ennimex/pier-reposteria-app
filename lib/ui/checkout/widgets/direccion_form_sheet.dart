@@ -13,11 +13,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/direccion_model.dart';
-import 'package:pier_pasteleria/ui/checkout/view_model/direccion_form_view_model.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/tamano_animado.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/domain/models/direccion_model.dart';
+import 'package:pier_reposteria/ui/checkout/view_model/direccion_form_view_model.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/tamano_animado.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:provider/provider.dart';
 
 /// Abre la hoja y devuelve la dirección guardada (null si se cerró).

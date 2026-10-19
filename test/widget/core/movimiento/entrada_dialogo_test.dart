@@ -4,7 +4,7 @@
 // falla fuera de una ruta.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 import '../../../helpers/movimiento.dart';
 

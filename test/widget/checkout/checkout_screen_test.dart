@@ -4,16 +4,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/direcciones_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/pagos_repository_remote.dart';
-import 'package:pier_pasteleria/data/services/pasarela_pago.dart';
-import 'package:pier_pasteleria/ui/checkout/view_model/checkout_view_model.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/checkout_screen.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/direccion_form_sheet.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/order_success_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/direcciones_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
+import 'package:pier_reposteria/data/services/pasarela_pago.dart';
+import 'package:pier_reposteria/ui/checkout/view_model/checkout_view_model.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/checkout_screen.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/direccion_form_sheet.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/order_success_screen.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';

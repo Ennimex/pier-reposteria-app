@@ -5,10 +5,10 @@
 // se reemplaza por las tarjetas que salen de él. Si el backend falla se quedan
 // las de la app (la pantalla nunca muestra error).
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/domain/models/textos_legales.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/domain/models/textos_legales.dart';
 
 class LegalViewModel extends ChangeNotifier {
   LegalViewModel({required ConfiguracionRepository repo}) : _repo = repo;

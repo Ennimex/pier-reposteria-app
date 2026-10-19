@@ -2,11 +2,11 @@
 // sin red: el repositorio tipa /resenas/mis-resenas y edita, y el ViewModel
 // lleva la lista y la edición.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/mi_resena.dart';
-import 'package:pier_pasteleria/ui/reviews/view_model/my_reviews_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/mi_resena.dart';
+import 'package:pier_reposteria/ui/reviews/view_model/my_reviews_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

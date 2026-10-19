@@ -7,9 +7,9 @@
 // del backend. Mientras una línea espera respuesta no acepta otro cambio, para
 // que las cantidades no lleguen al backend en desorden.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/domain/models/cart_item_model.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 
 class CartViewModel extends ChangeNotifier {
   CartViewModel({

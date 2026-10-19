@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/app_version.dart';
+import 'package:pier_reposteria/config/app_version.dart';
 
 void main() {
   test('AppVersion coincide con version: de pubspec.yaml', () {

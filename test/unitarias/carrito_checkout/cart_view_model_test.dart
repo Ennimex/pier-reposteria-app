@@ -3,10 +3,10 @@
 // CartProvider, devuelve el motivo de cada rechazo y bloquea la línea
 // mientras espera al backend.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository_remote.dart';
-import 'package:pier_pasteleria/ui/cart/view_model/cart_view_model.dart';
-import 'package:pier_pasteleria/ui/core/state/cart_provider.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/carrito_repository_remote.dart';
+import 'package:pier_reposteria/ui/cart/view_model/cart_view_model.dart';
+import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 
 import '../../fakes/fake_api_client.dart';
 

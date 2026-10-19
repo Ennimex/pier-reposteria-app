@@ -3,15 +3,15 @@
 // Implementación HTTP de ProductosRepository. Recibe el ApiClient por constructor:
 // en la app, el ApiService único de lib/config/dependencies.dart; en
 // pruebas, FakeApiClient (test/fakes/).
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/domain/models/category_model.dart';
-import 'package:pier_pasteleria/domain/models/detalle_producto.dart';
-import 'package:pier_pasteleria/domain/models/filtros_catalogo.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/domain/models/promociones_inicio.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/detalle_producto.dart';
+import 'package:pier_reposteria/domain/models/filtros_catalogo.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/domain/models/promociones_inicio.dart';
 
 /// Implementación de [ProductosRepository] contra el backend vía [ApiClient].
 class ProductosRepositoryRemote implements ProductosRepository {

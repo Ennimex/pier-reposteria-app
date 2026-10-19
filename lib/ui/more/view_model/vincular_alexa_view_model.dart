@@ -6,8 +6,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository.dart';
 
 class VincularAlexaViewModel extends ChangeNotifier {
   VincularAlexaViewModel({required CuentaRepository repo}) : _repo = repo;

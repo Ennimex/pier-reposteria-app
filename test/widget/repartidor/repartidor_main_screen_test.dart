@@ -5,13 +5,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/entregas_repository_remote.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/login_screen.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/entrega_detail_screen.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/repartidor_main_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/repartidor_view_model.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/entrega_detail_screen.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/repartidor_main_screen.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';

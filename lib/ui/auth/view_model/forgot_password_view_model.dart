@@ -2,8 +2,8 @@
 //
 // Estado de «¿Olvidaste tu contraseña?» (MVVM, Fase 5): pedir el código de
 // restablecimiento para un correo.
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/auth_base_view_model.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository.dart';
+import 'package:pier_reposteria/ui/auth/view_model/auth_base_view_model.dart';
 
 class ForgotPasswordViewModel extends AuthBaseViewModel {
   ForgotPasswordViewModel({required AuthRepository repo}) : _repo = repo;

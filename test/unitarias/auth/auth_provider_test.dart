@@ -5,9 +5,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';

@@ -11,7 +11,7 @@
 //   api.demorar('/auth/login', const Duration(seconds: 1)); // estado de carga
 //   ...
 //   expect(api.llamo('/resenas/mis-resenas', metodo: 'GET-Auth'), true);
-import 'package:pier_pasteleria/data/services/api_client.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
 
 /// Una llamada registrada por el falso.
 class LlamadaApi {

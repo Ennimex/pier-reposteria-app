@@ -12,9 +12,9 @@
 // lista de pedidos, el banner de inicio) para que se ponga al día sin
 // recargar todo; si no cambió, no se avisa.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
 
 /// Un paso de la línea de tiempo del pedido.
 typedef PasoPedido = ({OrderStatus estado, String etiqueta});

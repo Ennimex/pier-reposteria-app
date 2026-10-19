@@ -3,9 +3,9 @@
 // Estado de «Nueva contraseña» (MVVM, Fase 5): validar el código y la nueva
 // contraseña (mismas reglas que el backend: mín. 6, 1 letra y 1 número) y
 // restablecerla.
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/auth_base_view_model.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/verify_email_view_model.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository.dart';
+import 'package:pier_reposteria/ui/auth/view_model/auth_base_view_model.dart';
+import 'package:pier_reposteria/ui/auth/view_model/verify_email_view_model.dart';
 
 class ResetPasswordViewModel extends AuthBaseViewModel
     with VisibilidadPasswords {

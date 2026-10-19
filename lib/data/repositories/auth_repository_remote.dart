@@ -8,12 +8,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
-import 'package:pier_pasteleria/data/services/storage_service.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/data/services/storage_service.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// Implementación de [AuthRepository] contra el backend vía [ApiClient].
 class AuthRepositoryRemote implements AuthRepository {

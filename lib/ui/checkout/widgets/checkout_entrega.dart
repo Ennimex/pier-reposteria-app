@@ -15,13 +15,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/domain/models/direccion_model.dart';
-import 'package:pier_pasteleria/ui/checkout/view_model/checkout_view_model.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/checkout_partes.dart';
-import 'package:pier_pasteleria/ui/checkout/widgets/tamano_animado.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/domain/models/direccion_model.dart';
+import 'package:pier_reposteria/ui/checkout/view_model/checkout_view_model.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/checkout_partes.dart';
+import 'package:pier_reposteria/ui/checkout/widgets/tamano_animado.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 /// Las dos tarjetas de modalidad.
 class CheckoutModalidad extends StatelessWidget {

@@ -2,15 +2,15 @@
 // producto (MVVM, Fase 4) sin red, más el modelo DetalleProducto y la fecha
 // relativa de las reseñas.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/demanda_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/detalle_producto.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/ui/products/view_model/product_detail_view_model.dart';
-import 'package:pier_pasteleria/ui/products/widgets/detalle_resenas.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/demanda_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/detalle_producto.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/ui/products/view_model/product_detail_view_model.dart';
+import 'package:pier_reposteria/ui/products/widgets/detalle_resenas.dart';
 
 import '../../fakes/fake_api_client.dart';
 

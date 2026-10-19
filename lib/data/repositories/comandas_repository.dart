@@ -5,7 +5,7 @@
 // SesionInvalidaException si la cuenta ya no está vigente.
 // Vistas y ViewModels dependen de esta clase abstracta; la implementación
 // HTTP es ComandasRepositoryRemote, registrada en lib/config/dependencies.dart.
-import 'package:pier_pasteleria/domain/models/comanda.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
 
 /// Resultado de entregar: el mensaje del backend y las áreas que no habían
 /// confirmado (entregar no exige firmas, pero queda dicho).

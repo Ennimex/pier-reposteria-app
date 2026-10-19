@@ -8,7 +8,7 @@
 import 'dart:ui' show clampDouble;
 
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 /// Anima un número y se lo da a [builder]. Para una línea de tiempo,
 /// `valor` puede ser el paso actual (0, 1, 2…): cada segmento i se pinta

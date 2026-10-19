@@ -6,7 +6,7 @@
 // Contrato (Fase 3.5): vistas, ViewModels y providers dependen de esta
 // clase abstracta; la implementación HTTP es CarritoRepositoryRemote, registrada
 // una sola vez en lib/config/dependencies.dart.
-import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
+import 'package:pier_reposteria/domain/models/cart_item_model.dart';
 
 abstract class CarritoRepository {
   /// GET /carrito: las líneas del carrito.

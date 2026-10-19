@@ -1,6 +1,6 @@
 // lib/domain/models/order_model.dart
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 
 enum OrderStatus {
   pending,

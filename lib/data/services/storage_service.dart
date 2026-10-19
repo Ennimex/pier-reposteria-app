@@ -7,7 +7,7 @@
 // y lo borra de ahí.
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {

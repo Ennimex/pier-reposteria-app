@@ -6,9 +6,9 @@
 // cancelación (5 a 300 caracteres), con los textos de la web.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/utils/moneda.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/utils/moneda.dart';
 
 const _motivoMinimo = 5;
 const _motivoMaximo = 300;

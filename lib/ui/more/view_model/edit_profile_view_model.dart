@@ -5,8 +5,8 @@
 // hay cambios) y guarda en el backend. Los TextEditingController y la
 // validación del formulario se quedan en la vista.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/cuenta_repository.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository.dart';
 
 class EditProfileViewModel extends ChangeNotifier {
   /// [usuario] es la sesión actual (AuthProvider.currentUser).

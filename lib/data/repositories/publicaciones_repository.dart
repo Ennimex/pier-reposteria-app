@@ -6,7 +6,7 @@
 // SesionInvalidaException si la cuenta ya no está vigente. La implementación
 // HTTP es PublicacionesRepositoryRemote, registrada en
 // lib/config/dependencies.dart.
-import 'package:pier_pasteleria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/domain/models/publicacion.dart';
 
 abstract class PublicacionesRepository {
   /// GET /publicaciones/feed: de la más nueva a la más vieja; con [despues]

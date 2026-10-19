@@ -5,11 +5,11 @@
 // queda vacía (la pantalla no muestra error, como antes). El carrito no se
 // toca desde aquí: la vista pasa cómo agregar cada producto.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository.dart';
-import 'package:pier_pasteleria/data/repositories/pedidos_repository.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
+import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
 
 /// Agrega al carrito: producto, cantidad, tamaño y precio unitario.
 typedef AgregarAlCarrito = Future<void> Function(

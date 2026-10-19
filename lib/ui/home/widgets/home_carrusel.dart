@@ -22,12 +22,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/slide_hero.dart';
-import 'package:pier_pasteleria/ui/core/state/navigation_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
-import 'package:pier_pasteleria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_reposteria/domain/models/slide_hero.dart';
+import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/home/widgets/movimiento_inicio.dart';
+import 'package:pier_reposteria/ui/public/widgets/contact_screen.dart';
 import 'package:provider/provider.dart';
 
 /// La página que se ve (con decimales mientras se desliza), o [respaldo] si

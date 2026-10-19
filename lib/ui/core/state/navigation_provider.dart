@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 class NavigationProvider extends ChangeNotifier {
   int _selectedIndex = 0;

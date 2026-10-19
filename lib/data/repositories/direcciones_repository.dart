@@ -7,8 +7,8 @@
 // clase abstracta; la implementación HTTP es DireccionesRepositoryRemote, registrada
 // una sola vez en lib/config/dependencies.dart.
 
-import 'package:pier_pasteleria/domain/models/direccion_model.dart';
-import 'package:pier_pasteleria/domain/models/zona_colonia.dart';
+import 'package:pier_reposteria/domain/models/direccion_model.dart';
+import 'package:pier_reposteria/domain/models/zona_colonia.dart';
 
 abstract class DireccionesRepository {
   /// GET /direcciones (del cliente, con tarifa/cobertura por colonia)

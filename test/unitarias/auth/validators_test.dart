@@ -1,7 +1,7 @@
 // test/unitarias/auth/validators_test.dart — reglas de los formularios de login y
 // registro (#16). Los mensajes son los que ve el usuario.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/utils/validators.dart';
+import 'package:pier_reposteria/utils/validators.dart';
 
 void main() {
   group('Validators.email', () {

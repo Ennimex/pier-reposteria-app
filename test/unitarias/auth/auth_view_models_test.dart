@@ -2,13 +2,13 @@
 // #99) sin red: el AuthRepositoryRemote habla con un FakeApiClient y
 // SharedPreferences está simulado.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository_remote.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/forgot_password_view_model.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/login_view_model.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/register_view_model.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/reset_password_view_model.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/verify_email_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_reposteria/ui/auth/view_model/forgot_password_view_model.dart';
+import 'package:pier_reposteria/ui/auth/view_model/login_view_model.dart';
+import 'package:pier_reposteria/ui/auth/view_model/register_view_model.dart';
+import 'package:pier_reposteria/ui/auth/view_model/reset_password_view_model.dart';
+import 'package:pier_reposteria/ui/auth/view_model/verify_email_view_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';

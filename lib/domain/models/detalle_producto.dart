@@ -5,7 +5,7 @@
 // y el total y promedio de calificaciones.
 import 'dart:convert';
 
-import 'package:pier_pasteleria/domain/models/resena_producto.dart';
+import 'package:pier_reposteria/domain/models/resena_producto.dart';
 
 class DetalleProducto {
   const DetalleProducto({

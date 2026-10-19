@@ -6,10 +6,10 @@
 // salen de TODAS las activas, sin importar la vista ni la búsqueda en
 // pantalla. Lo crea AgendaComandasScreen.
 import 'package:flutter/foundation.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/comandas_repository.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/comandas/widgets/comandas_formato.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/comandas_repository.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/comandas_formato.dart';
 
 /// Comandas de un mismo día en la agenda.
 class GrupoDia {

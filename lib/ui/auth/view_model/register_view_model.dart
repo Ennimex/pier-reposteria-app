@@ -2,8 +2,8 @@
 //
 // Estado de «Crea tu cuenta» (MVVM, Fase 5): aceptar los términos y registrar.
 // Registrarse no abre sesión: la vista pasa a verificar el correo.
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/auth_base_view_model.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository.dart';
+import 'package:pier_reposteria/ui/auth/view_model/auth_base_view_model.dart';
 
 class RegisterViewModel extends AuthBaseViewModel with VisibilidadPasswords {
   RegisterViewModel({required AuthRepository repo}) : _repo = repo;

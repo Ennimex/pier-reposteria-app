@@ -2,10 +2,10 @@
 // producto (MVVM, Fase 3) sin red: el repositorio tipa la lista y «útil», y
 // el ViewModel lleva resumen, filtro, orden y «útil» (toggle del backend).
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/resenas_repository_remote.dart';
-import 'package:pier_pasteleria/ui/reviews/view_model/product_reviews_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
+import 'package:pier_reposteria/ui/reviews/view_model/product_reviews_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

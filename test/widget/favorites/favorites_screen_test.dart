@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
-import 'package:pier_pasteleria/ui/favorites/view_model/favorites_view_model.dart';
-import 'package:pier_pasteleria/ui/favorites/widgets/favorites_screen.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/ui/favorites/view_model/favorites_view_model.dart';
+import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';

@@ -7,7 +7,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class Sacudida extends StatefulWidget {
   const Sacudida({

@@ -2,9 +2,9 @@
 // agenda de comandas de producción (#127): vistas, búsqueda, agrupación por
 // día, pendientes del área y sesión inválida.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/data/repositories/comandas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
-import 'package:pier_pasteleria/ui/comandas/view_model/agenda_comandas_view_model.dart';
+import 'package:pier_reposteria/data/repositories/comandas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/ui/comandas/view_model/agenda_comandas_view_model.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';

@@ -2,11 +2,11 @@
 // sin red: los repositorios tipan quitar y las categorías, y el ViewModel
 // lleva la lista, la búsqueda, quitar (optimista) y «Avísame».
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/favoritos_repository_remote.dart';
-import 'package:pier_pasteleria/data/repositories/productos_repository_remote.dart';
-import 'package:pier_pasteleria/ui/favorites/view_model/favorites_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/ui/favorites/view_model/favorites_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

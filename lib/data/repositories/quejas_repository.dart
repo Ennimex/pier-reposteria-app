@@ -9,7 +9,7 @@
 //
 // Fase 3: los métodos tipados (listarMisQuejas, crearQueja) lanzan
 // ApiException si el backend falla.
-import 'package:pier_pasteleria/domain/models/queja.dart';
+import 'package:pier_reposteria/domain/models/queja.dart';
 
 abstract class QuejasRepository {
   /// GET /quejas/mis-quejas

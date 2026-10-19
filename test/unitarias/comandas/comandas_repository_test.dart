@@ -2,10 +2,10 @@
 // contra el backend falso (#127): consulta de la agenda por vista y
 // búsqueda, errores con el mensaje del backend y sesión inválida.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/comandas_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/comanda.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/comandas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';

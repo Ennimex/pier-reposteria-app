@@ -11,13 +11,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/config/business_info.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/public/view_model/about_us_view_model.dart';
-import 'package:pier_pasteleria/ui/public/widgets/movimiento_contenido.dart';
+import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/public/view_model/about_us_view_model.dart';
+import 'package:pier_reposteria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:provider/provider.dart';
 
 class AboutUsScreen extends StatefulWidget {

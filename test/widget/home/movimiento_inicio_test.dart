@@ -14,18 +14,18 @@
 // reducido todo queda en su lugar. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/core/ui/tarjeta_producto_angosta.dart';
-import 'package:pier_pasteleria/ui/home/view_model/home_view_model.dart';
-import 'package:pier_pasteleria/ui/home/widgets/home_carrusel.dart';
-import 'package:pier_pasteleria/ui/home/widgets/home_encabezado.dart';
-import 'package:pier_pasteleria/ui/home/widgets/home_promociones.dart';
-import 'package:pier_pasteleria/ui/home/widgets/home_screen.dart';
-import 'package:pier_pasteleria/ui/home/widgets/home_secciones.dart';
-import 'package:pier_pasteleria/ui/home/widgets/movimiento_inicio.dart';
-import 'package:pier_pasteleria/ui/products/widgets/detalle_galeria.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/tarjeta_producto_angosta.dart';
+import 'package:pier_reposteria/ui/home/view_model/home_view_model.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_carrusel.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_encabezado.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_promociones.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_screen.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_secciones.dart';
+import 'package:pier_reposteria/ui/home/widgets/movimiento_inicio.dart';
+import 'package:pier_reposteria/ui/products/widgets/detalle_galeria.dart';
 
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/movimiento.dart';

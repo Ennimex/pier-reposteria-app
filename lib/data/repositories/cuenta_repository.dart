@@ -10,7 +10,7 @@
 // Fase 3: los métodos que ya tienen ViewModel devuelven modelos tipados y
 // lanzan ApiException si el backend falla (generarCodigoAlexa,
 // actualizarPerfil, enviarContacto).
-import 'package:pier_pasteleria/domain/models/codigo_alexa.dart';
+import 'package:pier_reposteria/domain/models/codigo_alexa.dart';
 
 abstract class CuentaRepository {
   /// PUT /usuarios/perfil/actualizar -> {user: {id, nombre, apellido, email,

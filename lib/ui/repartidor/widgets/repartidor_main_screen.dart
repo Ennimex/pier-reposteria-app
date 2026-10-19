@@ -7,14 +7,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/animated_indexed_stack.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/repartidor/view_model/repartidor_view_model.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/entregas_screen.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/historial_repartidor_screen.dart';
-import 'package:pier_pasteleria/ui/repartidor/widgets/perfil_repartidor_screen.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/animated_indexed_stack.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/repartidor/view_model/repartidor_view_model.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/entregas_screen.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/historial_repartidor_screen.dart';
+import 'package:pier_reposteria/ui/repartidor/widgets/perfil_repartidor_screen.dart';
 import 'package:provider/provider.dart';
 
 class RepartidorMainScreen extends StatefulWidget {

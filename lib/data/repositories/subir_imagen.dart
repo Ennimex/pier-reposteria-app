@@ -3,9 +3,9 @@
 // Subida de una foto a POST /upload/imagen (Cloudinary), compartida por los
 // repositorios que guardan evidencia: la entrega del repartidor y la
 // solicitud de reembolso. [tipo] es la carpeta en Cloudinary.
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/services/api_client.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/services/api_client.dart';
 
 /// Sube [filePath] y devuelve su URL. Lanza ApiException con el mensaje del
 /// backend, o uno genérico si no regresó la URL.

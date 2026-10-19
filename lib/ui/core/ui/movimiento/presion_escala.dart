@@ -9,7 +9,7 @@
 // GestureDetector de adentro sigue igual (se dispara al soltar, como antes).
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
 class PresionEscala extends StatefulWidget {
   const PresionEscala({

@@ -2,10 +2,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/themes/tema_catalogo.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/themes/tema_catalogo.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// Espejo del TemaProvider de la web (src/temas/TemaProvider.tsx): lee la
 /// sección pública 'personalizacion' — modo_auto=true resuelve el tema por

@@ -6,11 +6,11 @@
 // carga con un fundido y el "útil" responde con un pop y su cuenta rueda.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/resena_producto.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/products/view_model/product_detail_view_model.dart';
-import 'package:pier_pasteleria/ui/products/widgets/movimiento_catalogo.dart';
+import 'package:pier_reposteria/domain/models/resena_producto.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/products/view_model/product_detail_view_model.dart';
+import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
 
 /// "Hoy", "Ayer", "Hace 3 días", "Hace 2 sem.", "Hace 4 mes"; vacío sin fecha.
 String fechaRelativa(DateTime? fecha, {DateTime? ahora}) {

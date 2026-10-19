@@ -2,17 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/data/repositories/auth_repository.dart';
-import 'package:pier_pasteleria/routing/app_routes.dart';
-import 'package:pier_pasteleria/ui/auth/view_model/login_view_model.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/auth_partes.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/forgot_password_screen.dart';
-import 'package:pier_pasteleria/ui/auth/widgets/register_screen.dart';
-import 'package:pier_pasteleria/ui/core/state/auth_provider.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/utils/validators.dart';
+import 'package:pier_reposteria/data/repositories/auth_repository.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/auth/view_model/login_view_model.dart';
+import 'package:pier_reposteria/ui/auth/widgets/auth_partes.dart';
+import 'package:pier_reposteria/ui/auth/widgets/forgot_password_screen.dart';
+import 'package:pier_reposteria/ui/auth/widgets/register_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/utils/validators.dart';
 import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {

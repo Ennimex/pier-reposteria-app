@@ -15,17 +15,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_pasteleria/domain/models/order_model.dart';
-import 'package:pier_pasteleria/ui/core/state/tema_provider.dart';
-import 'package:pier_pasteleria/ui/core/themes/app_colors.dart';
-import 'package:pier_pasteleria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_pasteleria/ui/orders/view_model/order_detail_view_model.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/detalle_pedido_partes.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/detalle_pedido_timeline.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/estado_pedido.dart';
-import 'package:pier_pasteleria/ui/orders/widgets/movimiento_pedidos.dart';
-import 'package:pier_pasteleria/utils/formatters.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
+import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/orders/view_model/order_detail_view_model.dart';
+import 'package:pier_reposteria/ui/orders/widgets/detalle_pedido_partes.dart';
+import 'package:pier_reposteria/ui/orders/widgets/detalle_pedido_timeline.dart';
+import 'package:pier_reposteria/ui/orders/widgets/estado_pedido.dart';
+import 'package:pier_reposteria/ui/orders/widgets/movimiento_pedidos.dart';
+import 'package:pier_reposteria/utils/formatters.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
 class OrderDetailScreen extends StatefulWidget {

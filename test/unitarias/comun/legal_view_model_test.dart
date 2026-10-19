@@ -2,11 +2,11 @@
 // red: el parser arma las tarjetas, el repositorio interpreta
 // configuracion/legales y el ViewModel reemplaza las secciones por defecto.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pier_pasteleria/config/api_constants.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/configuracion_repository_remote.dart';
-import 'package:pier_pasteleria/domain/models/textos_legales.dart';
-import 'package:pier_pasteleria/ui/public/view_model/legal_view_model.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/textos_legales.dart';
+import 'package:pier_reposteria/ui/public/view_model/legal_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
 

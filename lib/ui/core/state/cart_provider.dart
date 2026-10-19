@@ -6,11 +6,11 @@
 // acción devuelve el motivo («Solo quedan 2 unidades») para que la vista lo
 // muestre. Devuelve null cuando todo salió bien.
 import 'package:flutter/material.dart';
-import 'package:pier_pasteleria/data/api_exception.dart';
-import 'package:pier_pasteleria/data/repositories/carrito_repository.dart';
-import 'package:pier_pasteleria/domain/models/cart_item_model.dart';
-import 'package:pier_pasteleria/domain/models/product_model.dart';
-import 'package:pier_pasteleria/utils/logger.dart';
+import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/carrito_repository.dart';
+import 'package:pier_reposteria/domain/models/cart_item_model.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 class CartProvider with ChangeNotifier {
   CartProvider({required CarritoRepository repo}) : _repo = repo;
