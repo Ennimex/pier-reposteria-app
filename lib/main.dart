@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:pier_reposteria/app.dart';
 import 'package:pier_reposteria/config/dependencies.dart';
+import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
 import 'package:pier_reposteria/data/services/api_service.dart';
 import 'package:provider/provider.dart';
 
-void main() async {
+// Sentry (#23) envuelve todo el arranque si el build trae SENTRY_DSN.
+Future<void> main() => Monitoreo.arrancar(_arrancarApp);
+
+Future<void> _arrancarApp() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Un solo cliente HTTP para toda la app (lo reciben todos los repositorios).
