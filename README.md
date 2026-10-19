@@ -166,9 +166,10 @@ keyAlias=pier
 keyPassword=<contraseña>
 ```
 
-`storeFile` va con ruta absoluta y diagonales `/`. Sin ese archivo (por ejemplo
-en GitHub Actions) el release se firma con la llave de depuración, así que
-compilar no depende de tenerla. Para comprobar la firma:
+`storeFile` va con ruta absoluta y diagonales `/`. Sin ese archivo el release
+se firma con la llave de depuración, así que compilar no depende de tenerla.
+En GitHub Actions solo `release.yml` arma el archivo, con los secretos del
+repositorio ([docs/LIBERACION.md](docs/LIBERACION.md)). Para comprobar la firma:
 
 ```bash
 flutter build apk --release
@@ -324,8 +325,9 @@ Flujo de liberación:
 1. Pull Request `build: subir versión a X.Y.Z+N` hacia `main`.
 2. Con el PR mezclado, crear el tag sobre `main`:
    `git tag vX.Y.Z && git push origin vX.Y.Z`.
-3. El tag `v*` disparará el workflow que publica el APK en GitHub Releases
-   (Sprint 3, issue #22).
+3. El tag `v*` dispara **Publicar versión** (`release.yml`), que publica el
+   APK firmado en GitHub Releases. Los secretos que necesita y la estrategia
+   canary están en [docs/LIBERACION.md](docs/LIBERACION.md) (#22).
 
 ## Calendario de sprints
 
