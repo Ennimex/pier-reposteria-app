@@ -296,14 +296,35 @@ class _CatalogoCategoriasState extends State<CatalogoCategorias> {
   }
 }
 
-/// "Sin resultados" con botón para limpiar los filtros (también es lo que se
-/// ve si el catálogo no pudo cargar). Entra en cascada: el círculo crece con
-/// un rebote, los textos y el botón suben uno tras otro y al final la lupa
-/// «busca» una vez de lado a lado.
+/// Catálogo sin tarjetas que mostrar, en dos variantes:
+/// - "Sin resultados" con botón para limpiar los filtros: hubo respuesta pero
+///   nada coincide.
+/// - [CatalogoVacio.sinConexion]: el catálogo no pudo cargar (por ejemplo,
+///   sin internet); muestra el motivo y «Reintentar» (#160).
+/// Entra en cascada: el círculo crece con un rebote, los textos y el botón
+/// suben uno tras otro y al final el ícono se mece una vez de lado a lado.
 class CatalogoVacio extends StatefulWidget {
-  const CatalogoVacio({required this.onLimpiar, super.key});
+  const CatalogoVacio({required VoidCallback onLimpiar, super.key})
+      : onAccion = onLimpiar,
+        icono = LucideIcons.searchX,
+        titulo = 'Sin resultados',
+        mensaje = 'Intenta con otros términos\no ajusta los filtros',
+        textoAccion = 'Limpiar filtros';
 
-  final VoidCallback onLimpiar;
+  const CatalogoVacio.sinConexion({
+    required this.mensaje,
+    required VoidCallback onReintentar,
+    super.key,
+  })  : onAccion = onReintentar,
+        icono = LucideIcons.wifiOff,
+        titulo = 'No pudimos cargar el catálogo',
+        textoAccion = 'Reintentar';
+
+  final VoidCallback onAccion;
+  final IconData icono;
+  final String titulo;
+  final String mensaje;
+  final String textoAccion;
 
   @override
   State<CatalogoVacio> createState() => _CatalogoVacioState();
@@ -404,7 +425,7 @@ class _CatalogoVacioState extends State<CatalogoVacio>
                 decoration: BoxDecoration(color: AppColors.pierVerde.withValues(alpha: 0.08), shape: BoxShape.circle),
                 child: RotationTransition(
                   turns: _lupa.drive(_vaivenLupa),
-                  child: Icon(LucideIcons.searchX, size: 48, color: AppColors.pierVerde),
+                  child: Icon(widget.icono, size: 48, color: AppColors.pierVerde),
                 ),
               ),
             ),
@@ -412,22 +433,26 @@ class _CatalogoVacioState extends State<CatalogoVacio>
           const SizedBox(height: 20),
           _bloque(
             1,
-            const Text('Sin resultados',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+            Text(widget.titulo,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           ),
           const SizedBox(height: 8),
           _bloque(
             2,
-            const Text('Intenta con otros términos\no ajusta los filtros',
-                textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: AppColors.textSecondary)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(widget.mensaje,
+                  textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, color: AppColors.textSecondary)),
+            ),
           ),
           const SizedBox(height: 24),
           _bloque(
             3,
             ElevatedButton.icon(
-              onPressed: widget.onLimpiar,
+              onPressed: widget.onAccion,
               icon: const Icon(LucideIcons.refreshCw, color: Colors.white),
-              label: const Text('Limpiar filtros', style: TextStyle(color: Colors.white)),
+              label: Text(widget.textoAccion, style: const TextStyle(color: Colors.white)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.pierVerde,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
