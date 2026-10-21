@@ -58,6 +58,9 @@ dependencies:
   sentry_flutter: ^9.30.1
 
 dev_dependencies:
+  # test_driver/perf_driver.dart: resumen de las trazas de rendimiento (#61).
+  flutter_driver:
+    sdk: flutter
   flutter_test:
     sdk: flutter
   integration_test:
