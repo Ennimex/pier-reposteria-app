@@ -1,6 +1,7 @@
 // test/aceptacion/carrito_checkout/checkout_test.dart — escenarios Gherkin del
 // checkout: resumen, entrega a domicilio, recoger en sucursal, pago aprobado
-// y pago rechazado por el backend (#57; historia #36), sin red.
+// y pago rechazado por el backend (#57; historia #36), y las respuestas del
+// backend después de cobrar (historia #171), sin red.
 //
 // La hoja de pago de Stripe es nativa y flutter_test no la maneja: la prueba
 // llega hasta que la app solicita el intento de pago al backend y le pasa el
@@ -207,6 +208,19 @@ Future<void> _pagar(WidgetTester tester, int total) async {
   await _asentar(tester);
 }
 
+/// Veces que la app pidió confirmar el pedido al backend.
+int _confirmaciones(FakeApiClient api) => api.llamadas
+    .where((l) => l.endpoint == ApiConstants.confirmarPago)
+    .length;
+
+/// Mensajes reales de POST /pagos/confirmar después del cobro (#171).
+const String _cobroSinPedido = 'Tu pago se cobró pero no pudimos registrar '
+    'el pedido ni devolverlo automáticamente. Ya avisamos a la sucursal para '
+    'devolvértelo. Referencia: pi_1';
+const String _cobroDevuelto = 'Solo quedan 0 unidades de Rosca. Te '
+    r'devolvimos $690.00 a tu tarjeta; el banco puede tardar de 5 a 10 días '
+    'hábiles en mostrarlo.';
+
 void main() {
   group('#36 Checkout: tipo de entrega y pago con tarjeta', () {
     // Escenario: resumen del pedido
@@ -379,6 +393,103 @@ void main() {
             .itemCount,
         2,
       );
+    });
+  });
+
+  group('#171 Pago: respuestas del backend después de cobrar', () {
+    // Escenario: cobro sin pedido
+    //   Dado que pagué y el backend responde "COBRO_SIN_PEDIDO"
+    //   Cuando termina la confirmación
+    //   Entonces la app no vuelve a intentar el registro
+    //   Y veo el mensaje del backend con la referencia
+    //   Y la app no me pide presionar "Pagar" otra vez
+    testWidgets('Escenario: cobro sin pedido', (tester) async {
+      // Dado que pagué y el backend responde "COBRO_SIN_PEDIDO"
+      final (api, pasarela, vm) = await _abrirCheckout(tester);
+      await _elegirFechaYHora(tester, vm);
+      api.responder(ApiConstants.confirmarPago, {
+        'success': false,
+        'codigo': 'COBRO_SIN_PEDIDO',
+        'message': _cobroSinPedido,
+      });
+
+      // Cuando termina la confirmación
+      await _pagar(tester, 690);
+
+      // Entonces la app no vuelve a intentar el registro
+      expect(pasarela.cobros, ['pi_1_secret_x']);
+      expect(_confirmaciones(api), 1);
+      // Y veo el mensaje del backend con la referencia (aviso + recuadro)
+      expect(find.text(_cobroSinPedido), findsNWidgets(2));
+      // Y la app no me pide presionar "Pagar" otra vez
+      expect(find.textContaining('presiona "Pagar"'), findsNothing);
+      expect(find.byType(CheckoutScreen), findsOneWidget);
+    });
+
+    // Escenario: confirmación pendiente
+    //   Dado que el backend responde "CONFIRMACION_PENDIENTE"
+    //   Cuando termina la confirmación
+    //   Entonces la app conserva el pago y reintenta solo el registro, como hoy
+    testWidgets('Escenario: confirmación pendiente', (tester) async {
+      // Dado que el backend responde "CONFIRMACION_PENDIENTE"
+      final (api, pasarela, vm) = await _abrirCheckout(tester);
+      await _elegirFechaYHora(tester, vm);
+      api.responder(ApiConstants.confirmarPago, {
+        'success': false,
+        'codigo': 'CONFIRMACION_PENDIENTE',
+        'message': 'Tu pago quedó hecho, pero no pudimos registrar tu pedido. '
+            'Vuelve a intentarlo en un momento: no se te cobrará otra vez.',
+      });
+
+      // Cuando termina la confirmación
+      await _pagar(tester, 690);
+
+      // Entonces la app conserva el pago y reintenta solo el registro
+      expect(_confirmaciones(api), CheckoutViewModel.intentosConfirmacion);
+      api.responder(ApiConstants.confirmarPago, {
+        'success': true,
+        'pedido': {'numero': 'P-91'},
+      });
+      await _pagar(tester, 690);
+      expect(pasarela.cobros, ['pi_1_secret_x']);
+      expect(find.byType(OrderSuccessScreen), findsOneWidget);
+    });
+
+    // Escenario: cobro devuelto
+    //   Dado que el backend responde "COBRO_DEVUELTO"
+    //   Cuando termina la confirmación
+    //   Entonces veo el mensaje del backend
+    //   Y el siguiente pago empieza de cero
+    testWidgets('Escenario: cobro devuelto', (tester) async {
+      // Dado que el backend responde "COBRO_DEVUELTO"
+      final (api, pasarela, vm) = await _abrirCheckout(tester);
+      await _elegirFechaYHora(tester, vm);
+      api.responder(ApiConstants.confirmarPago, {
+        'success': false,
+        'codigo': 'COBRO_DEVUELTO',
+        'status': 'refunded',
+        'reembolsado': true,
+        'message': _cobroDevuelto,
+      });
+
+      // Cuando termina la confirmación
+      await _pagar(tester, 690);
+
+      // Entonces veo el mensaje del backend (aviso + recuadro), sin reintentos
+      expect(find.text(_cobroDevuelto), findsNWidgets(2));
+      expect(_confirmaciones(api), 1);
+
+      // Y el siguiente pago empieza de cero: intento de pago y cobro nuevos
+      api.responder(ApiConstants.confirmarPago, {
+        'success': true,
+        'pedido': {'numero': 'P-92'},
+      });
+      await _pagar(tester, 690);
+      expect(pasarela.cobros, ['pi_1_secret_x', 'pi_1_secret_x']);
+      expect(
+          api.llamadas
+              .where((l) => l.endpoint == ApiConstants.crearPaymentIntent),
+          hasLength(2));
     });
   });
 }

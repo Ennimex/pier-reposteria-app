@@ -48,6 +48,7 @@ class PagosRepositoryRemote implements PagosRepository {
       throw ConfirmacionFallidaException(
         r['message']?.toString(),
         statusPago: r['status']?.toString(),
+        codigo: r['codigo']?.toString(),
       );
     }
     return PedidoConfirmado.fromJson(pedido);

@@ -55,15 +55,27 @@ class PedidoConfirmado {
 }
 
 /// La confirmación del pedido falló. [statusPago] es el estado del cobro que
-/// reporta el backend: si no es `succeeded`, el cobro NO ocurrió.
+/// reporta el backend: si no es `succeeded`, el cobro NO ocurrió. [codigo] es
+/// el `codigo` de la respuesta (`COBRO_DEVUELTO`, `COBRO_SIN_PEDIDO`,
+/// `CONFIRMACION_PENDIENTE`), null si no vino.
 class ConfirmacionFallidaException implements Exception {
-  const ConfirmacionFallidaException(this.message, {this.statusPago});
+  const ConfirmacionFallidaException(this.message,
+      {this.statusPago, this.codigo});
 
   final String? message;
   final String? statusPago;
+  final String? codigo;
 
   /// El backend confirma que el cobro no se completó.
   bool get cobroNoOcurrio => statusPago != null && statusPago != 'succeeded';
+
+  /// Se cobró y no hubo pedido ni devolución automática: la sucursal lo
+  /// devuelve a mano.
+  bool get cobroSinPedido => codigo == 'COBRO_SIN_PEDIDO';
+
+  /// Reintentar responde lo mismo: el cobro ya se devolvió o quedó sin
+  /// pedido.
+  bool get esDefinitiva => cobroSinPedido || codigo == 'COBRO_DEVUELTO';
 
   @override
   String toString() => 'ConfirmacionFallidaException: $message';

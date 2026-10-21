@@ -7,7 +7,9 @@
 // pasarela y confirma el pedido con reintentos.
 //
 // Si el cobro YA ocurrió y la confirmación falla, el siguiente "Pagar" solo
-// reintenta la confirmación: nunca se vuelve a cobrar.
+// reintenta la confirmación: nunca se vuelve a cobrar. Las respuestas que no
+// cambian al reintentar (cobro devuelto o cobro sin pedido, #171) cortan los
+// reintentos y muestran el mensaje del backend.
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:pier_reposteria/config/business_info.dart';
@@ -318,6 +320,7 @@ class CheckoutViewModel extends ChangeNotifier {
         return PagoExitoso(pedido: pedido, total: total);
       } on ConfirmacionFallidaException catch (e) {
         ultimoError = e;
+        if (e.esDefinitiva) break;
         if (intento < intentosConfirmacion) {
           await _esperar(Duration(seconds: 2 * intento));
         }
@@ -329,6 +332,13 @@ class CheckoutViewModel extends ChangeNotifier {
       _totalPendiente = null;
       return _fallo(
           ultimoError.message ?? 'El pago no se completó. Intenta de nuevo.');
+    }
+    if (ultimoError.cobroSinPedido) {
+      // La sucursal lo devuelve a mano. El intent se conserva: otro «Pagar»
+      // solo vuelve a preguntar, nunca cobra de nuevo.
+      return _fallo(ultimoError.message ??
+          'Tu pago se cobró pero no pudimos registrar el pedido. Ya avisamos '
+              'a la sucursal para devolvértelo.');
     }
     return _fallo(
         'Tu pago fue procesado, pero no pudimos registrar el pedido '
