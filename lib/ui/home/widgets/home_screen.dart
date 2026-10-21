@@ -3,9 +3,11 @@
 // Inicio (MVVM, Fase 4): la vista arma las secciones con lo que expone
 // HomeViewModel (categorías, promociones, reseñas, sucursales, slides y,
 // con sesión, pide de nuevo y el pedido activo) y los productos de
-// ProductProvider. Al final, con sesión de cliente, «Novedades de Pier»
-// (#132: FeedViewModel), que carga más al acercarse al final. Aquí solo queda
-// escuchar la sesión, el refresco y el movimiento de las secciones: cada una
+// ProductProvider. Las publicaciones van primero (#175): justo después del
+// carrusel y las categorías, con sesión de cliente, las 3 más recientes de
+// «Novedades de Pier» (#132: FeedViewModel) con «Ver todo»; sin sesión, la
+// invitación a entrar. Aquí solo queda escuchar la sesión, el refresco y el
+// movimiento de las secciones: cada una
 // entra una sola vez, en cascada (la que está más abajo espera a que el scroll
 // la traiga), y las que llegan tarde (datos del backend, el pedido activo)
 // abren su espacio sin saltos.
@@ -13,16 +15,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
-import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
-import 'package:pier_reposteria/ui/feed/widgets/feed_sliver.dart';
+import 'package:pier_reposteria/ui/feed/widgets/novedades_inicio.dart';
 import 'package:pier_reposteria/ui/home/view_model/home_view_model.dart';
 import 'package:pier_reposteria/ui/home/widgets/home_carrusel.dart';
 import 'package:pier_reposteria/ui/home/widgets/home_encabezado.dart';
@@ -55,9 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
   late final FeedViewModel _feed;
   String? _lastUserEmail;
-
-  /// Margen (px) antes del final en el que se pide la siguiente página.
-  static const _margenCargarMas = 1500.0;
 
   @override
   void initState() {
@@ -119,29 +116,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await _cargarDatosUsuario();
   }
 
-  /// Agrega desde una promoción o sugerencia del feed y lo avisa.
-  Future<void> _agregarAlCarrito(Product producto, double precio) async {
-    final avisos = ScaffoldMessenger.of(context);
-    final error = await context
-        .read<CartProvider>()
-        .addItem(producto, 1, 'chico', precio);
-    avisos.showSnackBar(SnackBar(
-      content: Text(error ?? 'Se agregó al carrito'),
-      backgroundColor: error == null ? AppColors.pierVerde : AppColors.error,
-      behavior: SnackBarBehavior.floating,
-    ));
-  }
-
-  /// Pide la siguiente página del feed al acercarse al final.
-  bool _alDesplazar(ScrollNotification n) {
-    if (n.metrics.axis == Axis.vertical &&
-        n.metrics.extentAfter < _margenCargarMas &&
-        context.read<AuthProvider>().esCliente) {
-      unawaited(_feed.cargarMas());
-    }
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
@@ -163,11 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // página empiece a verse.
             child: VistaInicio(
               retrasoLlegada: AppMovimiento.trasRaiz,
-              // Al acercarse al final pide más «Novedades de Pier»; deja
-              // pasar el aviso para que VistaInicio también lo vea.
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _alDesplazar,
-                child: CustomScrollView(
+              child: CustomScrollView(
                 slivers: [
                   _sliver('encabezado', EntradaInicio(
                     id: 'encabezado',
@@ -196,6 +166,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     id: 'carrusel',
                     child: HomeCarrusel(slides: _vm.slides),
                   )),
+                  _sliver('categorias', EntradaInicio(
+                    id: 'categorias',
+                    child: HomeCategorias(nombres: _vm.nombresCategorias),
+                  )),
+                  // Las publicaciones van primero (#175): las 3 más recientes
+                  // para el cliente; sin sesión, la invitación a entrar.
+                  if (auth.esCliente)
+                    _sliver('novedades', EntradaInicio(
+                      id: 'novedades',
+                      child: NovedadesInicio(feed: _feed),
+                    ))
+                  else if (!auth.isAuthenticated)
+                    _sliver('invitacion', const EntradaInicio(
+                      id: 'invitacion',
+                      child: InvitacionNovedades(),
+                    )),
                   _seccion('promo-banner', promos.banner == null
                       ? null
                       : HomePromoBanner(promociones: promos)),
@@ -208,10 +194,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   _seccion('destacado', promos.destacado.isEmpty
                       ? null
                       : HomePromoDestacado(promociones: promos)),
-                  _sliver('categorias', EntradaInicio(
-                    id: 'categorias',
-                    child: HomeCategorias(nombres: _vm.nombresCategorias),
-                  )),
                   // Destacados arriba de "Pide de nuevo" para mayor visibilidad
                   _seccion('destacados',
                       productos.isLoading || productos.populares.isNotEmpty
@@ -252,12 +234,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     id: 'por-que',
                     child: HomePorQueElegirnos(),
                   )),
-                  // «Novedades de Pier» (#132): solo el cliente con sesión.
-                  if (auth.esCliente)
-                    FeedSliver(viewModel: _feed, alAgregar: _agregarAlCarrito),
                   _sliver('pie', const SizedBox(height: 32)),
                 ],
-                ),
               ),
             ),
           ),

@@ -6,7 +6,9 @@
 // sugerencias en bloques de 6 con las promociones que falten. Ninguna
 // promoción se repite y las sugerencias no repiten productos que ya salieron
 // como promoción. «Me encanta» se marca al instante y queda lo que diga el
-// servidor (#133). Lo crea HomeScreen solo con sesión de cliente.
+// servidor (#133). Lo crea HomeScreen solo con sesión de cliente: el Inicio
+// muestra las 3 más recientes y Novedades, con el mismo ViewModel, todo
+// (#175).
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/publicaciones_repository.dart';
@@ -17,6 +19,9 @@ const publicacionesPorPromocion = 5;
 
 /// Productos por bloque de «Te podría gustar».
 const sugerenciasPorBloque = 6;
+
+/// Publicaciones que se ven en el Inicio (#175); las demás, en Novedades.
+const publicacionesEnInicio = 3;
 
 /// publicaciones → sugerencias → fin («Ya viste todo por hoy»).
 enum FaseFeed { publicaciones, sugerencias, fin }
@@ -166,6 +171,10 @@ class FeedViewModel extends ChangeNotifier {
       _iniciado && _estado.feedTerminado && _estado.publicaciones.isEmpty;
 
   List<ElementoFeed> get elementos => componerFeed(_estado);
+
+  /// Las más recientes, para el Inicio.
+  List<Publicacion> get recientes =>
+      _estado.publicaciones.take(publicacionesEnInicio).toList();
 
   /// Promociones y la primera página. Si fallan las promociones, el feed
   /// sigue igual (no amerita un error en pantalla).
