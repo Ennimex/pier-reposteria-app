@@ -56,7 +56,8 @@ errores.
 ## Estrategia canary
 
 Cada versión pasa primero por un grupo pequeño y avanza solo si las métricas
-lo permiten.
+lo permiten. Las métricas, sus objetivos, el dashboard de Sentry y la regla
+de avance están en [SLO.md](SLO.md) (#24).
 
 1. **Canary (48 h):** los dueños de Pier instalan el APK de la Release en sus
    celulares y usan la app normalmente.

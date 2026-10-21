@@ -3,6 +3,7 @@
 // camino del pago (incluido no volver a cobrar si la confirmación falla).
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/direcciones_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
@@ -25,6 +26,21 @@ class _PasarelaFalsa implements PasarelaPago {
     cobros++;
     final f = falla;
     if (f != null) throw f;
+  }
+}
+
+/// Monitor sin Sentry: anota cómo terminó cada intento medido (#24).
+class _MonitorFalso implements MonitorDePagos {
+  final desenlaces = <DesenlacePago>[];
+
+  @override
+  Future<T> medir<T>(
+    Future<T> Function() intento,
+    DesenlacePago Function(T) desenlace,
+  ) async {
+    final resultado = await intento();
+    desenlaces.add(desenlace(resultado));
+    return resultado;
   }
 }
 
@@ -93,11 +109,13 @@ class _Prueba {
       },
       estaAbierto: () => abierto,
       esperar: (d) async => esperas.add(d),
+      monitor: monitor,
     );
   }
 
   final FakeApiClient api;
   final pasarela = _PasarelaFalsa();
+  final monitor = _MonitorFalso();
   final preguntas = <List<String>>[];
   final esperas = <Duration>[];
   late final CheckoutViewModel vm;
@@ -427,6 +445,82 @@ void main() {
       expect(p.vm.pagar.resultado, isNull);
       p.vm.pagar.limpiar();
       expect(p.vm.pagar.error, isNull);
+    });
+  });
+
+  // #24: cada intento de pago va a Sentry con su resultado; solo «error»
+  // cuenta contra el objetivo de < 1 % (docs/SLO.md).
+  group('CheckoutViewModel: medición del pago en Sentry', () {
+    test('si falta elegir algo no se intenta pagar ni se mide', () async {
+      final p = _Prueba();
+
+      final r = await p.pagar() as PagoInterrumpido?;
+
+      expect(r!.motivo, MotivoInterrupcion.incompleto);
+      expect(p.monitor.desenlaces, isEmpty);
+    });
+
+    test('un pago con pedido registrado se mide como pagado', () async {
+      final p = _Prueba()..listoParaRecoger();
+
+      expect(await p.pagar(), isA<PagoExitoso>());
+      expect(p.monitor.desenlaces, [(resultado: 'pagado', fallo: false)]);
+    });
+
+    test(
+      'cancelar la hoja o el aviso de por confirmar no es un error',
+      () async {
+        final p = _Prueba(aceptaPorConfirmar: false)..listoParaRecoger();
+        p.pasarela.falla = const PagoCanceladoException();
+        final hoja = await p.pagar() as PagoInterrumpido?;
+        p.api.responder(ApiConstants.crearPaymentIntent, {
+          'success': true,
+          'clientSecret': 'pi_9_secret_x',
+          'publishableKey': 'pk',
+          'por_confirmar': true,
+          'productos_por_confirmar': ['Rosca'],
+        });
+        final aviso = await p.pagar() as PagoInterrumpido?;
+
+        expect(hoja!.motivo, MotivoInterrupcion.cancelado);
+        expect(aviso!.motivo, MotivoInterrupcion.cancelado);
+        expect(p.monitor.desenlaces, [
+          (resultado: 'cancelado', fallo: false),
+          (resultado: 'cancelado', fallo: false),
+        ]);
+      },
+    );
+
+    test('una tarjeta rechazada es decisión del banco, no un error', () async {
+      final p = _Prueba()..listoParaRecoger();
+      p.pasarela.falla = const PagoRechazadoException('Tarjeta declinada');
+
+      final r = await p.pagar() as PagoInterrumpido?;
+
+      expect(r!.motivo, MotivoInterrupcion.rechazado);
+      expect(p.monitor.desenlaces, [(resultado: 'rechazado', fallo: false)]);
+    });
+
+    test('si falla el servidor al crear el cobro o al registrar el pedido, '
+        'el intento cuenta como error', () async {
+      final p = _Prueba()..listoParaRecoger();
+      p.api.fallar(ApiConstants.crearPaymentIntent, 'Carrito vacío');
+      final alCrear = await p.pagar() as PagoInterrumpido?;
+      p.api
+        ..responder(ApiConstants.crearPaymentIntent, {
+          'success': true,
+          'clientSecret': 'pi_123_secret_abc',
+          'publishableKey': 'pk_test',
+        })
+        ..responder(ApiConstants.confirmarPago, _cobroSinPedido);
+      final alRegistrar = await p.pagar() as PagoInterrumpido?;
+
+      expect(alCrear!.motivo, MotivoInterrupcion.error);
+      expect(alRegistrar!.motivo, MotivoInterrupcion.error);
+      expect(p.monitor.desenlaces, [
+        (resultado: 'error', fallo: true),
+        (resultado: 'error', fallo: true),
+      ]);
     });
   });
 
