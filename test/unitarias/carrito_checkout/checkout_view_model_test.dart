@@ -42,6 +42,17 @@ const Map<String, dynamic> _direcciones = {
   ],
 };
 
+/// 500 de POST /pagos/confirmar cuando Stripe tampoco pudo devolver el cobro
+/// (la referencia son los últimos 6 caracteres del intent).
+const String _mensajeCobroSinPedido = 'Tu pago se cobró pero no pudimos '
+    'registrar el pedido ni devolverlo automáticamente. Ya avisamos a la '
+    'sucursal para devolvértelo. Referencia: pi_123';
+const Map<String, dynamic> _cobroSinPedido = {
+  'success': false,
+  'codigo': 'COBRO_SIN_PEDIDO',
+  'message': _mensajeCobroSinPedido,
+};
+
 FakeApiClient _backend() => FakeApiClient(respuestas: {
       ApiConstants.configuracionSeccion('contacto'): {
         'success': true,
@@ -333,6 +344,77 @@ void main() {
       });
       await p.pagar();
       expect(p.pasarela.cobros, 2);
+    });
+
+    test('cobro sin pedido (#171): no reintenta, muestra la referencia y el '
+        'siguiente Pagar NO vuelve a cobrar', () async {
+      final p = _Prueba()..listoParaRecoger();
+      p.api.responder(ApiConstants.confirmarPago, _cobroSinPedido);
+
+      final r = await p.pagar() as PagoInterrumpido?;
+
+      expect(p.confirmaciones(), 1);
+      expect(p.esperas, isEmpty);
+      expect(r!.aviso, _mensajeCobroSinPedido);
+      expect(p.vm.errorPago, _mensajeCobroSinPedido);
+
+      // Volver a tocar «Pagar» solo vuelve a preguntar: no cobra otra vez.
+      final otra = await p.pagar() as PagoInterrumpido?;
+
+      expect(otra!.aviso, _mensajeCobroSinPedido);
+      expect(p.confirmaciones(), 2);
+      expect(p.pasarela.cobros, 1);
+      expect(p.api.llamadas
+          .where((l) => l.endpoint == ApiConstants.crearPaymentIntent),
+          hasLength(1));
+    });
+
+    test('cobro devuelto (#171): no reintenta y el siguiente Pagar empieza '
+        'de cero', () async {
+      final p = _Prueba()..listoParaRecoger();
+      p.api.responder(ApiConstants.confirmarPago, {
+        'success': false,
+        'codigo': 'COBRO_DEVUELTO',
+        'status': 'refunded',
+        'reembolsado': true,
+        'message': 'Este pago ya se devolvió a tu tarjeta. Para hacer tu '
+            'pedido, vuelve a pagar desde tu carrito.',
+      });
+
+      final r = await p.pagar() as PagoInterrumpido?;
+
+      expect(p.confirmaciones(), 1);
+      expect(p.esperas, isEmpty);
+      expect(r!.aviso, 'Este pago ya se devolvió a tu tarjeta. Para hacer tu '
+          'pedido, vuelve a pagar desde tu carrito.');
+
+      p.api.responder(ApiConstants.confirmarPago, {
+        'success': true,
+        'pedido': {'numero': 'P-80'},
+      });
+      await p.pagar();
+      expect(p.pasarela.cobros, 2);
+    });
+
+    test('confirmación pendiente (#171): con su código sigue reintentando y '
+        'conserva el cobro', () async {
+      final p = _Prueba()..listoParaRecoger();
+      p.api.responder(ApiConstants.confirmarPago, {
+        'success': false,
+        'codigo': 'CONFIRMACION_PENDIENTE',
+        'message': 'Tu pago quedó hecho, pero no pudimos registrar tu pedido. '
+            'Vuelve a intentarlo en un momento: no se te cobrará otra vez.',
+      });
+
+      await p.pagar();
+
+      expect(p.confirmaciones(), CheckoutViewModel.intentosConfirmacion);
+      p.api.responder(ApiConstants.confirmarPago, {
+        'success': true,
+        'pedido': {'numero': 'P-81'},
+      });
+      expect((await p.pagar() as PagoExitoso?)!.pedido.numero, 'P-81');
+      expect(p.pasarela.cobros, 1);
     });
 
     test('un error inesperado queda en el Command', () async {

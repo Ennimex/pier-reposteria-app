@@ -27,6 +27,7 @@ abstract class PagosRepository {
   Future<IntentDePago> crearIntentDePago(Map<String, dynamic> body);
 
   /// POST /pagos/confirmar tipado. Lanza ConfirmacionFallidaException (con
-  /// el estado del cobro, si el backend lo manda) si no se creó el pedido.
+  /// el estado del cobro y el código, si el backend los manda) si no se creó
+  /// el pedido.
   Future<PedidoConfirmado> confirmarPago(Map<String, dynamic> body);
 }
