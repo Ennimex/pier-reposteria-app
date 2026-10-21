@@ -1,10 +1,11 @@
 // lib/ui/feed/widgets/feed_sliver.dart
 //
-// «Novedades de Pier» al final del inicio del cliente (#132): las
+// «Novedades de Pier» completas (#132), en su pantalla (#175): las
 // publicaciones con las promociones intercaladas y, al acabarse, las
 // sugerencias; abajo, cargando más, el error para reintentar o «Ya viste todo
-// por hoy». «Me encanta» y los comentarios se manejan aquí (#133).
-// HomeScreen pide más páginas al acercarse al final.
+// por hoy». «Me encanta» y los comentarios se manejan en PublicacionDelFeed
+// (#133), que también usa el Inicio. NovedadesScreen pide más páginas al
+// acercarse al final.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -31,20 +32,6 @@ class FeedSliver extends StatelessWidget {
   final FeedViewModel viewModel;
   final AgregarAlCarrito alAgregar;
 
-  /// Pone o quita «Me encanta»; si algo falló lo avisa.
-  Future<void> _meEncanta(BuildContext context, int publicacionId) async {
-    final avisos = ScaffoldMessenger.of(context);
-    final aviso = await viewModel.alternarMeEncanta(publicacionId);
-    if (aviso == null) return;
-    avisos.showSnackBar(
-      SnackBar(
-        content: Text(aviso),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: viewModel,
@@ -53,33 +40,13 @@ class FeedSliver extends StatelessWidget {
       final elementos = vm.elementos;
       return SliverMainAxisGroup(
         slivers: [
-          const SliverToBoxAdapter(child: _Titulo()),
           if (vm.sinPublicaciones)
-            const SliverToBoxAdapter(
-              child: _Estado(
-                icono: LucideIcons.cakeSlice,
-                titulo: 'Aún no hay publicaciones',
-                detalle:
-                    'Muy pronto verás aquí lo nuevo de Pier: '
-                    'pasteles recién salidos del horno, novedades y '
-                    'promociones.',
-              ),
-            ),
+            const SliverToBoxAdapter(child: AvisoFeed.sinPublicaciones()),
           SliverList.builder(
             itemCount: elementos.length,
             itemBuilder: (_, i) => switch (elementos[i]) {
-              ElementoPublicacion(:final publicacion) => TarjetaPublicacion(
-                publicacion,
-                alMeEncanta: () =>
-                    unawaited(_meEncanta(context, publicacion.id)),
-                alComentar: () => unawaited(
-                  abrirComentarios(
-                    context,
-                    publicacionId: publicacion.id,
-                    feed: vm,
-                  ),
-                ),
-              ),
+              ElementoPublicacion(:final publicacion) =>
+                PublicacionDelFeed(publicacion, feed: vm),
               ElementoPromocion(:final promocion) => _TarjetaPromocion(
                 promocion,
                 alAgregar,
@@ -95,25 +62,73 @@ class FeedSliver extends StatelessWidget {
   );
 }
 
-class _Titulo extends StatelessWidget {
-  const _Titulo();
+/// Una publicación con «Me encanta» y sus comentarios conectados a [feed]:
+/// la misma en el Inicio y en Novedades.
+class PublicacionDelFeed extends StatelessWidget {
+  const PublicacionDelFeed(this.publicacion, {required this.feed, super.key});
+
+  final Publicacion publicacion;
+  final FeedViewModel feed;
+
+  /// Pone o quita «Me encanta»; si algo falló lo avisa.
+  Future<void> _meEncanta(BuildContext context) async {
+    final avisos = ScaffoldMessenger.of(context);
+    final aviso = await feed.alternarMeEncanta(publicacion.id);
+    if (aviso == null) return;
+    avisos.showSnackBar(
+      SnackBar(
+        content: Text(aviso),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => TarjetaPublicacion(
+    publicacion,
+    alMeEncanta: () => unawaited(_meEncanta(context)),
+    alComentar: () => unawaited(
+      abrirComentarios(context, publicacionId: publicacion.id, feed: feed),
+    ),
+  );
+}
+
+/// «Novedades de Pier» y, si hay [alVerTodo], el enlace «Ver todo».
+class TituloNovedades extends StatelessWidget {
+  const TituloNovedades({this.alVerTodo, super.key});
+
+  final VoidCallback? alVerTodo;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+    padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
     child: Row(
       children: [
         Icon(LucideIcons.sparkles, size: 20, color: AppColors.pierVerde),
         const SizedBox(width: 8),
-        const Text(
-          'Novedades de Pier',
-          style: TextStyle(
-            fontFamily: 'Playfair Display',
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+        const Expanded(
+          child: Text(
+            'Novedades de Pier',
+            style: TextStyle(
+              fontFamily: 'Playfair Display',
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
+        if (alVerTodo != null)
+          TextButton(
+            onPressed: alVerTodo,
+            child: Text(
+              'Ver todo',
+              style: TextStyle(
+                color: AppColors.pierVerde,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
       ],
     ),
   );
@@ -135,16 +150,9 @@ class _Pie extends StatelessWidget {
         ),
       );
     }
-    if (!vm.iniciado && vm.error != null) {
-      return _Estado(
-        icono: LucideIcons.circleAlert,
-        titulo: 'No pudimos cargar las publicaciones',
-        detalle: vm.error,
-        accion: () => unawaited(vm.cargar()),
-      );
-    }
+    if (!vm.iniciado && vm.error != null) return AvisoFeed.errorAlCargar(vm);
     if (vm.errorMas != null) {
-      return _Estado(
+      return AvisoFeed(
         icono: LucideIcons.wifiOff,
         titulo: 'No se pudieron cargar más',
         detalle: vm.errorMas,
@@ -166,13 +174,32 @@ class _Pie extends StatelessWidget {
   }
 }
 
-class _Estado extends StatelessWidget {
-  const _Estado({
+/// Aviso del feed: ícono, título, detalle y, si hay [accion], «Reintentar».
+class AvisoFeed extends StatelessWidget {
+  const AvisoFeed({
     required this.icono,
     required this.titulo,
     this.detalle,
     this.accion,
+    super.key,
   });
+
+  /// La repostería aún no ha publicado nada.
+  const AvisoFeed.sinPublicaciones({super.key})
+    : icono = LucideIcons.cakeSlice,
+      titulo = 'Aún no hay publicaciones',
+      detalle =
+          'Muy pronto verás aquí lo nuevo de Pier: '
+          'pasteles recién salidos del horno, novedades y '
+          'promociones.',
+      accion = null;
+
+  /// No llegó la primera página de [vm]: el motivo y «Reintentar».
+  AvisoFeed.errorAlCargar(FeedViewModel vm, {super.key})
+    : icono = LucideIcons.circleAlert,
+      titulo = 'No pudimos cargar las publicaciones',
+      detalle = vm.error,
+      accion = (() => unawaited(vm.cargar()));
 
   final IconData icono;
   final String titulo;
