@@ -2,9 +2,10 @@
 //
 // Estado del inicio (MVVM, Fase 4): categorías, reseñas destacadas,
 // promociones por tipo, datos de contacto y sucursales, slides del carrusel
-// (los del panel o los de respaldo) y, con sesión, "Pide de nuevo" y el
-// pedido activo. El catálogo, la sesión y las notificaciones siguen en sus
-// providers globales; la vista avisa cuando cambia la sesión.
+// (los del editor del sitio, los del panel o los de respaldo) y, con sesión,
+// "Pide de nuevo" y el pedido activo. El catálogo, la sesión y las
+// notificaciones siguen en sus providers globales; la vista avisa cuando
+// cambia la sesión.
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -14,6 +15,7 @@ import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/imagen_sitio.dart';
 import 'package:pier_reposteria/domain/models/order_model.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/domain/models/promociones_inicio.dart';
@@ -33,15 +35,27 @@ String tiempoRestante(String? fechaFin, {DateTime? ahora}) {
 }
 
 /// Slides del carrusel según la configuración (espejo de Inicio.tsx de la
-/// web): los activos de Personalización mandan, ordenados por `orden`, con
-/// sus textos; la imagen solo si es URL real, si no la del slide de respaldo
-/// de la misma posición. Sin slides, el `hero` de la sección Inicio puede
+/// web). Manda el [carrusel] del editor del sitio (`inicio.carrusel` de
+/// GET /contenido, #168), en su orden. Si no viene, los activos de
+/// Personalización, ordenados por `orden`, con sus textos. En los dos, la
+/// imagen que la app no puede pintar se cambia por la del slide de respaldo de
+/// la misma posición. Sin ninguno, el `hero` de la sección Inicio puede
 /// cambiar los textos del primero. null = se quedan los de respaldo.
 List<SlideHero>? resolverSlides(
   Map<String, dynamic>? personalizacion,
-  Map<String, dynamic>? inicio,
-) {
+  Map<String, dynamic>? inicio, {
+  Object? carrusel,
+}) {
   const respaldo = HomeViewModel.slidesDeRespaldo;
+  final delSitio = carrusel is List
+      ? carrusel.whereType<Map<dynamic, dynamic>>().toList()
+      : const <Map<dynamic, dynamic>>[];
+  if (delSitio.isNotEmpty) {
+    return [
+      for (var i = 0; i < delSitio.length; i++)
+        _slideDelSitio(delSitio[i], respaldo[i % respaldo.length].imagen),
+    ];
+  }
   try {
     final decoded = _json(personalizacion?['slides']);
     if (decoded is List) {
@@ -92,6 +106,17 @@ SlideHero _slideDelPanel(Map<dynamic, dynamic> s, String imagenDeRespaldo) {
     imagen: imagen.startsWith('http') ? imagen : imagenDeRespaldo,
   );
 }
+
+/// Una diapositiva del editor del sitio: {imagen, titulo, subtitulo,
+/// boton_texto, boton_enlace}.
+SlideHero _slideDelSitio(Map<dynamic, dynamic> s, String imagenDeRespaldo) =>
+    SlideHero(
+      titulo: s['titulo']?.toString() ?? '',
+      subtitulo: s['subtitulo']?.toString() ?? '',
+      cta: s['boton_texto']?.toString() ?? '',
+      ruta: rutaDeEnlace(s['boton_enlace']?.toString() ?? ''),
+      imagen: imagenDelSitio(s['imagen']?.toString()) ?? imagenDeRespaldo,
+    );
 
 class HomeViewModel extends ChangeNotifier {
   HomeViewModel({
@@ -248,18 +273,22 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   /// El horario vive en la sección 'contacto' (clave 'horarios'); los
-  /// slides en 'personalizacion' y el hero de respaldo en 'inicio' (mismas
-  /// fuentes que la web). Una sección que falla no tumba a las demás.
+  /// slides en el editor del sitio (/contenido) y, si no los hay, en
+  /// 'personalizacion', con el hero de respaldo en 'inicio' (mismas fuentes
+  /// que la web). Una sección que falla no tumba a las demás.
   Future<void> cargarConfiguracion() async {
-    PierLog.api('GET configuracion/contacto + personalizacion + inicio');
+    PierLog.api(
+        'GET configuracion/contacto + personalizacion + inicio + contenido');
     final secciones = await Future.wait([
       _seccion('contacto'),
       _seccion('personalizacion'),
       _seccion('inicio'),
+      _contenidoDelSitio(),
     ]);
     if (_cerrado) return;
     if (secciones[0] != null) _contacto = secciones[0]!;
-    final slides = resolverSlides(secciones[1], secciones[2]);
+    final slides = resolverSlides(secciones[1], secciones[2],
+        carrusel: secciones[3]?['inicio.carrusel']);
     if (slides != null) {
       _slides = slides;
       PierLog.info('✅ Slides del hero configurados: ${slides.length}');
@@ -271,6 +300,14 @@ class HomeViewModel extends ChangeNotifier {
   Future<Map<String, dynamic>?> _seccion(String nombre) async {
     try {
       return await _configRepo.configDe(nombre);
+    } on ApiException {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _contenidoDelSitio() async {
+    try {
+      return await _configRepo.contenido();
     } on ApiException {
       return null;
     }

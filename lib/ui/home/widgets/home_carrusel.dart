@@ -2,7 +2,9 @@
 //
 // Carrusel del inicio: avanza solo cada 5 s, con puntos de página. La página
 // visible y el temporizador son estado de la interfaz; los slides llegan del
-// HomeViewModel (los del panel o los de respaldo).
+// HomeViewModel (los del editor del sitio, los del panel o los de respaldo).
+// El botón abre la pantalla de su enlace: catálogo, contacto, nosotros,
+// preguntas frecuentes o legales (#168).
 //
 // Movimiento: al pasar de slide la foto se queda un poco atrás de su página
 // (paralaje) y crece apenas, y las líneas del texto se abren en abanico; los
@@ -27,7 +29,10 @@ import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/home/widgets/movimiento_inicio.dart';
+import 'package:pier_reposteria/ui/public/widgets/about_us_screen.dart';
 import 'package:pier_reposteria/ui/public/widgets/contact_screen.dart';
+import 'package:pier_reposteria/ui/public/widgets/faq_screen.dart';
+import 'package:pier_reposteria/ui/public/widgets/legal_screen.dart';
 import 'package:provider/provider.dart';
 
 /// La página que se ve (con decimales mientras se desliza), o [respaldo] si
@@ -150,12 +155,22 @@ class _HomeCarruselState extends State<HomeCarrusel> {
   }
 
   void _abrir(SlideHero slide) {
-    if (slide.ruta == RutaSlide.catalogo) {
-      context.read<NavigationProvider>().goCatalogo();
-    } else {
-      Navigator.push(context,
-          MaterialPageRoute<void>(builder: (_) => const ContactScreen())).ignore();
+    final Widget pantalla;
+    switch (slide.ruta) {
+      case RutaSlide.catalogo:
+        context.read<NavigationProvider>().goCatalogo();
+        return;
+      case RutaSlide.contacto:
+        pantalla = const ContactScreen();
+      case RutaSlide.nosotros:
+        pantalla = const AboutUsScreen();
+      case RutaSlide.faq:
+        pantalla = const FAQScreen();
+      case RutaSlide.legales:
+        pantalla = const LegalScreen();
     }
+    Navigator.push(context, MaterialPageRoute<void>(builder: (_) => pantalla))
+        .ignore();
   }
 
   @override
@@ -320,7 +335,12 @@ class _ContenidoSlide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Las piezas se arman una vez; al deslizar solo cambian sus posiciones.
-    final foto = Image.network(slide.imagen, fit: BoxFit.cover,
+    // Las fotos incluidas en la web vienen con la app; las demás, de la red.
+    final foto = Image(
+        image: slide.imagenEsAsset
+            ? AssetImage(slide.imagen)
+            : NetworkImage(slide.imagen),
+        fit: BoxFit.cover,
         frameBuilder: (_, imagen, cuadro, sincrona) =>
             FotoConFundido(foto: imagen, cuadro: cuadro, sincrona: sincrona),
         errorBuilder: (_, _, _) => ColoredBox(
