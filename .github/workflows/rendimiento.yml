@@ -9,14 +9,18 @@
 # Para qué sirve: comparar cada versión con la medición de referencia del
 #   Sprint 3 y descubrir si la app se volvió más lenta o más pesada ANTES de
 #   publicarla.
-# Cuándo corre: a mano (Actions → Pruebas de rendimiento → Run workflow).
-#   Cuando se cierre #61 correrá sola con cada versión nueva.
+# Cuándo corre: sola con cada versión nueva (tag vX.Y.Z) y a mano (Actions →
+#   Pruebas de rendimiento → Run workflow).
 # Dónde corre: el peso se mide en la computadora que presta GitHub. La
-#   fluidez no: Flutter solo la mide bien en un celular real, así que se
-#   medirá en el Samsung SM-N975U del equipo, conectado a una computadora
-#   propia que GitHub usa como si fuera suya (runner self-hosted).
-# Estado: el peso ya funciona. La fluidez solo corre si se marca la casilla
-#   medir_en_celular, y todavía faltan esa computadora y sus pruebas (#61).
+#   fluidez no: Flutter solo la mide bien en un celular real (modo profile),
+#   así que se mide en el Samsung SM-N975U del equipo.
+# Estado: el peso corre aquí. La fluidez se mide desde la laptop con el
+#   celular conectado (#61), con el mismo comando del trabajo «tiempos»; los
+#   resultados se anotan en el issue de la medición. El trabajo «tiempos»
+#   solo correría con una computadora propia registrada en GitHub (runner
+#   self-hosted) y la casilla medir_en_celular; no hay ninguna registrada
+#   porque el repositorio es público y un Pull Request ajeno podría ejecutar
+#   código en ella.
 # Si falla: no bloquea ningún Pull Request; la versión no se publica hasta
 #   revisar el resultado.
 # Dónde ver el resultado: Actions → la corrida → Summary: el peso total, qué
@@ -31,12 +35,12 @@ on:
   workflow_dispatch:
     inputs:
       medir_en_celular:
-        description: Medir arranque y fluidez en el celular (requiere el runner propio, #61)
+        description: 'Medir arranque y fluidez en el celular (requiere un runner propio, #61)'
         type: boolean
         default: false
-  # Se activará al cerrar #61 (correr con cada versión nueva):
-  # push:
-  #   tags: ['v*']
+  # Cada versión nueva: el peso se compara con la línea base de #61.
+  push:
+    tags: ['v*']
 
 permissions:
   contents: read
@@ -116,13 +120,22 @@ jobs:
       # cada cuadro de la pantalla al abrir la app, recorrer el catálogo y
       # pasar al pago. Para verse fluida, cada cuadro debe dibujarse en menos
       # de 16 ms (60 cuadros por segundo).
+      # Se instala como «Pier DEV» (--flavor dev) para no tocar la app «Pier»
+      # del celular, apuntando al servidor real, y entra con la cuenta de
+      # prueba (los mismos secretos que el trabajo «flujos» de integracion.yml).
       - name: Medir con traceAction en modo profile
+        env:
+          USUARIO_PRUEBA: ${{ secrets.USUARIO_PRUEBA }}
+          CLAVE_PRUEBA: ${{ secrets.CLAVE_PRUEBA }}
         run: >
           flutter drive
           --driver=test_driver/perf_driver.dart
           --target=integration_test/rendimiento/rendimiento_test.dart
-          --profile --no-dds
+          --profile --no-dds --flavor dev
           -d ${{ env.DISPOSITIVO }}
+          --dart-define=API_BASE_URL=https://pier-reposteria-backend.onrender.com/api
+          --dart-define=USUARIO_PRUEBA="$(printf '%s' "$USUARIO_PRUEBA" | tr -d '\r\n')"
+          --dart-define=CLAVE_PRUEBA="$(printf '%s' "$CLAVE_PRUEBA" | tr -d '\r\n')"
 
       # Escribe el resumen: una columna por medición con el tiempo promedio por
       # cuadro, el del 90 % de los cuadros, el peor, y cuántos tardaron más de
