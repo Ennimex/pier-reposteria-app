@@ -199,4 +199,6 @@ class ApiConstants {
 
   // ── CONFIGURACIÓN (público, solo lectura) ─────────────────────────
   static String configuracionSeccion(String seccion) => '/configuracion/$seccion';
+  // Bloques del editor del sitio de Dirección: {contenido: {bloque: valor}}
+  static const String contenido = '/contenido';
 }

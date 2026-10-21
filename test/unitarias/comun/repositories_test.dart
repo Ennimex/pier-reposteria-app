@@ -256,5 +256,38 @@ void main() {
       expect((r['config'] as Map)['privacidad'], 'texto');
       expect(api.llamo('/configuracion/legales', metodo: 'GET'), true);
     });
+
+    test('contenido lee sin sesión los bloques del editor del sitio (#168)',
+        () async {
+      final api = FakeApiClient(respuestas: {
+        '/contenido': {
+          'success': true,
+          'contenido': {
+            'inicio.carrusel': [
+              {'titulo': 'Endulza tus momentos especiales'},
+            ],
+          },
+          'actualizado': {'inicio.carrusel': '2026-10-18T03:57:42.421Z'},
+        },
+      });
+
+      final c = await ConfiguracionRepositoryRemote(api: api).contenido();
+
+      expect(c['inicio.carrusel'], [
+        {'titulo': 'Endulza tus momentos especiales'},
+      ]);
+      expect(api.llamo('/contenido', metodo: 'GET'), true);
+    });
+
+    test('contenido que falla lanza ApiException con su mensaje', () async {
+      final api = FakeApiClient()
+        ..fallar('/contenido', 'Error al obtener el contenido');
+
+      await expectLater(
+        ConfiguracionRepositoryRemote(api: api).contenido(),
+        throwsA(isA<ApiException>().having(
+            (e) => e.message, 'message', 'Error al obtener el contenido')),
+      );
+    });
   });
 }

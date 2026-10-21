@@ -70,6 +70,8 @@ flutter:
 
   assets:
     - assets/images/
+    # Fotos incluidas en la web ("local:productoN…" del editor del sitio, #168)
+    - assets/images/sitio/
     - assets/lottie/
 
   fonts:

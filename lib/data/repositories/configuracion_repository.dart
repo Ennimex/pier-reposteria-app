@@ -35,4 +35,10 @@ abstract class ConfiguracionRepository {
   /// GET /configuracion/:seccion: solo su `config` ({clave: valor}); vacío
   /// si no trae. Lanza ApiException si falla.
   Future<Map<String, dynamic>> configDe(String seccion);
+
+  /// GET /contenido (público): los bloques del editor del sitio que
+  /// Dirección ya guardó ({'inicio.carrusel': [...], ...}); vacío si no
+  /// trae. Un bloque que no viene conserva el contenido de la app. Lanza
+  /// ApiException si falla.
+  Future<Map<String, dynamic>> contenido();
 }

@@ -1,6 +1,7 @@
 // test/unitarias/catalogo/home_view_model_test.dart — ViewModel del inicio (MVVM, Fase 4)
-// sin red: carga pública, slides configurables, sucursales, datos del
-// usuario y el tiempo restante de las promociones.
+// sin red: carga pública, slides configurables (editor del sitio, panel o
+// respaldo), sucursales, datos del usuario y el tiempo restante de las
+// promociones.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
@@ -98,6 +99,33 @@ void main() {
       expect(vm.slides.last.imagen, HomeViewModel.slidesDeRespaldo[1].imagen);
     });
 
+    test('el carrusel de GET /contenido manda sobre Personalización (#168)',
+        () async {
+      final api = _backend()
+        ..responder(ApiConstants.contenido, {
+          'success': true,
+          'contenido': {
+            'inicio.carrusel': [
+              {
+                'imagen': 'local:producto1.webp',
+                'titulo': 'Endulza tus momentos especiales',
+                'subtitulo': 'Repostería artesanal desde 2009',
+                'boton_texto': 'Ver Productos',
+                'boton_enlace': '/productos',
+              },
+            ],
+          },
+        });
+      final vm = _vm(api);
+
+      await vm.cargar();
+
+      expect(vm.slides.map((s) => s.titulo),
+          ['Endulza tus momentos especiales']);
+      expect(vm.slides.single.imagen, 'assets/images/sitio/producto1.webp');
+      expect(api.llamo(ApiConstants.contenido, metodo: 'GET'), isTrue);
+    });
+
     test('si todo falla se queda con lo de respaldo', () async {
       final api = FakeApiClient()
         ..fallar(ApiConstants.categorias, 'x')
@@ -140,6 +168,68 @@ void main() {
       expect(resolverSlides(null, {'hero': '{roto'}), isNull);
       expect(resolverSlides(null, {'hero': {'titulo': ''}}), isNull);
       expect(resolverSlides(null, null), isNull);
+    });
+
+    test('el carrusel del editor del sitio manda sobre el panel (#168)', () {
+      final slides = resolverSlides(
+        {
+          'slides': [
+            {'titulo': 'Del panel', 'orden': 1, 'activo': true},
+          ],
+        },
+        {'hero': {'titulo': 'Hero viejo'}},
+        carrusel: [
+          {
+            'imagen': 'local:producto3.webp',
+            'titulo': 'Mostachón de maracuyá',
+            'subtitulo': 'Explosión tropical en cada bocado',
+            'boton_texto': 'Ver Productos',
+            'boton_enlace': '/productos',
+          },
+          {
+            'imagen': 'https://res.cloudinary.com/pier/image/upload/v1/rosca.jpg',
+            'titulo': 'Rosca Cielito Lindo',
+            'subtitulo': '',
+            'boton_texto': 'Escríbenos',
+            'boton_enlace': '/contacto',
+          },
+        ],
+      )!;
+
+      expect(slides.map((s) => s.titulo),
+          ['Mostachón de maracuyá', 'Rosca Cielito Lindo']);
+      expect(slides.first.subtitulo, 'Explosión tropical en cada bocado');
+      expect(slides.first.cta, 'Ver Productos');
+      expect(slides.first.etiqueta, '');
+      expect(slides.first.imagen, 'assets/images/sitio/producto3.webp');
+      expect(slides.first.ruta, RutaSlide.catalogo);
+      expect(slides[1].subtitulo, '');
+      expect(slides[1].cta, 'Escríbenos');
+      expect(slides[1].imagen,
+          'https://res.cloudinary.com/pier/image/upload/v1/rosca.jpg');
+      expect(slides[1].ruta, RutaSlide.contacto);
+    });
+
+    test('una foto del carrusel que la app no tiene usa la de respaldo de su '
+        'posición', () {
+      final slides = resolverSlides(null, null, carrusel: [
+        {'imagen': 'local:otra.png', 'titulo': 'Uno', 'boton_texto': 'Ver'},
+        {'imagen': '', 'titulo': 'Dos', 'boton_texto': 'Ver'},
+      ])!;
+
+      expect(slides.map((s) => s.imagen), [
+        HomeViewModel.slidesDeRespaldo[0].imagen,
+        HomeViewModel.slidesDeRespaldo[1].imagen,
+      ]);
+    });
+
+    test('un carrusel vacío o con otra forma deja el panel y el hero', () {
+      final hero = {'hero': {'titulo': 'Día de Muertos'}};
+      for (final carrusel in [<dynamic>[], 'no es lista', [1, 'dos']]) {
+        expect(resolverSlides(null, hero, carrusel: carrusel)!.first.titulo,
+            'Día de Muertos',
+            reason: '$carrusel');
+      }
     });
   });
 

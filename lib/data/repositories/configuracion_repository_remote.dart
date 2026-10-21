@@ -81,4 +81,16 @@ class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
     final cfg = r['config'];
     return cfg is Map ? Map<String, dynamic>.from(cfg) : {};
   }
+
+  @override
+  Future<Map<String, dynamic>> contenido() async {
+    final r = await _api.get(ApiConstants.contenido);
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudo cargar el contenido del sitio',
+      );
+    }
+    final bloques = r['contenido'];
+    return bloques is Map ? Map<String, dynamic>.from(bloques) : {};
+  }
 }
