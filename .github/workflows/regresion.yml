@@ -10,9 +10,10 @@
 #   sesión que se entregó en el Sprint 1, aquí aparece.
 # Para qué sirve: es el respaldo de cada entrega. El sprint se presenta con
 #   la regresión en verde y su APK listo para instalar.
-# Cuándo corre: sola, el martes de cierre de cada sprint a las 02:00 de
-#   México (08:00 UTC); cuando se publica una versión nueva (v1.2.0,
-#   v1.2.1…) y cuando alguien la lanza a mano.
+# Cuándo corre: sola, el martes de cierre de cada sprint a las 09:30 de
+#   México (15:30 UTC), dentro del horario de la tienda para que también
+#   corra el pago del flujo de compra (#177); cuando se publica una versión
+#   nueva (v1.2.0, v1.2.1…) y cuando alguien la lanza a mano.
 # Si falla: abre sola un issue con la etiqueta bug en el tablero, con el
 #   enlace a la corrida.
 # Dónde ver el resultado: Actions → la corrida → Summary: una fila por etapa
@@ -24,8 +25,10 @@ name: Pruebas de regresión
 
 on:
   schedule:
-    # Minuto 0, hora 8 UTC, cualquier día del mes, cualquier mes, en martes (2).
-    - cron: '0 8 * * 2'
+    # Minuto 30, hora 15 UTC, cualquier día del mes, cualquier mes, en martes
+    # (2). México es UTC−6 todo el año: son las 09:30, con la tienda abierta
+    # (BusinessInfo: lunes a sábado de 9:00 a 21:00).
+    - cron: '30 15 * * 2'
   push:
     tags:
       - 'v*'
