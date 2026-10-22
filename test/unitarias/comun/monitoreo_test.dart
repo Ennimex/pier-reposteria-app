@@ -100,5 +100,58 @@ void main() {
         'mx.com.pierreposteria@${AppVersion.full}',
       );
     });
+
+    test('decide el muestreo de cada traza con tasaDeMuestreo (#24)', () {
+      expect(configurada(Ambiente.prod).tracesSampler, isNotNull);
+    });
+  });
+
+  // #24: el objetivo de errores del pago (docs/SLO.md) necesita todos los
+  // intentos; con el 20 % casi no habría datos.
+  group('Monitoreo.tasaDeMuestreo', () {
+    test('cada intento de pago se mide siempre, también en prod', () {
+      expect(
+        Monitoreo.tasaDeMuestreo(MonitorDePagosSentry.operacion, Ambiente.prod),
+        1.0,
+      );
+    });
+
+    test('las demás trazas se muestrean según el ambiente', () {
+      expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.prod), 0.2);
+      expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.staging), 1.0);
+      expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.dev), 1.0);
+    });
+  });
+
+  // Sin Sentry iniciado (como en las pruebas) la transacción no manda nada:
+  // el intento corre igual y su resultado o su error pasan tal cual.
+  group('MonitorDePagosSentry', () {
+    test(
+      'devuelve lo que devolvió el intento y lo clasifica una vez',
+      () async {
+        final clasificados = <int>[];
+
+        final resultado = await const MonitorDePagosSentry().medir(
+          () async => 7,
+          (valor) {
+            clasificados.add(valor);
+            return (resultado: 'pagado', fallo: false);
+          },
+        );
+
+        expect(resultado, 7);
+        expect(clasificados, [7]);
+      },
+    );
+
+    test('si el intento lanza, el error sigue su camino', () {
+      expect(
+        const MonitorDePagosSentry().medir<int>(
+          () async => throw StateError('sin red'),
+          (_) => (resultado: 'pagado', fallo: false),
+        ),
+        throwsStateError,
+      );
+    });
   });
 }

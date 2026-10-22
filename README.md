@@ -328,6 +328,9 @@ Flujo de liberación:
 3. El tag `v*` dispara **Publicar versión** (`release.yml`), que publica el
    APK firmado en GitHub Releases. Los secretos que necesita y la estrategia
    canary están en [docs/LIBERACION.md](docs/LIBERACION.md) (#22).
+4. La versión avanza del canary al 100 % solo si cumple las métricas de
+   [docs/SLO.md](docs/SLO.md) (#24): *crash-free sessions*, ANR, arranque en
+   frío y errores en el pago, con su dashboard en Sentry.
 
 ## Calendario de sprints
 

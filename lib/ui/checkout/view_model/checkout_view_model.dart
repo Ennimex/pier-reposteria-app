@@ -10,9 +10,14 @@
 // reintenta la confirmación: nunca se vuelve a cobrar. Las respuestas que no
 // cambian al reintentar (cobro devuelto o cobro sin pedido, #171) cortan los
 // reintentos y muestran el mensaje del backend.
+//
+// Cada intento (ya validado) se mide en Sentry con su resultado (#24): solo
+// las fallas del servidor o de la conexión cuentan contra el objetivo de
+// errores del pago (docs/SLO.md).
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/repositories/direcciones_repository.dart';
@@ -40,11 +45,27 @@ class PagoExitoso extends ResultadoPago {
   final double total;
 }
 
+/// Por qué se interrumpió un pago.
+enum MotivoInterrupcion {
+  /// Faltaba elegir algo (horario, dirección, fecha): no se intentó pagar.
+  incompleto,
+
+  /// El cliente canceló la hoja de pago o el aviso de «por confirmar».
+  cancelado,
+
+  /// El banco rechazó la tarjeta.
+  rechazado,
+
+  /// Falló el servidor o la conexión: cuenta contra el objetivo de errores.
+  error,
+}
+
 /// No se pagó o no se registró el pedido. [aviso] es lo que hay que decirle
 /// al cliente; null cuando él mismo canceló.
 class PagoInterrumpido extends ResultadoPago {
-  const PagoInterrumpido([this.aviso]);
+  const PagoInterrumpido(this.motivo, [this.aviso]);
 
+  final MotivoInterrupcion motivo;
   final String? aviso;
 }
 
@@ -58,6 +79,7 @@ class CheckoutViewModel extends ChangeNotifier {
     required Future<bool> Function(List<String> faltantes) confirmarPorConfirmar,
     bool Function() estaAbierto = _abiertoAhora,
     Future<void> Function(Duration) esperar = Future<void>.delayed,
+    MonitorDePagos monitor = const MonitorDePagosSentry(),
   })  : _configRepo = configRepo,
         _direccionesRepo = direccionesRepo,
         _pagosRepo = pagosRepo,
@@ -65,7 +87,8 @@ class CheckoutViewModel extends ChangeNotifier {
         _totalCarrito = totalCarrito,
         _confirmarPorConfirmar = confirmarPorConfirmar,
         _estaAbierto = estaAbierto,
-        _esperar = esperar {
+        _esperar = esperar,
+        _monitor = monitor {
     pagar = Command0<ResultadoPago>(_pagar);
   }
 
@@ -95,6 +118,7 @@ class CheckoutViewModel extends ChangeNotifier {
   final Future<bool> Function(List<String>) _confirmarPorConfirmar;
   final bool Function() _estaAbierto;
   final Future<void> Function(Duration) _esperar;
+  final MonitorDePagos _monitor;
   bool _cerrado = false;
 
   /// Pagar el pedido.
@@ -252,7 +276,23 @@ class CheckoutViewModel extends ChangeNotifier {
 
   Future<ResultadoPago> _pagar() async {
     final invalido = _validar();
-    if (invalido != null) return PagoInterrumpido(invalido);
+    if (invalido != null) {
+      return PagoInterrumpido(MotivoInterrupcion.incompleto, invalido);
+    }
+    return _monitor.medir(_intentarPago, _desenlace);
+  }
+
+  /// Lo que Sentry anota de cada intento (#24).
+  static DesenlacePago _desenlace(ResultadoPago resultado) =>
+      switch (resultado) {
+        PagoExitoso() => (resultado: 'pagado', fallo: false),
+        PagoInterrumpido(:final motivo) => (
+          resultado: motivo.name,
+          fallo: motivo == MotivoInterrupcion.error,
+        ),
+      };
+
+  Future<ResultadoPago> _intentarPago() async {
     _errorPago = null;
     notifyListeners();
 
@@ -281,7 +321,7 @@ class CheckoutViewModel extends ChangeNotifier {
       // Productos sin stock hoy para otra fecha: avisar ANTES de cobrar.
       if (intent.porConfirmar &&
           !await _confirmarPorConfirmar(intent.productosPorConfirmar)) {
-        return const PagoInterrumpido();
+        return const PagoInterrumpido(MotivoInterrupcion.cancelado);
       }
       try {
         await _pasarela.cobrar(
@@ -289,9 +329,9 @@ class CheckoutViewModel extends ChangeNotifier {
           publishableKey: intent.publishableKey,
         );
       } on PagoCanceladoException {
-        return const PagoInterrumpido();
+        return const PagoInterrumpido(MotivoInterrupcion.cancelado);
       } on PagoRechazadoException catch (e) {
-        return PagoInterrumpido(e.message);
+        return PagoInterrumpido(MotivoInterrupcion.rechazado, e.message);
       }
       // El cobro YA ocurrió: recordarlo por si la confirmación falla.
       intentId = intent.paymentIntentId;
@@ -349,7 +389,7 @@ class CheckoutViewModel extends ChangeNotifier {
   PagoInterrumpido _fallo(String mensaje) {
     _errorPago = mensaje;
     if (!_cerrado) notifyListeners();
-    return PagoInterrumpido(mensaje);
+    return PagoInterrumpido(MotivoInterrupcion.error, mensaje);
   }
 
   @override
