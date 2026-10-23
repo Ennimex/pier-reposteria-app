@@ -118,9 +118,12 @@ correo. Monitor «Crash-free sessions < 99.5 % (#24)»: **Monitors** →
 Alerta conectada «Correo: crash-free sessions < 99.5 % (#24)»: se dispara con
 *A new issue is created*, *An issue is resolved*, *An issue escalates* y
 *A resolved issue regresses*; acción *Notify on preferred channel* →
-*Suggested Assignees* (si no hay, *All Project Members*), que llega por
+*Suggested Assignees* (si no hay, *Recently Active Members*), que llega por
 correo; *Get notified on every trigger*, porque solo avisa cuando el issue
-cambia de estado. Se probó con *Send Test Notification* el 22-oct.
+cambia de estado. Como el monitor asigna sus issues a Ennimex, el respaldo
+solo se usa si alguien quita esa asignación. Se probó con
+*Send Test Notification* el 22-oct: el issue de prueba no tiene asignado, así
+que el correo llegó por el respaldo.
 
 El 99.5 % es el mismo número de la regla de avance, así que la alerta avisa
 antes de la revisión de las 48 h. La alerta de errores de #23 (más de 10 en
