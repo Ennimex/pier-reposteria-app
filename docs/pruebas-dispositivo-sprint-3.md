@@ -98,4 +98,5 @@ pedidos), no un efecto de la batería.
 
 **Observación:** con la tienda cerrada, el aviso del checkout dice «Puedes
 dejar tu pedido y lo prepararemos en horario de atención», pero el botón no
-deja hacer el pedido. El texto promete algo que la app no permite.
+deja hacer el pedido. El texto promete algo que la app no permite. Se
+abrió **#188**: la app deja pagar el pedido programado, como la web.
