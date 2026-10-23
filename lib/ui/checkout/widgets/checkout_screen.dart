@@ -139,7 +139,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// pide (se deduce de lo que el ViewModel ya expone, en el mismo orden en
   /// que valida). Si el mismo error del pago se repite, sacude su recuadro.
   void _sacudirSeccion() {
-    if (!_vm.abierto) return;
     final direccion = _vm.direccion;
     final errorPago = _vm.errorPago;
     if (_vm.esDomicilio && (direccion == null || !direccion.tieneCobertura)) {
@@ -433,7 +432,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _botonPagar() {
     final corriendo = _vm.pagar.corriendo;
-    final abierto = _vm.abierto;
     final total = _congelado ? _totalCongelado : _vm.totalConEnvio;
     const estilo = TextStyle(
         fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white);
@@ -444,24 +442,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           height: 24,
           width: 24,
           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2));
-    } else if (abierto) {
+    } else {
       // El monto cuenta cuando cambia (p. ej. al sumar el envío); el texto
-      // final es el de siempre, con sus dos espacios.
+      // final es el de siempre, con sus dos espacios. Con la tienda cerrada
+      // también se paga: el pedido es para otro día (#188).
       contenido = MontoAnimado(
         key: const ValueKey('pagar'),
         valor: total,
         formato: (v) => 'Pagar  \$${v.toStringAsFixed(0)} MXN',
         estilo: estilo,
       );
-    } else {
-      contenido = const Text('Fuera de servicio',
-          key: ValueKey('cerrado'), style: estilo);
     }
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        // Fuera de horario no se pueden crear pedidos.
-        onPressed: (corriendo || !abierto) ? null : _vm.pagar.execute,
+        onPressed: corriendo ? null : _vm.pagar.execute,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.pierVerde,
           disabledBackgroundColor: AppColors.pierVerde.withValues(alpha: 0.5),

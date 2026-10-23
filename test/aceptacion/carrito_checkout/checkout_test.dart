@@ -1,7 +1,8 @@
 // test/aceptacion/carrito_checkout/checkout_test.dart — escenarios Gherkin del
 // checkout: resumen, entrega a domicilio, recoger en sucursal, pago aprobado
-// y pago rechazado por el backend (#57; historia #36), y las respuestas del
-// backend después de cobrar (historia #171), sin red.
+// y pago rechazado por el backend (#57; historia #36), las respuestas del
+// backend después de cobrar (historia #171) y el pedido programado con la
+// tienda cerrada (historia #188), sin red.
 //
 // La hoja de pago de Stripe es nativa y flutter_test no la maneja: la prueba
 // llega hasta que la app solicita el intento de pago al backend y le pasa el
@@ -111,11 +112,12 @@ FakeApiClient _backend() => FakeApiClient(respuestas: {
 
 /// Página de partida: «Proceder al Pago» abre el checkout como lo hace el
 /// carrito, pero con la pasarela falsa y el horario de servicio fijo en
-/// «abierto» (el real depende del reloj).
+/// [abierto] (el real depende del reloj).
 class _Carrito extends StatelessWidget {
-  const _Carrito({required this.pasarela});
+  const _Carrito({required this.pasarela, required this.abierto});
 
   final PasarelaPago pasarela;
+  final bool abierto;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -135,7 +137,7 @@ class _Carrito extends StatelessWidget {
                     pasarela: pasarela,
                     totalCarrito: () => context.read<CartProvider>().totalAmount,
                     confirmarPorConfirmar: (_) async => true,
-                    estaAbierto: () => true,
+                    estaAbierto: () => abierto,
                     esperar: (_) async {},
                   ),
                 ),
@@ -155,9 +157,11 @@ Future<void> _asentar(WidgetTester tester) async {
 }
 
 /// Dado que tengo productos en el carrito: carga el carrito del backend y
-/// abre el checkout. Devuelve el backend falso, la pasarela y el ViewModel.
+/// abre el checkout, con la tienda abierta salvo que se diga otra cosa.
+/// Devuelve el backend falso, la pasarela y el ViewModel.
 Future<(FakeApiClient, _PasarelaFalsa, CheckoutViewModel)> _abrirCheckout(
-    WidgetTester tester) async {
+    WidgetTester tester,
+    {bool abierto = true}) async {
   // El checkout se prueba a 1080 de ancho (checkout_screen_test.dart): con
   // la fuente de pruebas (Ahem) se desborda a 412.
   tester.view
@@ -169,7 +173,7 @@ Future<(FakeApiClient, _PasarelaFalsa, CheckoutViewModel)> _abrirCheckout(
   await tester.pumpApp(
     Provider<FakeApiClient>.value(
       value: api,
-      child: _Carrito(pasarela: pasarela),
+      child: _Carrito(pasarela: pasarela, abierto: abierto),
     ),
     api: api,
   );
@@ -490,6 +494,76 @@ void main() {
           api.llamadas
               .where((l) => l.endpoint == ApiConstants.crearPaymentIntent),
           hasLength(2));
+    });
+  });
+
+  group('#188 Checkout: programar el pedido con la tienda cerrada', () {
+    // Escenario: programar con la tienda cerrada
+    //   Dado que la tienda está cerrada en este momento
+    //   Cuando elijo la fecha y la hora de recolección
+    //   Entonces veo el aviso de que estamos cerrados
+    //   Y el botón dice "Pagar" con el total
+    //   Y puedo pagar el pedido
+    testWidgets('Escenario: programar con la tienda cerrada', (tester) async {
+      // Dado que la tienda está cerrada en este momento
+      final (api, pasarela, vm) = await _abrirCheckout(tester, abierto: false);
+
+      // Cuando elijo la fecha y la hora de recolección
+      await _elegirFechaYHora(tester, vm);
+
+      // Entonces veo el aviso de que estamos cerrados
+      expect(find.textContaining('En este momento estamos cerrados'),
+          findsOneWidget);
+      // Y el botón dice "Pagar" con el total
+      expect(find.text(r'Pagar  $690 MXN'), findsOneWidget);
+
+      // Y puedo pagar el pedido
+      await _pagar(tester, 690);
+      expect(pasarela.cobros, ['pi_1_secret_x']);
+      expect(api.llamo(ApiConstants.confirmarPago, metodo: 'POST-Auth'),
+          isTrue);
+      expect(find.byType(OrderSuccessScreen), findsOneWidget);
+    });
+
+    // Escenario: tienda abierta
+    //   Dado que la tienda está abierta
+    //   Cuando abro el checkout
+    //   Entonces no veo el aviso de que estamos cerrados
+    //   Y pago como hasta ahora
+    testWidgets('Escenario: tienda abierta', (tester) async {
+      // Dado que la tienda está abierta / Cuando abro el checkout
+      final (_, pasarela, vm) = await _abrirCheckout(tester);
+
+      // Entonces no veo el aviso de que estamos cerrados
+      expect(find.textContaining('En este momento estamos cerrados'),
+          findsNothing);
+      expect(find.text('Fuera de servicio'), findsNothing);
+
+      // Y pago como hasta ahora
+      await _elegirFechaYHora(tester, vm);
+      await _pagar(tester, 690);
+      expect(pasarela.cobros, ['pi_1_secret_x']);
+      expect(find.byType(OrderSuccessScreen), findsOneWidget);
+    });
+
+    // Escenario: faltan datos con la tienda cerrada
+    //   Dado que la tienda está cerrada y no elegí fecha ni hora
+    //   Cuando presiono "Pagar"
+    //   Entonces la app me pide la fecha y la hora de recolección
+    testWidgets('Escenario: faltan datos con la tienda cerrada',
+        (tester) async {
+      // Dado que la tienda está cerrada y no elegí fecha ni hora
+      final (api, pasarela, _) = await _abrirCheckout(tester, abierto: false);
+
+      // Cuando presiono "Pagar"
+      await _pagar(tester, 690);
+
+      // Entonces la app me pide la fecha y la hora de recolección
+      expect(find.text('Selecciona fecha y hora de recolección'),
+          findsOneWidget);
+      expect(pasarela.cobros, isEmpty);
+      expect(api.llamo(ApiConstants.crearPaymentIntent, metodo: 'POST-Auth'),
+          isFalse);
     });
   });
 }

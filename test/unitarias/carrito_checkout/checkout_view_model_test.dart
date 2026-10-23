@@ -210,10 +210,21 @@ void main() {
   });
 
   group('CheckoutViewModel: validaciones antes de cobrar', () {
-    test('fuera de horario no se paga', () async {
+    test('con la tienda cerrada se paga el pedido programado (#188)',
+        () async {
       final p = _Prueba(abierto: false)..listoParaRecoger();
+
+      final r = await p.pagar() as PagoExitoso?;
+
+      expect(p.vm.abierto, isFalse);
+      expect(r!.pedido.numero, 'P-77');
+      expect(p.pasarela.cobros, 1);
+    });
+
+    test('con la tienda cerrada y sin fecha u hora las pide (#188)', () async {
+      final p = _Prueba(abierto: false);
       final r = await p.pagar() as PagoInterrumpido?;
-      expect(r!.aviso, contains('fuera de servicio'));
+      expect(r!.aviso, 'Selecciona fecha y hora de recolección');
       expect(p.pasarela.cobros, 0);
     });
 
