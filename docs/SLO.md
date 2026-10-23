@@ -12,8 +12,8 @@ objetivos y la regla de avance (#24).
 | **Crash-free sessions** | De cada 100 veces que se abre la app, cuántas terminan sin cerrarse de golpe | Sentry → Releases | **≥ 99.5 %** | 48 h por versión | Pedro |
 | **Crash-free users** | De cada 100 personas, cuántas no vieron ningún cierre | Sentry → Releases | **≥ 99 %** | 48 h por versión | Pedro |
 | **Tasa de ANR** | Sesiones en las que la app se congeló 5 s o más («la aplicación no responde») | Play Console → Android Vitals; mientras la app no esté en Play, Sentry | **< 0.47 %** (umbral de mal comportamiento de Google) | 28 días en Play; 48 h en Sentry | Pedro |
-| **Arranque en frío p90** | El 90 % de las aperturas en frío muestran la primera pantalla en este tiempo o menos | Sentry → Insights → Mobile (`app_start_cold`) | **< 3 s** | 7 días | Alexander |
-| **Errores en el pago** | De cada 100 intentos de pago, cuántos fallan por el servidor o la conexión | Sentry → transacciones `checkout.pagar` (etiqueta `flow:checkout`) | **< 1 %** de los intentos | 7 días | Alexander |
+| **Arranque en frío p90** | El 90 % de las aperturas en frío muestran la primera pantalla en este tiempo o menos | Sentry → spans `app.start.cold` | **< 3 s** | 7 días | Alexander |
+| **Errores en el pago** | De cada 100 intentos de pago, cuántos fallan por el servidor o la conexión | Sentry → spans `checkout.pagar` (etiqueta `flow:checkout`) | **< 1 %** de los intentos | 7 días | Alexander |
 
 Línea base medida en el Samsung SM-N975U (#61): arranque en frío 1.6 s con el
 servidor despierto.
@@ -27,8 +27,9 @@ GitHub Releases lo traen; los de pruebas no). Cada evento lleva la versión
 - **Sesiones y cierres**: los registra Sentry solo (`enableAutoSessionTracking`).
 - **ANR**: el detector de Sentry para Android viene encendido (`anrEnabled`).
   Cuando la app esté en Play, la fuente oficial es Android Vitals.
-- **Arranque en frío**: Sentry crea una transacción `ui.load` con la medida
-  `app_start_cold` en cada arranque muestreado. Ojo: incluye la espera de
+- **Arranque en frío**: Sentry crea una transacción `ui.load` con un span
+  `app.start.cold` en cada arranque muestreado (en el dataset Spans la medida
+  se llama `app.vitals.start.cold.value`). Ojo: incluye la espera de
   `/pagos/config` antes del primer cuadro; si el servidor de Render está
   dormido, ese arranque sale de ~20 s.
 - **Pago**: cada intento ya validado (con fecha, hora y dirección elegidas) es
@@ -70,18 +71,59 @@ con el filtro de ambiente `prod`:
 |---|---|---|---|
 | Crash-free sessions | Releases | `crash_free_rate(session)` | Big Number |
 | Crash-free users | Releases | `crash_free_rate(user)` | Big Number |
-| ANR | Issues | `error.type:ApplicationNotResponding` (eventos y usuarios) | Table |
-| Arranque en frío p90 | Transactions | `p90(measurements.app_start_cold)` con `transaction.op:ui.load` | Big Number |
-| Errores en el pago | Transactions | `failure_rate()` con `transaction.op:checkout.pagar` | Big Number |
-| Intentos de pago por resultado | Transactions | `count()` con `transaction.op:checkout.pagar`, agrupado por `resultado` | Table |
+| ANR | Errors | `count_unique(user)` y `count()` por `release`, con `error.type:ApplicationNotResponding` | Table |
+| Arranque en frío p90 | Spans | `p90(span.duration)` con `span.op:app.start.cold` | Big Number |
+| Errores en el pago | Spans | `failure_rate()` con `is_transaction:true span.op:checkout.pagar` | Big Number |
+| Intentos de pago por resultado | Spans | `count(spans)` por `resultado`, con `span.op:checkout.pagar` | Table |
 
-Para revisar una versión en canary se cambia el filtro **Release** del
-dashboard a esa versión.
+Cómo se ve hoy la interfaz de Sentry (22-oct-2026):
+
+- El dataset **Transactions** ya es obsoleto: las transacciones se consultan
+  en **Spans** (cada transacción es su span raíz; `is_transaction:true` deja
+  solo esas).
+- Las tablas no tienen «Group by»: agrupan por las columnas de campo, como
+  `release` o `resultado`.
+- La etiqueta `resultado` no aparece en Sentry hasta que llega el primer pago
+  que la trae (versiones posteriores a 2.0.0+3). Mientras tanto la tabla de
+  intentos usa `span.status`; tras ese pago se cambia la columna a `resultado`.
+- **Umbrales** de los widgets: los porcentajes se escriben en fracción
+  (0.995 = 99.5 %; con 99.5 un 100 % sale en rojo) y de menor a mayor. En
+  crash-free se marca *Higher is better*: rojo < 0.99, amarillo 0.99 a 0.995,
+  verde ≥ 0.995. En tiempos y errores, *Lower is better* (arranque: verde
+  < 2 s, rojo > 3 s).
+- El plan Developer de Sentry permite 10 dashboards y 20 metric monitors.
+
+El filtro **Release** guardado es *All Releases*. Para revisar una versión en
+canary se elige esa versión sin guardar el cambio; si se guarda, el dashboard
+se queda fijo en ella cuando salga la siguiente.
+
+![Dashboard «Pier — SLO (#24)» en Sentry](slo/dashboard.png)
 
 ## Alerta
 
-Sentry → **Alerts** → **Create Alert** → *Sessions* → *Crash free session
-rate*: si baja de **99.5 %** en una ventana de 24 h (ambiente `prod`), manda
-correo al equipo. Es el mismo número de la regla de avance, así que la alerta
-avisa antes de la revisión de las 48 h. La alerta de errores de #23 (más de 10
-en 1 hora) se queda como está.
+En Sentry la sección se llama **Monitors** (antes *Alerts*): el monitor crea
+un issue cuando la métrica cruza el umbral y la alerta conectada manda el
+correo. Monitor «Crash-free sessions < 99.5 % (#24)»: **Monitors** →
+**Create Monitor** → *Metric*.
+
+| Campo | Valor |
+|---|---|
+| Proyecto y ambiente | `flutter`, `prod` |
+| Métrica | *Crash Free Session Rate* (dataset Releases, `crash_free_rate(session)`) |
+| Intervalo | 1 day |
+| Detección | *Threshold*: alta *Below* 99.5 %, media *Below* 99.9 % (aquí se escribe en porcentaje) |
+| Se resuelve | *Default*: al volver a 99.9 % o más |
+| Asignado | Ennimex |
+
+Alerta conectada «Correo: crash-free sessions < 99.5 % (#24)»: se dispara con
+*A new issue is created*, *An issue is resolved*, *An issue escalates* y
+*A resolved issue regresses*; acción *Notify on preferred channel* →
+*Suggested Assignees* (si no hay, *All Project Members*), que llega por
+correo; *Get notified on every trigger*, porque solo avisa cuando el issue
+cambia de estado. Se probó con *Send Test Notification* el 22-oct.
+
+El 99.5 % es el mismo número de la regla de avance, así que la alerta avisa
+antes de la revisión de las 48 h. La alerta de errores de #23 (más de 10 en
+1 hora) se queda como está.
+
+![Monitor «Crash-free sessions < 99.5 % (#24)» en Sentry](slo/monitor.png)
