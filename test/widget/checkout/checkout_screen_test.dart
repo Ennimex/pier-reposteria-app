@@ -247,13 +247,15 @@ void main() {
       expect(find.text(r'-$60'), findsOneWidget);
     });
 
-    testWidgets('fuera de horario avisa y desactiva el botón', (tester) async {
+    testWidgets('fuera de horario avisa y deja pagar el pedido programado (#188)',
+        (tester) async {
       await _montar(tester, abierto: false);
 
-      expect(find.text('Fuera de servicio'), findsNWidgets(2));
+      expect(find.text('Fuera de servicio'), findsOneWidget);
+      expect(find.textContaining('Puedes dejar tu pedido'), findsOneWidget);
       final boton = tester.widget<ElevatedButton>(
-          find.widgetWithText(ElevatedButton, 'Fuera de servicio'));
-      expect(boton.onPressed, isNull);
+          find.widgetWithText(ElevatedButton, r'Pagar  $300 MXN'));
+      expect(boton.onPressed, isNotNull);
     });
   });
 }

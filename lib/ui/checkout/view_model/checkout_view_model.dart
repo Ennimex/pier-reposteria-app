@@ -149,7 +149,8 @@ class CheckoutViewModel extends ChangeNotifier {
   /// Aviso de error del último pago (se muestra bajo el método de pago).
   String? get errorPago => _errorPago;
 
-  /// ¿Se aceptan pedidos ahora? (fuera de horario no).
+  /// ¿La tienda está abierta ahora? Solo decide si se muestra el aviso: el
+  /// pedido siempre es para otro día, así que se paga igual (#188).
   bool get abierto => _estaAbierto();
 
   /// Horarios del día elegido (sin día: los de entre semana).
@@ -256,9 +257,6 @@ class CheckoutViewModel extends ChangeNotifier {
 
   /// Por qué todavía no se puede pagar (null = todo listo).
   String? _validar() {
-    if (!abierto) {
-      return 'Estamos fuera de servicio. Horario: ${BusinessInfo.horario}';
-    }
     if (esDomicilio) {
       final d = _direccion;
       if (d == null) return 'Selecciona una dirección de entrega';
