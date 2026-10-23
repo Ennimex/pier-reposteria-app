@@ -192,7 +192,7 @@ MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 | Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`analisis-estatico.yml`) |
 | Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`aceptacion.yml`) |
 | Integración | Smoke tests del login y catálogo con `FakeApiClient`, y el flujo de compra (login → carrito → checkout → intento de pago) contra el servidor real con una cuenta de prueba, en emulador Android | `integration_test/app_smoke_test.dart` y `integration_test/flujos/` | Pull Requests que tocan código de app (`integracion.yml`) |
-| Regresión | Toda la suite acumulada sobre la rama o tag | `test/` e `integration_test/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion.yml`) |
+| Regresión | Toda la suite acumulada sobre la rama o tag (menos rendimiento, que necesita el celular físico) | `test/`, `integration_test/app_smoke_test.dart` e `integration_test/flujos/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion.yml`) |
 | Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
 | Esfuerzo | Catálogo de 1,000 productos, carrito de 100 artículos y 5,000 toques de monkey | `test/esfuerzo/` | Cada tag y a mano (`esfuerzo.yml`) |
 
