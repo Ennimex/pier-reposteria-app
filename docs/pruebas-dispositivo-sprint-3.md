@@ -19,13 +19,10 @@ energía activado. Los valores quedan junto a la línea base de rendimiento de
 
 | # | Medición | Resultado | Umbral |
 |:-:|---|---|:-:|
-| 1 | Memoria al abrir, tras 5 min en el catálogo y al volver del segundo plano | 285 → 307 → 267 MB (PSS); sube y baja con las fotos, sin crecer sin parar | ✅ Estable |
+| 1 | Memoria al abrir, tras 5 min en el catálogo y al volver del segundo plano | 285 → 307 → 267 MB (PSS); sube y baja con las fotos, sin crecer sin parar. En el APK de profile, con Flutter DevTools, el heap de Dart vuelve a 24-25 MB después de cada recolección | ✅ Estable |
 | 2 | CPU en reposo, navegando y en segundo plano | Reposo ~3 %, navegando 28 % de promedio, segundo plano 0 a 2 % | ✅ Cerca de 0 % en reposo |
 | 3 | Batería en 9 min 32 s de uso normal | 4.51 mAh (≈ 0.7 % de la batería por hora, sin contar la pantalla); sin wakelocks propios | ✅ |
 | 4 | Batería al 5 % con ahorro de energía | Catálogo y checkout funcionan | ✅ |
-
-Pendiente del paso 1: comparar con la vista de memoria de Flutter DevTools
-usando el APK de profile.
 
 ## 1. Memoria
 
@@ -46,6 +43,69 @@ Durante los 5 min del catálogo se tomó el PSS cada 30 s: **297, 278, 292, 251,
 cuando se liberan; no hay una subida continua. La mayor parte son gráficos (las
 imágenes del catálogo y el carrusel). En segundo plano la app soltó 49 MB de
 gráficos.
+
+### Comparación con Flutter DevTools (APK de profile)
+
+DevTools solo se conecta a una app compilada en *debug* o *profile*: el APK de
+release no deja abierta la VM de Dart. Por eso se repitió el recorrido con
+**Pier DEV en profile**, el mismo día de 22:49 a 23:05, en el mismo celular,
+contra el servidor real y con la misma cuenta de cliente.
+
+| Dato | Valor |
+|---|---|
+| App | Pier DEV (`mx.com.pierreposteria.dev`), `flutter run --profile --flavor dev` con `API_BASE_URL` del servidor real |
+| Código | `main` en `df223e6`: frente a la v2.1.0 solo cambia el botón del checkout de #188 |
+| Herramientas | Flutter 3.47.0 y DevTools 2.60.0 |
+| Cómo se midió | En cada momento, `dumpsys meminfo mx.com.pierreposteria.dev` y, por el VM service (la fuente de la gráfica de DevTools), el heap de Dart antes y después de forzar una recolección (`getAllocationProfile` con `gc: true`, lo mismo que el botón *GC* de DevTools). Al final se abrió la vista **Memory** de DevTools conectada a la app |
+
+| Momento | Hora | PSS release | PSS profile | Gráficos | Código | Heap de Dart | Heap de Dart tras GC |
+|---|:-:|--:|--:|--:|--:|--:|--:|
+| Al abrir (Inicio) | 22:49 | 285 MB | 338 MB | 105 MB | 96 MB | 27.4 MB | 24.0 MB |
+| Tras 5 min navegando el catálogo | 22:55 | 307 MB | 405 MB | 148 MB | 90 MB | 33.9 MB | 24.8 MB |
+| Tras 1 min en segundo plano | 22:56 | 273 MB | 367 MB | 113 MB | 90 MB | — | — |
+| Al volver del segundo plano | 22:57 | 267 MB | 335 MB | 82 MB | 90 MB | 31.1 MB | 24.3 MB |
+| Tras usar carrito y checkout | 22:58 | 284 MB | 342 MB | 88 MB | 90 MB | 27.4 MB | 25.4 MB |
+| Tras 1½ min más en el catálogo, con DevTools abierto | 23:05 | — | 381 MB | 118 MB | 86 MB | 28.3 MB | 25.1 MB |
+
+Gráficos y código son del APK de profile. La memoria *external* de Dart (la
+que Dart reserva fuera de su heap) no pasó de 0.8 MB en ningún momento.
+
+Durante los 5 min del catálogo se tomaron cada 30 s el PSS y el heap de Dart:
+PSS **333, 334, 371, 380, 386, 392, 394, 398, 403, 402 y 403 MB**; heap de Dart
+**27.2, 25.2, 30.0, 28.4, 28.7, 31.2, 28.2, 29.2, 31.2, 26.3 y 24.7 MB**.
+
+![Vista Memory de Flutter DevTools conectada a Pier DEV en profile](pruebas-dispositivo-sprint-3/devtools-memoria.png)
+
+En la gráfica de DevTools, tomada a las 23:04:06 después de 1½ min en el
+catálogo, se ven **RSS 442 MB, Dart/Flutter 34.9 MB y Allocated 39.1 MB**. Los
+triángulos morados son recolecciones de basura.
+
+**Comparación:**
+
+- **Las dos herramientas cuentan lo mismo.** El RSS de DevTools (442 MB) cae en
+  el rango del `TOTAL RSS` de `dumpsys` en profile (440 a 510 MB), y su
+  Dart/Flutter (34.9 MB) es del mismo orden que el heap de Dart leído de la VM
+  antes de cada recolección (24.7 a 33.9 MB).
+- **El heap de Dart es una parte chica de la memoria**: entre el 7 y el 9 % del
+  PSS en cada medición. El resto son los gráficos (las fotos ya
+  decodificadas viven en el motor de Flutter, no en el heap de Dart) y el
+  código.
+- **Dart no retiene memoria.** Después de cada recolección el heap regresa a
+  24-25 MB: 24.0 MB al abrir, 24.8 MB tras 5 min, 24.3 MB al volver, 25.4 MB
+  tras el checkout y 25.1 MB al final. Lo que sube al navegar es basura que el
+  recolector libera, como se ve en la serie de 30 s.
+- **Profile pesa más que release**, entre 50 y 100 MB de PSS: casi 40 MB son de
+  código (86-96 MB contra 52-60 MB), porque el profile carga lo que DevTools
+  necesita para perfilar. En release el PSS del catálogo subía y bajaba entre
+  251 y 310 MB. En profile subió de 333 a unos 403 MB en los primeros 4 min y
+  ahí se quedó. En los dos casos no crece sin parar y baja en segundo plano.
+- **En segundo plano Samsung congela la app** unos 70 s después de salir: salió
+  a las 22:55:28, Android la marcó inactiva a las 22:56:29 y quedó congelada a
+  las 22:56:39 (logcat: `FreecessController … Frozen, Reason: uidIdle`). Congelada, no
+  responde a la VM: DevTools pierde la conexión y por eso esa fila no tiene
+  heap de Dart. Esto coincide con el 0-2 % de CPU del release. Al volver,
+  Android la trajo al frente en **128 ms** (*HOT*, mismo proceso; en release
+  fueron 108 ms).
 
 ## 2. CPU
 
