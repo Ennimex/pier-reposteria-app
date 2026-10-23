@@ -7,9 +7,9 @@
 class AppVersion {
   AppVersion._();
 
-  static const String name = '2.0.0';
-  static const int build = 3;
+  static const String name = '2.1.0';
+  static const int build = 4;
 
-  /// `2.0.0+3`, igual que en pubspec.yaml.
+  /// `2.1.0+4`, igual que en pubspec.yaml.
   static const String full = '$name+$build';
 }
