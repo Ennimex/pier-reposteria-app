@@ -14,6 +14,7 @@ import 'package:pier_reposteria/ui/auth/widgets/verify_email_screen.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'fakes/fake_api_client.dart';
 import 'helpers/pump_app.dart';
@@ -151,6 +152,18 @@ void main() {
         AppRoutes.login,
       );
       expect(find.text('Iniciar Sesión'), findsWidgets);
+    });
+
+    // #60: Sentry sabe en qué pantalla de go_router ocurrió cada error.
+    testWidgets('avisa a Sentry de cada cambio de pantalla', (tester) async {
+      final router = await montar(tester, _apiConCatalogoVacio(),
+          AppRoutes.login);
+
+      final navegador = router.routerDelegate.navigatorKey.currentState!;
+      expect(
+        navegador.widget.observers.whereType<SentryNavigatorObserver>(),
+        hasLength(1),
+      );
     });
 
     testWidgets('una ruta protegida sin sesión redirige al login',

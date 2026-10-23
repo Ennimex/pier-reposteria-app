@@ -6,6 +6,7 @@
 // ignore_for_file: cast_nullable_to_non_nullable
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/domain/models/order_model.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/auth/widgets/forgot_password_screen.dart';
@@ -104,6 +105,7 @@ class AppRoutes {
     return GoRouter(
       initialLocation: initialLocation,
       refreshListenable: authProvider,
+      observers: [Monitoreo.observadorDeNavegacion()],
       redirect: (context, state) {
         final isAuth = authProvider.isAuthenticated;
         final loc = state.matchedLocation;

@@ -1,6 +1,7 @@
 // test/unitarias/comun/monitoreo_test.dart — errores y rendimiento en Sentry (#23).
 // Sentry solo se inicia si el build trae --dart-define=SENTRY_DSN=...; sin DSN
 // (builds locales y pruebas) la app arranca igual y no se envía nada.
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/config/app_version.dart';
@@ -120,6 +121,65 @@ void main() {
       expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.prod), 0.2);
       expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.staging), 1.0);
       expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.dev), 1.0);
+    });
+  });
+
+  // #60: cada error llega a Sentry con la pantalla en la que estaba el
+  // usuario (contexto App → View Names) y el rastro de pantallas previas.
+  group('Monitoreo.observadorDeNavegacion', () {
+    Route<void> ruta(String nombre) => MaterialPageRoute<void>(
+          builder: (_) => const SizedBox(),
+          settings: RouteSettings(name: nombre),
+        );
+
+    // Hub propio con todas las trazas activas: si el observador abriera una
+    // transacción por pantalla, quedaría en el scope.
+    Hub hubConTrazas() =>
+        Hub(SentryFlutterOptions(dsn: _dsn)..tracesSampleRate = 1);
+
+    Future<List<Map<String, dynamic>?>> navegaciones(Hub hub) async {
+      await pumpEventQueue();
+      var migas = <Breadcrumb>[];
+      await hub.configureScope((scope) => migas = scope.breadcrumbs);
+      return [
+        for (final miga in migas)
+          if (miga.category == 'navigation') miga.data,
+      ];
+    }
+
+    setUpAll(TestWidgetsFlutterBinding.ensureInitialized);
+
+    test('deja en el rastro cada pantalla a la que se entra', () async {
+      final hub = hubConTrazas();
+
+      Monitoreo.observadorDeNavegacion(hub: hub)
+          .didPush(ruta('/producto/:id'), ruta('/main'));
+
+      expect(await navegaciones(hub), [
+        {'state': 'didPush', 'from': '/main', 'to': '/producto/:id'},
+      ]);
+    });
+
+    test('y la pantalla a la que se vuelve', () async {
+      final hub = hubConTrazas();
+
+      Monitoreo.observadorDeNavegacion(hub: hub)
+          .didPop(ruta('/cliente/checkout'), ruta('/main'));
+
+      expect(await navegaciones(hub), [
+        {'state': 'didPop', 'from': '/cliente/checkout', 'to': '/main'},
+      ]);
+    });
+
+    // Una transacción por pantalla gastaría cuota y no la pide docs/SLO.md;
+    // tampoco debe tocar la transacción «pago» que vive en el scope.
+    test('navegar no abre transacciones', () {
+      final hub = hubConTrazas();
+
+      Monitoreo.observadorDeNavegacion(hub: hub)
+          .didPush(ruta('/cliente/checkout'), ruta('/main'));
+
+      expect(hub.getSpan(), isNull);
     });
   });
 
