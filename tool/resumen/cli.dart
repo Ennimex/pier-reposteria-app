@@ -11,6 +11,7 @@ import 'cobertura.dart';
 import 'esfuerzo.dart';
 import 'evidencias.dart';
 import 'flujo.dart';
+import 'k6.dart';
 import 'markdown.dart';
 import 'pruebas.dart';
 import 'regresion.dart';
@@ -24,6 +25,7 @@ const _rutaIntegracion = 'build/resultados/integracion.json';
 const _rutaSuite = 'build/resultados/suite.json';
 const _rutaCobertura = 'coverage/lcov.info';
 const _rutaFlujo = 'build/resultados/aceptacion_emulador.json';
+const _rutaLineaBaseDeRendimiento = 'tool/linea_base_rendimiento.json';
 const _carpetaApk = 'build/app/outputs/flutter-apk';
 
 /// Etapas de pipeline.yml, en orden: nombre en la tabla y opción del comando
@@ -58,6 +60,12 @@ Comandos:
   flujo [reporte.json]
       Reporte del flujo principal en el emulador que deja
       test_driver/aceptacion_driver.dart (por omisión $_rutaFlujo).
+  k6 <resumen.json> --titulo <texto> [--escenario <clave>]
+      Resumen de k6 run --summary-export; con --escenario lo compara con su
+      línea base en $_rutaLineaBaseDeRendimiento.
+  comparar-rendimiento <resumen.json> <clave>
+      Falla si el p95 de k6 supera en más de 20 % la línea base <clave> de
+      $_rutaLineaBaseDeRendimiento (o si no hay línea base).
   evidencias <carpeta> --unitarias <r> --analisis <r> --aceptacion <r>
       --integracion <r> --regresion <r> --rendimiento <r> --esfuerzo <r>
       Tabla final de pipeline.yml con las métricas de los artefactos de cada
@@ -91,6 +99,8 @@ int ejecutar(
     'tiempos' => _tiempos(opciones, archivos),
     'monkey' => _monkey(opciones, archivos),
     'flujo' => _flujo(opciones, archivos),
+    'k6' => _k6(opciones, archivos),
+    'comparar-rendimiento' => _compararRendimiento(opciones, archivos),
     'evidencias' => _evidencias(opciones, archivos, entorno),
     'regresion' => _regresion(opciones, archivos, entorno),
     'version' => _version(opciones, archivos),
@@ -273,6 +283,67 @@ int ejecutar(
   return (resumenFlujo(leerReporteDelFlujo(datos)), 0);
 }
 
+(String, int)? _k6(_Argumentos opciones, _Archivos archivos) {
+  final ruta = opciones.posicional(1);
+  final titulo = opciones.valores['titulo'];
+  if (ruta == null || titulo == null) return null;
+  final datos = archivos.leerJson(ruta);
+  if (datos == null) {
+    return (
+      '### 📈 $titulo\n\n> ⚠️ No se generó el resumen de k6 (`$ruta`): el '
+          'entorno aislado no arrancó o k6 no llegó a terminar. Revisa el log '
+          'del paso.\n',
+      0,
+    );
+  }
+  final escenario = opciones.valores['escenario'];
+  final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
+  final base = escenario == null || lineasBase == null
+      ? null
+      : leerLineaBaseK6(lineasBase, escenario);
+  return (resumenK6(leerK6(datos), titulo: titulo, base: base), 0);
+}
+
+/// Termina con 1 si el p95 rebasa la línea base en más de 20 % o si no hay
+/// contra qué comparar: sin línea base, la prueba no probaría nada.
+(String, int)? _compararRendimiento(_Argumentos opciones, _Archivos archivos) {
+  final ruta = opciones.posicional(1);
+  final escenario = opciones.posicional(2);
+  if (ruta == null || escenario == null) return null;
+  const titulo = '### ⏱️ Rendimiento contra la línea base\n\n';
+  final datos = archivos.leerJson(ruta);
+  if (datos == null) {
+    return ('$titulo> ❌ No se generó el resumen de k6 (`$ruta`).\n', 1);
+  }
+  final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
+  final base =
+      lineasBase == null ? null : leerLineaBaseK6(lineasBase, escenario);
+  if (base == null) {
+    return (
+      '$titulo> ❌ $_rutaLineaBaseDeRendimiento no trae la línea base '
+          '«$escenario» (p95_ms).\n',
+      1,
+    );
+  }
+  final reporte = leerK6(datos);
+  final permitido = p95Permitido(base);
+  if (rebasaLaLineaBase(reporte, base)) {
+    return (
+      '$titulo> ❌ El p95 de «$escenario» subió a '
+          '${reporte.p95Ms.toStringAsFixed(0)} ms: la línea base es '
+          '${base.p95Ms.toStringAsFixed(0)} ms y el máximo permitido '
+          '${permitido.toStringAsFixed(0)} ms (+20 %).\n',
+      1,
+    );
+  }
+  return (
+    '$titulo✅ El p95 de «$escenario» es ${reporte.p95Ms.toStringAsFixed(0)} '
+        'ms: dentro del máximo de ${permitido.toStringAsFixed(0)} ms (línea '
+        'base ${base.p95Ms.toStringAsFixed(0)} ms + 20 %).\n',
+    0,
+  );
+}
+
 /// Las métricas salen de los archivos que cada etapa subió como artefacto;
 /// el job de evidencias los descarga todos en la carpeta del primer
 /// argumento, cada artefacto en su propia subcarpeta. Siempre termina con 0:
@@ -311,9 +382,18 @@ int ejecutar(
   final flujo = leer('aceptacion_emulador.json');
   final datosDelFlujo = flujo == null ? null : jsonDecode(flujo);
   final integracion = corrida('integracion.json');
+  final pruebasDeLaApi = corrida('api.json');
   final regresion = corrida('regresion.json');
   final apk = buscar((nombre) => nombre.endsWith('-release.apk'));
   final monkey = leer('monkey.txt');
+  ReporteK6? k6(String nombre) {
+    final contenido = leer(nombre);
+    final datos = contenido == null ? null : jsonDecode(contenido);
+    return datos is Map<String, dynamic> ? leerK6(datos) : null;
+  }
+
+  final cargaNormal = k6('k6_rendimiento.json');
+  final esfuerzoDeLaApi = k6('k6_esfuerzo.json');
 
   final metricas = <String, List<String>>{
     'unitarias': [
@@ -329,12 +409,19 @@ int ejecutar(
       if (datosDelFlujo is Map<String, dynamic>)
         'Emulador: ${lineaFlujo(leerReporteDelFlujo(datosDelFlujo))}',
     ],
-    'integracion': [if (integracion != null) lineaPruebas(integracion)],
+    'integracion': [
+      if (integracion != null) 'Emulador: ${lineaPruebas(integracion)}',
+      if (pruebasDeLaApi != null) 'API: ${lineaPruebas(pruebasDeLaApi)}',
+    ],
     'regresion': [if (regresion != null) lineaPruebas(regresion)],
     'rendimiento': [
       if (apk != null) 'APK de release: ${tamano(apk.lengthSync())}',
+      if (cargaNormal != null) lineaK6(cargaNormal),
     ],
-    'esfuerzo': [if (monkey != null) lineaMonkey(leerMonkey(monkey))],
+    'esfuerzo': [
+      if (monkey != null) lineaMonkey(leerMonkey(monkey)),
+      if (esfuerzoDeLaApi != null) lineaK6(esfuerzoDeLaApi),
+    ],
   };
 
   final rama = entorno['GITHUB_HEAD_REF'] ?? '';
@@ -354,7 +441,13 @@ int ejecutar(
           ? ''
           : 'Rama `$referencia` · commit '
               '`${commit.substring(0, min(7, commit.length))}`',
-      corridas: [?unitarias, ?gherkin, ?integracion, ?regresion],
+      corridas: [
+        ?unitarias,
+        ?gherkin,
+        ?integracion,
+        ?pruebasDeLaApi,
+        ?regresion,
+      ],
     ),
     0,
   );

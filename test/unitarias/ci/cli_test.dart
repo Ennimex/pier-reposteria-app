@@ -361,6 +361,78 @@ void main() {
     });
   });
 
+  // k6 contra el entorno aislado (rendimiento.yml y esfuerzo.yml).
+  group('k6', () {
+    String resumenDeK6({double p95 = 90}) => jsonEncode({
+          'metrics': {
+            'http_reqs': {'count': 600, 'rate': 20},
+            'http_req_failed': {'value': 0},
+            'http_req_duration': {'p(95)': p95, 'avg': 30, 'max': 200},
+          },
+        });
+
+    test('resume la corrida y la compara con su línea base', () {
+      _escribir('build/resultados/k6_rendimiento.json', resumenDeK6());
+      _escribir(
+        'tool/linea_base_rendimiento.json',
+        jsonEncode({
+          'api_carga_normal': {'p95_ms': 80},
+        }),
+      );
+
+      final codigo = _ejecutar([
+        'k6',
+        'build/resultados/k6_rendimiento.json',
+        '--titulo',
+        'Carga normal de la API (k6)',
+        '--escenario',
+        'api_carga_normal',
+      ]);
+
+      expect(codigo, 0);
+      expect(_salida.toString(), contains('| 600 | 20.0 | 0.0 % | 90 ms |'));
+      expect(_salida.toString(), contains('✅ p95 90 ms contra la línea base'));
+    });
+
+    test('sin el resumen avisa sin fallar el paso', () {
+      expect(_ejecutar(['k6', 'no-existe.json', '--titulo', 'Carga']), 0);
+      expect(_salida.toString(), contains('No se generó el resumen de k6'));
+    });
+
+    test('comparar-rendimiento pasa dentro del 20 %', () {
+      _escribir('k6.json', resumenDeK6(p95: 96));
+      _escribir(
+        'tool/linea_base_rendimiento.json',
+        jsonEncode({
+          'api_carga_normal': {'p95_ms': 80},
+        }),
+      );
+
+      expect(_ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']), 0);
+      expect(_salida.toString(), contains('dentro del máximo de 96 ms'));
+    });
+
+    test('comparar-rendimiento falla si el p95 sube más de 20 %', () {
+      _escribir('k6.json', resumenDeK6(p95: 97));
+      _escribir(
+        'tool/linea_base_rendimiento.json',
+        jsonEncode({
+          'api_carga_normal': {'p95_ms': 80},
+        }),
+      );
+
+      expect(_ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']), 1);
+      expect(_salida.toString(), contains('subió a 97 ms'));
+    });
+
+    test('comparar-rendimiento falla si no hay línea base', () {
+      _escribir('k6.json', resumenDeK6());
+
+      expect(_ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']), 1);
+      expect(_salida.toString(), contains('no trae la línea base'));
+    });
+  });
+
   // El job «Evidencias y decisión» de pipeline.yml.
   group('evidencias', () {
     List<String> argumentos({String esfuerzo = 'success'}) => [
@@ -426,6 +498,32 @@ void main() {
         ':Monkey: seed=42 count=1000\nEvents injected: 1000\n'
             '// Monkey finished\n',
       );
+      // El entorno aislado: pruebas de la API y las dos corridas de k6.
+      _escribir(
+        'build/evidencias/resultados-api/build/resultados/api.json',
+        _reporteVerde(),
+      );
+      _escribir(
+        'build/evidencias/resultados-k6-rendimiento/k6_rendimiento.json',
+        jsonEncode({
+          'metrics': {
+            'http_reqs': {'count': 820},
+            'http_req_failed': {'value': 0},
+            'http_req_duration': {'p(95)': 64.4},
+          },
+        }),
+      );
+      _escribir(
+        'build/evidencias/resultados-k6-esfuerzo/k6_esfuerzo.json',
+        jsonEncode({
+          'metrics': {
+            'http_reqs': {'count': 860},
+            'http_req_failed': {'value': 0},
+            'http_req_duration': {'p(95)': 150.2},
+            'http_req_duration{fase:recuperacion}': {'p(95)': 20.6},
+          },
+        }),
+      );
 
       expect(_ejecutar(argumentos()), 0);
       final texto = _salida.toString();
@@ -451,17 +549,27 @@ void main() {
           '✅ 1 paso · 1 capturas en 40.0 s |',
         ),
       );
-      expect(texto, contains('| Integración | ✅ Pasó | ✅ 1 prueba pasó |'));
+      expect(
+        texto,
+        contains(
+          '| Integración | ✅ Pasó | Emulador: ✅ 1 prueba pasó · API: ✅ 1 '
+          'prueba pasó |',
+        ),
+      );
       expect(texto, contains('| Regresión | ✅ Pasó | ✅ 1 prueba pasó |'));
       expect(
         texto,
-        contains('| Rendimiento | ✅ Pasó | APK de release: 2.0 KB |'),
+        contains(
+          '| Rendimiento | ✅ Pasó | APK de release: 2.0 KB · k6: 820 '
+          'peticiones · p95 64 ms · 0.0 % errores |',
+        ),
       );
       expect(
         texto,
         contains(
           '| Esfuerzo | ✅ Pasó | ✅ 1,000 eventos de monkey · 0 cierres · '
-          '0 congelamientos |',
+          '0 congelamientos · k6: 860 peticiones · p95 150 ms · 0.0 % '
+          'errores · recuperación p95 21 ms |',
         ),
       );
       expect(texto, contains('**Decisión:** ✅ pasaron las 7 etapas'));
