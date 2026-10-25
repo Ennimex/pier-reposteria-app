@@ -161,4 +161,28 @@ void main() {
       expect(texto, contains('| ⚠️ Incompleta | 10 | 3 | 0 | 0 |'));
     });
   });
+
+  // La línea de la etapa «Esfuerzo» en la tabla de evidencias del pipeline.
+  group('lineaMonkey', () {
+    test('sin cierres ni congelamientos', () {
+      expect(
+        lineaMonkey(leerMonkey(_monkeyVerde)),
+        '✅ 5,000 eventos de monkey · 0 cierres · 0 congelamientos',
+      );
+    });
+
+    test('con un cierre', () {
+      expect(
+        lineaMonkey(leerMonkey(_monkeyConCierre)),
+        '❌ 1,234 eventos de monkey · 1 cierres · 0 congelamientos',
+      );
+    });
+
+    test('incompleta si monkey no llegó al final', () {
+      expect(
+        lineaMonkey(leerMonkey(':Monkey: seed=1 count=10\nEvents injected: 3\n')),
+        '⚠️ 3 eventos de monkey · 0 cierres · 0 congelamientos',
+      );
+    });
+  });
 }
