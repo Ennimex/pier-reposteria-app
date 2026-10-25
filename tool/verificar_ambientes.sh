@@ -47,7 +47,8 @@ aapt2="$build_tools/aapt2"
 apks=build/app/outputs/flutter-apk
 
 echo "== #11 Firma de release"
-llaves_en_git="$(git ls-files | grep -E 'jks|keystore|key\.properties' || true)"
+# awk termina bien aunque no encuentre nada (grep terminaba con error).
+llaves_en_git="$(git ls-files | awk '/jks|keystore|key\.properties/')"
 if [ -z "$llaves_en_git" ]; then
   ok "Git no contiene keystores ni key.properties"
 else
