@@ -3,39 +3,40 @@
 #
 # Qué revisa: cosas que el usuario nota aunque no sepa nombrarlas.
 #   · Cuánto pesa la app al descargarla (el APK). Ejemplo: si alguien agrega
-#     imágenes sin comprimir, el peso sube y aquí se ve cuánto y dónde.
+#     imágenes sin comprimir, el peso sube y aquí se ve cuánto y dónde. No
+#     puede crecer más de 10 % sobre la línea base.
+#   · Cuánto tarda en abrir: la app se abre en frío 5 veces en un celular
+#     virtual (emulador) con tool/arranque_en_frio.sh (am start -W, hasta el
+#     primer cuadro) y se toma la mediana. La app habla con la API del
+#     entorno aislado (contenedores, nunca producción), así que el tiempo no
+#     depende de la red.
 #   · Cuánto tarda la API en contestar con carga normal: k6
 #     (pruebas/k6/rendimiento.js) manda 10 clientes a la vez contra la API
-#     del entorno aislado (contenedores, nunca producción). El 95 % de las
-#     respuestas (p95) debe llegar en menos de 800 ms, con menos del 1 % de
-#     errores, y el p95 no puede subir más de 20 % sobre la línea base de
-#     tool/linea_base_rendimiento.json (tool/comparar_rendimiento.sh).
-#   · Qué tan rápido abre y qué tan fluida se siente al recorrer el catálogo
-#     y pasar al pago, medido en un celular de verdad.
-# Para qué sirve: comparar cada versión con la medición de referencia del
-#   Sprint 3 y descubrir si la app se volvió más lenta o más pesada ANTES de
+#     del entorno aislado. El 95 % de las respuestas (p95) debe llegar en
+#     menos de 800 ms, con menos del 1 % de errores.
+#   Las tres mediciones se comparan con su línea base en
+#   tool/linea_base_rendimiento.json (tool/comparar_rendimiento.sh): un
+#   tiempo falla solo si sube más de 20 % y además más de 25 ms (el piso
+#   evita fallar por el ruido de las computadoras de GitHub); el APK, si
+#   crece más de 10 %.
+# Para qué sirve: comparar cada versión con la medición de referencia y
+#   descubrir si la app se volvió más lenta o más pesada ANTES de
 #   publicarla.
 # Cuándo corre: es la cuarta etapa de pipeline.yml, junto con las pruebas de
 #   esfuerzo, después de la integración y la regresión: en cada Pull Request
 #   y cada vez que algo se une a main. También sola con cada versión nueva
 #   (tag vX.Y.Z) y a mano (Actions → Pruebas de rendimiento → Run workflow).
 #   k6 dura 30 s en los Pull Requests y 1 min con la casilla «completo».
-# Dónde corre: el peso se mide en la computadora que presta GitHub. La
-#   fluidez no: Flutter solo la mide bien en un celular real (modo profile),
-#   así que se mide en el Samsung SM-N975U del equipo.
-# Estado: el peso corre aquí. La fluidez se mide desde la laptop con el
-#   celular conectado (#61), con el mismo comando del trabajo «tiempos»; los
-#   resultados se anotan en el issue de la medición. El trabajo «tiempos»
-#   solo correría con una computadora propia registrada en GitHub (runner
-#   self-hosted) y la casilla medir_en_celular; no hay ninguna registrada
-#   porque el repositorio es público y un Pull Request ajeno podría ejecutar
-#   código en ella.
+# Dónde corre: todo en las computadoras que presta GitHub. La fluidez por
+#   cuadro y el arranque en el Samsung SM-N975U del equipo (1.6 s, la
+#   referencia de #61) solo se miden bien en un celular de verdad: eso vive
+#   aparte, en rendimiento-celular.yml, que se lanza a mano.
 # Si falla: el pipeline falla y GitHub no deja unir el Pull Request; en una
 #   versión, no se publica hasta revisar el resultado.
-# Dónde ver el resultado: Actions → la corrida → Summary: el peso total, qué
-#   ocupa más espacio dentro del APK, la tabla de k6 contra la línea base y,
-#   cuando se mida en el celular, cuánto tarda en dibujarse la pantalla. El
-#   APK y el resumen de k6 se descargan desde Artifacts.
+# Dónde ver el resultado: Actions → la corrida → Summary: el peso total y qué
+#   ocupa más espacio dentro del APK, cada apertura con su tiempo y la
+#   mediana, la tabla de k6 y cada medición contra su línea base. El APK, las
+#   aperturas y el resumen de k6 se descargan desde Artifacts.
 # Issues: #61 (Sprint 3, medición de referencia) y #71 (Sprint 5, versión
 #   candidata).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -55,10 +56,6 @@ on:
         description: k6 con toda su duración (1 min) en vez de la reducida (30 s)
         type: boolean
         default: false
-      medir_en_celular:
-        description: 'Medir arranque y fluidez en el celular (requiere un runner propio, #61)'
-        type: boolean
-        default: false
   # Cada versión nueva: el peso se compara con la línea base de #61.
   push:
     tags: ['v*']
@@ -68,13 +65,19 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.44.4'
-  # Número de serie del Samsung SM-N975U del equipo (lo da `adb devices`).
-  DISPOSITIVO: RF8M835TANV
+  # Nombre con el que Android identifica a la app (versión de producción,
+  # la que se arma sin --flavor; ver android/app/build.gradle.kts).
+  PAQUETE: mx.com.pierreposteria
+  # El mismo celular virtual que integracion.yml, así reutilizan el que ya
+  # está guardado.
+  API_LEVEL: 34
+  AVD_PROFILE: pixel_6
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
 
 jobs:
   peso-del-apk:
     name: Peso del APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Descargar el código
@@ -105,6 +108,11 @@ jobs:
       - name: Compilar el APK de release y analizar su peso
         run: flutter build apk --release --analyze-size --target-platform android-arm64
 
+      # Falla si el APK pesa más de 10 % sobre la línea base
+      # (tool/linea_base_rendimiento.json, escenario app_peso_apk).
+      - name: Comparar el peso con la línea base
+        run: bash tool/comparar_rendimiento.sh build/app/outputs/flutter-apk/app-prod-release.apk app_peso_apk
+
       # Escribe el resumen: el peso total, lo que más ocupa dentro del APK y
       # las librerías que más pesan. Llega aquí solo si el APK se armó.
       - name: Mostrar el resultado en el resumen
@@ -122,7 +130,7 @@ jobs:
 
   carga-api:
     name: Carga normal de la API (k6)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Descargar el código
@@ -212,45 +220,116 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-  tiempos:
-    name: Arranque y fluidez en el celular
-    # Solo corre si se marca la casilla medir_en_celular al lanzarlo.
-    if: inputs.medir_en_celular
-    runs-on: [self-hosted, android-device]
-    timeout-minutes: 30
+  arranque-en-frio:
+    name: Arranque en frío en el emulador
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
     steps:
       - name: Descargar el código
         uses: actions/checkout@v7
 
-      # La computadora del equipo ya tiene Flutter y las herramientas de
-      # Android instaladas.
+      # Java hace falta para armar el APK y para el emulador.
+      - name: Instalar Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Abre la app en el Samsung en modo profile (casi tan rápida como la
-      # versión final, pero se deja medir) y graba cuánto tarda en dibujarse
-      # cada cuadro de la pantalla al abrir la app, recorrer el catálogo y
-      # pasar al pago. Para verse fluida, cada cuadro debe dibujarse en menos
-      # de 16 ms (60 cuadros por segundo).
-      # Se instala como «Pier DEV» (--flavor dev) para no tocar la app «Pier»
-      # del celular, apuntando al servidor real, y entra con la cuenta de
-      # prueba (los mismos secretos que el trabajo «flujos» de integracion.yml).
-      - name: Medir con traceAction en modo profile
-        env:
-          USUARIO_PRUEBA: ${{ secrets.USUARIO_PRUEBA }}
-          CLAVE_PRUEBA: ${{ secrets.CLAVE_PRUEBA }}
-        run: >
-          flutter drive
-          --driver=test_driver/perf_driver.dart
-          --target=integration_test/rendimiento/rendimiento_test.dart
-          --profile --no-dds --flavor dev
-          -d ${{ env.DISPOSITIVO }}
-          --dart-define=API_BASE_URL=https://pier-reposteria-backend.onrender.com/api
-          --dart-define=USUARIO_PRUEBA="$(printf '%s' "$USUARIO_PRUEBA" | tr -d '\r\n')"
-          --dart-define=CLAVE_PRUEBA="$(printf '%s' "$CLAVE_PRUEBA" | tr -d '\r\n')"
+      # Descarga el backend al commit fijo y enciende la API y la base en
+      # contenedores (.github/actions/entorno-aislado). Este trabajo tiene su
+      # propio entorno: no lo comparte con ningún otro.
+      - name: Levantar el entorno aislado
+        uses: ./.github/actions/entorno-aislado
 
-      # Escribe el resumen: una columna por medición con el tiempo promedio por
-      # cuadro, el del 90 % de los cuadros, el peor, y cuántos tardaron más de
-      # 16 ms.
+      # El mismo APK que usa monkey (esfuerzo.yml): versión de producción en
+      # modo de depuración, apuntando a la API del contenedor. Al arrancar, la
+      # app pide la configuración de pagos (GET /pagos/config) antes de
+      # dibujar su primera pantalla (#198); con el contenedor contesta en
+      # milisegundos, así que lo que se mide es la app y no la red.
+      - name: Compilar el APK de depuración
+        run: flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
+
+      # El celular virtual (más detalle en integracion.yml).
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Restaurar el AVD de la caché
+        id: avd-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
+
+      - name: Generar el AVD para la caché
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: false
+          script: echo "AVD generado para la caché."
+
+      # Instala la app y la abre en frío 5 veces (tool/arranque_en_frio.sh:
+      # la cierra por completo antes de cada apertura y falla si alguna no
+      # muestra su ventana). Lo que reporta Android de cada apertura queda en
+      # build/resultados/arranque_en_frio.txt; al final se guardan las
+      # bitácoras de los contenedores.
+      - name: Abrir la app en frío 5 veces
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: |
+            adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
+            bash tool/arranque_en_frio.sh ${{ env.PAQUETE }} 5 build/resultados/arranque_en_frio.txt
+            bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt
+
+      # Falla si la mediana subió más de 20 % y además más de 25 ms sobre la
+      # línea base (tool/linea_base_rendimiento.json, escenario
+      # app_arranque_emulador).
+      - name: Comparar la mediana con la línea base
+        run: bash tool/comparar_rendimiento.sh build/resultados/arranque_en_frio.txt app_arranque_emulador
+
+      # Escribe el resumen: cada apertura con su tiempo, la mediana y la
+      # comparación con la línea base.
       - name: Mostrar el resultado en el resumen
-        run: dart run tool/resumen_pruebas.dart tiempos
+        run: >
+          dart run tool/resumen_pruebas.dart arranque
+          build/resultados/arranque_en_frio.txt
+          --escenario app_arranque_emulador
+
+      # Guarda las aperturas y las bitácoras 30 días en Artifacts. Corre
+      # siempre (if: always()): si falló, ahí está por qué, y el job sigue
+      # fallando por el paso que falló.
+      - name: Guardar las aperturas y las bitácoras
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-arranque
+          path: |
+            build/resultados/arranque_en_frio.txt
+            build/resultados/entorno_logs.txt
+          if-no-files-found: warn
+          retention-days: 30

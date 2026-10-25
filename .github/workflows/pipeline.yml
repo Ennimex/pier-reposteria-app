@@ -24,6 +24,15 @@
 # Por qué en ese orden: lo rápido y barato va primero. Si falla, las etapas
 #   que usan el celular virtual (emulador) ni siquiera arrancan y el
 #   resultado llega antes.
+# Contra qué servidor: ninguna etapa toca producción. Las que necesitan la
+#   API real (integración, rendimiento y esfuerzo) levantan cada una su
+#   propio entorno aislado: la API del backend y su base en contenedores,
+#   con datos ficticios (tool/entorno_pruebas.sh). El emulador la ve en
+#   http://10.0.2.2:3000/api.
+# Dónde corre: todos los trabajos en ubuntu-24.04, la imagen fija de GitHub
+#   con la que se midieron las líneas base (corrida 40203353175), y no en
+#   ubuntu-latest, que cambia de versión cuando GitHub lo decide (migra a
+#   Ubuntu 26) y cambiaría el entorno de las pruebas sin avisar.
 # Cuándo corre: en cada Pull Request hacia main, en cada push a main (así
 #   SonarCloud tiene al día la versión oficial) y a mano (Actions → Pipeline
 #   de pruebas → Run workflow). A mano se puede marcar «completo»:
@@ -87,8 +96,10 @@ jobs:
     needs: [unitarias, analisis-estatico]
     uses: ./.github/workflows/aceptacion.yml
 
-  # Etapa 3, al mismo tiempo: la app completa en el emulador y las pruebas
-  # de los bugs ya corregidos.
+  # Etapa 3, al mismo tiempo: la app completa en el emulador (con el
+  # servidor de mentira y, en el flujo de compra, contra el entorno
+  # aislado), la API real en contenedores y las pruebas de los bugs ya
+  # corregidos.
   integracion:
     name: Integración
     needs: aceptacion
@@ -99,8 +110,10 @@ jobs:
     needs: aceptacion
     uses: ./.github/workflows/regresion.yml
 
-  # Etapa 4, al mismo tiempo: peso de la app y carga de uso. En los Pull
-  # Requests, esfuerzo corre la versión reducida; con «completo», toda.
+  # Etapa 4, al mismo tiempo: rendimiento (peso del APK, arranque en frío
+  # en el emulador y carga normal de la API, cada uno contra su línea base) y
+  # esfuerzo (monkey sobre la app y el pico de k6 sobre la API). En los Pull
+  # Requests corren la versión reducida; con «completo», toda.
   rendimiento:
     name: Rendimiento
     needs: [integracion, regresion]
@@ -130,7 +143,7 @@ jobs:
       - rendimiento
       - esfuerzo
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       # La tabla la arma tool/resumen_pruebas.dart, así que hacen falta el
