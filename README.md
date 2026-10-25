@@ -210,6 +210,7 @@ análisis estático ─┘                └─ regresión ───┘     └
 | Regresión completa | Toda la suite acumulada sobre la rama o tag, con el flujo de compra real, y el APK (menos rendimiento, que necesita el celular físico) | `test/`, `integration_test/app_smoke_test.dart` e `integration_test/flujos/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion-completa.yml`) |
 | Rendimiento | Peso del APK (+10 % máximo); arranque en frío en emulador contra el entorno aislado (mediana de 5 aperturas con `am start -W`), y carga normal de la API con k6 (p95). Todo contra su línea base: un tiempo falla solo si sube más de 20 % y además más de 25 ms | `tool/arranque_en_frio.sh`, `pruebas/k6/rendimiento.js` y `tool/linea_base_rendimiento.json` | Etapa 4 del pipeline, cada tag y a mano (`rendimiento.yml`) |
 | Rendimiento en el celular | Arranque y fluidez del catálogo en el Samsung SM-N975U, en modo profile (#61) | `integration_test/rendimiento/` | A mano, con un runner propio (`rendimiento-celular.yml`) |
+| Entorno de liberación | El candidato de liberación (APK en modo release apuntando al entorno aislado) instalado en emulador Android: abre, carga el catálogo e inicia sesión con la cuenta de la semilla. Como en release no hay `integration_test`, el smoke maneja la app con `adb` y lee la pantalla con `uiautomator`, con una captura por paso | `tool/smoke_liberacion.dart` y `tool/resumen/smoke_liberacion.dart` | Antes de publicar cada tag y a mano en modo ensayo (`release.yml`) |
 | Esfuerzo | 1,000 toques de monkey en cada Pull Request (5,000 con «completo» o a mano) sobre la app apuntando al entorno aislado, con cierres y congelamientos contados en logcat y la recuperación (reabre en frío y `/api/health` responde 200); esfuerzo de la API con k6 (subir, sostener, pico y recuperación) contra el entorno aislado | `pruebas/k6/esfuerzo.js` y `tool/arranque_en_frio.sh` | Etapa 4 del pipeline y a mano (`esfuerzo.yml`) |
 | Volumen de datos | Catálogo de 1,000 productos y carrito de 100 artículos (#70, pruebas pendientes) | `test/esfuerzo/` | A mano (`esfuerzo-volumen.yml`) |
 
@@ -245,7 +246,8 @@ flutter test integration_test/flujos --dart-define=USUARIO_PRUEBA=<correo> --dar
 ### Entorno aislado de pruebas
 
 Las pruebas del pipeline que necesitan servidor (API, k6, el flujo de compra
-en el emulador, monkey y el arranque en frío) no usan producción: corren
+en el emulador, monkey y el arranque en frío) y las del entorno de liberación
+(`release.yml`) no usan producción: corren
 contra la API del backend y su base de datos en contenedores desechables, con
 datos ficticios. Lo genera `tool/entorno_pruebas.sh`, el mismo script que usa
 el pipeline; solo hace falta Docker:
@@ -256,6 +258,8 @@ flutter test --tags api --run-skipped --dart-define=API_BASE_URL=http://localhos
 k6 run --env API_BASE_URL=http://localhost:3000/api pruebas/k6/rendimiento.js                # carga normal
 flutter test integration_test/flujos/compra_test.dart --plain-name "Escenario: del inicio de sesión al checkout" --dart-define=API_BASE_URL=http://10.0.2.2:3000/api --dart-define=USUARIO_PRUEBA=cliente@pier.test --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026   # flujo de compra, con el emulador encendido
 bash tool/arranque_en_frio.sh mx.com.pierreposteria 5 build/resultados/arranque_en_frio.txt   # arranque en frío de la app ya instalada
+flutter build apk --release --dart-define=API_BASE_URL=http://10.0.2.2:3000/api && adb install -r build/app/outputs/flutter-apk/app-prod-release.apk   # candidato de liberación
+dart run tool/smoke_liberacion.dart mx.com.pierreposteria build/resultados/smoke_liberacion --usuario cliente@pier.test --clave Chocoflan-Prueba-2026 --producto Chocoflan --saludo "Hola, Cliente"   # smoke del candidato
 bash tool/entorno_pruebas.sh bajar      # apaga y borra los contenedores
 ```
 
@@ -379,9 +383,12 @@ Flujo de liberación:
 1. Pull Request `build: subir versión a X.Y.Z+N` hacia `main`.
 2. Con el PR mezclado, crear el tag sobre `main`:
    `git tag vX.Y.Z && git push origin vX.Y.Z`.
-3. El tag `v*` dispara **Publicar versión** (`release.yml`), que publica el
-   APK firmado en GitHub Releases. Los secretos que necesita y la estrategia
-   canary están en [docs/LIBERACION.md](docs/LIBERACION.md) (#22).
+3. El tag `v*` dispara **Publicar versión** (`release.yml`): primero prueba el
+   candidato de liberación (APK de release contra el entorno aislado, en
+   emulador) y, si pasa y se aprueba en el Environment `produccion`, publica el
+   APK firmado en GitHub Releases y revisa que producción responda. Los
+   secretos que necesita, el Environment y la estrategia canary están en
+   [docs/LIBERACION.md](docs/LIBERACION.md) (#22, #203).
 4. La versión avanza del canary al 100 % solo si cumple las métricas de
    [docs/SLO.md](docs/SLO.md) (#24): *crash-free sessions*, ANR, arranque en
    frío y errores en el pago, con su dashboard en Sentry.
