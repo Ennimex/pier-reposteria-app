@@ -22,7 +22,12 @@ import '../../test/fakes/fake_api_client.dart';
 import '../ayudas/servidor_real.dart';
 
 void main() {
-  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // La app dibuja todos sus cuadros, como en un celular de verdad, para que
+  // cada captura muestre la pantalla de ese momento. Con la política por
+  // omisión (fadePointers) el cuadro que pide la captura se salta y salía la
+  // pantalla de un paso anterior (corrida 40174857476).
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized()
+    ..framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
 
   group('Flujo principal #34 → #35 → #36', () {
     // Escenario: del inicio de sesión al checkout
@@ -105,8 +110,9 @@ class _Evidencia {
       'paso': nombre,
       'segundos': _reloj.elapsedMilliseconds / 1000,
     });
-    // Un cuadro nuevo antes de capturar, como pide integration_test.
-    await _tester.pump();
+    // Medio segundo antes de capturar: termina de dibujarse la pantalla y se
+    // borra la marca de los toques que pinta el binding de pruebas.
+    await _tester.pump(const Duration(milliseconds: 500));
     await _binding.takeScreenshot(nombre);
   }
 }
