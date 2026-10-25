@@ -1,14 +1,20 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE INTEGRACIÓN
 #
-# Qué revisa: que las partes de la app funcionan juntas, con la app completa
-#   instalada en un celular Android virtual (emulador) que corre dentro de la
-#   computadora de GitHub. Las pruebas rápidas (smoke) abren la app, intentan
-#   entrar con una contraseña incorrecta y cargan el catálogo, con el
-#   servidor de mentira (FakeApiClient), sin tocar el servidor real.
+# Qué revisa: que las partes funcionan juntas. Tiene dos trabajos que corren
+#   al mismo tiempo:
+#   · Pruebas rápidas (smoke): la app completa instalada en un celular
+#     Android virtual (emulador) abre, intenta entrar con una contraseña
+#     incorrecta y carga el catálogo, con el servidor de mentira
+#     (FakeApiClient).
+#   · API contra entorno aislado: la API real del backend y su base de datos
+#     en contenedores (tool/entorno_pruebas.sh), con datos ficticios. Revisa
+#     que la API contesta lo que la app espera: el estado del servidor, el
+#     catálogo (cada producto pasa por Product.fromJson, el mismo código de
+#     la app), las categorías y el inicio de sesión, bueno y malo.
 # Para qué sirve: encuentra fallos que las pruebas por pieza no ven; por
-#   ejemplo, una pantalla que no lleva a la siguiente o algo que solo falla
-#   en un celular Android.
+#   ejemplo, una pantalla que no lleva a la siguiente, algo que solo falla
+#   en un celular Android o un cambio del backend que la app ya no entiende.
 # Cuándo corre: es la tercera etapa de pipeline.yml, junto con la regresión,
 #   después de las pruebas de aceptación: en cada Pull Request (la solicitud
 #   para unir cambios a main, la versión oficial del código) y cada vez que
@@ -20,9 +26,10 @@
 # Si falla: el pipeline se detiene aquí y GitHub no deja unir el Pull
 #   Request hasta que se corrija.
 # Dónde ver el resultado: Actions → la corrida → Summary: cada prueba con ✅;
-#   si alguna falla, la tabla de evidencias del pipeline dice cuál. El
-#   reporte queda en Artifacts («resultados-integracion»).
-# Dónde están las pruebas: integration_test/app_smoke_test.dart.
+#   si alguna falla, la tabla de evidencias del pipeline dice cuál. Los
+#   reportes quedan en Artifacts («resultados-integracion» y
+#   «resultados-api», con las bitácoras de los contenedores).
+# Dónde están las pruebas: integration_test/app_smoke_test.dart y test/api/.
 # Issues: #21 (Sprint 1), #58 (Sprint 2), #65 (Sprint 4) y #69 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de integración
@@ -138,5 +145,72 @@ jobs:
         with:
           name: resultados-integracion
           path: build/resultados/integracion.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  api:
+    name: API contra entorno aislado
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Los tres primeros pasos preparan la computadora que presta GitHub:
+    # descargan el código, instalan Flutter y las librerías que usa la app.
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Descarga el backend al commit fijo y enciende la API y la base en
+      # contenedores (.github/actions/entorno-aislado).
+      - name: Levantar el entorno aislado
+        uses: ./.github/actions/entorno-aislado
+
+      # Corre las pruebas de test/api/ contra la API del contenedor. Un
+      # flutter test normal las omite (dart_test.yaml: necesitan el entorno),
+      # por eso --run-skipped; --file-reporter guarda el resultado de cada una.
+      # Pase o falle, guarda después las bitácoras de los contenedores, y el
+      # paso termina con el código de las pruebas: si una falla, el job falla.
+      - name: Correr las pruebas de la API
+        run: |
+          if flutter test test/api --tags api --run-skipped --reporter expanded \
+            --file-reporter json:build/resultados/api.json \
+            --dart-define=API_BASE_URL=http://localhost:3000/api; then
+            codigo_de_las_pruebas=0
+          else
+            codigo_de_las_pruebas=$?
+          fi
+          bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt
+          exit "$codigo_de_las_pruebas"
+
+      # Escribe el resumen: cada prueba con ✅. Si alguna falló, el paso
+      # anterior ya detuvo el job y la tabla de evidencias del pipeline dice
+      # cuál, con el reporte que se sube abajo.
+      - name: Mostrar el resultado en el resumen
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/api.json
+          --titulo "API contra entorno aislado"
+          --detalle
+
+      # Guarda el reporte y las bitácoras de los contenedores 30 días en
+      # Artifacts. Corre siempre (if: always()), también si el entorno no
+      # arrancó o falló una prueba: es la evidencia, y el job sigue fallando
+      # por el paso que falló.
+      - name: Guardar el reporte y las bitácoras
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-api
+          path: |
+            build/resultados/api.json
+            build/resultados/entorno_logs.txt
           if-no-files-found: warn
           retention-days: 30

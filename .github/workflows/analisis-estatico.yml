@@ -139,11 +139,12 @@ jobs:
 
       # SonarCloud necesita saber qué parte del código ejecutan las pruebas
       # (la cobertura), así que este paso corre todas las pruebas y lo anota
-      # en coverage/lcov.info.
+      # en coverage/lcov.info. Menos las de la API (etiqueta api), que
+      # necesitan el entorno aislado y corren en la etapa de integración.
       - name: Instalar dependencias y generar la cobertura
         run: |
           flutter pub get
-          flutter test --coverage
+          flutter test --coverage --exclude-tags api
 
       # Envía el código y la cobertura a SonarCloud y espera su veredicto. Si
       # no se cumple el quality gate (80 % de cobertura y máximo 3 % repetido
