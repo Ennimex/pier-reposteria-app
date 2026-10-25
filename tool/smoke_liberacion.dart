@@ -3,7 +3,7 @@
 // liberación»). El APK ya debe estar instalado. Los pasos y el resumen están
 // en tool/resumen/smoke_liberacion.dart; aquí solo se habla con adb.
 //
-//   dart run tool/smoke_liberacion.dart <paquete> <carpeta> \
+//   dart run tool/smoke_liberacion.dart <paquete> <carpeta> --app <nombre> \
 //     --usuario <correo> --clave <contraseña> --producto <nombre> \
 //     --saludo <texto>
 //
@@ -18,7 +18,7 @@ import 'dart:io';
 import 'resumen/smoke_liberacion.dart';
 
 const _uso = '''
-Uso: dart run tool/smoke_liberacion.dart <paquete> <carpeta>
+Uso: dart run tool/smoke_liberacion.dart <paquete> <carpeta> --app <nombre>
   --usuario <correo> --clave <contraseña> --producto <nombre> --saludo <texto>''';
 
 Future<void> main(List<String> argumentos) async {
@@ -32,7 +32,7 @@ Future<void> main(List<String> argumentos) async {
       posicionales.add(argumento);
     }
   }
-  const obligatorias = ['usuario', 'clave', 'producto', 'saludo'];
+  const obligatorias = ['app', 'usuario', 'clave', 'producto', 'saludo'];
   if (posicionales.length != 2 || !obligatorias.every(opciones.containsKey)) {
     stderr.writeln(_uso);
     exitCode = 64;
@@ -42,6 +42,7 @@ Future<void> main(List<String> argumentos) async {
   final paquete = posicionales[0];
   final carpeta = Directory(posicionales[1])..createSync(recursive: true);
   final datos = DatosDelSmoke(
+    nombreDeLaApp: opciones['app']!,
     usuario: opciones['usuario']!,
     clave: opciones['clave']!,
     producto: opciones['producto']!,
@@ -53,6 +54,7 @@ Future<void> main(List<String> argumentos) async {
     _EmuladorPorAdb(paquete: paquete, carpeta: carpeta.path),
     datos,
     transcurrido: () => reloj.elapsed,
+    registrar: stdout.writeln,
   );
 
   // El reporte con cada paso y, si falló, la última pantalla que se leyó.

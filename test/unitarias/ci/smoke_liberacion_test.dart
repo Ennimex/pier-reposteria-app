@@ -13,16 +13,21 @@ String _nodo(
   String texto = '',
   String descripcion = '',
   String clase = 'android.view.View',
+  String id = '',
+  String paquete = 'mx.com.pierreposteria',
 }) =>
-    '<node index="0" text="$texto" resource-id="" class="$clase" '
-    'package="mx.com.pierreposteria" '
+    '<node index="0" text="$texto" resource-id="$id" class="$clase" '
+    'package="$paquete" '
     'content-desc="${descripcion.replaceAll('\n', '&#10;')}" '
     'clickable="true" bounds="$limites" />';
 
-String _volcado(List<String> nodos) => [
+String _volcado(
+  List<String> nodos, {
+  String paquete = 'mx.com.pierreposteria',
+}) => [
   "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>",
   '<hierarchy rotation="0">',
-  '<node index="0" text="" class="android.widget.FrameLayout" content-desc="" bounds="[0,0][1080,2400]">',
+  '<node index="0" text="" class="android.widget.FrameLayout" package="$paquete" content-desc="" bounds="[0,0][1080,2400]">',
   ...nodos,
   '</node></hierarchy>',
 ].join();
@@ -37,7 +42,34 @@ final List<String> _barra = [
     ),
 ];
 
+/// El aviso de Android de que una app no responde, como lo vuelca
+/// uiautomator (corrida 40223586289): es la ventana con el foco.
+String _avisoDeNoResponde(String app) => _volcado([
+  _nodo(
+    '[133,1033][947,1104]',
+    texto: "$app isn't responding",
+    clase: 'android.widget.TextView',
+    id: 'android:id/alertTitle',
+    paquete: 'android',
+  ),
+  _nodo(
+    '[70,1143][1010,1269]',
+    texto: 'Close app',
+    clase: 'android.widget.Button',
+    id: 'android:id/aerr_close',
+    paquete: 'android',
+  ),
+  _nodo(
+    '[70,1269][1010,1395]',
+    texto: 'Wait',
+    clase: 'android.widget.Button',
+    id: 'android:id/aerr_wait',
+    paquete: 'android',
+  ),
+], paquete: 'android');
+
 const _datos = DatosDelSmoke(
+  nombreDeLaApp: 'Pier',
   usuario: 'cliente@pier.test',
   clave: 'Chocoflan-Prueba-2026',
   producto: 'Chocoflan',
@@ -70,11 +102,20 @@ class _EmuladorDeMentira implements Dispositivo {
     this.abre = true,
     this.catalogoConProducto = true,
     this.aceptaLaCuenta = true,
+    this.avisoDeOtraApp = false,
+    this.appCongelada = false,
   });
 
   final bool abre;
   final bool catalogoConProducto;
   final bool aceptaLaCuenta;
+
+  /// El lanzador del emulador se congela al abrir la app y su aviso tapa la
+  /// pantalla hasta que alguien toca «Wait».
+  bool avisoDeOtraApp;
+
+  /// La app se congela al abrir el catálogo.
+  final bool appCongelada;
 
   /// Mientras la app arranca, uiautomator no la ve.
   int lecturasVaciasAlAbrir = 2;
@@ -150,12 +191,23 @@ class _EmuladorDeMentira implements Dispositivo {
       lecturasVaciasAlAbrir--;
       return '';
     }
+    if (avisoDeOtraApp) return _avisoDeNoResponde('Quickstep');
+    if (appCongelada && pantalla == 'catalogo') {
+      return _avisoDeNoResponde('Pier');
+    }
     return _volcados[pantalla]!;
   }
 
   @override
   Future<void> tocar(int x, int y) async {
     toques.add((x: x, y: y));
+    if (avisoDeOtraApp) {
+      final boton = leerPantalla(_avisoDeNoResponde('Quickstep')).lastWhere(
+        (nodo) => nodo.arriba <= y && y <= nodo.abajo,
+      );
+      if (boton.id == 'android:id/aerr_wait') avisoDeOtraApp = false;
+      return;
+    }
     final tocado = leerPantalla(_volcados[pantalla]!).lastWhere(
       (nodo) =>
           nodo.izquierda <= x &&
@@ -251,6 +303,22 @@ void main() {
     });
   });
 
+  group('avisoDeNoResponde', () {
+    test('lee el título y el botón «Wait» del aviso', () {
+      final aviso = avisoDeNoResponde(
+        leerPantalla(_avisoDeNoResponde('Quickstep')),
+      );
+
+      expect(aviso?.titulo, "Quickstep isn't responding");
+      expect(aviso?.esperar.centro, (x: 540, y: 1332));
+      expect(aviso?.esperar.paquete, 'android');
+    });
+
+    test('sin aviso, null', () {
+      expect(avisoDeNoResponde(leerPantalla(_volcado(_barra))), isNull);
+    });
+  });
+
   group('buscar en la pantalla', () {
     final tienda = leerPantalla(
       _volcado([
@@ -318,6 +386,45 @@ void main() {
         emulador.esperas,
         [pausaEntreLecturas, pausaEntreLecturas, pausaDeAnimaciones],
       );
+    });
+
+    test('cierra con «Wait» el aviso de otra app y sigue', () async {
+      final emulador = _EmuladorDeMentira(avisoDeOtraApp: true);
+      final bitacora = <String>[];
+      const lecturaConAviso =
+          'Lectura 3 de $intentosPorPaso: 4 elementos (ventana de android); '
+          "se cerró el aviso «Quickstep isn't responding» con «Wait».";
+
+      final resultado = await correrSmoke(
+        emulador,
+        _datos,
+        transcurrido: () => Duration.zero,
+        registrar: bitacora.add,
+      );
+
+      expect(resultado.paso, isTrue);
+      expect(emulador.toques.first, (x: 540, y: 1332));
+      expect(bitacora, [
+        'Lectura 1 de $intentosPorPaso: 0 elementos.',
+        'Lectura 2 de $intentosPorPaso: 0 elementos.',
+        lecturaConAviso,
+      ]);
+    });
+
+    test('falla si Android avisa que la app no responde', () async {
+      final emulador = _EmuladorDeMentira(appCongelada: true);
+
+      final resultado = await _correr(emulador);
+
+      expect(resultado.paso, isFalse);
+      expect(resultado.pasos, hasLength(3));
+      expect(
+        resultado.pasos.last.detalle,
+        "Android avisó que la app no responde: «Pier isn't responding»",
+      );
+      // No toca «Wait» ni sigue esperando: el congelamiento es la falla.
+      expect(emulador.toques, hasLength(1));
+      expect(emulador.capturas, ['fallo']);
     });
 
     test('se detiene si la app no muestra su ventana', () async {

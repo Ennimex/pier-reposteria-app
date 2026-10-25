@@ -25,6 +25,8 @@ class NodoDePantalla {
     required this.arriba,
     required this.derecha,
     required this.abajo,
+    this.id = '',
+    this.paquete = '',
   });
 
   /// La clase de Android: un campo de Flutter llega como
@@ -42,6 +44,14 @@ class NodoDePantalla {
   final int arriba;
   final int derecha;
   final int abajo;
+
+  /// El atributo resource-id: los avisos de Android traen el suyo
+  /// (android:id/aerr_wait es el botón «Wait» del aviso de «no responde»).
+  final String id;
+
+  /// El paquete de la ventana del elemento: el de la app, o «android» en un
+  /// aviso del sistema.
+  final String paquete;
 
   /// Lo que dice el elemento, renglón por renglón. Una pestaña llega como
   /// «Catálogo» y, en otro renglón, su posición en la barra.
@@ -81,6 +91,8 @@ List<NodoDePantalla> leerPantalla(String volcado) {
         clase: atributos['class'] ?? '',
         texto: atributos['text'] ?? '',
         descripcion: atributos['content-desc'] ?? '',
+        id: atributos['resource-id'] ?? '',
+        paquete: atributos['package'] ?? '',
         izquierda: esquina(1),
         arriba: esquina(2),
         derecha: esquina(3),
@@ -125,6 +137,26 @@ bool contieneTexto(List<NodoDePantalla> nodos, String texto) => nodos.any(
 List<NodoDePantalla> camposDeTexto(List<NodoDePantalla> nodos) =>
     nodos.where((nodo) => nodo.esCampoDeTexto && nodo.esVisible).toList();
 
+/// El aviso de Android de que una app no responde (ANR): su título
+/// («Quickstep isn't responding») y el botón «Wait» para cerrarlo sin
+/// matar a nadie.
+typedef AvisoDeNoResponde = ({String titulo, NodoDePantalla esperar});
+
+/// El aviso de «no responde» que tapa la pantalla, o null si no hay.
+/// uiautomator lee la ventana que tiene el foco: mientras el aviso esté
+/// encima, la app no se ve.
+AvisoDeNoResponde? avisoDeNoResponde(List<NodoDePantalla> nodos) {
+  final esperar = nodos.where(
+    (nodo) => nodo.id == 'android:id/aerr_wait' && nodo.esVisible,
+  );
+  if (esperar.isEmpty) return null;
+  final titulos = nodos.where((nodo) => nodo.id == 'android:id/alertTitle');
+  return (
+    titulo: titulos.isEmpty ? '' : titulos.first.texto,
+    esperar: esperar.first,
+  );
+}
+
 /// Lo que el smoke necesita del emulador. tool/smoke_liberacion.dart lo hace
 /// con adb; las pruebas, con un emulador de mentira.
 abstract interface class Dispositivo {
@@ -152,11 +184,15 @@ abstract interface class Dispositivo {
 /// Los datos del entorno aislado con los que corre el smoke.
 class DatosDelSmoke {
   const DatosDelSmoke({
+    required this.nombreDeLaApp,
     required this.usuario,
     required this.clave,
     required this.producto,
     required this.saludo,
   });
+
+  /// Como Android llama a la app en sus avisos («Pier isn't responding»).
+  final String nombreDeLaApp;
 
   /// La cuenta de la semilla (docker/semilla/semilla_pruebas.sql).
   final String usuario;
@@ -226,23 +262,45 @@ const pausaEntreLecturas = Duration(seconds: 2);
 const pausaDeAnimaciones = Duration(milliseconds: 1500);
 
 /// Corre los pasos del smoke en [dispositivo] y se detiene en el primero
-/// que falla. [transcurrido] da el tiempo desde que empezó el smoke.
+/// que falla. [transcurrido] da el tiempo desde que empezó el smoke y
+/// [registrar] recibe una línea por cada lectura de pantalla que todavía no
+/// muestra lo esperado (va al log del paso).
 Future<ResultadoDelSmoke> correrSmoke(
   Dispositivo dispositivo,
   DatosDelSmoke datos, {
   required Duration Function() transcurrido,
+  void Function(String linea)? registrar,
 }) async {
   final pasos = <PasoDelSmoke>[];
   var nodos = <NodoDePantalla>[];
   var ultimaPantalla = '';
+  // El título del aviso si Android dijo que la app no responde.
+  String? appSinResponder;
 
   // Vuelve a leer la pantalla hasta que se cumpla [condicion]; regresa si
-  // se cumplió.
+  // se cumplió. Si un aviso de «no responde» de otra app (por ejemplo, el
+  // lanzador del emulador) tapa la pantalla, toca «Wait» y sigue; si el
+  // aviso es de la app, ya no espera: la app se congeló.
   Future<bool> esperarQue(bool Function(List<NodoDePantalla>) condicion) async {
     for (var intento = 1; intento <= intentosPorPaso; intento++) {
       ultimaPantalla = await dispositivo.volcarPantalla();
       nodos = leerPantalla(ultimaPantalla);
       if (condicion(nodos)) return true;
+
+      final aviso = avisoDeNoResponde(nodos);
+      if (aviso != null && aviso.titulo.contains(datos.nombreDeLaApp)) {
+        appSinResponder = aviso.titulo;
+        return false;
+      }
+      if (aviso != null) {
+        final centro = aviso.esperar.centro;
+        await dispositivo.tocar(centro.x, centro.y);
+      }
+      registrar?.call(
+        'Lectura $intento de $intentosPorPaso: ${nodos.length} elementos'
+        '${nodos.isEmpty ? '' : ' (ventana de ${nodos.first.paquete})'}'
+        '${aviso == null ? '' : '; se cerró el aviso «${aviso.titulo}» con «Wait»'}.',
+      );
       if (intento < intentosPorPaso) {
         await dispositivo.esperar(pausaEntreLecturas);
       }
@@ -265,12 +323,17 @@ Future<ResultadoDelSmoke> correrSmoke(
       {required bool paso, String? captura}) async {
     if (paso && captura != null) await dispositivo.guardarCaptura(captura);
     if (!paso) await dispositivo.guardarCaptura('fallo');
+    final congelada = appSinResponder;
     pasos.add(
       PasoDelSmoke(
         nombre: pasosDelSmoke[pasos.length],
         paso: paso,
         momento: transcurrido(),
-        detalle: paso ? detalleSiPaso : detalleSiFalla,
+        detalle: paso
+            ? detalleSiPaso
+            : congelada == null
+            ? detalleSiFalla
+            : 'Android avisó que la app no responde: «$congelada»',
       ),
     );
     return paso;

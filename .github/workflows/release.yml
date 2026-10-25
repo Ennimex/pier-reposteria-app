@@ -159,6 +159,9 @@ jobs:
       # entra con la cuenta de la semilla hasta que el Inicio saluda «Hola,
       # Cliente». La cuenta es ficticia, solo existe en el contenedor y no es
       # un secreto: si la app hablara con otro servidor, no podría entrar.
+      # Si Android avisa que otra app del emulador no responde (su lanzador
+      # a veces se congela al encender), el smoke toca «Wait» y sigue; si el
+      # aviso es de Pier (--app), falla.
       # Deja las capturas de cada paso y smoke_liberacion.json en
       # build/resultados/smoke_liberacion/ y la tabla en el Summary.
       # Pase o falle, guarda después las bitácoras de los contenedores, y el
@@ -178,7 +181,7 @@ jobs:
             mkdir -p build/resultados/smoke_liberacion;
             if adb install -r build/app/outputs/flutter-apk/app-prod-release.apk
             && dart run tool/smoke_liberacion.dart mx.com.pierreposteria
-            build/resultados/smoke_liberacion
+            build/resultados/smoke_liberacion --app Pier
             --usuario cliente@pier.test --clave Chocoflan-Prueba-2026
             --producto Chocoflan --saludo "Hola, Cliente";
             then codigo_del_smoke=0; else codigo_del_smoke=$?; fi;
