@@ -189,6 +189,12 @@ jobs:
       #   · --throttle 100 deja 100 ms entre toques, rápido pero posible.
       #   · --pct-syskeys 0 no usa los botones del sistema (Inicio, Atrás…),
       #     para que monkey no se salga de la app.
+      # Antes de soltar a monkey, la app se abre con am start -W, que espera a
+      # que su ventana aparezca e imprime cuánto tardó (TotalTime). Sin esto,
+      # monkey la abría en frío y le mandaba eventos de inmediato: el APK de
+      # depuración tarda más de 5 s en mostrar su ventana en el emulador y
+      # Android lo marcaba como congelada a los 5 eventos («Application does
+      # not have a focused window», corrida 40170191471).
       # Lo que hace monkey se guarda en monkey.txt y los mensajes del celular
       # en logcat.txt. Si monkey reporta que la app se cerró (CRASH) o se
       # congeló (ANR / NOT RESPONDING), el paso falla.
@@ -207,6 +213,7 @@ jobs:
           script: |
             adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
             adb logcat -c
+            adb shell am start -W -n ${{ env.PAQUETE }}/.MainActivity
             adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ steps.carga.outputs.eventos }} 2>&1 | tee monkey.txt
             adb logcat -d -v time > logcat.txt
             if grep -qE "CRASH|ANR in|NOT RESPONDING" monkey.txt; then echo "::error::La app se cerró o dejó de responder bajo carga; revisa el resumen de la corrida."; exit 1; fi
