@@ -1,6 +1,6 @@
 # Pier Repostería — App móvil
 
-[![Documentación en DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Ennimex/pier-reposteria-app)
+[![Documentación en DeepWiki](https://img.shields.io/badge/DeepWiki-documentaci%C3%B3n-blue)](https://deepwiki.com/Ennimex/pier-reposteria-app)
 
 Aplicación móvil (Android / iOS) de **Pier Repostería**, una pastelería con venta
 en línea. Permite a los clientes explorar el catálogo, guardar favoritos, armar
