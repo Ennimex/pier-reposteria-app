@@ -54,7 +54,10 @@ warning • The value of the local variable 'sinUsar' isn't used • lib/utils/d
 3 issues found. (ran in 12.3s)
 ''';
 
-    expect(await _contar(salidaDeLinux), '0 1 2');
+    // ROTA A PROPÓSITO (A4, evidencia de bloqueo): espera el conteo de
+    // cuando existía #87, todo en cero con el formato de Linux. Este Pull
+    // Request demuestra que el pipeline lo detiene; no se une a main.
+    expect(await _contar(salidaDeLinux), '0 0 0');
   });
 
   test('cuenta también el formato de Windows («-»)', () async {
