@@ -44,7 +44,7 @@ env:
 jobs:
   flujos:
     name: Flujo de compra contra el servidor real
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # Los primeros pasos preparan la computadora y el celular virtual (más
     # detalle en integracion.yml).

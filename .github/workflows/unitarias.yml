@@ -41,7 +41,7 @@ env:
 jobs:
   unitarias:
     name: Unitarias y de widget, con cobertura
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Los tres primeros pasos preparan la computadora que presta GitHub:
     # descargan el código, instalan Flutter (la misma versión en todos los

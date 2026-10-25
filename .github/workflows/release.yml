@@ -46,7 +46,7 @@ env:
 jobs:
   publicar:
     name: APK firmado y Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       # Con todo el historial y los tags, para encontrar la versión anterior.
