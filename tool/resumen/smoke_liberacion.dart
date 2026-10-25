@@ -392,7 +392,9 @@ Future<ResultadoDelSmoke> correrSmoke(
   }
 
   // 5. Toca cada campo y escribe la cuenta de la semilla; Enter en la
-  //    contraseña envía el formulario. Con la sesión iniciada, el Inicio
+  //    contraseña envía el formulario. Con la sesión iniciada la app vuelve
+  //    a la tienda, a la pestaña en que estaba («Más»; corrida
+  //    40225339327): cuando reaparece la barra se toca «Inicio», que
   //    saluda con el nombre de la cuenta.
   var sesion = false;
   for (final (indice, texto) in [datos.usuario, datos.clave].indexed) {
@@ -405,7 +407,8 @@ Future<ResultadoDelSmoke> correrSmoke(
   }
   if (sesion) {
     await dispositivo.pulsarEnter();
-    sesion = await esperarQue((n) => contieneTexto(n, datos.saludo));
+    sesion = await tocarEtiqueta('Inicio') &&
+        await esperarQue((n) => contieneTexto(n, datos.saludo));
   }
   await anotar(
     'el Inicio dice «${datos.saludo}»',

@@ -172,6 +172,15 @@ class _EmuladorDeMentira implements Dispositivo {
         clase: 'android.widget.Button',
       ),
     ]),
+    // «Más» con la sesión iniciada, como en la corrida 40225339327.
+    'mas_con_sesion': _volcado([
+      _nodo(
+        '[0,0][1080,578]',
+        descripcion: 'CP\nCliente\ncliente@pier.test',
+        clase: 'android.widget.ImageView',
+      ),
+      ..._barra,
+    ]),
     'inicio': _volcado([
       _nodo('[40,200][1040,300]', descripcion: 'Hola, Cliente'),
       ..._barra,
@@ -221,6 +230,7 @@ class _EmuladorDeMentira implements Dispositivo {
     }
     final etiqueta = tocado.renglones.first;
     pantalla = switch ((pantalla, etiqueta)) {
+      ('mas_con_sesion', 'Inicio') => 'inicio',
       (_, 'Catálogo') => 'catalogo',
       (_, 'Más') => 'mas',
       ('mas', 'Iniciar Sesión') => 'login',
@@ -239,7 +249,8 @@ class _EmuladorDeMentira implements Dispositivo {
     final cuentaCorrecta =
         escrito[0] == _datos.usuario && escrito[1] == _datos.clave;
     if (pantalla == 'login' && cuentaCorrecta && aceptaLaCuenta) {
-      pantalla = 'inicio';
+      // Como la app: vuelve a la pestaña en que estaba, ya con la cuenta.
+      pantalla = 'mas_con_sesion';
     }
   }
 
