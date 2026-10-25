@@ -9,3 +9,11 @@ tags:
   # y las corre la etapa de regresión del pipeline:
   #   flutter test --tags regresion
   regresion: {}
+
+  # Pruebas de la API real contra el entorno aislado (test/api/). Necesitan
+  # los contenedores arriba (bash tool/entorno_pruebas.sh levantar), así que
+  # un flutter test normal las omite con este motivo. La etapa de integración
+  # del pipeline las corre con:
+  #   flutter test --tags api --run-skipped --dart-define=API_BASE_URL=http://localhost:3000/api
+  api:
+    skip: "necesitan el entorno aislado: bash tool/entorno_pruebas.sh levantar"

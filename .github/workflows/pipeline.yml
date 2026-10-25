@@ -105,6 +105,8 @@ jobs:
     name: Rendimiento
     needs: [integracion, regresion]
     uses: ./.github/workflows/rendimiento.yml
+    with:
+      completo: ${{ inputs.completo == true }}
 
   esfuerzo:
     name: Esfuerzo

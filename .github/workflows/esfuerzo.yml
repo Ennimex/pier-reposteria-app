@@ -1,32 +1,38 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE ESFUERZO
 #
-# Qué revisa: cómo se porta la app cuando se le exige más de lo normal.
+# Qué revisa: cómo se portan la app y la API cuando se les exige más de lo
+#   normal. Tiene dos trabajos que corren al mismo tiempo:
 #   · Uso aleatorio: monkey, una herramienta de Android, toca, desliza y
 #     escribe al azar miles de veces sobre la app instalada en un celular
 #     virtual (emulador): más rápido y con menos orden que cualquier persona.
-#   · Volumen de datos: un catálogo de 1,000 productos y un carrito de 100
-#     artículos, con el servidor de mentira (FakeApiClient).
+#   · Esfuerzo de la API: k6 (pruebas/k6/esfuerzo.js) sube los clientes,
+#     los sostiene, llega a un pico de 25 y baja, contra la API del entorno
+#     aislado (contenedores, nunca producción). Después del pico, un
+#     escenario de recuperación con 2 clientes revisa que la API volvió a
+#     contestar rápido (p95 < 500 ms, < 1 % de errores).
 # Para qué sirve: comprobar que la app no se cierra sola ni se congela (el
 #   aviso «La app no responde» de Android, llamado ANR) antes de publicarla
-#   en Google Play.
+#   en Google Play, y que la API aguanta un pico y se recupera.
 # Cuándo corre: es la cuarta etapa de pipeline.yml, junto con las pruebas de
 #   rendimiento, después de la integración y la regresión: en cada Pull
 #   Request y cada vez que algo se une a main, con 1,000 toques (versión
 #   reducida); con la casilla «completo» del pipeline, 5,000. También a mano
 #   (Actions → Pruebas de esfuerzo → Run workflow), eligiendo cuántos toques
-#   dar (5,000 si no se cambia). Al cerrar #70 correrá sola con cada versión
-#   nueva.
-# Estado: el uso aleatorio ya funciona. El volumen solo corre si se marca la
-#   casilla correr_volumen, y todavía faltan sus pruebas en test/esfuerzo/
-#   (#70).
+#   dar (5,000 si no se cambia). k6 corre las fases a la mitad de su duración
+#   en los Pull Requests y completas con la casilla «completo».
+# Volumen de datos (#70: catálogo de 1,000 productos y carrito de 100
+#   artículos) no está aquí: sus pruebas todavía no existen, así que vive en
+#   esfuerzo-volumen.yml, que se lanza a mano, para no dejar un trabajo
+#   omitido en cada Pull Request.
 # Ojo: monkey usa la app normal, así que lo que toque sí llega al servidor
 #   real. Como la app recién instalada no tiene sesión iniciada, casi todo es
 #   navegar por el catálogo.
 # Si falla: el pipeline falla y GitHub no deja unir el Pull Request.
 # Dónde ver el resultado: Actions → la corrida → Summary: cuántos toques se
-#   dieron, cuántas veces se cerró o se congeló la app y, si pasó, el reporte
-#   del error y los mensajes de error del celular (logcat).
+#   dieron, cuántas veces se cerró o se congeló la app y la tabla de k6 con
+#   la recuperación. La bitácora de monkey, el logcat y el resumen de k6
+#   quedan en Artifacts.
 # Issue: #70 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de esfuerzo
@@ -45,8 +51,8 @@ on:
         description: Cantidad de eventos aleatorios de monkey
         default: '5000'
         required: false
-      correr_volumen:
-        description: Correr también las pruebas de volumen de test/esfuerzo/ (#70)
+      completo:
+        description: k6 con las fases completas en vez de reducidas
         type: boolean
         default: false
   # Se activará al cerrar #70 (correr con cada versión nueva):
@@ -68,41 +74,6 @@ env:
   EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
 
 jobs:
-  volumen:
-    name: Volumen de datos
-    # Solo corre si se marca la casilla correr_volumen al lanzarlo.
-    if: inputs.correr_volumen
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Descargar el código
-        uses: actions/checkout@v7
-
-      - name: Instalar Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Instalar dependencias
-        run: flutter pub get
-
-      # Las pruebas de test/esfuerzo/ llenan el catálogo y el carrito con el
-      # servidor de mentira y revisan que las pantallas sigan respondiendo.
-      - name: Catálogo de 1,000 productos y carrito de 100 artículos
-        run: >
-          flutter test test/esfuerzo --reporter expanded
-          --file-reporter json:build/resultados/esfuerzo.json
-
-      # Escribe el resumen: cada prueba de volumen con ✅.
-      - name: Mostrar el resultado en el resumen
-        run: >
-          dart run tool/resumen_pruebas.dart pruebas
-          build/resultados/esfuerzo.json
-          --titulo "Volumen de datos"
-          --detalle
-
   monkey:
     name: Uso aleatorio (monkey)
     runs-on: ubuntu-latest
@@ -250,5 +221,91 @@ jobs:
             arranque.txt
             monkey.txt
             logcat.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  esfuerzo-api:
+    name: Esfuerzo de la API (k6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      # Flutter hace falta para tool/resumen_pruebas.dart, que escribe el
+      # resumen.
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Descarga el backend al commit fijo y enciende la API y la base en
+      # contenedores (.github/actions/entorno-aislado). Este trabajo tiene su
+      # propio entorno: no lo comparte con ningún otro.
+      - name: Levantar el entorno aislado
+        uses: ./.github/actions/entorno-aislado
+
+      # La misma versión de k6 en todas las corridas.
+      - name: Instalar k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '2.3.0'
+
+      # Las fases completas con la casilla «completo»; si no, a la mitad de su
+      # duración. Cambia cuánto dura, no si la prueba corre.
+      - name: Elegir la carga
+        id: carga
+        env:
+          CARGA_COMPLETA: ${{ inputs.completo }}
+        run: |
+          if [ "$CARGA_COMPLETA" = "true" ]; then
+            carga=completa
+          else
+            carga=reducida
+          fi
+          echo "carga=$carga" >> "$GITHUB_OUTPUT"
+          echo "k6 correrá la carga $carga."
+
+      # Corre k6 contra la API del contenedor. Si un umbral no se cumple (en el
+      # esfuerzo o en la recuperación, o si aparece un 429), k6 termina con
+      # error y el paso falla. Pase o falle, guarda las bitácoras.
+      - name: Correr el esfuerzo con k6
+        env:
+          CARGA: ${{ steps.carga.outputs.carga }}
+        run: |
+          mkdir -p build/resultados
+          if k6 run --summary-export build/resultados/k6_esfuerzo.json \
+            --env API_BASE_URL=http://localhost:3000/api --env CARGA="$CARGA" \
+            pruebas/k6/esfuerzo.js; then
+            codigo_de_k6=0
+          else
+            codigo_de_k6=$?
+          fi
+          bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt
+          exit "$codigo_de_k6"
+
+      # Escribe el resumen: peticiones, errores, tiempos y la recuperación.
+      - name: Mostrar el resultado en el resumen
+        run: >
+          dart run tool/resumen_pruebas.dart k6
+          build/resultados/k6_esfuerzo.json
+          --titulo "Esfuerzo de la API (k6)"
+
+      # Guarda el resumen de k6 y las bitácoras 30 días en Artifacts. Corre
+      # siempre (if: always()): si falló, ahí está por qué, y el job sigue
+      # fallando por el paso que falló.
+      - name: Guardar el resumen de k6 y las bitácoras
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-k6-esfuerzo
+          path: |
+            build/resultados/k6_esfuerzo.json
+            build/resultados/entorno_logs.txt
           if-no-files-found: warn
           retention-days: 30

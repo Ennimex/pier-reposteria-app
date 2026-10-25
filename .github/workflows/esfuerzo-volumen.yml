@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: ESFUERZO CON VOLUMEN DE DATOS (#70)
+#
+# Qué revisará: que las pantallas sigan respondiendo con mucho contenido: un
+#   catálogo de 1,000 productos y un carrito de 100 artículos, con el
+#   servidor de mentira (FakeApiClient).
+# Estado: sus pruebas (test/esfuerzo/) todavía no existen; son parte de #70
+#   (Sprint 5). Por eso vive aquí, aparte, y se lanza a mano: dentro de
+#   esfuerzo.yml dejaba un trabajo omitido en cada Pull Request. Cuando #70
+#   escriba las pruebas, se decide si entran al pipeline.
+# Cuándo corre: solo a mano (Actions → Esfuerzo con volumen de datos → Run
+#   workflow).
+# Si falla: no bloquea ningún Pull Request.
+# Dónde ver el resultado: Actions → la corrida → Summary: cada prueba de
+#   volumen con ✅ o ❌; el reporte queda en Artifacts.
+# Issue: #70 (Sprint 5).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Esfuerzo con volumen de datos
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+
+jobs:
+  volumen:
+    name: Volumen de datos
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Las pruebas de test/esfuerzo/ llenan el catálogo y el carrito con el
+      # servidor de mentira y revisan que las pantallas sigan respondiendo.
+      - name: Catálogo de 1,000 productos y carrito de 100 artículos
+        run: >
+          flutter test test/esfuerzo --reporter expanded
+          --file-reporter json:build/resultados/esfuerzo.json
+
+      # Escribe el resumen: cada prueba de volumen con ✅.
+      - name: Mostrar el resultado en el resumen
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/esfuerzo.json
+          --titulo "Volumen de datos"
+          --detalle
+
+      # Guarda el reporte 30 días en Artifacts. Corre siempre (if: always()),
+      # también si falló una prueba: es la evidencia, y el job sigue fallando
+      # por el paso que falló.
+      - name: Guardar el reporte
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-volumen
+          path: build/resultados/esfuerzo.json
+          if-no-files-found: warn
+          retention-days: 30

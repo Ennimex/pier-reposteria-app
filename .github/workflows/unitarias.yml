@@ -61,13 +61,14 @@ jobs:
         run: flutter pub get
 
       # Corre las pruebas. Las carpetas se nombran una por una para no repetir
-      # aquí las de aceptación, que tienen su propio pipeline.
+      # aquí las de aceptación, que tienen su propio pipeline; --exclude-tags
+      # api deja fuera las de la API, que necesitan el entorno aislado.
       # --coverage anota qué líneas del código se ejecutaron (la cobertura) y
       # --file-reporter guarda el resultado de cada prueba en un archivo, con
       # el que se arma el resumen.
       - name: Correr las pruebas unitarias y de widget
         run: >
-          flutter test --coverage
+          flutter test --coverage --exclude-tags api
           --file-reporter json:build/resultados/unitarias.json
           test/unitarias
           test/widget

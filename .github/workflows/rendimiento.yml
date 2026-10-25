@@ -1,9 +1,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE RENDIMIENTO
 #
-# Qué revisa: dos cosas que el usuario nota aunque no sepa nombrarlas.
+# Qué revisa: cosas que el usuario nota aunque no sepa nombrarlas.
 #   · Cuánto pesa la app al descargarla (el APK). Ejemplo: si alguien agrega
 #     imágenes sin comprimir, el peso sube y aquí se ve cuánto y dónde.
+#   · Cuánto tarda la API en contestar con carga normal: k6
+#     (pruebas/k6/rendimiento.js) manda 10 clientes a la vez contra la API
+#     del entorno aislado (contenedores, nunca producción). El 95 % de las
+#     respuestas (p95) debe llegar en menos de 800 ms, con menos del 1 % de
+#     errores, y el p95 no puede subir más de 20 % sobre la línea base de
+#     tool/linea_base_rendimiento.json (tool/comparar_rendimiento.sh).
 #   · Qué tan rápido abre y qué tan fluida se siente al recorrer el catálogo
 #     y pasar al pago, medido en un celular de verdad.
 # Para qué sirve: comparar cada versión con la medición de referencia del
@@ -13,6 +19,7 @@
 #   esfuerzo, después de la integración y la regresión: en cada Pull Request
 #   y cada vez que algo se une a main. También sola con cada versión nueva
 #   (tag vX.Y.Z) y a mano (Actions → Pruebas de rendimiento → Run workflow).
+#   k6 dura 30 s en los Pull Requests y 1 min con la casilla «completo».
 # Dónde corre: el peso se mide en la computadora que presta GitHub. La
 #   fluidez no: Flutter solo la mide bien en un celular real (modo profile),
 #   así que se mide en el Samsung SM-N975U del equipo.
@@ -26,8 +33,9 @@
 # Si falla: el pipeline falla y GitHub no deja unir el Pull Request; en una
 #   versión, no se publica hasta revisar el resultado.
 # Dónde ver el resultado: Actions → la corrida → Summary: el peso total, qué
-#   ocupa más espacio dentro del APK y, cuando se mida en el celular, cuánto
-#   tarda en dibujarse la pantalla. El APK se descarga desde Artifacts.
+#   ocupa más espacio dentro del APK, la tabla de k6 contra la línea base y,
+#   cuando se mida en el celular, cuánto tarda en dibujarse la pantalla. El
+#   APK y el resumen de k6 se descargan desde Artifacts.
 # Issues: #61 (Sprint 3, medición de referencia) y #71 (Sprint 5, versión
 #   candidata).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -36,8 +44,17 @@ name: Pruebas de rendimiento
 on:
   # pipeline.yml la llama en cada Pull Request y en cada push a main.
   workflow_call:
+    inputs:
+      completo:
+        description: k6 con toda su duración (1 min) en vez de la reducida (30 s)
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
+      completo:
+        description: k6 con toda su duración (1 min) en vez de la reducida (30 s)
+        type: boolean
+        default: false
       medir_en_celular:
         description: 'Medir arranque y fluidez en el celular (requiere un runner propio, #61)'
         type: boolean
@@ -101,6 +118,98 @@ jobs:
           name: rendimiento-apk-${{ github.sha }}
           path: build/app/outputs/flutter-apk/*-release.apk
           if-no-files-found: error
+          retention-days: 30
+
+  carga-api:
+    name: Carga normal de la API (k6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      # Flutter hace falta para tool/resumen_pruebas.dart, que compara con la
+      # línea base y escribe el resumen.
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Descarga el backend al commit fijo y enciende la API y la base en
+      # contenedores (.github/actions/entorno-aislado). Este trabajo tiene su
+      # propio entorno: no lo comparte con ningún otro.
+      - name: Levantar el entorno aislado
+        uses: ./.github/actions/entorno-aislado
+
+      # La misma versión de k6 en todas las corridas.
+      - name: Instalar k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '2.3.0'
+
+      # Cuánto dura la carga: 30 s en los Pull Requests y 1 min con la casilla
+      # «completo». Cambia la duración, no si la prueba corre.
+      - name: Elegir la duración de la carga
+        id: carga
+        env:
+          CARGA_COMPLETA: ${{ inputs.completo }}
+        run: |
+          if [ "$CARGA_COMPLETA" = "true" ]; then
+            duracion=1m
+          else
+            duracion=30s
+          fi
+          echo "duracion=$duracion" >> "$GITHUB_OUTPUT"
+          echo "k6 durará $duracion."
+
+      # Corre k6 contra la API del contenedor. Si un umbral no se cumple
+      # (p95 de 800 ms, 1 % de errores, ningún 429), k6 termina con error y el
+      # paso falla. Pase o falle, guarda las bitácoras de los contenedores.
+      - name: Correr la carga normal con k6
+        env:
+          DURACION: ${{ steps.carga.outputs.duracion }}
+        run: |
+          mkdir -p build/resultados
+          if k6 run --summary-export build/resultados/k6_rendimiento.json \
+            --env API_BASE_URL=http://localhost:3000/api --env DURACION="$DURACION" \
+            pruebas/k6/rendimiento.js; then
+            codigo_de_k6=0
+          else
+            codigo_de_k6=$?
+          fi
+          bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt
+          exit "$codigo_de_k6"
+
+      # Falla si el p95 subió más de 20 % sobre la línea base
+      # (tool/linea_base_rendimiento.json, escenario api_carga_normal).
+      - name: Comparar el p95 con la línea base
+        run: bash tool/comparar_rendimiento.sh build/resultados/k6_rendimiento.json api_carga_normal
+
+      # Escribe el resumen: peticiones, errores y tiempos contra la línea base.
+      - name: Mostrar el resultado en el resumen
+        run: >
+          dart run tool/resumen_pruebas.dart k6
+          build/resultados/k6_rendimiento.json
+          --titulo "Carga normal de la API (k6)"
+          --escenario api_carga_normal
+
+      # Guarda el resumen de k6 y las bitácoras 30 días en Artifacts. Corre
+      # siempre (if: always()): si falló, ahí está por qué, y el job sigue
+      # fallando por el paso que falló.
+      - name: Guardar el resumen de k6 y las bitácoras
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-k6-rendimiento
+          path: |
+            build/resultados/k6_rendimiento.json
+            build/resultados/entorno_logs.txt
+          if-no-files-found: warn
           retention-days: 30
 
   tiempos:

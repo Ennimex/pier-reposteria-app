@@ -146,10 +146,11 @@ jobs:
         run: bash tool/check_analysis.sh
 
       # Etapa 3, todas las pruebas de la carpeta test/ (unitarias, de widget,
-      # de aceptación y de regresión), con su cobertura.
+      # de aceptación y de regresión), con su cobertura. Las de la API
+      # (etiqueta api) no: necesitan el entorno aislado (integracion.yml).
       - name: Correr la suite completa con cobertura
         id: suite
-        run: flutter test --coverage --file-reporter json:build/resultados/suite.json
+        run: flutter test --coverage --exclude-tags api --file-reporter json:build/resultados/suite.json
 
       # Etapa 4, el APK de la versión probada. Sin --flavor se arma la versión
       # de producción (#12).

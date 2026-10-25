@@ -50,3 +50,6 @@ app.*.map.json
 key.properties
 .env
 *.env
+
+# Backend descargado por tool/entorno_pruebas.sh para el entorno aislado de pruebas
+.backend/
