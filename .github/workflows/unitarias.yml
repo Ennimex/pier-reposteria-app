@@ -8,13 +8,17 @@
 # Cómo lo hace: las pruebas no usan el servidor real. Usan un servidor de
 #   mentira (FakeApiClient) que contesta lo que cada prueba le prepara: no
 #   hace falta internet y no se toca la base de datos.
-# Cuándo corre: cada vez que se abre o se actualiza un Pull Request (la
-#   solicitud para unir cambios a main, la versión oficial del código),
-#   cuando algo se une a main y cuando alguien lo lanza a mano.
-# Si falla: GitHub no deja unir el Pull Request hasta que se corrija.
+# Cuándo corre: es la primera etapa de pipeline.yml, junto con el análisis
+#   estático: en cada Pull Request (la solicitud para unir cambios a main, la
+#   versión oficial del código) y cada vez que algo se une a main. También se
+#   puede lanzar sola, a mano.
+# Si falla: el pipeline se detiene aquí y GitHub no deja unir el Pull
+#   Request hasta que se corrija.
 # Dónde ver el resultado: Actions → la corrida → Summary. Dice cuántas
-#   pruebas pasaron, muestra el error de las que fallaron y qué porcentaje
-#   del código ejecutaron las pruebas (cobertura), carpeta por carpeta.
+#   pruebas pasaron y qué porcentaje del código ejecutaron las pruebas
+#   (cobertura), carpeta por carpeta; si alguna falla, la tabla de evidencias
+#   del pipeline dice cuál, con su error. El reporte y la cobertura quedan en
+#   Artifacts («resultados-unitarias»).
 # Dónde están las pruebas: test/unitarias/ (una carpeta por tema: auth,
 #   catalogo, pedidos…), test/widget/ (cada pantalla por separado) y tres
 #   archivos sueltos en test/ que revisan el arranque y la versión de la app.
@@ -24,20 +28,12 @@
 name: Pruebas unitarias
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  # pipeline.yml la llama en cada Pull Request y en cada push a main.
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
-
-# Si llega un cambio nuevo al mismo Pull Request, se cancela la corrida
-# anterior: ya no tiene caso revisar una versión que cambió.
-concurrency:
-  group: unitarias-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: '3.44.4'
@@ -79,12 +75,26 @@ jobs:
           test/app_version_test.dart
           test/app_widget_test.dart
 
-      # Escribe el resumen de la corrida con esos dos archivos. Corre aunque
-      # fallen pruebas, que es justo cuando más se necesita.
+      # Escribe el resumen de la corrida con esos dos archivos. Si alguna
+      # prueba falló, el paso anterior ya detuvo el job: el detalle lo da la
+      # tabla de evidencias del pipeline con el reporte que se sube abajo.
       - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
         run: >
           dart run tool/resumen_pruebas.dart pruebas
           build/resultados/unitarias.json
           --titulo "Pruebas unitarias y de widget"
           --cobertura coverage/lcov.info
+
+      # Guarda el reporte y la cobertura 30 días en Artifacts. Corre siempre
+      # (if: always()), también si las pruebas fallaron: es la evidencia, y el
+      # job sigue fallando por el paso que falló.
+      - name: Guardar el reporte y la cobertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-unitarias
+          path: |
+            build/resultados/unitarias.json
+            coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 30

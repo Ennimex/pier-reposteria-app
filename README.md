@@ -188,15 +188,28 @@ Cada historia del tablero tiene sus pruebas en el mismo sprint en que se entrega
 Las actividades de prueba son los issues con la etiqueta `prueba` y el título en
 MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
+Todas corren encadenadas en **`pipeline.yml`** con cada Pull Request hacia
+`main` y cada push a `main`: cada etapa empieza solo si pasaron las anteriores,
+y el job final **Evidencias y decisión** escribe una tabla con el resultado y
+las métricas de cada etapa y falla si alguna no pasó.
+
+```
+unitarias ─────────┐                ┌─ integración ─┐     ┌─ rendimiento ─┐
+                   ├─► aceptación ──┤               ├─────┤               ├─► evidencias y decisión
+análisis estático ─┘                └─ regresión ───┘     └─ esfuerzo ────┘
+```
+
 | Tipo | Qué comprueba | Dónde vive | Cuándo corre |
 |---|---|---|---|
-| Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Cada Pull Request (`unitarias.yml`) |
-| Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Cada Pull Request (`analisis-estatico.yml`) |
-| Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario | `test/aceptacion/<épica>/` | Cada Pull Request (`aceptacion.yml`) |
-| Integración | Smoke tests del login y catálogo con `FakeApiClient`, y el flujo de compra (login → carrito → checkout → intento de pago) contra el servidor real con una cuenta de prueba, en emulador Android | `integration_test/app_smoke_test.dart` y `integration_test/flujos/` | Pull Requests que tocan código de app (`integracion.yml`) |
-| Regresión | Toda la suite acumulada sobre la rama o tag (menos rendimiento, que necesita el celular físico) | `test/`, `integration_test/app_smoke_test.dart` e `integration_test/flujos/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion.yml`) |
-| Rendimiento | Arranque, fluidez del catálogo y peso del APK, en el Samsung SM-N975U | `integration_test/rendimiento/` | Cada tag y a mano (`rendimiento.yml`) |
-| Esfuerzo | Catálogo de 1,000 productos, carrito de 100 artículos y 5,000 toques de monkey | `test/esfuerzo/` | Cada tag y a mano (`esfuerzo.yml`) |
+| Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Etapa 1 del pipeline (`unitarias.yml`) |
+| Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Etapa 1 del pipeline (`analisis-estatico.yml`) |
+| Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario, y el flujo principal #34 → #35 → #36 (inicio de sesión, carrito y checkout) en emulador Android con `FakeApiClient`, con una captura por paso | `test/aceptacion/<épica>/` e `integration_test/aceptacion/` | Etapa 2 del pipeline (`aceptacion.yml`) |
+| Integración | Smoke tests del login y catálogo con `FakeApiClient` en emulador Android | `integration_test/app_smoke_test.dart` | Etapa 3 del pipeline (`integracion.yml`) |
+| Flujo de compra real | El flujo de compra (login → carrito → checkout → intento de pago) contra el servidor real con una cuenta de prueba, en emulador Android | `integration_test/flujos/` | A mano (`flujo-compra.yml`) y en la regresión completa |
+| Regresión | Las pruebas de cada bug ya corregido, con la etiqueta `regresion` (`dart_test.yaml`) | `test/` (las que llevan la etiqueta) y `test/regresion/` | Etapa 3 del pipeline, martes 09:30, cada tag y a mano (`regresion.yml`) |
+| Regresión completa | Toda la suite acumulada sobre la rama o tag, con el flujo de compra real, y el APK (menos rendimiento, que necesita el celular físico) | `test/`, `integration_test/app_smoke_test.dart` e `integration_test/flujos/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion-completa.yml`) |
+| Rendimiento | Peso del APK; arranque y fluidez del catálogo, en el Samsung SM-N975U | `integration_test/rendimiento/` | Etapa 4 del pipeline, cada tag y a mano (`rendimiento.yml`) |
+| Esfuerzo | 1,000 toques de monkey en cada Pull Request (5,000 con «completo» o a mano); catálogo de 1,000 productos y carrito de 100 artículos | `test/esfuerzo/` | Etapa 4 del pipeline y a mano (`esfuerzo.yml`) |
 
 Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarCloud,
 `reactivecircus/android-emulator-runner` y GitHub Actions. Las pruebas unitarias
@@ -219,26 +232,32 @@ el baseline se baja en el mismo Pull Request.
 Para ejecutar localmente:
 
 ```bash
-flutter test                     # unitarias, aceptación y esfuerzo
+flutter test                     # unitarias, aceptación, regresión y esfuerzo
 flutter test --coverage          # igual, con reporte en coverage/lcov.info
+flutter test --tags regresion    # solo las pruebas de los bugs ya corregidos
 flutter test integration_test/app_smoke_test.dart   # smoke tests, con emulador o celular
+flutter drive --driver=test_driver/aceptacion_driver.dart --target=integration_test/aceptacion/flujo_principal_test.dart   # flujo principal con capturas en build/resultados/
 flutter test integration_test/flujos --dart-define=USUARIO_PRUEBA=<correo> --dart-define=CLAVE_PRUEBA=<clave>   # flujo de compra contra el servidor real
 ```
 
 Cada tipo de prueba tiene su propio workflow en `.github/workflows/`, con la
 explicación de qué prueba, cuándo corre y qué pasa si falla en los comentarios
-del archivo.
+del archivo; `pipeline.yml` los llama como workflows reutilizables
+(`workflow_call`) y cada uno se puede lanzar también solo, a mano.
 
 **Resultados.** Cada workflow muestra sus resultados en la página de la corrida
 (**Actions → corrida → Summary**), sin descargar artifacts: totales y cobertura
 por carpeta en unitarias; cada escenario con ✅/❌ en aceptación, integración y
 volumen; la tabla contra la línea base y los avisos por regla en análisis
 estático; el peso del APK en rendimiento; cierres y congelamientos de monkey en
-esfuerzo, y una fila por etapa en regresión. Si algo falla, el resumen muestra
-la prueba o el aviso con su archivo, línea y error. Los arma
-`tool/resumen_pruebas.dart` a partir de lo que deja cada paso (por ejemplo,
-`flutter test --file-reporter json:build/resultados/unitarias.json`); solo los
-APK se siguen guardando como artifact. El de análisis estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
+esfuerzo, y una fila por etapa en la regresión completa. En el pipeline, arriba
+de todo va la tabla de evidencias; si algo falla, muestra la prueba con su
+archivo, línea y error. Los arma `tool/resumen_pruebas.dart` a partir de lo que
+deja cada paso (por ejemplo,
+`flutter test --file-reporter json:build/resultados/unitarias.json`). Los
+reportes, las capturas del emulador, la bitácora de monkey y los APK quedan
+como artifacts; `evidencias-pipeline-<número>` los junta todos. El de análisis
+estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
 y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
 resultado del quality gate de SonarCloud; el quality gate y su umbral de
 cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.

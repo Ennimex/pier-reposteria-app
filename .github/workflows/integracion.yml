@@ -3,55 +3,37 @@
 #
 # Qué revisa: que las partes de la app funcionan juntas, con la app completa
 #   instalada en un celular Android virtual (emulador) que corre dentro de la
-#   computadora de GitHub. Tiene dos trabajos que corren al mismo tiempo:
-#   · Pruebas rápidas (smoke): abren la app, intentan entrar con una
-#     contraseña incorrecta y cargan el catálogo, con el servidor de mentira
-#     (FakeApiClient), sin tocar el servidor real.
-#   · Flujo de compra contra el servidor real (#58): con una cuenta de prueba,
-#     inicia sesión, añade un producto con existencias, va al checkout y toca
-#     «Pagar». Comprueba que el servidor prepara el pago en Stripe (modo de
-#     prueba) y cierra la hoja de pago sin pagar, así que no se crea ningún
-#     pedido; el carrito se vacía al empezar y al terminar.
+#   computadora de GitHub. Las pruebas rápidas (smoke) abren la app, intentan
+#   entrar con una contraseña incorrecta y cargan el catálogo, con el
+#   servidor de mentira (FakeApiClient), sin tocar el servidor real.
 # Para qué sirve: encuentra fallos que las pruebas por pieza no ven; por
-#   ejemplo, una pantalla que no lleva a la siguiente, algo que solo falla en
-#   un celular Android o un cambio del servidor que la app ya no entiende.
-# Cuándo corre: solo en los Pull Requests que cambian la app (lib/,
-#   integration_test/, android/, las librerías o este archivo), porque tarda
-#   unos 8 minutos; también se puede lanzar a mano.
-# Si falla: el Pull Request muestra la prueba en rojo para que quien lo
-#   revise lo vea. No bloquea la unión porque no corre en todos los PR.
-# Dónde ver el resultado: Actions → la corrida → Summary: cada prueba con ✅,
-#   ❌ u ⏭️ (omitida, con el motivo) y el error de las que fallen.
-# Dónde están las pruebas: integration_test/app_smoke_test.dart (rápidas) e
-#   integration_test/flujos/ (contra el servidor real).
-# Cuenta de prueba: su correo y contraseña son los secretos USUARIO_PRUEBA y
-#   CLAVE_PRUEBA (Settings → Secrets and variables → Actions); nunca se
-#   escriben en el código. Sin ellos, el flujo de compra se omite.
+#   ejemplo, una pantalla que no lleva a la siguiente o algo que solo falla
+#   en un celular Android.
+# Cuándo corre: es la tercera etapa de pipeline.yml, junto con la regresión,
+#   después de las pruebas de aceptación: en cada Pull Request (la solicitud
+#   para unir cambios a main, la versión oficial del código) y cada vez que
+#   algo se une a main. También se puede lanzar sola, a mano.
+# Ojo: el flujo de compra contra el servidor real (#58) ya no vive aquí: está
+#   en flujo-compra.yml, fuera del pipeline de los Pull Requests (necesita
+#   la cuenta de prueba y el servidor de producción), y en la regresión
+#   completa de los martes (regresion-completa.yml).
+# Si falla: el pipeline se detiene aquí y GitHub no deja unir el Pull
+#   Request hasta que se corrija.
+# Dónde ver el resultado: Actions → la corrida → Summary: cada prueba con ✅;
+#   si alguna falla, la tabla de evidencias del pipeline dice cuál. El
+#   reporte queda en Artifacts («resultados-integracion»).
+# Dónde están las pruebas: integration_test/app_smoke_test.dart.
 # Issues: #21 (Sprint 1), #58 (Sprint 2), #65 (Sprint 4) y #69 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de integración
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'lib/**'
-      - 'integration_test/**'
-      - 'test/fakes/**'
-      - 'android/**'
-      - 'pubspec.yaml'
-      - 'pubspec.lock'
-      - '.github/workflows/integracion.yml'
+  # pipeline.yml la llama en cada Pull Request y en cada push a main.
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
-
-# Si llega un cambio nuevo al mismo Pull Request, se cancela la corrida
-# anterior: ya no tiene caso revisar una versión que cambió.
-concurrency:
-  group: integracion-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: '3.44.4'
@@ -63,7 +45,7 @@ env:
 
 jobs:
   emulator:
-    name: Smoke tests on Android API 34
+    name: Pruebas rápidas (smoke) en Android 14
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -123,8 +105,7 @@ jobs:
           script: echo "AVD generado para la caché."
 
       # Enciende el celular virtual, instala la app y corre dentro de él las
-      # pruebas rápidas. Solo ese archivo: el flujo de compra tiene su propio
-      # trabajo, abajo. --no-pub evita volver a descargar las librerías y
+      # pruebas rápidas. --no-pub evita volver a descargar las librerías y
       # --file-reporter guarda el resultado de cada prueba en un archivo, con
       # el que se arma el resumen.
       - name: Correr las pruebas de integración en el emulador
@@ -138,106 +119,24 @@ jobs:
           disable-animations: true
           script: flutter test integration_test/app_smoke_test.dart --no-pub --file-reporter json:build/resultados/integracion.json
 
-      # Escribe el resumen: cada prueba con ✅ o ❌. Corre aunque fallen
-      # pruebas; si el celular virtual no encendió, el resumen lo avisa.
+      # Escribe el resumen: cada prueba con ✅. Si alguna falló, el paso
+      # anterior ya detuvo el job y la tabla de evidencias del pipeline dice
+      # cuál, con el reporte que se sube abajo.
       - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
         run: >
           dart run tool/resumen_pruebas.dart pruebas
           build/resultados/integracion.json
           --titulo "Pruebas de integración en el emulador (Android 14)"
           --detalle
 
-  flujos:
-    name: Flujo de compra contra el servidor real
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Los primeros pasos son los mismos del trabajo anterior: preparan la
-    # computadora y el celular virtual.
-    steps:
-      - name: Descargar el código
-        uses: actions/checkout@v7
-
-      - name: Instalar Java
-        uses: actions/setup-java@v6
+      # Guarda el reporte 30 días en Artifacts. Corre siempre (if: always()),
+      # también si falló una prueba: es la evidencia, y el job sigue fallando
+      # por el paso que falló.
+      - name: Guardar el reporte
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Instalar Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Instalar dependencias
-        run: flutter pub get
-
-      - name: Habilitar KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Restaurar el AVD de la caché
-        id: avd-cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
-
-      - name: Generar el AVD para la caché
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: ${{ env.API_LEVEL }}
-          profile: ${{ env.AVD_PROFILE }}
-          arch: x86_64
-          force-avd-creation: false
-          emulator-options: ${{ env.EMULATOR_OPTIONS }}
-          disable-animations: false
-          script: echo "AVD generado para la caché."
-
-      # El servidor (plan gratuito de Render) se duerme si nadie lo usa y
-      # tarda cerca de un minuto en despertar. Se le hace una consulta de solo
-      # lectura antes de la prueba y se reintenta hasta que conteste.
-      - name: Despertar el servidor
-        run: >
-          curl --silent --show-error --fail --output /dev/null
-          --retry 5 --retry-delay 10 --retry-all-errors --max-time 90
-          https://pier-reposteria-backend.onrender.com/api/pagos/config
-
-      # Corre el flujo de compra en el celular virtual con la cuenta de prueba
-      # (los secretos llegan como variables y se pasan con --dart-define).
-      # tr -d '\r\n' quita los saltos de renglón que se cuelan al pegar un
-      # secreto en GitHub: con uno de ellos, flutter test no reconoce la
-      # opción y la confunde con un archivo de prueba.
-      # -timezone pone el celular en hora de México: el botón «Pagar» solo
-      # funciona en el horario de la tienda (Lun–Sáb, 9:00–21:00) y la
-      # computadora de GitHub usa la hora universal (UTC), 6 horas adelante.
-      - name: Correr el flujo de compra en el emulador
-        uses: reactivecircus/android-emulator-runner@v2
-        env:
-          USUARIO_PRUEBA: ${{ secrets.USUARIO_PRUEBA }}
-          CLAVE_PRUEBA: ${{ secrets.CLAVE_PRUEBA }}
-        with:
-          api-level: ${{ env.API_LEVEL }}
-          profile: ${{ env.AVD_PROFILE }}
-          arch: x86_64
-          force-avd-creation: false
-          emulator-options: -no-snapshot-save -timezone America/Mexico_City ${{ env.EMULATOR_OPTIONS }}
-          disable-animations: true
-          script: flutter test integration_test/flujos --no-pub --dart-define=USUARIO_PRUEBA="$(printf '%s' "$USUARIO_PRUEBA" | tr -d '\r\n')" --dart-define=CLAVE_PRUEBA="$(printf '%s' "$CLAVE_PRUEBA" | tr -d '\r\n')" --file-reporter json:build/resultados/flujos.json
-
-      # Escribe el resumen: cada escenario con ✅, ❌ u ⏭️ (por ejemplo, el
-      # pago se omite fuera del horario de la tienda).
-      - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
-        run: >
-          dart run tool/resumen_pruebas.dart pruebas
-          build/resultados/flujos.json
-          --titulo "Flujo de compra contra el servidor real"
-          --detalle
+          name: resultados-integracion
+          path: build/resultados/integracion.json
+          if-no-files-found: warn
+          retention-days: 30

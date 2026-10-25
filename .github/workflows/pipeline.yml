@@ -1,0 +1,206 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE DE PRUEBAS (el que corre en cada cambio)
+#
+# Qué hace: encadena todos los tipos de prueba de la app, en orden. Cada
+#   etapa es uno de los workflows de esta carpeta, que aquí se llama como
+#   workflow reutilizable (workflow_call); cada uno explica en su encabezado
+#   qué prueba.
+#
+#     Pull Request / push a main
+#      ├─ unitarias ─────────┐
+#      └─ análisis estático ─┤   al mismo tiempo
+#                            ▼
+#                       aceptación            necesita las dos anteriores
+#                            ▼
+#      ├─ integración ───────┐
+#      └─ regresión ─────────┤   al mismo tiempo; necesitan aceptación
+#                            ▼
+#      ├─ rendimiento ───────┐
+#      └─ esfuerzo ──────────┤   al mismo tiempo; necesitan integración y
+#                            ▼   regresión
+#               evidencias y decisión         siempre; falla si alguna
+#                                             etapa no pasó
+#
+# Por qué en ese orden: lo rápido y barato va primero. Si falla, las etapas
+#   que usan el celular virtual (emulador) ni siquiera arrancan y el
+#   resultado llega antes.
+# Cuándo corre: en cada Pull Request hacia main, en cada push a main (así
+#   SonarCloud tiene al día la versión oficial) y a mano (Actions → Pipeline
+#   de pruebas → Run workflow). A mano se puede marcar «completo»:
+#   rendimiento y esfuerzo corren con toda su carga en vez de la versión
+#   reducida de los Pull Requests. Cambia cuánta carga, no qué pruebas corren.
+# Si falla: el job «Evidencias y decisión» falla y GitHub no deja unir el
+#   Pull Request (regla «Proteger main»). Ninguna etapa usa
+#   continue-on-error ni se salta: un job que falla hace fallar el pipeline.
+# Dónde ver el resultado: Actions → la corrida → Summary. Arriba, la tabla de
+#   evidencias: una fila por etapa con su resultado y sus métricas clave;
+#   debajo, el resumen de cada etapa. Los reportes y las capturas están en
+#   Artifacts; «evidencias-pipeline-<número>» los junta todos.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Pipeline de pruebas
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      completo:
+        description: Rendimiento y esfuerzo con toda su carga (en los Pull Requests corren reducidas)
+        type: boolean
+        default: false
+
+# Lo que necesitan las etapas: leer el código y, SonarCloud, el Pull Request.
+permissions:
+  contents: read
+  pull-requests: read
+
+# Un cambio nuevo en el mismo Pull Request cancela la corrida anterior: ya no
+# tiene caso probar una versión que cambió. En main no se cancela ninguna:
+# cada cambio unido conserva su resultado completo.
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # La misma versión de Flutter que usan todas las etapas.
+  FLUTTER_VERSION: '3.44.4'
+
+jobs:
+  # Etapa 1, al mismo tiempo: cada pieza de la app por separado y la
+  # revisión del código sin ejecutarlo (flutter analyze y SonarCloud).
+  unitarias:
+    name: Unitarias
+    uses: ./.github/workflows/unitarias.yml
+
+  analisis-estatico:
+    name: Análisis estático
+    uses: ./.github/workflows/analisis-estatico.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # Etapa 2: cada historia de usuario con sus escenarios Gherkin y el flujo
+  # principal (#34 → #35 → #36) instalado en el emulador.
+  aceptacion:
+    name: Aceptación
+    needs: [unitarias, analisis-estatico]
+    uses: ./.github/workflows/aceptacion.yml
+
+  # Etapa 3, al mismo tiempo: la app completa en el emulador y las pruebas
+  # de los bugs ya corregidos.
+  integracion:
+    name: Integración
+    needs: aceptacion
+    uses: ./.github/workflows/integracion.yml
+
+  regresion:
+    name: Regresión
+    needs: aceptacion
+    uses: ./.github/workflows/regresion.yml
+
+  # Etapa 4, al mismo tiempo: peso de la app y carga de uso. En los Pull
+  # Requests, esfuerzo corre la versión reducida; con «completo», toda.
+  rendimiento:
+    name: Rendimiento
+    needs: [integracion, regresion]
+    uses: ./.github/workflows/rendimiento.yml
+
+  esfuerzo:
+    name: Esfuerzo
+    needs: [integracion, regresion]
+    uses: ./.github/workflows/esfuerzo.yml
+    with:
+      completo: ${{ inputs.completo == true }}
+
+  # Etapa final. Corre siempre (if: always()), aunque haya fallado una
+  # etapa, porque es la que junta la evidencia y toma la decisión: escribe la
+  # tabla de evidencias, junta los artefactos de todas las etapas en uno y
+  # falla si alguna etapa no terminó en success.
+  evidencias-y-decision:
+    name: Evidencias y decisión
+    needs:
+      - unitarias
+      - analisis-estatico
+      - aceptacion
+      - integracion
+      - regresion
+      - rendimiento
+      - esfuerzo
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # La tabla la arma tool/resumen_pruebas.dart, así que hacen falta el
+      # código, Flutter (la misma versión de las etapas) y las librerías.
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Baja los artefactos que subió cada etapa (reportes, cobertura,
+      # capturas, el APK y la bitácora de monkey), cada uno en su carpeta
+      # dentro de build/evidencias/.
+      - name: Descargar los artefactos de todas las etapas
+        uses: actions/download-artifact@v8
+        with:
+          path: build/evidencias
+
+      # Escribe en el Summary la tabla: una fila por etapa con su resultado y
+      # sus métricas clave, la decisión y, si alguna prueba falló, cuál.
+      - name: Escribir la tabla de evidencias
+        run: >
+          dart run tool/resumen_pruebas.dart evidencias build/evidencias
+          --unitarias ${{ needs.unitarias.result }}
+          --analisis ${{ needs.analisis-estatico.result }}
+          --aceptacion ${{ needs.aceptacion.result }}
+          --integracion ${{ needs.integracion.result }}
+          --regresion ${{ needs.regresion.result }}
+          --rendimiento ${{ needs.rendimiento.result }}
+          --esfuerzo ${{ needs.esfuerzo.result }}
+
+      # Junta todos los artefactos de la corrida en uno solo, que queda 30
+      # días: es la evidencia completa del pipeline.
+      - name: Juntar la evidencia de todas las etapas
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: evidencias-pipeline-${{ github.run_number }}
+          path: build/evidencias
+          if-no-files-found: warn
+          retention-days: 30
+
+      # La decisión: el pipeline pasa solo si las siete etapas terminaron en
+      # success. Una etapa que falló, se canceló o no corrió porque falló una
+      # anterior (skipped) hace fallar este job, y con él el pipeline.
+      - name: Decidir si el cambio puede unirse a main
+        env:
+          UNITARIAS: ${{ needs.unitarias.result }}
+          ANALISIS_ESTATICO: ${{ needs.analisis-estatico.result }}
+          ACEPTACION: ${{ needs.aceptacion.result }}
+          INTEGRACION: ${{ needs.integracion.result }}
+          REGRESION: ${{ needs.regresion.result }}
+          RENDIMIENTO: ${{ needs.rendimiento.result }}
+          ESFUERZO: ${{ needs.esfuerzo.result }}
+        run: |
+          etapas="UNITARIAS ANALISIS_ESTATICO ACEPTACION INTEGRACION REGRESION RENDIMIENTO ESFUERZO"
+          etapas_que_no_pasaron=""
+          for etapa in $etapas; do
+            resultado_de_la_etapa="${!etapa}"
+            if [ "$resultado_de_la_etapa" != "success" ]; then
+              etapas_que_no_pasaron="$etapas_que_no_pasaron $etapa=$resultado_de_la_etapa"
+            fi
+          done
+          if [ -n "$etapas_que_no_pasaron" ]; then
+            echo "::error::No pasaron:$etapas_que_no_pasaron. El cambio no puede unirse a main."
+            exit 1
+          fi
+          echo "Pasaron las siete etapas: el cambio puede unirse a main."

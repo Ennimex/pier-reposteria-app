@@ -9,8 +9,10 @@
 # Para qué sirve: comparar cada versión con la medición de referencia del
 #   Sprint 3 y descubrir si la app se volvió más lenta o más pesada ANTES de
 #   publicarla.
-# Cuándo corre: sola con cada versión nueva (tag vX.Y.Z) y a mano (Actions →
-#   Pruebas de rendimiento → Run workflow).
+# Cuándo corre: es la cuarta etapa de pipeline.yml, junto con las pruebas de
+#   esfuerzo, después de la integración y la regresión: en cada Pull Request
+#   y cada vez que algo se une a main. También sola con cada versión nueva
+#   (tag vX.Y.Z) y a mano (Actions → Pruebas de rendimiento → Run workflow).
 # Dónde corre: el peso se mide en la computadora que presta GitHub. La
 #   fluidez no: Flutter solo la mide bien en un celular real (modo profile),
 #   así que se mide en el Samsung SM-N975U del equipo.
@@ -21,8 +23,8 @@
 #   self-hosted) y la casilla medir_en_celular; no hay ninguna registrada
 #   porque el repositorio es público y un Pull Request ajeno podría ejecutar
 #   código en ella.
-# Si falla: no bloquea ningún Pull Request; la versión no se publica hasta
-#   revisar el resultado.
+# Si falla: el pipeline falla y GitHub no deja unir el Pull Request; en una
+#   versión, no se publica hasta revisar el resultado.
 # Dónde ver el resultado: Actions → la corrida → Summary: el peso total, qué
 #   ocupa más espacio dentro del APK y, cuando se mida en el celular, cuánto
 #   tarda en dibujarse la pantalla. El APK se descarga desde Artifacts.
@@ -32,6 +34,8 @@
 name: Pruebas de rendimiento
 
 on:
+  # pipeline.yml la llama en cada Pull Request y en cada push a main.
+  workflow_call:
   workflow_dispatch:
     inputs:
       medir_en_celular:
@@ -85,9 +89,8 @@ jobs:
         run: flutter build apk --release --analyze-size --target-platform android-arm64
 
       # Escribe el resumen: el peso total, lo que más ocupa dentro del APK y
-      # las librerías que más pesan.
+      # las librerías que más pesan. Llega aquí solo si el APK se armó.
       - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
         run: dart run tool/resumen_pruebas.dart peso
 
       # Guarda el APK medido 30 días en Artifacts, por si hay que instalarlo;
@@ -141,5 +144,4 @@ jobs:
       # cuadro, el del 90 % de los cuadros, el peor, y cuántos tardaron más de
       # 16 ms.
       - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
         run: dart run tool/resumen_pruebas.dart tiempos
