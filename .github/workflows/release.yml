@@ -1,15 +1,29 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PUBLICAR UNA VERSIÓN
 #
-# Qué hace: arma el APK final de la app (release), lo firma con la llave del
-#   equipo, con Sentry encendido, y lo publica en GitHub Releases junto con
-#   la lista de cambios desde la versión anterior.
-# Para qué sirve: que cada versión quede guardada y se pueda instalar en los
-#   celulares de los dueños (grupo canary) antes de subirla a Play Store. La
-#   estrategia completa está en docs/LIBERACION.md.
+# Qué hace, en dos trabajos encadenados:
+#   1. Pruebas en el entorno de liberación: levanta el mismo entorno aislado
+#      de las pruebas (tool/entorno_pruebas.sh: la API del backend y su base
+#      en contenedores, con datos ficticios), construye el candidato de
+#      liberación en modo release apuntando a ese entorno, lo instala en un
+#      celular Android virtual (emulador) y corre el smoke: la app abre,
+#      carga el catálogo e inicia sesión (tool/smoke_liberacion.dart).
+#   2. APK firmado y Release: solo si las pruebas pasaron y alguien con
+#      permiso lo aprueba en el Environment «produccion» (Settings →
+#      Environments: aprobación requerida y solo tags v*). Arma el APK final
+#      (release), lo firma con la llave del equipo, con Sentry encendido, lo
+#      publica en GitHub Releases con la lista de cambios desde la versión
+#      anterior y revisa, sin escribir nada, que el servidor de producción
+#      responda.
+# Para qué sirve: que ninguna versión llegue a los celulares de los dueños
+#   (grupo canary) sin haberse probado antes como versión de release y sin
+#   una aprobación explícita. La estrategia completa está en
+#   docs/LIBERACION.md.
 # Cuándo corre: al subir un tag vX.Y.Z (git tag v1.2.0 && git push origin
-#   v1.2.0). También a mano (Actions → Publicar versión → Run workflow): así
-#   solo arma y firma el APK, sin publicar nada; sirve para probar la llave.
+#   v1.2.0). También a mano (Actions → Publicar versión → Run workflow) en
+#   modo ensayo (activado por omisión): corre las pruebas en el entorno de
+#   liberación y no publica nada, sin crear tags. Sin ensayo, la publicación
+#   pide el Environment «produccion», que solo acepta tags v*.
 # Antes de crear el tag: subir la versión en pubspec.yaml y en
 #   lib/config/app_version.dart. Si el tag no coincide, no se publica nada.
 # Secretos (Settings → Secrets and variables → Actions):
@@ -20,12 +34,16 @@
 #   SENTRY_DSN                el DSN del proyecto flutter en Sentry (#23)
 #   Sin los cuatro de la llave el workflow se detiene: nunca publica un APK
 #   firmado con la llave de pruebas.
+#   Las pruebas en el entorno de liberación no usan ningún secreto: el
+#   candidato apunta al contenedor y se firma con la llave de pruebas.
 # Si falla: no se publica nada. Revisa el paso en rojo; el Summary explica si
-#   fue la versión, la llave o la firma.
+#   fue el smoke del candidato (con sus capturas en Artifacts), la versión,
+#   la llave, la firma o el servidor de producción.
 # Dónde ver el resultado: la Release en la página del repositorio (con el APK
-#   adjunto) y, en la corrida, el Summary con las notas de la versión.
+#   adjunto) y, en la corrida, el Summary con el smoke del candidato y las
+#   notas de la versión.
 # Issues: #22 (este pipeline), #23 (Sentry), #24 (métricas para decidir el
-#   rollout).
+#   rollout), #203 (entorno de liberación y aprobación).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Publicar versión
 
@@ -33,19 +51,173 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      ensayo:
+        description: 'Ensayo: corre las pruebas en el entorno de liberación y no publica nada'
+        type: boolean
+        default: true
 
+# Las pruebas solo leen el código; el trabajo que publica pide además
+# permiso de escribir (la Release).
 permissions:
-  contents: write
+  contents: read
 
 env:
   FLUTTER_VERSION: '3.44.4'
+  # El celular virtual, el mismo de las pruebas de integración: Android 14
+  # (API 34) con las medidas de un Pixel 6, sin ventana ni sonido.
+  API_LEVEL: 34
+  AVD_PROFILE: pixel_6
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+  # El servidor del entorno aislado visto desde el emulador.
+  URL_ENTORNO_LIBERACION: http://10.0.2.2:3000/api
   # Huella SHA-1 de la llave de release del equipo (es pública: la misma que
   # está registrada en Google Cloud para el inicio con Google).
   HUELLA_RELEASE: F3:A4:02:DF:C1:97:80:28:A1:D4:17:23:66:40:2C:64:AD:C3:B0:C1
 
 jobs:
+  pruebas-entorno-liberacion:
+    name: Pruebas en el entorno de liberación
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # Los primeros pasos preparan la computadora que presta GitHub: el
+    # código, Java (para armar el APK y para el emulador), Flutter y las
+    # librerías de la app.
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # El entorno de liberación: el mismo entorno aislado de las pruebas,
+      # generado por tool/entorno_pruebas.sh (.github/actions/entorno-aislado
+      # descarga el backend al commit fijo y enciende la API y la base en
+      # contenedores). Queda en el puerto 3000 de esta computadora, que el
+      # emulador ve como 10.0.2.2.
+      - name: Levantar el entorno de liberación
+        uses: ./.github/actions/entorno-aislado
+
+      # El candidato de liberación: la app en modo release (compilada, con
+      # el código reducido y sin herramientas de depuración, como la que se
+      # publica), flavor prod, apuntando al entorno de liberación. Sin
+      # SENTRY_DSN, para que las pruebas no manden errores a Sentry, y sin la
+      # llave del equipo: Gradle lo firma con la de pruebas. Produce
+      # build/app/outputs/flutter-apk/app-prod-release.apk.
+      - name: Compilar el candidato de liberación
+        run: |
+          flutter build apk --release --flavor prod --dart-define=API_BASE_URL="$URL_ENTORNO_LIBERACION"
+          candidato=build/app/outputs/flutter-apk/app-prod-release.apk
+          echo "### 📦 Candidato de liberación: APK de release ($(du -h "$candidato" | cut -f1)) contra $URL_ENTORNO_LIBERACION" >> "$GITHUB_STEP_SUMMARY"
+
+      # El celular virtual, igual que en las pruebas de integración: KVM
+      # para que el emulador use el procesador directamente y el AVD
+      # guardado en la caché entre corridas.
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Restaurar el AVD de la caché
+        id: avd-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
+
+      - name: Generar el AVD para la caché
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: false
+          script: echo "AVD generado para la caché."
+
+      # Instala el candidato en el emulador y corre el smoke
+      # (tool/smoke_liberacion.dart): abre la app, la pestaña «Catálogo»
+      # muestra un producto de la semilla y, desde «Más» → «Iniciar Sesión»,
+      # entra con la cuenta de la semilla hasta que el Inicio saluda «Hola,
+      # Cliente». La cuenta es ficticia, solo existe en el contenedor y no es
+      # un secreto: si la app hablara con otro servidor, no podría entrar.
+      # Si Android avisa que otra app del emulador no responde (su lanzador
+      # a veces se congela al encender), el smoke toca «Wait» y sigue; si el
+      # aviso es de Pier (--app), falla.
+      # Deja las capturas de cada paso y smoke_liberacion.json en
+      # build/resultados/smoke_liberacion/ y la tabla en el Summary.
+      # Pase o falle, guarda después las bitácoras de los contenedores, y el
+      # renglón termina con el código del smoke: si falla, el trabajo falla
+      # y no se publica nada. Va en un solo renglón (>) porque el emulador
+      # corre cada renglón por separado.
+      - name: Instalar el candidato y correr el smoke en el emulador
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: >
+            mkdir -p build/resultados/smoke_liberacion;
+            if adb install -r build/app/outputs/flutter-apk/app-prod-release.apk
+            && dart run tool/smoke_liberacion.dart mx.com.pierreposteria
+            build/resultados/smoke_liberacion --app Pier
+            --usuario cliente@pier.test --clave Chocoflan-Prueba-2026
+            --producto Chocoflan --saludo "Hola, Cliente";
+            then codigo_del_smoke=0; else codigo_del_smoke=$?; fi;
+            bash tool/entorno_pruebas.sh logs > build/resultados/smoke_liberacion/entorno_logs.txt;
+            exit "$codigo_del_smoke"
+
+      # Guarda las capturas, el reporte y las bitácoras de los contenedores
+      # 30 días en Artifacts. Corre siempre (if: always()), también si el
+      # entorno no arrancó o el smoke falló: es la evidencia, y el trabajo
+      # sigue fallando por el paso que falló.
+      - name: Guardar las evidencias del smoke
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-entorno-liberacion
+          path: |
+            build/resultados/smoke_liberacion/
+            build/resultados/entorno_logs.txt
+          if-no-files-found: warn
+          retention-days: 30
+
   publicar:
     name: APK firmado y Release
+    # Solo con el candidato probado en el entorno de liberación.
+    needs: pruebas-entorno-liberacion
+    # En modo ensayo el workflow termina con las pruebas y no publica nada.
+    # Esto no salta ninguna prueba: el smoke del candidato ya corrió.
+    if: ${{ !inputs.ensayo }}
+    # El Environment «produccion» detiene el trabajo hasta que alguien con
+    # permiso apruebe la publicación (Settings → Environments) y solo
+    # acepta tags v*. La URL lleva a la Release de esta versión.
+    environment:
+      name: produccion
+      url: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -180,3 +352,27 @@ jobs:
           path: build/pier-reposteria-*.apk
           if-no-files-found: error
           retention-days: 7
+
+      # Después de publicar: la versión nueva habla con el servidor de
+      # producción. Se revisa, sin escribir nada, que responda: GET
+      # /api/health debe dar 200 (la base responde). curl reintenta las
+      # respuestas pasajeras (408, 429 y 5xx) y los errores de conexión,
+      # porque el servidor gratuito tarda en despertar, y escribe el código
+      # HTTP final. Si no conecta o no da 200, el trabajo falla y el Summary
+      # lo dice.
+      - name: Revisar que producción responda (solo lectura)
+        run: |
+          url_de_salud=https://pier-reposteria-backend.onrender.com/api/health
+          if ! codigo_http=$(curl --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' --retry 5 --retry-delay 10 \
+            --retry-all-errors --max-time 90 "$url_de_salud"); then
+            echo "::error::No se pudo conectar con producción ($url_de_salud)."
+            echo "### ❌ No se pudo conectar con producción (GET /api/health)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ "$codigo_http" != 200 ]; then
+            echo "::error::Producción no respondió 200 en $url_de_salud (respondió $codigo_http)."
+            echo "### ❌ Producción respondió $codigo_http en GET /api/health" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "### ✅ Producción responde: GET /api/health → 200" >> "$GITHUB_STEP_SUMMARY"

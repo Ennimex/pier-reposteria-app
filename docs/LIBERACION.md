@@ -15,19 +15,58 @@ clientes (#22). Las métricas que deciden cada paso están en #24.
    git tag vX.Y.Z && git push origin vX.Y.Z
    ```
 
-3. El tag dispara **Publicar versión** (`.github/workflows/release.yml`):
-   - comprueba que el tag sea la versión del `pubspec.yaml`;
-   - arma el APK de release (flavor `prod`) con Sentry encendido;
-   - comprueba que lo firmó la llave del equipo (huella SHA-1
-     `F3:A4:02:DF:C1:97:80:28:A1:D4:17:23:66:40:2C:64:AD:C3:B0:C1`);
-   - publica la Release `vX.Y.Z` con el APK `pier-reposteria-vX.Y.Z.apk` y las
-     notas sacadas de los commits desde el tag anterior.
+3. El tag dispara **Publicar versión** (`.github/workflows/release.yml`), en
+   dos trabajos encadenados:
+   1. **Pruebas en el entorno de liberación** (`pruebas-entorno-liberacion`):
+      - levanta el entorno aislado de las pruebas con `tool/entorno_pruebas.sh`
+        (la API del backend y su base en contenedores, con datos ficticios);
+      - construye el **candidato de liberación**: el APK en modo release,
+        flavor `prod`, apuntando a ese entorno (`http://10.0.2.2:3000/api`
+        desde el emulador), sin Sentry y firmado con la llave de pruebas;
+      - lo instala en el emulador (Android 14, Pixel 6) y corre el smoke
+        (`tool/smoke_liberacion.dart`): la app abre, la pestaña «Catálogo»
+        muestra un producto de la semilla y, desde «Más» → «Iniciar Sesión»,
+        entra con la cuenta de la semilla hasta que el Inicio saluda
+        «Hola, Cliente». Deja una captura por paso en Artifacts
+        (`resultados-entorno-liberacion`).
+   2. **APK firmado y Release** (`publicar`), solo si el smoke pasó y alguien
+      con permiso lo aprueba en el Environment `produccion`:
+      - comprueba que el tag sea la versión del `pubspec.yaml`;
+      - arma el APK de release (flavor `prod`) con Sentry encendido;
+      - comprueba que lo firmó la llave del equipo (huella SHA-1
+        `F3:A4:02:DF:C1:97:80:28:A1:D4:17:23:66:40:2C:64:AD:C3:B0:C1`);
+      - publica la Release `vX.Y.Z` con el APK `pier-reposteria-vX.Y.Z.apk` y
+        las notas sacadas de los commits desde el tag anterior;
+      - revisa, sin escribir nada, que producción responda:
+        `GET https://pier-reposteria-backend.onrender.com/api/health` debe dar
+        200.
 
 Si cualquier comprobación falla, no se publica nada y el Summary de la corrida
 dice por qué.
 
-**Probar sin publicar:** Actions → Publicar versión → Run workflow. Arma y firma
-el APK igual, pero lo deja 7 días en Artifacts en vez de crear una Release.
+**Probar sin publicar (ensayo):** Actions → Publicar versión → Run workflow, con
+«Ensayo» marcado (viene así por omisión). Corre las pruebas en el entorno de
+liberación completas y no publica nada, sin crear tags. Desde la terminal:
+`gh workflow run release.yml --ref main -f ensayo=true`.
+
+## Environment `produccion`
+
+La publicación espera la aprobación de una persona. Se configura una sola vez en
+GitHub (lo hace quien administra el repositorio):
+
+1. Settings → Environments → **New environment** → nombre `produccion` →
+   **Configure environment**.
+2. En **Deployment protection rules**, marcar **Required reviewers**, agregar a
+   quien aprueba las versiones y **Save protection rules**.
+3. En **Deployment branches and tags**, elegir **Selected branches and tags** →
+   **Add deployment branch or tag rule** → tipo **Tag**, patrón `v*` → **Add
+   rule**. Así solo un tag de versión puede publicar.
+
+Con un tag, la corrida se detiene en «APK firmado y Release» con el aviso
+*Waiting for review*; quien aprueba entra a la corrida → **Review deployments**
+→ marca `produccion` → **Approve and deploy**. Si la rechaza, no se publica nada.
+La página del Environment (Settings → Environments → `produccion`) guarda cada
+publicación aprobada.
 
 ## Secretos del repositorio
 

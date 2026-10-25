@@ -62,7 +62,7 @@
     },
     {
       "title": "Liberación y monitoreo",
-      "purpose": "Cómo sale una versión: SemVer en pubspec.yaml y lib/config/app_version.dart, el tag vX.Y.Z que dispara release.yml (APK firmado con la llave del equipo y publicado en GitHub Releases), las pruebas en el entorno de liberación y el environment de producción con aprobación, la estrategia canary de docs/LIBERACION.md, el monitoreo con Sentry de lib/config/monitoreo.dart (errores con la pantalla en que ocurren y transacción del pago), y las métricas, la regla de avance, el dashboard y la alerta de crash-free sessions de docs/SLO.md."
+      "purpose": "Cómo sale una versión: SemVer en pubspec.yaml y lib/config/app_version.dart, el tag vX.Y.Z que dispara release.yml (APK firmado con la llave del equipo y publicado en GitHub Releases), las pruebas en el entorno de liberación (el job pruebas-entorno-liberacion levanta el entorno aislado con tool/entorno_pruebas.sh, compila el candidato en modo release apuntando al contenedor y corre en el emulador el smoke de tool/smoke_liberacion.dart: abre, carga el catálogo e inicia sesión, manejando la app con adb y uiautomator), el job publicar con needs de esas pruebas y el Environment produccion con aprobación requerida y solo tags v*, el modo ensayo de workflow_dispatch y el smoke de solo lectura a /api/health de producción después de publicar, la estrategia canary de docs/LIBERACION.md, el monitoreo con Sentry de lib/config/monitoreo.dart (errores con la pantalla en que ocurren y transacción del pago), y las métricas, la regla de avance, el dashboard y la alerta de crash-free sessions de docs/SLO.md."
     }
   ]
 }
