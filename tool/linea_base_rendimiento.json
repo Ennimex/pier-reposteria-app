@@ -1,9 +1,19 @@
 {
-  "_descripcion": "Línea base de rendimiento del pipeline. tool/comparar_rendimiento.sh falla si el p95 de una corrida supera el de aquí en más de 20 %. Cada valor lo fijó la primera corrida en verde de su medición, contra el entorno aislado (tool/entorno_pruebas.sh). Se cambia solo a propósito, en un Pull Request que explique por qué.",
+  "_descripcion": "Línea base de rendimiento del pipeline: tool/comparar_rendimiento.sh compara cada medición con su valor de aquí. Cada valor lo fijó la primera corrida en verde de su medición, contra el entorno aislado (tool/entorno_pruebas.sh). Se cambia solo a propósito, en un Pull Request que explique por qué.",
+  "_regla": "Una medición falla solo si supera su línea base en más de tolerancia_porcentaje Y, además, en más de tolerancia_minima_ms (piso absoluto). Dicho de otro modo, el máximo permitido es el mayor de dos números: línea base × (1 + tolerancia_porcentaje / 100) o línea base + tolerancia_minima_ms. El piso evita fallar por el ruido de las computadoras de GitHub cuando la línea base es de pocos milisegundos: con el p95 de 7.22 ms, el +20 % son apenas 1.44 ms, así que manda el piso y el máximo queda en 32.22 ms; con un arranque de segundos manda el +20 %. El peso del APK no lleva piso: falla si crece más de 10 %.",
   "api_carga_normal": {
     "p95_ms": 7.22,
+    "tolerancia_porcentaje": 20,
+    "tolerancia_minima_ms": 25,
     "corrida": "40202658750",
     "fecha": "2026-10-25",
-    "medicion": "pruebas/k6/rendimiento.js: 10 clientes durante 30 s contra productos, categorías y health; 900 peticiones, 0 % de errores. Otras dos corridas del mismo día dieron 6.17 ms (40203020184) y 5.10 ms (40203029214)."
+    "medicion": "pruebas/k6/rendimiento.js: 10 clientes durante 30 s contra productos, categorías y health; 900 peticiones, 0 % de errores. Otras dos corridas del mismo día dieron 6.17 ms (40203020184) y 5.10 ms (40203029214); el push de #200 a main, 8.56 ms (40207579753)."
+  },
+  "app_peso_apk": {
+    "bytes": 41204220,
+    "tolerancia_porcentaje": 10,
+    "corrida": "40207579753",
+    "fecha": "2026-10-25",
+    "medicion": "app-prod-release.apk de flutter build apk --release --analyze-size --target-platform android-arm64 (rendimiento.yml, «Peso del APK»), commit cba40fa de main: 41,204,220 bytes (39.3 MB)."
   }
 }

@@ -1,7 +1,9 @@
 // test/unitarias/ci/esfuerzo_test.dart — lectura de la bitácora de monkey
-// (adb shell monkey -v) y su resumen en la corrida (#157).
+// (adb shell monkey -v), los cierres y congelamientos contados en logcat, la
+// recuperación de la app y su resumen en la corrida (#157).
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../tool/resumen/arranque.dart';
 import '../../../tool/resumen/esfuerzo.dart';
 
 const _monkeyVerde = '''
@@ -62,7 +64,53 @@ CPU usage from 14495ms to -1ms ago (2026-10-16 04:22:41.505 to 2026-10-16 04:22:
 Events injected: 5
 ''';
 
+// Renglones reales de logcat (adb logcat -d -v time) de la corrida
+// 40170191471, con el ANR al arrancar, más un cierre de Java y uno nativo
+// con el formato de Android 14. Hay fallas de otras apps que no cuentan.
+const _logcatConFallas = '''
+10-25 07:17:05.618 I/WindowManager(  506): ANR in ActivityRecord{f7ce8a7 u0 mx.com.pierreposteria/.MainActivity t8}.  Reason: Input dispatching timed out
+10-25 07:17:06.223 E/ActivityManager(  506): ANR in mx.com.pierreposteria (mx.com.pierreposteria/.MainActivity)
+10-25 07:17:06.225 W/Monkey  ( 2330): ANR in mx.com.pierreposteria (mx.com.pierreposteria/.MainActivity)
+10-25 07:20:01.000 E/AndroidRuntime( 4321): FATAL EXCEPTION: main
+10-25 07:20:01.000 E/AndroidRuntime( 4321): Process: mx.com.pierreposteria, PID: 4321
+10-25 07:21:00.000 F/DEBUG   ( 5000): pid: 4999, tid: 5010, name: 1.ui  >>> mx.com.pierreposteria <<<
+10-25 07:22:00.000 E/AndroidRuntime( 777): Process: com.android.systemui, PID: 777
+10-25 07:23:00.000 E/ActivityManager(  506): ANR in mx.com.pierreposteria.dev (mx.com.pierreposteria.dev/.MainActivity)
+''';
+
 void main() {
+  group('contarFallasEnLogcat', () {
+    test('cuenta una vez cada cierre y cada ANR de la app', () {
+      final fallas = contarFallasEnLogcat(_logcatConFallas);
+
+      // El cierre de Java y el nativo; el de systemui no es de la app.
+      expect(fallas.cierres, 2);
+      // Solo el de ActivityManager: ni el de WindowManager, ni el que repite
+      // monkey, ni el de la app «Pier DEV».
+      expect(fallas.congelamientos, 1);
+    });
+
+    test('un logcat limpio no tiene fallas', () {
+      final fallas = contarFallasEnLogcat(
+        '10-25 15:59:00.000 I/ActivityManager(  506): Start proc 3000:'
+        'mx.com.pierreposteria/u0a190 for top-activity\n',
+      );
+
+      expect([fallas.cierres, fallas.congelamientos], [0, 0]);
+    });
+
+    test('monkey limpio y logcat con un cierre: la corrida falla', () {
+      final corrida = leerMonkey(_monkeyVerde);
+
+      expect(hayFallas(corrida), isFalse);
+      expect(hayFallas(corrida, logcat: _logcatConFallas), isTrue);
+      expect(
+        resumenMonkey(corrida, logcat: _logcatConFallas),
+        contains('| ❌ Falló | 5,000 | 5,000 | 2 | 1 |'),
+      );
+    });
+  });
+
   group('leerMonkey', () {
     test('lee semilla, eventos y tiempo de una corrida limpia', () {
       final corrida = leerMonkey(_monkeyVerde);
@@ -160,6 +208,40 @@ void main() {
 
       expect(texto, contains('| ⚠️ Incompleta | 10 | 3 | 0 | 0 |'));
     });
+
+    test('dice de dónde salen los conteos y cómo se recuperó la app', () {
+      final texto = resumenMonkey(
+        leerMonkey(_monkeyVerde),
+        logcat: '10-25 16:00:00.000 I/ActivityManager(  506): Start proc\n',
+        recuperacion: const Apertura(
+          estado: 'ok',
+          tipo: 'COLD',
+          totalMs: 3210,
+        ),
+        salud: 200,
+      );
+
+      expect(texto, contains('| ✅ Aprobado | 5,000 | 5,000 | 0 | 0 |'));
+      expect(texto, contains('contados en logcat'));
+      expect(
+        texto,
+        contains('✅ Recuperación: la app volvió a abrir en frío en '
+            '3,210.00 ms · GET /api/health: 200.'),
+      );
+    });
+
+    test('una recuperación fallida se marca con ❌', () {
+      final texto = resumenMonkey(
+        leerMonkey(_monkeyVerde),
+        recuperacion: const Apertura(estado: 'timeout', tipo: 'UNKNOWN'),
+      );
+
+      expect(
+        texto,
+        contains('❌ Recuperación: la app no volvió a abrir (am start -W: '
+            'timeout) · GET /api/health: sin respuesta.'),
+      );
+    });
   });
 
   // La línea de la etapa «Esfuerzo» en la tabla de evidencias del pipeline.
@@ -182,6 +264,29 @@ void main() {
       expect(
         lineaMonkey(leerMonkey(':Monkey: seed=1 count=10\nEvents injected: 3\n')),
         '⚠️ 3 eventos de monkey · 0 cierres · 0 congelamientos',
+      );
+    });
+
+    test('con los conteos de logcat y la reapertura', () {
+      expect(
+        lineaMonkey(
+          leerMonkey(_monkeyVerde),
+          logcat: _logcatConFallas,
+          recuperacion: const Apertura(
+            estado: 'ok',
+            tipo: 'COLD',
+            totalMs: 3210,
+          ),
+        ),
+        '❌ 5,000 eventos de monkey · 2 cierres · 1 congelamientos · '
+        'reabrió en 3,210.00 ms',
+      );
+      expect(
+        lineaMonkey(
+          leerMonkey(_monkeyVerde),
+          recuperacion: const Apertura(estado: 'timeout', tipo: 'UNKNOWN'),
+        ),
+        endsWith('· ❌ no volvió a abrir'),
       );
     });
   });

@@ -16,6 +16,16 @@ String miles(int numero) {
 /// 84.26 → «84.3 %».
 String porcentaje(double valor) => '${valor.toStringAsFixed(1)} %';
 
+/// 3456.5 → «3,456.50 ms»: los tiempos con 2 decimales, porque los de la API
+/// en el entorno aislado son de pocos milisegundos.
+String milisegundos(double valor) {
+  final texto = valor.abs().toStringAsFixed(2);
+  final punto = texto.indexOf('.');
+  final enteros = miles(int.parse(texto.substring(0, punto)));
+  final signo = valor < 0 ? '-' : '';
+  return '$signo$enteros${texto.substring(punto)} ms';
+}
+
 /// 112 s → «1 min 52 s».
 String duracion(Duration tiempo) {
   if (tiempo.inSeconds < 1) return 'menos de 1 s';

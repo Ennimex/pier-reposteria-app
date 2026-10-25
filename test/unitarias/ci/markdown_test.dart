@@ -20,6 +20,15 @@ void main() {
     });
   });
 
+  group('milisegundos', () {
+    test('2 decimales, separador de miles y la unidad', () {
+      expect(milisegundos(8.5596), '8.56 ms');
+      expect(milisegundos(4), '4.00 ms');
+      expect(milisegundos(3456.5), '3,456.50 ms');
+      expect(milisegundos(-1.5), '-1.50 ms');
+    });
+  });
+
   group('duracion', () {
     test('usa segundos debajo del minuto y minutos con segundos arriba', () {
       expect(duracion(const Duration(milliseconds: 400)), 'menos de 1 s');

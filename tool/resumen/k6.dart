@@ -1,7 +1,8 @@
 // tool/resumen/k6.dart — lee el resumen que deja `k6 run --summary-export
 // <archivo>.json` (pruebas/k6/) y arma su resumen en Markdown, su línea para la
 // tabla de evidencias del pipeline y la comparación con la línea base de
-// rendimiento (tool/linea_base_rendimiento.json).
+// rendimiento (tool/linea_base_rendimiento.json, regla en linea_base.dart).
+import 'linea_base.dart';
 import 'markdown.dart';
 
 class ReporteK6 {
@@ -74,39 +75,7 @@ ReporteK6 leerK6(Map<String, dynamic> datos) {
   );
 }
 
-/// La línea base de un escenario de k6 (`api_<clave>` en
-/// tool/linea_base_rendimiento.json).
-class LineaBaseK6 {
-  const LineaBaseK6({required this.p95Ms, this.corrida = ''});
-
-  final double p95Ms;
-
-  /// Corrida de GitHub Actions que fijó la línea base.
-  final String corrida;
-}
-
-/// La línea base de [clave] o null si el archivo no la trae.
-LineaBaseK6? leerLineaBaseK6(Map<String, dynamic> datos, String clave) {
-  final escenario = datos[clave];
-  if (escenario is! Map<String, dynamic>) return null;
-  final p95 = escenario['p95_ms'];
-  if (p95 is! num || p95 <= 0) return null;
-  return LineaBaseK6(
-    p95Ms: p95.toDouble(),
-    corrida: escenario['corrida']?.toString() ?? '',
-  );
-}
-
-/// Cuánto puede subir el p95 contra la línea base antes de fallar (20 %).
-const toleranciaDelP95 = 0.20;
-
-/// El p95 permitido: la línea base más la tolerancia.
-double p95Permitido(LineaBaseK6 base) => base.p95Ms * (1 + toleranciaDelP95);
-
-bool rebasaLaLineaBase(ReporteK6 reporte, LineaBaseK6 base) =>
-    reporte.p95Ms > p95Permitido(base);
-
-String resumenK6(ReporteK6 reporte, {required String titulo, LineaBaseK6? base}) {
+String resumenK6(ReporteK6 reporte, {required String titulo, LineaBase? base}) {
   final texto = StringBuffer()
     ..writeln('### 📈 $titulo')
     ..writeln()
@@ -118,27 +87,22 @@ String resumenK6(ReporteK6 reporte, {required String titulo, LineaBaseK6? base})
       '| ${miles(reporte.peticiones)} '
       '| ${reporte.porSegundo.toStringAsFixed(1)} '
       '| ${porcentaje(reporte.tasaDeFallas * 100)} '
-      '| ${_ms(reporte.p95Ms)} | ${_ms(reporte.promedioMs)} '
-      '| ${_ms(reporte.maximoMs)} | ${miles(reporte.respuestas429)} |',
+      '| ${milisegundos(reporte.p95Ms)} | ${milisegundos(reporte.promedioMs)} '
+      '| ${milisegundos(reporte.maximoMs)} | ${miles(reporte.respuestas429)} |',
     )
     ..writeln();
   final p95Recuperacion = reporte.p95RecuperacionMs;
   if (p95Recuperacion != null) {
     texto
       ..writeln(
-        'Recuperación después del pico: p95 ${_ms(p95Recuperacion)} · '
+        'Recuperación después del pico: p95 ${milisegundos(p95Recuperacion)} · '
         'errores ${porcentaje((reporte.tasaDeFallasRecuperacion ?? 0) * 100)}.',
       )
       ..writeln();
   }
   if (base != null) {
-    final veredicto = rebasaLaLineaBase(reporte, base) ? '❌' : '✅';
     texto
-      ..writeln(
-        '$veredicto p95 ${_ms(reporte.p95Ms)} contra la línea base de '
-        '${_ms(base.p95Ms)} (máximo permitido ${_ms(p95Permitido(base))}, '
-        '+${(toleranciaDelP95 * 100).round()} %).',
-      )
+      ..writeln(comparacionConLineaBase('p95', reporte.p95Ms, base))
       ..writeln();
   }
   return texto.toString();
@@ -147,11 +111,9 @@ String resumenK6(ReporteK6 reporte, {required String titulo, LineaBaseK6? base})
 /// Una línea para la tabla de evidencias del pipeline.
 String lineaK6(ReporteK6 reporte) {
   final linea = 'k6: ${miles(reporte.peticiones)} peticiones · p95 '
-      '${_ms(reporte.p95Ms)} · ${porcentaje(reporte.tasaDeFallas * 100)} '
-      'errores';
+      '${milisegundos(reporte.p95Ms)} · '
+      '${porcentaje(reporte.tasaDeFallas * 100)} errores';
   final p95Recuperacion = reporte.p95RecuperacionMs;
   if (p95Recuperacion == null) return linea;
-  return '$linea · recuperación p95 ${_ms(p95Recuperacion)}';
+  return '$linea · recuperación p95 ${milisegundos(p95Recuperacion)}';
 }
-
-String _ms(double milisegundos) => '${milisegundos.toStringAsFixed(0)} ms';
