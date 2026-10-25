@@ -204,12 +204,13 @@ análisis estático ─┘                └─ regresión ───┘     └
 | Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Etapa 1 del pipeline (`unitarias.yml`) |
 | Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Etapa 1 del pipeline (`analisis-estatico.yml`) |
 | Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario, y el flujo principal #34 → #35 → #36 (inicio de sesión, carrito y checkout) en emulador Android con `FakeApiClient`, con una captura por paso | `test/aceptacion/<épica>/` e `integration_test/aceptacion/` | Etapa 2 del pipeline (`aceptacion.yml`) |
-| Integración | Smoke tests del login y catálogo con `FakeApiClient` en emulador Android | `integration_test/app_smoke_test.dart` | Etapa 3 del pipeline (`integracion.yml`) |
+| Integración | Smoke tests del login y catálogo con `FakeApiClient` en emulador Android, y la API real del backend contra el entorno aislado (health, catálogo con `Product.fromJson`, categorías e inicio de sesión) | `integration_test/app_smoke_test.dart` y `test/api/` | Etapa 3 del pipeline (`integracion.yml`) |
 | Flujo de compra real | El flujo de compra (login → carrito → checkout → intento de pago) contra el servidor real con una cuenta de prueba, en emulador Android | `integration_test/flujos/` | A mano (`flujo-compra.yml`) y en la regresión completa |
 | Regresión | Las pruebas de cada bug ya corregido, con la etiqueta `regresion` (`dart_test.yaml`) | `test/` (las que llevan la etiqueta) y `test/regresion/` | Etapa 3 del pipeline, martes 09:30, cada tag y a mano (`regresion.yml`) |
 | Regresión completa | Toda la suite acumulada sobre la rama o tag, con el flujo de compra real, y el APK (menos rendimiento, que necesita el celular físico) | `test/`, `integration_test/app_smoke_test.dart` e `integration_test/flujos/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion-completa.yml`) |
-| Rendimiento | Peso del APK; arranque y fluidez del catálogo, en el Samsung SM-N975U | `integration_test/rendimiento/` | Etapa 4 del pipeline, cada tag y a mano (`rendimiento.yml`) |
-| Esfuerzo | 1,000 toques de monkey en cada Pull Request (5,000 con «completo» o a mano); catálogo de 1,000 productos y carrito de 100 artículos | `test/esfuerzo/` | Etapa 4 del pipeline y a mano (`esfuerzo.yml`) |
+| Rendimiento | Peso del APK; carga normal de la API con k6 contra el entorno aislado (p95 contra la línea base, +20 % máximo); arranque y fluidez del catálogo, en el Samsung SM-N975U | `pruebas/k6/rendimiento.js`, `tool/linea_base_rendimiento.json` e `integration_test/rendimiento/` | Etapa 4 del pipeline, cada tag y a mano (`rendimiento.yml`) |
+| Esfuerzo | 1,000 toques de monkey en cada Pull Request (5,000 con «completo» o a mano); esfuerzo de la API con k6 (subir, sostener, pico y recuperación) contra el entorno aislado | `pruebas/k6/esfuerzo.js` | Etapa 4 del pipeline y a mano (`esfuerzo.yml`) |
+| Volumen de datos | Catálogo de 1,000 productos y carrito de 100 artículos (#70, pruebas pendientes) | `test/esfuerzo/` | A mano (`esfuerzo-volumen.yml`) |
 
 Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarCloud,
 `reactivecircus/android-emulator-runner` y GitHub Actions. Las pruebas unitarias
@@ -239,6 +240,33 @@ flutter test integration_test/app_smoke_test.dart   # smoke tests, con emulador 
 flutter drive --driver=test_driver/aceptacion_driver.dart --target=integration_test/aceptacion/flujo_principal_test.dart   # flujo principal con capturas en build/resultados/
 flutter test integration_test/flujos --dart-define=USUARIO_PRUEBA=<correo> --dart-define=CLAVE_PRUEBA=<clave>   # flujo de compra contra el servidor real
 ```
+
+### Entorno aislado de pruebas
+
+Las pruebas que necesitan servidor (API, k6) no usan producción: corren contra
+la API del backend y su base de datos en contenedores desechables, con datos
+ficticios. Lo genera `tool/entorno_pruebas.sh`, el mismo script que usa el
+pipeline; solo hace falta Docker:
+
+```bash
+bash tool/entorno_pruebas.sh levantar   # descarga el backend en .backend/, construye y espera a que esté sano
+flutter test --tags api --run-skipped --dart-define=API_BASE_URL=http://localhost:3000/api   # pruebas de la API
+k6 run --env API_BASE_URL=http://localhost:3000/api pruebas/k6/rendimiento.js                # carga normal
+bash tool/entorno_pruebas.sh bajar      # apaga y borra los contenedores
+```
+
+| Pieza | Qué es |
+|---|---|
+| `docker/backend.version` | El commit del backend (`PedroRubioo/pier-reposteria-backend`) que se prueba: el mismo en todas las corridas |
+| `docker/backend.Dockerfile` | La API: `node:22-alpine`, `npm ci --omit=dev`, usuario `node` |
+| `docker/base.Dockerfile` | PostgreSQL 17 con las migraciones del backend y la semilla |
+| `docker/semilla/semilla_pruebas.sql` | 1 cliente ficticio (`cliente@pier.test`), 2 categorías y 4 productos, uno agotado |
+| `docker/compose.pruebas.yml` | Los dos servicios con sus healthchecks; la API en `http://localhost:3000/api` (desde el emulador, `http://10.0.2.2:3000/api`) |
+| `.github/actions/entorno-aislado` | Lo mismo para los jobs del pipeline: cada uno levanta su propio entorno |
+
+Los pagos quedan fuera del entorno aislado (la llave de Stripe es ficticia). El
+backend limita a 3,000 peticiones cada 15 minutos por IP: las cargas de k6 están
+calculadas para quedar debajo y cuentan los 429 para que no pasen desapercibidos.
 
 Cada tipo de prueba tiene su propio workflow en `.github/workflows/`, con la
 explicación de qué prueba, cuándo corre y qué pasa si falla en los comentarios
