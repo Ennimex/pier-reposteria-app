@@ -5,6 +5,7 @@
 //   flutter build apk --release --flavor prod --dart-define=SENTRY_DSN=https://...
 // Sin SENTRY_DSN (builds locales, pruebas y CI) Sentry no se inicia y la app
 // arranca igual, sin tráfico hacia sentry.io.
+import 'package:flutter/widgets.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/config/app_version.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -54,6 +55,13 @@ class Monitoreo {
       ..tracesSampler = (contexto) =>
           tasaDeMuestreo(contexto.transactionContext.operation, ambiente);
   }
+
+  /// Le dice a Sentry en qué pantalla está el usuario (#60): cada error lleva
+  /// el nombre de la ruta de go_router (contexto App → View Names) y el rastro
+  /// de pantallas previas. Sin transacciones por pantalla: gastarían cuota y
+  /// docs/SLO.md no las usa.
+  static NavigatorObserver observadorDeNavegacion({Hub? hub}) =>
+      SentryNavigatorObserver(hub: hub, enableAutoTransactions: false);
 
   /// Cada intento de pago se mide siempre: el objetivo de errores del pago
   /// (docs/SLO.md, #24) necesita todos. Lo demás, en prod solo el 20 % para
