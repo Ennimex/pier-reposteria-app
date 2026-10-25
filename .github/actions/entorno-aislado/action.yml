@@ -1,0 +1,41 @@
+# .github/actions/entorno-aislado — levanta el entorno aislado de pruebas en
+# la computadora del job: la API del backend y su base de datos en
+# contenedores, con los datos ficticios de docker/semilla/ (lo explica
+# tool/entorno_pruebas.sh, que es quien lo genera).
+#
+# Al terminar, la API contesta en http://localhost:3000/api (desde el
+# emulador, http://10.0.2.2:3000/api). Si no queda sana en 5 minutos, el paso
+# falla y deja las bitácoras de los contenedores en
+# build/resultados/entorno_logs.txt para el artefacto del job.
+#
+# Uso, después de descargar el código de la app:
+#   - uses: ./.github/actions/entorno-aislado
+name: Entorno aislado de pruebas
+description: Descarga el backend al commit fijo y levanta la API y su base en contenedores.
+
+runs:
+  using: composite
+  steps:
+    # El backend no vive en este repositorio: se usa siempre el mismo commit,
+    # el de docker/backend.version, para que todas las corridas prueben el
+    # mismo código.
+    - name: Leer el commit fijo del backend
+      id: backend
+      shell: bash
+      run: echo "commit=$(tr -d '[:space:]' < docker/backend.version)" >> "$GITHUB_OUTPUT"
+
+    # El repositorio del backend es público: no hace falta ninguna llave. Se
+    # descarga en .backend/ (Git lo ignora), donde lo busca el script.
+    - name: Descargar el backend al commit fijo
+      uses: actions/checkout@v7
+      with:
+        repository: PedroRubioo/pier-reposteria-backend
+        ref: ${{ steps.backend.outputs.commit }}
+        path: .backend
+        persist-credentials: false
+
+    # Construye las imágenes, enciende la base y la API y espera a que las dos
+    # estén sanas (healthchecks de docker/compose.pruebas.yml).
+    - name: Levantar la API y la base en contenedores
+      shell: bash
+      run: bash tool/entorno_pruebas.sh levantar

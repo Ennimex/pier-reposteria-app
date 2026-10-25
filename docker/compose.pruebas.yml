@@ -1,0 +1,63 @@
+# docker/compose.pruebas.yml — entorno aislado de pruebas: la API del backend
+# y su base de datos en contenedores desechables, sin tocar producción.
+#
+# No se usa directo: tool/entorno_pruebas.sh lo levanta, lo revisa y lo baja
+# (lo usan el pipeline y cualquiera que tenga Docker). La API queda en
+# http://localhost:3000/api (desde el emulador, http://10.0.2.2:3000/api).
+#
+# Todos los valores de abajo son de prueba: solo existen dentro de estos
+# contenedores. Los pagos quedan fuera del entorno aislado, por eso la llave
+# de Stripe es ficticia.
+name: pier-pruebas
+
+services:
+  # PostgreSQL 17 con el esquema del backend y la semilla (base.Dockerfile).
+  # Está sana cuando acepta conexiones por TCP: durante la creación, la
+  # imagen corre las migraciones con un servidor que solo escucha en un
+  # socket local, así que pg_isready por TCP no contesta hasta que termina.
+  base:
+    build:
+      context: .
+      dockerfile: base.Dockerfile
+      additional_contexts:
+        backend: ../.backend
+    environment:
+      POSTGRES_USER: pier
+      POSTGRES_PASSWORD: pier-solo-pruebas
+      POSTGRES_DB: pier
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U pier -d pier"]
+      interval: 2s
+      timeout: 3s
+      retries: 90
+
+  # La API (backend.Dockerfile), con las variables mínimas para arrancar sin
+  # cambiar código. Arranca cuando la base está sana y está sana cuando
+  # /api/health contesta 200 (contesta 503 si no llega a la base).
+  api:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+      additional_contexts:
+        backend: ../.backend
+    environment:
+      # El código pide SSL; sslmode=disable en la cadena lo desactiva, porque
+      # la base del contenedor no tiene certificado.
+      DATABASE_URL: postgresql://pier:pier-solo-pruebas@base:5432/pier?sslmode=disable
+      # passport no arranca sin estos dos: valores ficticios.
+      GOOGLE_CLIENT_ID: cliente-ficticio.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: secreto-ficticio
+      STRIPE_SECRET_KEY: sk_test_ficticia
+      JWT_SECRET: jwt-solo-para-pruebas
+      NODE_ENV: test
+      PORT: "3000"
+    depends_on:
+      base:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+    ports:
+      - "3000:3000"
