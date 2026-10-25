@@ -33,12 +33,12 @@
     {
       "title": "Pruebas unitarias y de widget",
       "parent": "Pipeline de CI",
-      "purpose": "Las pruebas sin red de test/unitarias/<épica>/ (validadores, providers, repositorios y ViewModels) y test/widget/<función>/ (cada pantalla), los dobles de test/fakes y test/helpers (FakeApiClient, pumpApp), el workflow unitarias.yml que las corre con cobertura y el reporte de cobertura que consume SonarCloud."
+      "purpose": "Las pruebas sin red de test/unitarias/<épica>/ (validadores, providers, repositorios y ViewModels) y test/widget/<función>/ (cada pantalla), los dobles de test/fakes y test/helpers (FakeApiClient, pumpApp), y el workflow unitarias.yml que las corre con cobertura y resume los totales y la cobertura por carpeta."
     },
     {
       "title": "Análisis estático",
       "parent": "Pipeline de CI",
-      "purpose": "El análisis sin ejecutar la app: flutter analyze con las reglas de very_good_analysis y sus excepciones en analysis_options.yaml, la línea base de tool/check_analysis.sh (errores, warnings e infos máximos) y el quality gate de SonarCloud configurado en sonar-project.properties (fuentes en lib, pruebas en test e integration_test, cobertura y duplicación del código nuevo), tal como los corre analisis-estatico.yml."
+      "purpose": "El análisis sin ejecutar la app: flutter analyze con las reglas de very_good_analysis y sus excepciones en analysis_options.yaml, la línea base de tool/check_analysis.sh (errores, warnings e infos máximos) sonar-project.properties (fuentes en lib, pruebas en test e integration_test, reporte de cobertura lcov) y el quality gate de SonarCloud (cobertura del código nuevo ≥ 80 % y duplicación ≤ 3 %), tal como los corre analisis-estatico.yml."
     },
     {
       "title": "Pruebas de aceptación (Gherkin)",
@@ -62,7 +62,7 @@
     },
     {
       "title": "Liberación y monitoreo",
-      "purpose": "Cómo sale una versión: SemVer en pubspec.yaml y lib/config/app_version.dart, el tag vX.Y.Z que dispara release.yml (APK firmado con la llave del equipo y publicado en GitHub Releases), las pruebas en el entorno de liberación y el environment de producción con aprobación, la estrategia canary de docs/LIBERACION.md, las métricas y la regla de avance de docs/SLO.md, y el monitoreo con Sentry de lib/config/monitoreo.dart (errores con la pantalla en que ocurren, transacción del pago, dashboard y alerta de sesiones sin cierres)."
+      "purpose": "Cómo sale una versión: SemVer en pubspec.yaml y lib/config/app_version.dart, el tag vX.Y.Z que dispara release.yml (APK firmado con la llave del equipo y publicado en GitHub Releases), las pruebas en el entorno de liberación y el environment de producción con aprobación, la estrategia canary de docs/LIBERACION.md, el monitoreo con Sentry de lib/config/monitoreo.dart (errores con la pantalla en que ocurren y transacción del pago), y las métricas, la regla de avance, el dashboard y la alerta de crash-free sessions de docs/SLO.md."
     }
   ]
 }
