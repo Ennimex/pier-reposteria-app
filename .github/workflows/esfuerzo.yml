@@ -189,12 +189,24 @@ jobs:
       #   · --throttle 100 deja 100 ms entre toques, rápido pero posible.
       #   · --pct-syskeys 0 no usa los botones del sistema (Inicio, Atrás…),
       #     para que monkey no se salga de la app.
+      # La app, al arrancar, pide la configuración de pagos al servidor real
+      # (GET /pagos/config) antes de dibujar su primera pantalla. El servidor
+      # (plan gratuito de Render) se duerme si nadie lo usa y tarda cerca de
+      # un minuto en despertar: mientras tanto la app no muestra su ventana y,
+      # si recibe un toque, Android la marca como congelada (corridas
+      # 40170191471 y 40172543786). Se despierta antes, como en
+      # flujo-compra.yml, con una consulta de solo lectura que se reintenta
+      # hasta que conteste.
+      - name: Despertar el servidor
+        run: >
+          curl --silent --show-error --fail --output /dev/null
+          --retry 5 --retry-delay 10 --retry-all-errors --max-time 90
+          https://pier-reposteria-backend.onrender.com/api/pagos/config
+
       # Antes de soltar a monkey, la app se abre con am start -W, que espera a
-      # que su ventana aparezca e imprime cuánto tardó (TotalTime). Sin esto,
-      # monkey la abría en frío y le mandaba eventos de inmediato: el APK de
-      # depuración tarda más de 5 s en mostrar su ventana en el emulador y
-      # Android lo marcaba como congelada a los 5 eventos («Application does
-      # not have a focused window», corrida 40170191471).
+      # que su ventana aparezca e imprime cuánto tardó (TotalTime); queda en
+      # arranque.txt. Si en 10 s no apareció (Status: timeout), el paso falla
+      # ahí, con ese motivo: monkey no tendría a qué mandarle los eventos.
       # Lo que hace monkey se guarda en monkey.txt y los mensajes del celular
       # en logcat.txt. Si monkey reporta que la app se cerró (CRASH) o se
       # congeló (ANR / NOT RESPONDING), el paso falla.
@@ -213,7 +225,8 @@ jobs:
           script: |
             adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
             adb logcat -c
-            adb shell am start -W -n ${{ env.PAQUETE }}/.MainActivity
+            adb shell am start -W -n ${{ env.PAQUETE }}/.MainActivity | tee arranque.txt
+            if grep -q "Status: timeout" arranque.txt; then echo "::error::La app no mostró su ventana en 10 s (am start -W); monkey no puede empezar."; exit 1; fi
             adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ steps.carga.outputs.eventos }} 2>&1 | tee monkey.txt
             adb logcat -d -v time > logcat.txt
             if grep -qE "CRASH|ANR in|NOT RESPONDING" monkey.txt; then echo "::error::La app se cerró o dejó de responder bajo carga; revisa el resumen de la corrida."; exit 1; fi
@@ -234,6 +247,7 @@ jobs:
         with:
           name: resultados-esfuerzo
           path: |
+            arranque.txt
             monkey.txt
             logcat.txt
           if-no-files-found: warn
