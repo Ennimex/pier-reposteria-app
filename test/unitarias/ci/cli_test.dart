@@ -408,12 +408,14 @@ void main() {
 
   /// Lo que guarda tool/arranque_en_frio.sh: una salida de am start -W por
   /// apertura.
-  String aperturas(List<int> tiempos) => [
-        for (final tiempo in tiempos)
-          'Starting: Intent { cmp=mx.com.pierreposteria/.MainActivity }\n'
-              'Status: ok\nLaunchState: COLD\nTotalTime: $tiempo\n'
-              'WaitTime: ${tiempo + 2}\nComplete\n',
-      ].join();
+  String aperturas(List<int> tiempos) => tiempos
+      .map(
+        (tiempo) =>
+            'Starting: Intent { cmp=mx.com.pierreposteria/.MainActivity }\n'
+            'Status: ok\nLaunchState: COLD\nTotalTime: $tiempo\n'
+            'WaitTime: ${tiempo + 2}\nComplete\n',
+      )
+      .join();
 
   /// La regla de tool/linea_base_rendimiento.json: +20 % y +25 ms en los
   /// tiempos, +10 % en el peso.

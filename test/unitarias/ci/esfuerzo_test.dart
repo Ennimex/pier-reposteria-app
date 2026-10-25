@@ -92,8 +92,8 @@ void main() {
 
     test('un logcat limpio no tiene fallas', () {
       final fallas = contarFallasEnLogcat(
-        '10-25 15:59:00.000 I/ActivityManager(  506): Start proc 3000:'
-        'mx.com.pierreposteria/u0a190 for top-activity\n',
+        '10-25 15:59:00.000 I/ActivityManager(  506): Start proc '
+        '3000:mx.com.pierreposteria/u0a190 for top-activity\n',
       );
 
       expect([fallas.cierres, fallas.congelamientos], [0, 0]);
