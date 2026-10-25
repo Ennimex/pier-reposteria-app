@@ -60,6 +60,8 @@ RefundsViewModel _vm(FakeApiClient api) => RefundsViewModel(
     );
 
 void main() {
+  // Regresión de #118: la solicitud mandaba el motivo como texto y el
+  // backend la rechazaba; ahora manda el código del ENUM.
   group('Motivos (#118)', () {
     test('son los códigos del ENUM motivo_reembolso, como en la web', () {
       expect(RefundsViewModel.motivos.keys, [
@@ -71,14 +73,14 @@ void main() {
         'otro',
       ]);
       expect(RefundsViewModel.motivos['tardanza'], 'Tardanza en preparación');
-    });
+    }, tags: 'regresion');
 
     test('el texto traduce el código; uno desconocido se muestra tal cual',
         () {
       // El reembolso automático de una cancelación llega con 'otro'.
       expect(Reembolso.fromJson({'motivo': 'otro'}).motivoTexto, 'Otro motivo');
       expect(Reembolso.fromJson({'motivo': 'raro'}).motivoTexto, 'raro');
-    });
+    }, tags: 'regresion');
   });
 
   group('Reembolso y repositorio', () {
@@ -304,6 +306,7 @@ void main() {
       expect(api.llamo(_crear), isFalse);
     });
 
+    // Regresión de #118: el cuerpo lleva el código del motivo, no su texto.
     test('envía por el total del pedido, limpia y recarga el historial',
         () async {
       final api = FakeApiClient(respuestas: _conDatos);
@@ -328,7 +331,7 @@ void main() {
       expect(vm.motivo, isNull);
       expect(vm.pedidoSeleccionado?.numero, 'PIER-9'); // vuelve al primero
       expect(api.llamadas.where((l) => l.endpoint == _mis).length, antes + 1);
-    });
+    }, tags: 'regresion');
 
     test('si el backend rechaza devuelve su mensaje y conserva el formulario',
         () async {

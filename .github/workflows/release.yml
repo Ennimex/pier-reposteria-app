@@ -99,7 +99,9 @@ jobs:
         run: |
           faltan=""
           for secreto in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
-            [ -n "${!secreto}" ] || faltan="$faltan $secreto"
+            if [ -z "${!secreto}" ]; then
+              faltan="$faltan $secreto"
+            fi
           done
           if [ -n "$faltan" ]; then
             echo "::error::Faltan secretos de la llave:$faltan"
@@ -148,7 +150,13 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.nombre }}
         run: |
-          anterior=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          # El tag anterior: el más cercano al commit previo. Si el
+          # repositorio aún no tiene tags, las notas toman toda la historia.
+          if [ -n "$(git tag --list 'v*')" ]; then
+            anterior=$(git describe --tags --abbrev=0 HEAD^)
+          else
+            anterior=""
+          fi
           mkdir -p build/resultados
           git log --format=%s "${anterior:+$anterior..}HEAD" > build/resultados/commits.txt
           dart run tool/resumen_pruebas.dart notas "$VERSION" \

@@ -10,16 +10,20 @@
 # Para qué sirve: comprobar que la app no se cierra sola ni se congela (el
 #   aviso «La app no responde» de Android, llamado ANR) antes de publicarla
 #   en Google Play.
-# Cuándo corre: a mano (Actions → Pruebas de esfuerzo → Run workflow),
-#   eligiendo cuántos toques dar (5,000 si no se cambia). Al cerrar #70
-#   correrá sola con cada versión nueva.
+# Cuándo corre: es la cuarta etapa de pipeline.yml, junto con las pruebas de
+#   rendimiento, después de la integración y la regresión: en cada Pull
+#   Request y cada vez que algo se une a main, con 1,000 toques (versión
+#   reducida); con la casilla «completo» del pipeline, 5,000. También a mano
+#   (Actions → Pruebas de esfuerzo → Run workflow), eligiendo cuántos toques
+#   dar (5,000 si no se cambia). Al cerrar #70 correrá sola con cada versión
+#   nueva.
 # Estado: el uso aleatorio ya funciona. El volumen solo corre si se marca la
 #   casilla correr_volumen, y todavía faltan sus pruebas en test/esfuerzo/
 #   (#70).
 # Ojo: monkey usa la app normal, así que lo que toque sí llega al servidor
 #   real. Como la app recién instalada no tiene sesión iniciada, casi todo es
 #   navegar por el catálogo.
-# Si falla: no bloquea ningún Pull Request.
+# Si falla: el pipeline falla y GitHub no deja unir el Pull Request.
 # Dónde ver el resultado: Actions → la corrida → Summary: cuántos toques se
 #   dieron, cuántas veces se cerró o se congeló la app y, si pasó, el reporte
 #   del error y los mensajes de error del celular (logcat).
@@ -28,6 +32,13 @@
 name: Pruebas de esfuerzo
 
 on:
+  # pipeline.yml la llama en cada Pull Request y en cada push a main.
+  workflow_call:
+    inputs:
+      completo:
+        description: Toda la carga (5,000 eventos) en vez de la reducida (1,000)
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       eventos:
@@ -84,9 +95,8 @@ jobs:
           flutter test test/esfuerzo --reporter expanded
           --file-reporter json:build/resultados/esfuerzo.json
 
-      # Escribe el resumen: cada prueba de volumen con ✅ o ❌.
+      # Escribe el resumen: cada prueba de volumen con ✅.
       - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
         run: >
           dart run tool/resumen_pruebas.dart pruebas
           build/resultados/esfuerzo.json
@@ -153,12 +163,50 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
+      # Cuántos eventos lanza monkey: los que se pidan al lanzarlo a mano o,
+      # desde pipeline.yml, 1,000 en cada Pull Request (versión reducida) y
+      # 5,000 con la casilla «completo». Cambia la carga, no si la prueba
+      # corre.
+      - name: Elegir la cantidad de eventos
+        id: carga
+        env:
+          EVENTOS_PEDIDOS: ${{ inputs.eventos }}
+          CARGA_COMPLETA: ${{ inputs.completo }}
+        run: |
+          if [ -n "$EVENTOS_PEDIDOS" ]; then
+            eventos="$EVENTOS_PEDIDOS"
+          elif [ "$CARGA_COMPLETA" = "true" ]; then
+            eventos=5000
+          else
+            eventos=1000
+          fi
+          echo "eventos=$eventos" >> "$GITHUB_OUTPUT"
+          echo "monkey lanzará $eventos eventos."
+
       # Instala la app en el celular virtual y suelta a monkey:
       #   · -s 42 fija la «semilla»: cada corrida hace exactamente los mismos
       #     toques, así un error se puede repetir para estudiarlo.
       #   · --throttle 100 deja 100 ms entre toques, rápido pero posible.
       #   · --pct-syskeys 0 no usa los botones del sistema (Inicio, Atrás…),
       #     para que monkey no se salga de la app.
+      # La app, al arrancar, pide la configuración de pagos al servidor real
+      # (GET /pagos/config) antes de dibujar su primera pantalla. El servidor
+      # (plan gratuito de Render) se duerme si nadie lo usa y tarda cerca de
+      # un minuto en despertar: mientras tanto la app no muestra su ventana y,
+      # si recibe un toque, Android la marca como congelada (corridas
+      # 40170191471 y 40172543786). Se despierta antes, como en
+      # flujo-compra.yml, con una consulta de solo lectura que se reintenta
+      # hasta que conteste.
+      - name: Despertar el servidor
+        run: >
+          curl --silent --show-error --fail --output /dev/null
+          --retry 5 --retry-delay 10 --retry-all-errors --max-time 90
+          https://pier-reposteria-backend.onrender.com/api/pagos/config
+
+      # Antes de soltar a monkey, la app se abre con am start -W, que espera a
+      # que su ventana aparezca e imprime cuánto tardó (TotalTime); queda en
+      # arranque.txt. Si en 10 s no apareció (Status: timeout), el paso falla
+      # ahí, con ese motivo: monkey no tendría a qué mandarle los eventos.
       # Lo que hace monkey se guarda en monkey.txt y los mensajes del celular
       # en logcat.txt. Si monkey reporta que la app se cerró (CRASH) o se
       # congeló (ANR / NOT RESPONDING), el paso falla.
@@ -177,13 +225,30 @@ jobs:
           script: |
             adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
             adb logcat -c
-            adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ inputs.eventos || '5000' }} 2>&1 | tee monkey.txt
+            adb shell am start -W -n ${{ env.PAQUETE }}/.MainActivity | tee arranque.txt
+            if grep -q "Status: timeout" arranque.txt; then echo "::error::La app no mostró su ventana en 10 s (am start -W); monkey no puede empezar."; exit 1; fi
+            adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ steps.carga.outputs.eventos }} 2>&1 | tee monkey.txt
             adb logcat -d -v time > logcat.txt
             if grep -qE "CRASH|ANR in|NOT RESPONDING" monkey.txt; then echo "::error::La app se cerró o dejó de responder bajo carga; revisa el resumen de la corrida."; exit 1; fi
 
-      # Escribe el resumen: cuántos toques se dieron, cuántas veces se cerró o
-      # se congeló la app y, si pasó, el reporte del error y los mensajes de
-      # error de logcat. Corre aunque el paso anterior falle: es la evidencia.
+      # Escribe el resumen: cuántos toques se dieron y que la app no se cerró
+      # ni se congeló. Si pasó, el paso anterior ya detuvo el job y la tabla
+      # de evidencias del pipeline lo dice, con la bitácora que se sube abajo.
       - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
         run: dart run tool/resumen_pruebas.dart monkey monkey.txt logcat.txt
+
+      # Guarda la bitácora de monkey y los mensajes del celular (logcat) 30
+      # días en Artifacts. Corre siempre (if: always()): si la app se cerró,
+      # ahí está el reporte del error, y el job sigue fallando por el paso que
+      # falló.
+      - name: Guardar la bitácora de monkey y el logcat
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-esfuerzo
+          path: |
+            arranque.txt
+            monkey.txt
+            logcat.txt
+          if-no-files-found: warn
+          retention-days: 30

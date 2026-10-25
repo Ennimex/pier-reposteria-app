@@ -156,6 +156,20 @@ String resumenMonkey(CorridaMonkey corrida, {String logcat = ''}) {
   return texto.toString();
 }
 
+/// Una línea para la tabla de evidencias del pipeline.
+String lineaMonkey(CorridaMonkey corrida) {
+  final hayFallas =
+      corrida.cierres.isNotEmpty || corrida.congelamientos.isNotEmpty;
+  final icono = hayFallas
+      ? '❌'
+      : corrida.termino
+          ? '✅'
+          : '⚠️';
+  return '$icono ${_numero(corrida.eventosLanzados)} eventos de monkey · '
+      '${miles(corrida.cierres.length)} cierres · '
+      '${miles(corrida.congelamientos.length)} congelamientos';
+}
+
 void _escribirBloques(StringBuffer texto, String titulo, List<String> bloques) {
   if (bloques.isEmpty) return;
   texto

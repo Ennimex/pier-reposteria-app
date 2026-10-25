@@ -7,42 +7,51 @@
 #   Ejemplo real (#34): «Dado que tengo una cuenta verificada, cuando envío
 #   una contraseña incorrecta, entonces la app muestra el mensaje de error y
 #   sigo en la misma pantalla».
-# Cómo lo hace: dibuja las pantallas reales de la app en memoria (sin celular
-#   ni emulador), toca botones y escribe en los campos como lo haría una
-#   persona. En vez del servidor real usa el servidor de mentira
-#   (FakeApiClient), que contesta lo que cada escenario necesita.
-# Cuándo corre: cada vez que se abre o se actualiza un Pull Request (la
-#   solicitud para unir cambios a main, la versión oficial del código),
-#   cuando algo se une a main y cuando alguien lo lanza a mano.
-# Si falla: GitHub no deja unir el Pull Request hasta que se corrija. Una
-#   historia se da por terminada solo cuando pasan todos sus escenarios.
+# Cómo lo hace: con dos trabajos que corren al mismo tiempo.
+#   · Escenarios Gherkin: dibuja las pantallas reales de la app en memoria
+#     (sin celular ni emulador), toca botones y escribe en los campos como lo
+#     haría una persona. En vez del servidor real usa el servidor de mentira
+#     (FakeApiClient), que contesta lo que cada escenario necesita.
+#   · Flujo principal en el emulador: instala la app completa en un celular
+#     Android virtual y recorre de punta a punta las tres historias del flujo
+#     principal: inicia sesión (#34), añade un producto al carrito (#35) y
+#     llega al checkout (#36), también con el servidor de mentira. Guarda una
+#     captura de pantalla de cada paso.
+# Cuándo corre: es la segunda etapa de pipeline.yml, después de las pruebas
+#   unitarias y del análisis estático: en cada Pull Request (la solicitud
+#   para unir cambios a main, la versión oficial del código) y cada vez que
+#   algo se une a main. También se puede lanzar sola, a mano.
+# Si falla: el pipeline se detiene aquí y GitHub no deja unir el Pull
+#   Request hasta que se corrija. Una historia se da por terminada solo
+#   cuando pasan todos sus escenarios.
 # Dónde ver el resultado: Actions → la corrida → Summary: cada escenario con
-#   ✅ o ❌, agrupado por historia (#33, #34…).
+#   ✅ o ❌, agrupado por historia (#33, #34…), y los pasos del flujo en el
+#   emulador con sus tiempos. Los reportes y las capturas quedan en Artifacts
+#   («resultados-aceptacion» y «resultados-aceptacion-emulador»).
 # Dónde están las pruebas: test/aceptacion/, un archivo por historia (hoy:
-#   registro, inicio de sesión, carrito y pago).
+#   registro, inicio de sesión, carrito y pago), e
+#   integration_test/aceptacion/flujo_principal_test.dart, con
+#   test_driver/aceptacion_driver.dart, que guarda las capturas.
 # Issues: #53 (Sprint 1), #56 y #57 (Sprint 2), #60 y #131 (Sprint 3),
 #   #64 y #135 (Sprint 4), #68 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de aceptación
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  # pipeline.yml la llama en cada Pull Request y en cada push a main.
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Si llega un cambio nuevo al mismo Pull Request, se cancela la corrida
-# anterior: ya no tiene caso revisar una versión que cambió.
-concurrency:
-  group: aceptacion-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 env:
   FLUTTER_VERSION: '3.44.4'
+  # El mismo celular virtual que integracion.yml, así reutilizan el que ya
+  # está guardado: Android 14 (API 34) con las medidas de un Pixel 6.
+  API_LEVEL: 34
+  AVD_PROFILE: pixel_6
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
 
 jobs:
   aceptacion:
@@ -73,12 +82,119 @@ jobs:
           flutter test test/aceptacion --reporter expanded
           --file-reporter json:build/resultados/aceptacion.json
 
-      # Escribe el resumen: cada escenario con ✅ o ❌, agrupado por historia.
-      # Corre aunque falle algún escenario.
+      # Escribe el resumen: cada escenario con ✅, agrupado por historia. Si
+      # alguno falló, el paso anterior ya detuvo el job y la tabla de
+      # evidencias del pipeline dice cuál, con el reporte que se sube abajo.
       - name: Mostrar el resultado en el resumen
-        if: ${{ !cancelled() }}
         run: >
           dart run tool/resumen_pruebas.dart pruebas
           build/resultados/aceptacion.json
           --titulo "Escenarios de aceptación (Gherkin)"
           --detalle
+
+      # Guarda el reporte 30 días en Artifacts. Corre siempre (if: always()),
+      # también si falló un escenario: es la evidencia, y el job sigue
+      # fallando por el paso que falló.
+      - name: Guardar el reporte
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-aceptacion
+          path: build/resultados/aceptacion.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  flujo-principal:
+    name: Flujo principal en el emulador
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      # Java hace falta para armar el APK (el archivo que se instala en el
+      # celular) y para el emulador.
+      - name: Instalar Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Deja que el emulador use el procesador directamente (más detalle en
+      # integracion.yml).
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Recupera el celular virtual guardado o, si no hay, lo crea (igual que
+      # en integracion.yml).
+      - name: Restaurar el AVD de la caché
+        id: avd-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
+
+      - name: Generar el AVD para la caché
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: false
+          script: echo "AVD generado para la caché."
+
+      # Enciende el celular virtual, instala la app y recorre el flujo
+      # principal. Corre con flutter drive (y no con flutter test) porque así
+      # la computadora recibe las capturas de pantalla: el driver
+      # (test_driver/aceptacion_driver.dart) guarda una por paso en
+      # build/resultados/capturas/ y el reporte en
+      # build/resultados/aceptacion_emulador.json, y termina con error si la
+      # prueba falló.
+      - name: Correr el flujo principal en el emulador
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: flutter drive --driver=test_driver/aceptacion_driver.dart --target=integration_test/aceptacion/flujo_principal_test.dart --no-pub
+
+      # Escribe el resumen: el resultado y cada paso con sus segundos. Si la
+      # prueba falló, la tabla de evidencias del pipeline lo dice con el
+      # reporte que se sube abajo.
+      - name: Mostrar el resultado en el resumen
+        run: dart run tool/resumen_pruebas.dart flujo
+
+      # Guarda el reporte y las capturas 30 días en Artifacts. Corre siempre
+      # (if: always()): si la prueba falló, las capturas muestran hasta dónde
+      # llegó, y el job sigue fallando por el paso que falló.
+      - name: Guardar el reporte y las capturas
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-aceptacion-emulador
+          path: |
+            build/resultados/aceptacion_emulador.json
+            build/resultados/capturas/
+          if-no-files-found: warn
+          retention-days: 30

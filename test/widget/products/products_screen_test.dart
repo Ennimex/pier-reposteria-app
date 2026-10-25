@@ -224,6 +224,8 @@ void main() {
     //   Cuando abro el catálogo
     //   Entonces veo que no se pudo cargar, con el motivo y «Reintentar»,
     //     y no «Sin resultados / Limpiar filtros».
+    // Regresión de #160 (corregido en #162) y de #112: el motivo es el texto
+    // amigable, no el de la excepción.
     testWidgets(
         'sin conexión avisa y ofrece «Reintentar» en vez de «Sin resultados»',
         (tester) async {
@@ -237,8 +239,9 @@ void main() {
       expect(find.text('Reintentar'), findsOneWidget);
       expect(find.text('Sin resultados'), findsNothing);
       expect(find.text('Limpiar filtros'), findsNothing);
-    });
+    }, tags: 'regresion');
 
+    // Regresión de #160 (corregido en #162): «Reintentar» sí recupera.
     testWidgets('«Reintentar» vuelve a cargar el catálogo cuando hay red',
         (tester) async {
       final api = await _montar(
@@ -255,7 +258,7 @@ void main() {
 
       expect(find.text('Chocoflan'), findsOneWidget);
       expect(find.text('Reintentar'), findsNothing);
-    });
+    }, tags: 'regresion');
 
     testWidgets('el botón de borrar búsqueda vacía el buscador', (tester) async {
       await _montar(tester);
@@ -301,6 +304,7 @@ void main() {
       expect(find.text('Chocoflan'), findsNothing);
     });
 
+    // Regresión de #111: el catálogo decía «agregado» aunque el alta fallara.
     testWidgets('con sesión confirma «agregado» solo si el backend acepta',
         (tester) async {
       final api = await _montar(tester);
@@ -321,7 +325,7 @@ void main() {
       final alta = api.llamadas.lastWhere((l) =>
           l.endpoint == ApiConstants.carrito && l.metodo == 'POST-Auth');
       expect(alta.body, {'producto_id': 1, 'cantidad': 1, 'tamano': 'chico'});
-    });
+    }, tags: 'regresion');
 
     testWidgets('sin sesión, el corazón manda a iniciar sesión', (tester) async {
       await _montar(tester);

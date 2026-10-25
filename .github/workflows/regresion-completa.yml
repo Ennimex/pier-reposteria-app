@@ -1,0 +1,214 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE: REGRESIÓN COMPLETA (los martes y con cada versión)
+#
+# Qué revisa: que lo nuevo no rompió lo que ya funcionaba. Vuelve a correr
+#   TODAS las pruebas acumuladas (integración en el emulador, incluido el
+#   flujo de compra contra el servidor real; análisis del código, unitarias y
+#   aceptación) y arma el APK (el archivo que se instala en el celular) de esa
+#   versión.
+#   Ejemplo: si un cambio del Sprint 4 en el carrito rompe el inicio de
+#   sesión que se entregó en el Sprint 1, aquí aparece.
+# Para qué sirve: es el respaldo de cada entrega. El sprint se presenta con
+#   la regresión en verde y su APK listo para instalar.
+# Diferencia con regresion.yml: esa es la etapa del pipeline de cada Pull
+#   Request y solo corre las pruebas de los bugs ya corregidos, con el
+#   servidor de mentira. Esta corre todo y usa el servidor real, por eso no
+#   va en los Pull Requests. Antes de pipeline.yml este era el contenido de
+#   regresion.yml; se pasó aquí tal cual, con sus mismos horarios.
+# Cuándo corre: sola, el martes de cierre de cada sprint a las 09:30 de
+#   México (15:30 UTC), dentro del horario de la tienda para que también
+#   corra el pago del flujo de compra (#177); cuando se publica una versión
+#   nueva (v1.2.0, v1.2.1…) y cuando alguien la lanza a mano.
+# Si falla: abre sola un issue con la etiqueta bug en el tablero, con el
+#   enlace a la corrida.
+# Dónde ver el resultado: Actions → la corrida → Summary: una fila por etapa
+#   con ✅. Si algo falla, el log del paso en rojo dice qué, y los reportes
+#   quedan en Artifacts («resultados-regresion-completa»). El APK se descarga
+#   desde Artifacts.
+# Issues: #59 (Sprint 2), #62 (Sprint 3), #66 (Sprint 4) y #72 (Sprint 5).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Regresión completa
+
+on:
+  schedule:
+    # Minuto 30, hora 15 UTC, cualquier día del mes, cualquier mes, en martes
+    # (2). México es UTC−6 todo el año: son las 09:30, con la tienda abierta
+    # (BusinessInfo: lunes a sábado de 9:00 a 21:00).
+    - cron: '30 15 * * 2'
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  # El mismo celular virtual que integracion.yml, así reutilizan el que ya
+  # está guardado.
+  API_LEVEL: 34
+  AVD_PROFILE: pixel_6
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+
+jobs:
+  regression:
+    name: Suite completa y APK de depuración
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Deja que el emulador use el procesador directamente (más detalle en
+      # integracion.yml).
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Recupera el celular virtual guardado o, si no hay, lo crea (igual que
+      # en integracion.yml).
+      - name: Restaurar el AVD de la caché
+        id: avd-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
+
+      - name: Generar el AVD para la caché
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: false
+          script: echo "AVD generado para la caché."
+
+      # El flujo de compra (#58) usa el servidor real, que se duerme si nadie
+      # lo usa: se despierta antes (más detalle en flujo-compra.yml).
+      - name: Despertar el servidor
+        run: >
+          curl --silent --show-error --fail --output /dev/null
+          --retry 5 --retry-delay 10 --retry-all-errors --max-time 90
+          https://pier-reposteria-backend.onrender.com/api/pagos/config
+
+      # Etapa 1, integración: las pruebas de integration_test/ en el celular
+      # virtual, incluido el flujo de compra con la cuenta de prueba y el
+      # celular en hora de México (igual que en flujo-compra.yml, donde se
+      # explica también por qué se quitan los saltos de renglón de los
+      # secretos). Se nombran una por una porque integration_test/rendimiento/
+      # no corre aquí: sus mediciones necesitan flutter drive en modo profile
+      # en un celular físico (rendimiento.yml); con flutter test en el
+      # emulador fallan al conectarse al VM Service (#185). Cada etapa guarda
+      # su resultado en build/resultados/ para el resumen.
+      - name: Correr las pruebas de integración en el emulador
+        id: integracion
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          USUARIO_PRUEBA: ${{ secrets.USUARIO_PRUEBA }}
+          CLAVE_PRUEBA: ${{ secrets.CLAVE_PRUEBA }}
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -timezone America/Mexico_City ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: flutter test integration_test/app_smoke_test.dart integration_test/flujos --no-pub --dart-define=USUARIO_PRUEBA="$(printf '%s' "$USUARIO_PRUEBA" | tr -d '\r\n')" --dart-define=CLAVE_PRUEBA="$(printf '%s' "$CLAVE_PRUEBA" | tr -d '\r\n')" --file-reporter json:build/resultados/integracion.json
+
+      # Etapa 2, análisis del código contra la línea base (como en
+      # analisis-estatico.yml).
+      - name: Comparar flutter analyze con la línea base
+        id: analisis
+        run: bash tool/check_analysis.sh
+
+      # Etapa 3, todas las pruebas de la carpeta test/ (unitarias, de widget,
+      # de aceptación y de regresión), con su cobertura.
+      - name: Correr la suite completa con cobertura
+        id: suite
+        run: flutter test --coverage --file-reporter json:build/resultados/suite.json
+
+      # Etapa 4, el APK de la versión probada. Sin --flavor se arma la versión
+      # de producción (#12).
+      - name: Compilar el APK de depuración
+        id: apk
+        run: flutter build apk --debug
+
+      # Escribe el resumen: una fila por etapa con su resultado. Llega aquí
+      # solo si pasaron todas; si una falló, su paso ya detuvo el job.
+      - name: Mostrar el resultado en el resumen
+        run: >
+          dart run tool/resumen_pruebas.dart regresion
+          --integracion ${{ steps.integracion.outcome }}
+          --analisis ${{ steps.analisis.outcome }}
+          --suite ${{ steps.suite.outcome }}
+          --apk ${{ steps.apk.outcome }}
+
+      # Guarda el APK 30 días en la pestaña Artifacts de la corrida, para
+      # instalarlo en la revisión de cierre de sprint.
+      - name: Guardar el APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: regression-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-prod-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # Guarda los reportes de cada etapa 30 días en Artifacts. Corre siempre
+      # (if: always()), también si una etapa falló: es la evidencia, y el job
+      # sigue fallando por el paso que falló.
+      - name: Guardar los reportes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-regresion-completa
+          path: |
+            build/resultados/
+            coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 30
+
+  avisar:
+    name: Abrir un issue si falla
+    runs-on: ubuntu-latest
+    needs: regression
+    # Solo corre si la regresión falló: es un aviso, no una prueba.
+    if: failure()
+    permissions:
+      issues: write
+    steps:
+      # Crea el issue con el permiso automático que GitHub le da al workflow:
+      # no usa la cuenta ni la contraseña de nadie.
+      - name: Abrir el issue de regresión
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Regresión fallida: ${{ github.ref_name }} (run ${{ github.run_number }})" \
+            --label bug \
+            --body "La suite de regresión completa falló en \`${{ github.ref_name }}\` (${{ github.event_name }}, commit ${{ github.sha }}). Revisa el log: $RUN_URL"

@@ -89,6 +89,8 @@ void main() {
       expect(find.text('Sin resultados para "brownie"'), findsOneWidget);
     });
 
+    // Regresión de #111: Mis Favoritos decía «agregado» aunque el alta
+    // fallara.
     testWidgets('confirma «agregado» solo si el backend acepta el alta',
         (tester) async {
       final api = FakeApiClient(
@@ -119,6 +121,6 @@ void main() {
       await tester.tap(find.byIcon(LucideIcons.plus));
       await tester.pumpAndSettle();
       expect(find.text('Fresa Matcha Bliss agregado al carrito'), findsOneWidget);
-    });
+    }, tags: 'regresion');
   });
 }

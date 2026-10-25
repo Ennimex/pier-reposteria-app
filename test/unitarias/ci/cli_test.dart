@@ -333,6 +333,160 @@ void main() {
     });
   });
 
+  // El flujo principal en el emulador (aceptacion.yml).
+  group('flujo', () {
+    test('lee el reporte de test_driver/aceptacion_driver.dart', () {
+      _escribir(
+        'build/resultados/aceptacion_emulador.json',
+        jsonEncode({
+          'aprobado': true,
+          'pasos': [
+            {'paso': '01_inicio_de_sesion', 'segundos': 3.1},
+          ],
+          'capturas': ['build/resultados/capturas/01_inicio_de_sesion.png'],
+        }),
+      );
+
+      expect(_ejecutar(['flujo']), 0);
+      expect(_salida.toString(), contains('| ✅ Aprobado | 1 | 1 | 3.1 s |'));
+      expect(
+        _resumen.readAsStringSync(),
+        contains('### 📱 Flujo principal en el emulador'),
+      );
+    });
+
+    test('avisa si no se generó el reporte', () {
+      expect(_ejecutar(['flujo']), 0);
+      expect(_salida.toString(), contains('No se generó el reporte del flujo'));
+    });
+  });
+
+  // El job «Evidencias y decisión» de pipeline.yml.
+  group('evidencias', () {
+    List<String> argumentos({String esfuerzo = 'success'}) => [
+          'evidencias',
+          'build/evidencias',
+          '--unitarias',
+          'success',
+          '--analisis',
+          'success',
+          '--aceptacion',
+          'success',
+          '--integracion',
+          'success',
+          '--regresion',
+          'success',
+          '--rendimiento',
+          'success',
+          '--esfuerzo',
+          esfuerzo,
+        ];
+
+    test('saca las métricas de los artefactos de cada etapa', () {
+      _escribir('tool/check_analysis.sh', _script);
+      // Cada artefacto descargado en su propia carpeta, con sus rutas.
+      const unitarias = 'build/evidencias/resultados-unitarias';
+      _escribir('$unitarias/build/resultados/unitarias.json', _reporteVerde());
+      _escribir(
+        '$unitarias/coverage/lcov.info',
+        'SF:lib/main.dart\nLF:4\nLH:3\nend_of_record\n',
+      );
+      _escribir(
+        'build/evidencias/resultados-analisis/analisis.txt',
+        '   info • Sort child properties last • lib/a.dart:1:1 • sort\n'
+            '1 issue found.\n',
+      );
+      const aceptacion = 'build/evidencias/resultados-aceptacion';
+      _escribir('$aceptacion/aceptacion.json', _reporteVerde());
+      _escribir(
+        'build/evidencias/resultados-aceptacion-emulador/'
+            'aceptacion_emulador.json',
+        jsonEncode({
+          'aprobado': true,
+          'pasos': [
+            {'paso': '05_checkout', 'segundos': 40.0},
+          ],
+          'capturas': ['a.png'],
+        }),
+      );
+      _escribir(
+        'build/evidencias/resultados-integracion/integracion.json',
+        _reporteVerde(),
+      );
+      _escribir(
+        'build/evidencias/resultados-regresion/regresion.json',
+        _reporteVerde(),
+      );
+      _escribir(
+        'build/evidencias/rendimiento-apk/app-prod-release.apk',
+        'x' * 2048,
+      );
+      _escribir(
+        'build/evidencias/resultados-esfuerzo/monkey.txt',
+        ':Monkey: seed=42 count=1000\nEvents injected: 1000\n'
+            '// Monkey finished\n',
+      );
+
+      expect(_ejecutar(argumentos()), 0);
+      final texto = _salida.toString();
+      expect(texto, contains('Rama `main` · commit `abc1234`'));
+      expect(
+        texto,
+        contains(
+          '| Unitarias y de widget | ✅ Pasó | ✅ 1 prueba pasó · '
+          'cobertura 75.0 % |',
+        ),
+      );
+      expect(
+        texto,
+        contains(
+          '| Análisis estático | ✅ Pasó | ✅ 0 errores · 0 advertencias · '
+          '1 aviso (línea base 0/0/151) |',
+        ),
+      );
+      expect(
+        texto,
+        contains(
+          '| Aceptación | ✅ Pasó | Gherkin: ✅ 1 prueba pasó · Emulador: '
+          '✅ 1 paso · 1 capturas en 40.0 s |',
+        ),
+      );
+      expect(texto, contains('| Integración | ✅ Pasó | ✅ 1 prueba pasó |'));
+      expect(texto, contains('| Regresión | ✅ Pasó | ✅ 1 prueba pasó |'));
+      expect(
+        texto,
+        contains('| Rendimiento | ✅ Pasó | APK de release: 2.0 KB |'),
+      );
+      expect(
+        texto,
+        contains(
+          '| Esfuerzo | ✅ Pasó | ✅ 1,000 eventos de monkey · 0 cierres · '
+          '0 congelamientos |',
+        ),
+      );
+      expect(texto, contains('**Decisión:** ✅ pasaron las 7 etapas'));
+    });
+
+    test('una etapa sin artefactos queda sin métricas', () {
+      expect(_ejecutar(argumentos(esfuerzo: 'skipped')), 0);
+
+      final texto = _salida.toString();
+      expect(
+        texto,
+        contains(
+          '| Esfuerzo | ⏭️ No corrió: falló una etapa anterior | — |',
+        ),
+      );
+      expect(texto, contains('**Decisión:** ❌ no pasaron: Esfuerzo.'));
+    });
+
+    test('sin el resultado de alguna etapa explica el uso', () {
+      final incompletos = argumentos().sublist(0, argumentos().length - 2);
+
+      expect(_ejecutar(incompletos), 64);
+    });
+  });
+
   // #22: release.yml para la publicación si el tag no es la versión del
   // pubspec y toma de aquí las notas de la Release.
   group('version', () {

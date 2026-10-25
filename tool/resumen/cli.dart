@@ -9,6 +9,8 @@ import 'dart:math';
 import 'analisis.dart';
 import 'cobertura.dart';
 import 'esfuerzo.dart';
+import 'evidencias.dart';
+import 'flujo.dart';
 import 'markdown.dart';
 import 'pruebas.dart';
 import 'regresion.dart';
@@ -21,7 +23,20 @@ const _rutaLineaBase = 'tool/check_analysis.sh';
 const _rutaIntegracion = 'build/resultados/integracion.json';
 const _rutaSuite = 'build/resultados/suite.json';
 const _rutaCobertura = 'coverage/lcov.info';
+const _rutaFlujo = 'build/resultados/aceptacion_emulador.json';
 const _carpetaApk = 'build/app/outputs/flutter-apk';
+
+/// Etapas de pipeline.yml, en orden: nombre en la tabla y opción del comando
+/// evidencias que trae su resultado.
+const _etapasDelPipeline = [
+  ('Unitarias y de widget', 'unitarias'),
+  ('Análisis estático', 'analisis'),
+  ('Aceptación', 'aceptacion'),
+  ('Integración', 'integracion'),
+  ('Regresión', 'regresion'),
+  ('Rendimiento', 'rendimiento'),
+  ('Esfuerzo', 'esfuerzo'),
+];
 
 const _uso = '''
 Uso: dart run tool/resumen_pruebas.dart <comando> [opciones]
@@ -40,6 +55,13 @@ Comandos:
       Archivos *.timeline_summary.json de flutter drive (por omisión build/).
   monkey <monkey.txt> [logcat.txt]
       Bitácora de adb shell monkey -v y, si hubo fallas, errores de logcat.
+  flujo [reporte.json]
+      Reporte del flujo principal en el emulador que deja
+      test_driver/aceptacion_driver.dart (por omisión $_rutaFlujo).
+  evidencias <carpeta> --unitarias <r> --analisis <r> --aceptacion <r>
+      --integracion <r> --regresion <r> --rendimiento <r> --esfuerzo <r>
+      Tabla final de pipeline.yml con las métricas de los artefactos de cada
+      etapa, descargados en <carpeta>; <r> es needs.<job>.result.
   regresion --integracion <r> --analisis <r> --suite <r> --apk <r>
       Tabla de etapas de regresion.yml; <r> es steps.<id>.outcome (success,
       failure, skipped o cancelled).
@@ -68,6 +90,8 @@ int ejecutar(
     'peso' => _peso(opciones, archivos, entorno),
     'tiempos' => _tiempos(opciones, archivos),
     'monkey' => _monkey(opciones, archivos),
+    'flujo' => _flujo(opciones, archivos),
+    'evidencias' => _evidencias(opciones, archivos, entorno),
     'regresion' => _regresion(opciones, archivos, entorno),
     'version' => _version(opciones, archivos),
     'notas' => _notas(opciones, archivos),
@@ -230,6 +254,107 @@ int ejecutar(
     resumenMonkey(
       leerMonkey(bitacora),
       logcat: logcat == null ? '' : archivos.leer(logcat) ?? '',
+    ),
+    0,
+  );
+}
+
+(String, int) _flujo(_Argumentos opciones, _Archivos archivos) {
+  final ruta = opciones.posicional(1) ?? _rutaFlujo;
+  final datos = archivos.leerJson(ruta);
+  if (datos == null) {
+    return (
+      '### 📱 Flujo principal en el emulador\n\n> ⚠️ No se generó el reporte '
+          'del flujo (`$ruta`): el emulador no arrancó o la prueba no llegó a '
+          'terminar. Revisa el log del paso.\n',
+      0,
+    );
+  }
+  return (resumenFlujo(leerReporteDelFlujo(datos)), 0);
+}
+
+/// Las métricas salen de los archivos que cada etapa subió como artefacto;
+/// el job de evidencias los descarga todos en la carpeta del primer
+/// argumento, cada artefacto en su propia subcarpeta. Siempre termina con 0:
+/// quien decide si el pipeline falla es el paso siguiente del workflow.
+(String, int)? _evidencias(
+  _Argumentos opciones,
+  _Archivos archivos,
+  Map<String, String> entorno,
+) {
+  final carpeta = opciones.posicional(1);
+  final resultados = {
+    for (final (_, opcion) in _etapasDelPipeline)
+      opcion: opciones.valores[opcion],
+  };
+  if (carpeta == null || resultados.values.contains(null)) return null;
+
+  File? buscar(bool Function(String nombre) condicion) =>
+      archivos.buscarEnTodo(carpeta, condicion);
+  String? leer(String nombre) {
+    final archivo = buscar((encontrado) => encontrado == nombre);
+    return archivo == null ? null : archivos.leer(archivo.path);
+  }
+
+  Corrida? corrida(String nombre) {
+    final contenido = leer(nombre);
+    return contenido == null
+        ? null
+        : leerReporte(contenido, raiz: archivos.raiz);
+  }
+
+  final unitarias = corrida('unitarias.json');
+  final cobertura = leer('lcov.info');
+  final analisis = leer('analisis.txt');
+  final lineaBase = leerLineaBase(archivos.leer(_rutaLineaBase) ?? '');
+  final gherkin = corrida('aceptacion.json');
+  final flujo = leer('aceptacion_emulador.json');
+  final datosDelFlujo = flujo == null ? null : jsonDecode(flujo);
+  final integracion = corrida('integracion.json');
+  final regresion = corrida('regresion.json');
+  final apk = buscar((nombre) => nombre.endsWith('-release.apk'));
+  final monkey = leer('monkey.txt');
+
+  final metricas = <String, List<String>>{
+    'unitarias': [
+      if (unitarias != null) lineaPruebas(unitarias),
+      if (cobertura != null) lineaCobertura(leerLcov(cobertura)),
+    ],
+    'analisis': [
+      if (analisis != null && lineaBase != null)
+        lineaAnalisis(leerAnalisis(analisis), lineaBase),
+    ],
+    'aceptacion': [
+      if (gherkin != null) 'Gherkin: ${lineaPruebas(gherkin)}',
+      if (datosDelFlujo is Map<String, dynamic>)
+        'Emulador: ${lineaFlujo(leerReporteDelFlujo(datosDelFlujo))}',
+    ],
+    'integracion': [if (integracion != null) lineaPruebas(integracion)],
+    'regresion': [if (regresion != null) lineaPruebas(regresion)],
+    'rendimiento': [
+      if (apk != null) 'APK de release: ${tamano(apk.lengthSync())}',
+    ],
+    'esfuerzo': [if (monkey != null) lineaMonkey(leerMonkey(monkey))],
+  };
+
+  final rama = entorno['GITHUB_HEAD_REF'] ?? '';
+  final referencia = rama.isEmpty ? entorno['GITHUB_REF_NAME'] : rama;
+  final commit = entorno['GITHUB_SHA'];
+  return (
+    resumenEvidencias(
+      [
+        for (final (nombre, opcion) in _etapasDelPipeline)
+          EtapaDelPipeline(
+            nombre: nombre,
+            resultado: resultados[opcion]!,
+            metricas: metricas[opcion]!,
+          ),
+      ],
+      version: referencia == null || commit == null
+          ? ''
+          : 'Rama `$referencia` · commit '
+              '`${commit.substring(0, min(7, commit.length))}`',
+      corridas: [?unitarias, ?gherkin, ?integracion, ?regresion],
     ),
     0,
   );
@@ -418,6 +543,20 @@ class _Archivos {
         .toList()
       ..sort((a, b) => a.path.compareTo(b.path));
     return ultimo ? archivos.lastOrNull : archivos.firstOrNull;
+  }
+
+  /// Primer archivo de [ruta] o de sus subcarpetas (en orden alfabético de
+  /// su ruta) cuyo nombre cumple [condicion].
+  File? buscarEnTodo(String ruta, bool Function(String nombre) condicion) {
+    final carpeta = this.carpeta(ruta);
+    if (!carpeta.existsSync()) return null;
+    final archivos = carpeta
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((archivo) => condicion(_nombreDe(archivo.path)))
+        .toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+    return archivos.firstOrNull;
   }
 
   String _completa(String ruta) {

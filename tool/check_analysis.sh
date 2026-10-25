@@ -26,15 +26,25 @@ if [ "$analyze_status" -ne 0 ]; then
   exit "$analyze_status"
 fi
 
-# flutter analyze separa los campos con «•» en Linux (CI) y con «-» en
-# Windows: se cuentan ambos formatos.
-errors=$(grep -Ec '^[[:space:]]*error (-|•) ' "$output_file" || true)
-warnings=$(grep -Ec '^[[:space:]]*warning (-|•) ' "$output_file" || true)
-infos=$(grep -Ec '^[[:space:]]*info (-|•) ' "$output_file" || true)
+# Cuenta errores, advertencias y avisos en los dos formatos de flutter
+# analyze (Linux y Windows, #87) con tool/contar_analisis.sh, que imprime los
+# tres números en un renglón.
+conteo=$(bash "$(dirname "$0")/contar_analisis.sh" "$output_file")
+read -r errors warnings infos <<<"$conteo"
 
-if [ "$errors" -gt "$baseline_errors" ] ||
-  [ "$warnings" -gt "$baseline_warnings" ] ||
-  [ "$infos" -gt "$baseline_infos" ]; then
+# Basta con que uno de los tres pase su máximo para que el análisis falle.
+excede_la_linea_base=false
+if [ "$errors" -gt "$baseline_errors" ]; then
+  excede_la_linea_base=true
+fi
+if [ "$warnings" -gt "$baseline_warnings" ]; then
+  excede_la_linea_base=true
+fi
+if [ "$infos" -gt "$baseline_infos" ]; then
+  excede_la_linea_base=true
+fi
+
+if [ "$excede_la_linea_base" = true ]; then
   echo "::error::Analysis exceeds baseline: errors=$errors/$baseline_errors, warnings=$warnings/$baseline_warnings, infos=$infos/$baseline_infos."
   exit 1
 fi
