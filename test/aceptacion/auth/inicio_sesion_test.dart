@@ -181,8 +181,13 @@ void main() {
       'hornos': (AppRoutes.comandas, AgendaComandasScreen),
       'decoracion': (AppRoutes.comandas, AgendaComandasScreen),
     };
+    // Regresión de #126 (corregido en #140): hornos y decoración entraban a
+    // la tienda del cliente. Sus dos escenarios llevan la etiqueta.
+    const rolesDelBug126 = {'hornos', 'decoracion'};
     for (final MapEntry(key: rol, value: (ruta, pantalla))
         in destinos.entries) {
+      final etiquetas =
+          rolesDelBug126.contains(rol) ? const ['regresion'] : const <String>[];
       testWidgets('Escenario: credenciales válidas ($rol → $ruta)',
           (tester) async {
         _celular(tester);
@@ -202,7 +207,7 @@ void main() {
         expect(_ruta(tester), ruta);
         expect(find.byType(pantalla), findsOneWidget);
         expect(find.byType(LoginScreen), findsNothing);
-      });
+      }, tags: etiquetas);
     }
 
     // Escenario: credenciales inválidas

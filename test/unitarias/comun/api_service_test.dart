@@ -117,6 +117,7 @@ void main() {
       expect(r['message'], 'Error al procesar la respuesta');
     });
 
+    // Regresión de #112: sin red, el cliente veía el texto de la excepción.
     test('sin conexión devuelve un mensaje amigable en lugar de lanzar',
         () async {
       final cliente = MockClient((_) async => throw http.ClientException(
@@ -137,7 +138,7 @@ void main() {
         expect(r['success'], isFalse);
         expect(r['message'], ApiService.mensajeSinConexion);
       }
-    });
+    }, tags: 'regresion');
   });
 
   group('ApiService: subir imagen', () {

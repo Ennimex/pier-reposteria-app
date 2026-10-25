@@ -115,6 +115,7 @@ void main() {
       }
     });
 
+    // Regresión de #126 (corregido en #140).
     test('hornos y decoración son producción y roles internos (#126)', () {
       for (final rol in ['hornos', 'decoracion']) {
         final auth = _conSesion(rol: rol);
@@ -124,7 +125,7 @@ void main() {
       }
       expect(_conSesion(rol: 'empleado').isProduccion, isFalse);
       expect(_conSesion().isProduccion, isFalse);
-    });
+    }, tags: 'regresion');
   });
 
   group('AuthProvider: perfil en memoria', () {

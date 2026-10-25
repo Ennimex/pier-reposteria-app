@@ -1,0 +1,11 @@
+# Configuración de flutter test para todo el proyecto.
+#
+# Etiquetas: agrupan pruebas que viven en carpetas distintas para correrlas
+# juntas con --tags.
+tags:
+  # Pruebas que comprueban que un bug ya corregido no vuelva (#87, #111,
+  # #112, #118, #126, #140, #155, #160, #162 y #185). Se marcan con
+  # @Tags(['regresion']) en el archivo o con tags: 'regresion' en la prueba,
+  # y las corre la etapa de regresión del pipeline:
+  #   flutter test --tags regresion
+  regresion: {}
