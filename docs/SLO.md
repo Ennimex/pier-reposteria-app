@@ -130,3 +130,38 @@ antes de la revisión de las 48 h. La alerta de errores de #23 (más de 10 en
 1 hora) se queda como está.
 
 ![Monitor «Crash-free sessions < 99.5 % (#24)» en Sentry](slo/monitor.png)
+
+## Revisiones del canary
+
+### v2.1.0+4 — aprobada (24-oct-2026)
+
+Canary en el Samsung SM-N975U con el APK de la
+[Release v2.1.0](https://github.com/Ennimex/pier-reposteria-app/releases/tag/v2.1.0),
+del 22-oct a las 20:31 al 24-oct a las 20:31 (hora de México). Dashboard con
+`prod`, la versión `mx.com.pierreposteria@2.1.0+4` y esa ventana:
+
+| Métrica | Valor | Objetivo | Resultado |
+|---|---|---|---|
+| Crash-free sessions | 100 % (13 sesiones, todas sanas) | ≥ 99.5 % | ✅ |
+| Crash-free users | 100 % (1 usuario) | ≥ 99 % | ✅ |
+| ANR | 0 congelamientos (0 %) | < 0.47 % | ✅ |
+| Arranque en frío p90 | 902 ms en los 7 días de `prod` | < 3 s | ✅ |
+| Errores en el pago | 0 % (1 intento, `cancelado`) | < 1 % | ✅ (pocos datos) |
+
+- **Arranque:** la 2.1.0+4 no tiene ningún arranque en frío medido. De sus
+  arranques, Sentry guardó 5 (muestreo del 20 %) y los 5 fueron en caliente
+  (`app.start.warm`: la app seguía en memoria). Los 902 ms son de la ventana de
+  7 días que fija la tabla, todos de la 2.0.0+3.
+- **Pago:** con un solo intento el dato no basta para juzgar el objetivo (la
+  regla pide al menos 100), pero no hubo errores.
+- **Muestra chica:** un celular y una persona. Cuando haya canary con los
+  dueños de Pier, la misma tabla tendrá más peso.
+
+**Decisión:** *crash-free sessions* ≥ 99.5 % y ningún objetivo en rojo →
+avanzar. La app todavía no está en Play, así que el siguiente paso (10 % en
+Play Console) espera a la primera subida; mientras tanto, la v2.1.0 queda como
+la versión estable.
+
+![Dashboard filtrado a la v2.1.0+4 y a la ventana del canary](slo/canary-v2.1.0.png)
+
+![Dashboard con los 7 días de prod: arranque en frío p90 de 902 ms](slo/canary-v2.1.0-7d.png)
