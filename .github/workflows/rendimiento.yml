@@ -56,7 +56,8 @@ on:
         description: k6 con toda su duración (1 min) en vez de la reducida (30 s)
         type: boolean
         default: false
-  # Cada versión nueva: el peso se compara con la línea base de #61.
+  # Cada versión nueva: el peso, el arranque y la API se comparan con su
+  # línea base (tool/linea_base_rendimiento.json).
   push:
     tags: ['v*']
 

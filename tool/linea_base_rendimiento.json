@@ -9,6 +9,14 @@
     "fecha": "2026-10-25",
     "medicion": "pruebas/k6/rendimiento.js: 10 clientes durante 30 s contra productos, categorías y health; 900 peticiones, 0 % de errores. Otras dos corridas del mismo día dieron 6.17 ms (40203020184) y 5.10 ms (40203029214); el push de #200 a main, 8.56 ms (40207579753)."
   },
+  "app_arranque_emulador": {
+    "mediana_ms": 4717,
+    "tolerancia_porcentaje": 20,
+    "tolerancia_minima_ms": 25,
+    "corrida": "40214359737",
+    "fecha": "2026-10-25",
+    "medicion": "tool/arranque_en_frio.sh: 5 aperturas en frío (am start -W, TotalTime) del APK debug de producción apuntando al entorno aislado, en el emulador API 34 pixel_6 x86_64 sin GPU: 5623, 4497, 4907, 4717 y 4698 ms. No es comparable con los 1.6 s del Samsung en modo profile (#61)."
+  },
   "app_peso_apk": {
     "bytes": 41204220,
     "tolerancia_porcentaje": 10,
