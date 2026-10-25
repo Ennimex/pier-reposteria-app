@@ -1,0 +1,68 @@
+{
+  "repo_notes": [
+    {
+      "content": "Redacta toda la wiki en español, igual que el código, los comentarios y los workflows del repositorio. Pier Repostería es una pastelería con venta en línea; este repositorio es su app móvil en Flutter (Android e iOS, paquete Dart pier_reposteria, applicationId mx.com.pierreposteria). Los clientes ven el catálogo, guardan favoritos, arman el carrito, pagan con tarjeta (Stripe), siguen sus pedidos, dejan reseñas y piden reembolsos o levantan quejas; el personal captura comandas y el repartidor gestiona sus entregas. Las carpetas linux/, macos/, web/ y windows/ las genera Flutter y no se usan."
+    },
+    {
+      "content": "La app no tiene lógica de servidor: consume una API REST de Node + Express + PostgreSQL que vive en otro repositorio, PedroRubioo/pier-reposteria-backend, desplegada en Render (https://pier-reposteria-backend.onrender.com/api). El contrato entre ambos son los modelos de lib/domain/models (por ejemplo Product.fromJson) y las rutas de lib/config/api_constants.dart. El backend no se modifica desde este repositorio: el pipeline de pruebas solo lo descarga fijado a un commit para levantarlo en contenedores."
+    },
+    {
+      "content": "Pipeline de pruebas con entorno aislado: .github/workflows/pipeline.yml orquesta, en cada Pull Request y push a main, los workflows de cada tipo de prueba como workflows reutilizables (workflow_call), encadenados con needs: unitarias y análisis estático en paralelo; luego aceptación; luego integración y regresión; luego rendimiento y esfuerzo; y al final un job de evidencias y decisión que resume los resultados y falla si alguna etapa falló. Las pruebas que necesitan servidor usan un entorno Docker desechable (Postgres 17 con las migraciones del backend y una semilla de datos ficticios, más la API del backend) que levanta tool/entorno_pruebas.sh, en lugar del servidor de producción. Ningún job usa continue-on-error ni salta pruebas obligatorias."
+    },
+    {
+      "content": "Convenciones: arquitectura MVVM de la guía oficial de Flutter; imports absolutos package:pier_reposteria/...; las pruebas sin red usan test/fakes/fake_api_client.dart (FakeApiClient). Ramas feature/<tema> desde main, integradas solo por Pull Request con una aprobación y los checks requeridos en verde (ruleset «Proteger main»). Commits con Conventional Commits en español. Versionado SemVer en pubspec.yaml y lib/config/app_version.dart."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Visión general",
+      "purpose": "Qué es la app de Pier Repostería, a quién sirve (clientes, personal y repartidor), qué funciones ofrece y cómo se relaciona con el backend del repositorio PedroRubioo/pier-reposteria-backend. Incluye el stack (Flutter, provider, go_router, http, flutter_stripe, Sentry), la estructura de carpetas del repositorio, el equipo y cómo se planea el trabajo (tablero, sprints de dos semanas, milestones)."
+    },
+    {
+      "title": "Arquitectura de la app",
+      "purpose": "Cómo está organizado lib/ según la arquitectura MVVM de la guía oficial de Flutter: config/dependencies.dart (registro único de ApiClient, repositorios y providers), data/services (ApiClient, ApiService, almacenamiento) y data/repositories (interfaz abstracta y su implementación remota por dominio, que lanzan ApiException), domain/models, ui/<función>/view_model (un ViewModel por pantalla, consumido con ListenableBuilder), ui/core/state (ChangeNotifiers globales), routing con go_router y utils/command.dart. Explica el flujo de una petición desde la pantalla hasta el backend y cómo se prueba cada capa con FakeApiClient."
+    },
+    {
+      "title": "Configuración y ambientes",
+      "purpose": "Cómo elige la app su backend: los flavors dev, staging y prod de Android (cada uno con su applicationId y nombre en el launcher), los --dart-define AMBIENTE y API_BASE_URL de lib/config/api_constants.dart y su orden de prioridad, la URL http://10.0.2.2:3000/api para el emulador contra un backend local o en contenedores, el permiso de tráfico http solo en builds debug, y la firma de release con android/key.properties fuera del repositorio."
+    },
+    {
+      "title": "Pipeline de CI",
+      "purpose": "El pipeline de GitHub Actions .github/workflows/pipeline.yml: sus disparadores (pull_request y push a main, workflow_dispatch con el input completo), las etapas encadenadas con needs (unitarias y análisis estático en paralelo, aceptación, integración y regresión, rendimiento y esfuerzo, evidencias y decisión), los workflows reutilizables que llama, qué checks requiere el ruleset de main, cómo se guardan los reportes en build/resultados y como artefactos, y cómo tool/resumen_pruebas.dart arma el resumen de cada corrida."
+    },
+    {
+      "title": "Pruebas unitarias y de widget",
+      "parent": "Pipeline de CI",
+      "purpose": "Las pruebas sin red de test/unitarias/<épica>/ (validadores, providers, repositorios y ViewModels) y test/widget/<función>/ (cada pantalla), los dobles de test/fakes y test/helpers (FakeApiClient, pumpApp), y el workflow unitarias.yml que las corre con cobertura y resume los totales y la cobertura por carpeta."
+    },
+    {
+      "title": "Análisis estático",
+      "parent": "Pipeline de CI",
+      "purpose": "El análisis sin ejecutar la app: flutter analyze con las reglas de very_good_analysis y sus excepciones en analysis_options.yaml, la línea base de tool/check_analysis.sh (errores, warnings e infos máximos) sonar-project.properties (fuentes en lib, pruebas en test e integration_test, reporte de cobertura lcov) y el quality gate de SonarCloud (cobertura del código nuevo ≥ 80 % y duplicación ≤ 3 %), tal como los corre analisis-estatico.yml."
+    },
+    {
+      "title": "Pruebas de aceptación (Gherkin)",
+      "parent": "Pipeline de CI",
+      "purpose": "Los escenarios Gherkin de las historias de usuario automatizados como pruebas de widget en test/aceptacion/<épica>/ (auth, carrito_checkout, inicio), una prueba por escenario, el flujo principal inicio de sesión → carrito → checkout, la evidencia que guarda aceptacion.yml y cómo bloquea el pipeline si falla."
+    },
+    {
+      "title": "Integración con entorno Docker",
+      "parent": "Pipeline de CI",
+      "purpose": "Las pruebas de integración en emulador Android (integration_test/app_smoke_test.dart y integration_test/flujos) y las pruebas de la API (test/api) contra el entorno aislado: los archivos de docker/ (imagen del backend en node:22-alpine, base postgres:17-alpine con las migraciones del backend y la semilla de prueba, compose.pruebas.yml con healthchecks, backend.version con el commit fijo), el script tool/entorno_pruebas.sh (levantar, bajar, estado, logs) y cómo el workflow integracion.yml conecta el emulador al contenedor."
+    },
+    {
+      "title": "Regresión",
+      "parent": "Pipeline de CI",
+      "purpose": "Cómo se evita que vuelvan los errores ya corregidos: la etiqueta regresion de dart_test.yaml, las pruebas marcadas con @Tags(['regresion']) que cubren cada bug cerrado, la carpeta test/regresion, y el workflow regresion.yml que corre en cada Pull Request, los martes a las 09:30 de México, con cada tag v* y a mano."
+    },
+    {
+      "title": "Rendimiento y esfuerzo",
+      "parent": "Pipeline de CI",
+      "purpose": "Las pruebas de carga y estrés: los scripts k6 de pruebas/k6 (carga normal y esfuerzo con recuperación contra la API en contenedores, umbrales de p95 y tasa de errores, límite de peticiones del backend), la comparación contra tool/linea_base_rendimiento.json, el peso del APK y el arranque en frío medidos en el emulador, y monkey de Android (eventos aleatorios con semilla fija, cierres y ANR contados desde logcat), tal como los corren rendimiento.yml y esfuerzo.yml en versión reducida en cada PR y completa a mano."
+    },
+    {
+      "title": "Liberación y monitoreo",
+      "purpose": "Cómo sale una versión: SemVer en pubspec.yaml y lib/config/app_version.dart, el tag vX.Y.Z que dispara release.yml (APK firmado con la llave del equipo y publicado en GitHub Releases), las pruebas en el entorno de liberación y el environment de producción con aprobación, la estrategia canary de docs/LIBERACION.md, el monitoreo con Sentry de lib/config/monitoreo.dart (errores con la pantalla en que ocurren y transacción del pago), y las métricas, la regla de avance, el dashboard y la alerta de crash-free sessions de docs/SLO.md."
+    }
+  ]
+}

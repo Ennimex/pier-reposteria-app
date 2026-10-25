@@ -1,5 +1,7 @@
 # Pier Repostería — App móvil
 
+[![Documentación en DeepWiki](https://img.shields.io/badge/DeepWiki-documentaci%C3%B3n-blue)](https://deepwiki.com/Ennimex/pier-reposteria-app)
+
 Aplicación móvil (Android / iOS) de **Pier Repostería**, una pastelería con venta
 en línea. Permite a los clientes explorar el catálogo, guardar favoritos, armar
 su carrito, pagar con tarjeta, dar seguimiento a sus pedidos, dejar reseñas y
@@ -358,5 +360,7 @@ cronograma tipo Gantt está en la vista **Cronograma** del tablero.
 ## Enlaces
 
 - Tablero de planeación (GitHub Projects): https://github.com/users/Ennimex/projects/2
+- Documentación técnica en DeepWiki: https://deepwiki.com/Ennimex/pier-reposteria-app
+  (se genera desde el código; la estructura de páginas está en `.devin/wiki.json`)
 - Documento de evidencias (Actividad 2): [docs/ACTIVIDAD2_EVIDENCIAS.pdf](docs/ACTIVIDAD2_EVIDENCIAS.pdf)
 - Backend: https://github.com/PedroRubioo/pier-reposteria-backend
