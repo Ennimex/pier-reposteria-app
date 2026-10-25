@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PIPELINE: PRUEBAS DE INTEGRACIÓN
 #
-# Qué revisa: que las partes funcionan juntas. Tiene dos trabajos que corren
+# Qué revisa: que las partes funcionan juntas. Tiene tres trabajos que corren
 #   al mismo tiempo:
 #   · Pruebas rápidas (smoke): la app completa instalada en un celular
 #     Android virtual (emulador) abre, intenta entrar con una contraseña
@@ -12,6 +12,12 @@
 #     que la API contesta lo que la app espera: el estado del servidor, el
 #     catálogo (cada producto pasa por Product.fromJson, el mismo código de
 #     la app), las categorías y el inicio de sesión, bueno y malo.
+#   · Flujo de compra en el entorno aislado: la app instalada en el emulador
+#     habla con esa misma API en contenedores (desde el emulador,
+#     http://10.0.2.2:3000/api): inicia sesión con la cuenta ficticia de la
+#     semilla, abre un producto con existencias, lo añade al carrito y llega
+#     a «Finalizar Pedido». El pago queda fuera: la llave de Stripe del
+#     entorno aislado es ficticia.
 # Para qué sirve: encuentra fallos que las pruebas por pieza no ven; por
 #   ejemplo, una pantalla que no lleva a la siguiente, algo que solo falla
 #   en un celular Android o un cambio del backend que la app ya no entiende.
@@ -19,17 +25,20 @@
 #   después de las pruebas de aceptación: en cada Pull Request (la solicitud
 #   para unir cambios a main, la versión oficial del código) y cada vez que
 #   algo se une a main. También se puede lanzar sola, a mano.
-# Ojo: el flujo de compra contra el servidor real (#58) ya no vive aquí: está
-#   en flujo-compra.yml, fuera del pipeline de los Pull Requests (necesita
-#   la cuenta de prueba y el servidor de producción), y en la regresión
-#   completa de los martes (regresion-completa.yml).
+# Ojo: el flujo de compra contra el servidor real (#58), con el pago, no vive
+#   aquí: está en flujo-compra.yml, fuera del pipeline de los Pull Requests
+#   (necesita la cuenta de prueba y el servidor de producción), y en la
+#   regresión completa de los martes (regresion-completa.yml). Aquí corre la
+#   misma prueba, sin el pago, contra el entorno aislado.
 # Si falla: el pipeline se detiene aquí y GitHub no deja unir el Pull
 #   Request hasta que se corrija.
 # Dónde ver el resultado: Actions → la corrida → Summary: cada prueba con ✅;
 #   si alguna falla, la tabla de evidencias del pipeline dice cuál. Los
-#   reportes quedan en Artifacts («resultados-integracion» y
-#   «resultados-api», con las bitácoras de los contenedores).
-# Dónde están las pruebas: integration_test/app_smoke_test.dart y test/api/.
+#   reportes quedan en Artifacts («resultados-integracion»,
+#   «resultados-api» y «resultados-flujo-entorno-aislado», estos dos con las
+#   bitácoras de los contenedores).
+# Dónde están las pruebas: integration_test/app_smoke_test.dart, test/api/ e
+#   integration_test/flujos/compra_test.dart.
 # Issues: #21 (Sprint 1), #58 (Sprint 2), #65 (Sprint 4) y #69 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de integración
@@ -53,7 +62,7 @@ env:
 jobs:
   emulator:
     name: Pruebas rápidas (smoke) en Android 14
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Descargar el código
@@ -150,7 +159,7 @@ jobs:
 
   api:
     name: API contra entorno aislado
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Los tres primeros pasos preparan la computadora que presta GitHub:
     # descargan el código, instalan Flutter y las librerías que usa la app.
@@ -211,6 +220,129 @@ jobs:
           name: resultados-api
           path: |
             build/resultados/api.json
+            build/resultados/entorno_logs.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  flujo-compra-aislado:
+    name: Flujo de compra en el entorno aislado
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    # Los primeros pasos preparan la computadora (más detalle en el trabajo
+    # de las pruebas rápidas).
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Primero el servidor: descarga el backend al commit fijo y enciende la
+      # API y la base en contenedores (.github/actions/entorno-aislado). Queda
+      # en el puerto 3000 de esta computadora, que el emulador ve como
+      # 10.0.2.2.
+      - name: Levantar el entorno aislado
+        uses: ./.github/actions/entorno-aislado
+
+      # Después, el celular virtual (igual que en las pruebas rápidas).
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Restaurar el AVD de la caché
+        id: avd-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-${{ env.AVD_PROFILE }}-x86_64
+
+      - name: Generar el AVD para la caché
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: false
+          script: echo "AVD generado para la caché."
+
+      # Corre en el emulador el flujo de compra contra la API del contenedor:
+      #   · --dart-define=API_BASE_URL apunta la app a 10.0.2.2:3000, el
+      #     entorno aislado (el APK de pruebas permite http sin cifrar:
+      #     android/app/src/debug/AndroidManifest.xml).
+      #   · USUARIO_PRUEBA y CLAVE_PRUEBA son los de la semilla
+      #     (docker/semilla/semilla_pruebas.sql): ficticios, solo existen en
+      #     el contenedor y no son secretos.
+      #   · --plain-name corre solo el escenario «del inicio de sesión al
+      #     checkout». El otro escenario del archivo, el del pago, queda fuera
+      #     a propósito: la llave de Stripe del entorno aislado es ficticia y
+      #     el servidor no puede crear el intento de pago. Esa prueba corre
+      #     contra producción en flujo-compra.yml.
+      # Pase o falle, guarda después las bitácoras de los contenedores, y el
+      # renglón termina con el código de la prueba: si falla, el job falla. Va
+      # en un solo renglón (>) porque el emulador corre cada renglón por
+      # separado.
+      - name: Correr el flujo de compra en el emulador
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          profile: ${{ env.AVD_PROFILE }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: >
+            mkdir -p build/resultados;
+            if flutter test integration_test/flujos/compra_test.dart --no-pub
+            --plain-name "Escenario: del inicio de sesión al checkout"
+            --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
+            --dart-define=USUARIO_PRUEBA=cliente@pier.test
+            --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026
+            --file-reporter json:build/resultados/flujo_entorno_aislado.json;
+            then codigo_de_la_prueba=0; else codigo_de_la_prueba=$?; fi;
+            bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt;
+            exit "$codigo_de_la_prueba"
+
+      # Escribe el resumen: el escenario con ✅. Si falló, el paso anterior ya
+      # detuvo el job y la tabla de evidencias del pipeline lo dice, con el
+      # reporte que se sube abajo.
+      - name: Mostrar el resultado en el resumen
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/flujo_entorno_aislado.json
+          --titulo "Flujo de compra en el entorno aislado"
+          --detalle
+
+      # Guarda el reporte y las bitácoras de los contenedores 30 días en
+      # Artifacts. Corre siempre (if: always()), también si el entorno no
+      # arrancó o la prueba falló: es la evidencia, y el job sigue fallando
+      # por el paso que falló.
+      - name: Guardar el reporte y las bitácoras
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-flujo-entorno-aislado
+          path: |
+            build/resultados/flujo_entorno_aislado.json
             build/resultados/entorno_logs.txt
           if-no-files-found: warn
           retention-days: 30
