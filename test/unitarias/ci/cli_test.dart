@@ -240,7 +240,7 @@ void main() {
   });
 
   group('monkey', () {
-    test('lee monkey.txt y logcat.txt', () {
+    test('lee monkey.txt y logcat.txt; con un cierre termina con 1', () {
       _escribir(
         'monkey.txt',
         ':Monkey: seed=42 count=5\n// CRASH: app (pid 1)\n// Long Msg: boom\n'
@@ -248,9 +248,54 @@ void main() {
       );
       _escribir('logcat.txt', 'E/AndroidRuntime( 1): FATAL EXCEPTION: main\n');
 
-      expect(_ejecutar(['monkey', 'monkey.txt', 'logcat.txt']), 0);
+      expect(_ejecutar(['monkey', 'monkey.txt', 'logcat.txt']), 1);
       expect(_salida.toString(), contains('// Long Msg: boom'));
       expect(_salida.toString(), contains('FATAL EXCEPTION: main'));
+    });
+
+    test('monkey limpio pero logcat con un ANR de la app: termina con 1', () {
+      _escribir(
+        'monkey.txt',
+        ':Monkey: seed=42 count=5\nEvents injected: 5\n// Monkey finished\n',
+      );
+      _escribir(
+        'logcat.txt',
+        'E/ActivityManager( 506): ANR in mx.com.pierreposteria '
+            '(mx.com.pierreposteria/.MainActivity)\n',
+      );
+
+      expect(_ejecutar(['monkey', 'monkey.txt', 'logcat.txt']), 1);
+      expect(_salida.toString(), contains('| ❌ Falló | 5 | 5 | 0 | 1 |'));
+    });
+
+    test('con --recuperacion muestra la reapertura y /api/health', () {
+      _escribir(
+        'monkey.txt',
+        ':Monkey: seed=42 count=5\nEvents injected: 5\n// Monkey finished\n',
+      );
+      _escribir('logcat.txt', 'I/ActivityManager( 506): Start proc\n');
+      _escribir(
+        'recuperacion.txt',
+        'Starting: Intent { cmp=mx.com.pierreposteria/.MainActivity }\n'
+            'Status: ok\nLaunchState: COLD\nTotalTime: 2345\nComplete\n'
+            'GET /api/health: 200\n',
+      );
+
+      expect(
+        _ejecutar([
+          'monkey',
+          'monkey.txt',
+          'logcat.txt',
+          '--recuperacion',
+          'recuperacion.txt',
+        ]),
+        0,
+      );
+      expect(
+        _salida.toString(),
+        contains('volvió a abrir en frío en 2,345.00 ms · GET /api/health: '
+            '200.'),
+      );
     });
 
     test('avisa si no existe la bitácora', () {
@@ -361,6 +406,59 @@ void main() {
     });
   });
 
+  /// Lo que guarda tool/arranque_en_frio.sh: una salida de am start -W por
+  /// apertura.
+  String aperturas(List<int> tiempos) => tiempos
+      .map(
+        (tiempo) =>
+            'Starting: Intent { cmp=mx.com.pierreposteria/.MainActivity }\n'
+            'Status: ok\nLaunchState: COLD\nTotalTime: $tiempo\n'
+            'WaitTime: ${tiempo + 2}\nComplete\n',
+      )
+      .join();
+
+  /// La regla de tool/linea_base_rendimiento.json: +20 % y +25 ms en los
+  /// tiempos, +10 % en el peso.
+  void escribirLineasBase() => _escribir(
+        'tool/linea_base_rendimiento.json',
+        jsonEncode({
+          'api_carga_normal': {
+            'p95_ms': 80,
+            'tolerancia_porcentaje': 20,
+            'tolerancia_minima_ms': 25,
+          },
+          'app_arranque_emulador': {
+            'mediana_ms': 3000,
+            'tolerancia_porcentaje': 20,
+            'tolerancia_minima_ms': 25,
+          },
+          'app_peso_apk': {'bytes': 1000, 'tolerancia_porcentaje': 10},
+        }),
+      );
+
+  // Arranque en frío en el emulador (rendimiento.yml).
+  group('arranque', () {
+    test('resume las aperturas y las compara con su línea base', () {
+      escribirLineasBase();
+      _escribir(
+        'build/resultados/arranque_en_frio.txt',
+        aperturas([3100, 2900, 3050, 2950, 3000]),
+      );
+
+      expect(_ejecutar(['arranque', '--escenario', 'app_arranque_emulador']),
+          0);
+      final texto = _salida.toString();
+      expect(texto, contains('**Mediana: 3,000.00 ms** (5 aperturas).'));
+      expect(texto, contains('✅ mediana 3,000.00 ms contra la línea base'));
+      expect(_resumen.readAsStringSync(), contains('Arranque en frío'));
+    });
+
+    test('sin la medición avisa sin fallar el paso', () {
+      expect(_ejecutar(['arranque']), 0);
+      expect(_salida.toString(), contains('No se generó la medición'));
+    });
+  });
+
   // k6 contra el entorno aislado (rendimiento.yml y esfuerzo.yml).
   group('k6', () {
     String resumenDeK6({double p95 = 90}) => jsonEncode({
@@ -373,12 +471,7 @@ void main() {
 
     test('resume la corrida y la compara con su línea base', () {
       _escribir('build/resultados/k6_rendimiento.json', resumenDeK6());
-      _escribir(
-        'tool/linea_base_rendimiento.json',
-        jsonEncode({
-          'api_carga_normal': {'p95_ms': 80},
-        }),
-      );
+      escribirLineasBase();
 
       final codigo = _ejecutar([
         'k6',
@@ -390,8 +483,14 @@ void main() {
       ]);
 
       expect(codigo, 0);
-      expect(_salida.toString(), contains('| 600 | 20.0 | 0.0 % | 90 ms |'));
-      expect(_salida.toString(), contains('✅ p95 90 ms contra la línea base'));
+      expect(
+        _salida.toString(),
+        contains('| 600 | 20.0 | 0.0 % | 90.00 ms |'),
+      );
+      expect(
+        _salida.toString(),
+        contains('✅ p95 90.00 ms contra la línea base'),
+      );
     });
 
     test('sin el resumen avisa sin fallar el paso', () {
@@ -399,37 +498,110 @@ void main() {
       expect(_salida.toString(), contains('No se generó el resumen de k6'));
     });
 
-    test('comparar-rendimiento pasa dentro del 20 %', () {
-      _escribir('k6.json', resumenDeK6(p95: 96));
-      _escribir(
-        'tool/linea_base_rendimiento.json',
-        jsonEncode({
-          'api_carga_normal': {'p95_ms': 80},
-        }),
-      );
+    // Línea base de 80 ms: el +20 % (96 ms) es menor que el piso (105 ms).
+    test('comparar-rendimiento: más de 20 % pero no más de 25 ms pasa', () {
+      _escribir('k6.json', resumenDeK6(p95: 104.99));
+      escribirLineasBase();
 
-      expect(_ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']), 0);
-      expect(_salida.toString(), contains('dentro del máximo de 96 ms'));
+      expect(
+        _ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']),
+        0,
+      );
+      expect(
+        _salida.toString(),
+        contains('✅ El p95 de «api_carga_normal» es 104.99 ms: dentro del '
+            'máximo; la línea base es 80.00 ms y el máximo permitido '
+            '105.00 ms (falla solo si sube más de 20 % y más de 25 ms).'),
+      );
     });
 
-    test('comparar-rendimiento falla si el p95 sube más de 20 %', () {
-      _escribir('k6.json', resumenDeK6(p95: 97));
-      _escribir(
-        'tool/linea_base_rendimiento.json',
-        jsonEncode({
-          'api_carga_normal': {'p95_ms': 80},
-        }),
-      );
+    test('comparar-rendimiento falla si sube más de 20 % y más de 25 ms', () {
+      _escribir('k6.json', resumenDeK6(p95: 105.01));
+      escribirLineasBase();
 
-      expect(_ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']), 1);
-      expect(_salida.toString(), contains('subió a 97 ms'));
+      expect(
+        _ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']),
+        1,
+      );
+      expect(_salida.toString(), contains('subió a 105.01 ms'));
     });
 
     test('comparar-rendimiento falla si no hay línea base', () {
       _escribir('k6.json', resumenDeK6());
 
-      expect(_ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']), 1);
+      expect(
+        _ejecutar(['comparar-rendimiento', 'k6.json', 'api_carga_normal']),
+        1,
+      );
       expect(_salida.toString(), contains('no trae la línea base'));
+    });
+
+    test('comparar-rendimiento falla si no se generó la medición', () {
+      escribirLineasBase();
+
+      expect(
+        _ejecutar(['comparar-rendimiento', 'no-existe.json', 'api_carga_normal']),
+        1,
+      );
+      expect(_salida.toString(), contains('No se generó la medición'));
+    });
+
+    test('comparar-rendimiento del arranque usa la mediana', () {
+      escribirLineasBase();
+      // Mediana 3,590 ms: debajo del +20 % de 3,000 (3,600 ms).
+      _escribir('arranque.txt', aperturas([3590, 3500, 9000]));
+
+      expect(
+        _ejecutar([
+          'comparar-rendimiento',
+          'arranque.txt',
+          'app_arranque_emulador',
+        ]),
+        0,
+      );
+      expect(
+        _salida.toString(),
+        contains('La mediana del arranque de «app_arranque_emulador» es '
+            '3,590.00 ms'),
+      );
+
+      _escribir('arranque.txt', aperturas([3601, 3700, 3650]));
+      expect(
+        _ejecutar([
+          'comparar-rendimiento',
+          'arranque.txt',
+          'app_arranque_emulador',
+        ]),
+        1,
+      );
+    });
+
+    test('comparar-rendimiento del APK usa su peso y el +10 %', () {
+      escribirLineasBase();
+      _escribir('app-prod-release.apk', 'x' * 1100);
+
+      expect(
+        _ejecutar([
+          'comparar-rendimiento',
+          'app-prod-release.apk',
+          'app_peso_apk',
+        ]),
+        0,
+      );
+      expect(
+        _salida.toString(),
+        contains('(falla si sube más de 10 %)'),
+      );
+
+      _escribir('app-prod-release.apk', 'x' * 1101);
+      expect(
+        _ejecutar([
+          'comparar-rendimiento',
+          'app-prod-release.apk',
+          'app_peso_apk',
+        ]),
+        1,
+      );
     });
   });
 
@@ -498,6 +670,25 @@ void main() {
         ':Monkey: seed=42 count=1000\nEvents injected: 1000\n'
             '// Monkey finished\n',
       );
+      _escribir(
+        'build/evidencias/resultados-esfuerzo/logcat.txt',
+        'I/ActivityManager( 506): Start proc\n',
+      );
+      _escribir(
+        'build/evidencias/resultados-esfuerzo/recuperacion.txt',
+        '${aperturas([2345])}GET /api/health: 200\n',
+      );
+      // El emulador contra el entorno aislado: el flujo de compra y el
+      // arranque en frío.
+      _escribir(
+        'build/evidencias/resultados-flujo-entorno-aislado/'
+            'flujo_entorno_aislado.json',
+        _reporteVerde(),
+      );
+      _escribir(
+        'build/evidencias/resultados-arranque/arranque_en_frio.txt',
+        aperturas([3100, 2900, 3000]),
+      );
       // El entorno aislado: pruebas de la API y las dos corridas de k6.
       _escribir(
         'build/evidencias/resultados-api/build/resultados/api.json',
@@ -553,23 +744,24 @@ void main() {
         texto,
         contains(
           '| Integración | ✅ Pasó | Emulador: ✅ 1 prueba pasó · API: ✅ 1 '
-          'prueba pasó |',
+          'prueba pasó · Flujo de compra: ✅ 1 prueba pasó |',
         ),
       );
       expect(texto, contains('| Regresión | ✅ Pasó | ✅ 1 prueba pasó |'));
       expect(
         texto,
         contains(
-          '| Rendimiento | ✅ Pasó | APK de release: 2.0 KB · k6: 820 '
-          'peticiones · p95 64 ms · 0.0 % errores |',
+          '| Rendimiento | ✅ Pasó | APK de release: 2.0 KB · Arranque en '
+          'frío: mediana 3,000.00 ms (3 aperturas) · k6: 820 peticiones · '
+          'p95 64.40 ms · 0.0 % errores |',
         ),
       );
       expect(
         texto,
         contains(
           '| Esfuerzo | ✅ Pasó | ✅ 1,000 eventos de monkey · 0 cierres · '
-          '0 congelamientos · k6: 860 peticiones · p95 150 ms · 0.0 % '
-          'errores · recuperación p95 21 ms |',
+          '0 congelamientos · reabrió en 2,345.00 ms · k6: 860 peticiones · '
+          'p95 150.20 ms · 0.0 % errores · recuperación p95 20.60 ms |',
         ),
       );
       expect(texto, contains('**Decisión:** ✅ pasaron las 7 etapas'));

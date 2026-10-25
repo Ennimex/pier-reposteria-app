@@ -204,12 +204,13 @@ análisis estático ─┘                └─ regresión ───┘     └
 | Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Etapa 1 del pipeline (`unitarias.yml`) |
 | Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Etapa 1 del pipeline (`analisis-estatico.yml`) |
 | Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario, y el flujo principal #34 → #35 → #36 (inicio de sesión, carrito y checkout) en emulador Android con `FakeApiClient`, con una captura por paso | `test/aceptacion/<épica>/` e `integration_test/aceptacion/` | Etapa 2 del pipeline (`aceptacion.yml`) |
-| Integración | Smoke tests del login y catálogo con `FakeApiClient` en emulador Android, y la API real del backend contra el entorno aislado (health, catálogo con `Product.fromJson`, categorías e inicio de sesión) | `integration_test/app_smoke_test.dart` y `test/api/` | Etapa 3 del pipeline (`integracion.yml`) |
+| Integración | Smoke tests del login y catálogo con `FakeApiClient` en emulador Android; la API real del backend contra el entorno aislado (health, catálogo con `Product.fromJson`, categorías e inicio de sesión), y el flujo de compra en emulador contra el entorno aislado (login → producto con existencias → carrito → «Finalizar Pedido», sin el pago) | `integration_test/app_smoke_test.dart`, `test/api/` e `integration_test/flujos/` | Etapa 3 del pipeline (`integracion.yml`) |
 | Flujo de compra real | El flujo de compra (login → carrito → checkout → intento de pago) contra el servidor real con una cuenta de prueba, en emulador Android | `integration_test/flujos/` | A mano (`flujo-compra.yml`) y en la regresión completa |
 | Regresión | Las pruebas de cada bug ya corregido, con la etiqueta `regresion` (`dart_test.yaml`) | `test/` (las que llevan la etiqueta) y `test/regresion/` | Etapa 3 del pipeline, martes 09:30, cada tag y a mano (`regresion.yml`) |
 | Regresión completa | Toda la suite acumulada sobre la rama o tag, con el flujo de compra real, y el APK (menos rendimiento, que necesita el celular físico) | `test/`, `integration_test/app_smoke_test.dart` e `integration_test/flujos/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion-completa.yml`) |
-| Rendimiento | Peso del APK; carga normal de la API con k6 contra el entorno aislado (p95 contra la línea base, +20 % máximo); arranque y fluidez del catálogo, en el Samsung SM-N975U | `pruebas/k6/rendimiento.js`, `tool/linea_base_rendimiento.json` e `integration_test/rendimiento/` | Etapa 4 del pipeline, cada tag y a mano (`rendimiento.yml`) |
-| Esfuerzo | 1,000 toques de monkey en cada Pull Request (5,000 con «completo» o a mano); esfuerzo de la API con k6 (subir, sostener, pico y recuperación) contra el entorno aislado | `pruebas/k6/esfuerzo.js` | Etapa 4 del pipeline y a mano (`esfuerzo.yml`) |
+| Rendimiento | Peso del APK (+10 % máximo); arranque en frío en emulador contra el entorno aislado (mediana de 5 aperturas con `am start -W`), y carga normal de la API con k6 (p95). Todo contra su línea base: un tiempo falla solo si sube más de 20 % y además más de 25 ms | `tool/arranque_en_frio.sh`, `pruebas/k6/rendimiento.js` y `tool/linea_base_rendimiento.json` | Etapa 4 del pipeline, cada tag y a mano (`rendimiento.yml`) |
+| Rendimiento en el celular | Arranque y fluidez del catálogo en el Samsung SM-N975U, en modo profile (#61) | `integration_test/rendimiento/` | A mano, con un runner propio (`rendimiento-celular.yml`) |
+| Esfuerzo | 1,000 toques de monkey en cada Pull Request (5,000 con «completo» o a mano) sobre la app apuntando al entorno aislado, con cierres y congelamientos contados en logcat y la recuperación (reabre en frío y `/api/health` responde 200); esfuerzo de la API con k6 (subir, sostener, pico y recuperación) contra el entorno aislado | `pruebas/k6/esfuerzo.js` y `tool/arranque_en_frio.sh` | Etapa 4 del pipeline y a mano (`esfuerzo.yml`) |
 | Volumen de datos | Catálogo de 1,000 productos y carrito de 100 artículos (#70, pruebas pendientes) | `test/esfuerzo/` | A mano (`esfuerzo-volumen.yml`) |
 
 Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarCloud,
@@ -243,15 +244,18 @@ flutter test integration_test/flujos --dart-define=USUARIO_PRUEBA=<correo> --dar
 
 ### Entorno aislado de pruebas
 
-Las pruebas que necesitan servidor (API, k6) no usan producción: corren contra
-la API del backend y su base de datos en contenedores desechables, con datos
-ficticios. Lo genera `tool/entorno_pruebas.sh`, el mismo script que usa el
-pipeline; solo hace falta Docker:
+Las pruebas del pipeline que necesitan servidor (API, k6, el flujo de compra
+en el emulador, monkey y el arranque en frío) no usan producción: corren
+contra la API del backend y su base de datos en contenedores desechables, con
+datos ficticios. Lo genera `tool/entorno_pruebas.sh`, el mismo script que usa
+el pipeline; solo hace falta Docker:
 
 ```bash
 bash tool/entorno_pruebas.sh levantar   # descarga el backend en .backend/, construye y espera a que esté sano
 flutter test --tags api --run-skipped --dart-define=API_BASE_URL=http://localhost:3000/api   # pruebas de la API
 k6 run --env API_BASE_URL=http://localhost:3000/api pruebas/k6/rendimiento.js                # carga normal
+flutter test integration_test/flujos/compra_test.dart --plain-name "Escenario: del inicio de sesión al checkout" --dart-define=API_BASE_URL=http://10.0.2.2:3000/api --dart-define=USUARIO_PRUEBA=cliente@pier.test --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026   # flujo de compra, con el emulador encendido
+bash tool/arranque_en_frio.sh mx.com.pierreposteria 5 build/resultados/arranque_en_frio.txt   # arranque en frío de la app ya instalada
 bash tool/entorno_pruebas.sh bajar      # apaga y borra los contenedores
 ```
 
@@ -277,8 +281,9 @@ del archivo; `pipeline.yml` los llama como workflows reutilizables
 (**Actions → corrida → Summary**), sin descargar artifacts: totales y cobertura
 por carpeta en unitarias; cada escenario con ✅/❌ en aceptación, integración y
 volumen; la tabla contra la línea base y los avisos por regla en análisis
-estático; el peso del APK en rendimiento; cierres y congelamientos de monkey en
-esfuerzo, y una fila por etapa en la regresión completa. En el pipeline, arriba
+estático; el peso del APK, el arranque en frío y k6 contra su línea base en
+rendimiento; cierres y congelamientos de monkey (contados en logcat) y su
+recuperación en esfuerzo, y una fila por etapa en la regresión completa. En el pipeline, arriba
 de todo va la tabla de evidencias; si algo falla, muestra la prueba con su
 archivo, línea y error. Los arma `tool/resumen_pruebas.dart` a partir de lo que
 deja cada paso (por ejemplo,

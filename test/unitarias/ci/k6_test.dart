@@ -1,8 +1,10 @@
 // test/unitarias/ci/k6_test.dart — lectura del resumen de k6 (--summary-export)
-// y comparación con la línea base de rendimiento.
+// y comparación con la línea base de rendimiento (la regla se prueba en
+// linea_base_test.dart).
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../tool/resumen/k6.dart';
+import '../../../tool/resumen/linea_base.dart';
 
 /// Resumen como lo deja `k6 run --summary-export` (métricas planas).
 Map<String, dynamic> _resumen({double p95 = 120, double fallas = 0}) => {
@@ -69,47 +71,34 @@ void main() {
     });
   });
 
-  group('línea base', () {
-    const base = LineaBaseK6(p95Ms: 100, corrida: '123');
-
-    test('permite hasta 20 % más que la línea base', () {
-      expect(p95Permitido(base), closeTo(120, 0.0001));
-      // _resumen() trae un p95 de 120 ms: justo el máximo permitido.
-      expect(rebasaLaLineaBase(leerK6(_resumen()), base), isFalse);
-      expect(rebasaLaLineaBase(leerK6(_resumen(p95: 120.1)), base), isTrue);
-    });
-
-    test('lee la línea base del escenario; sin p95 no hay línea base', () {
-      final datos = {
-        'api_carga_normal': {'p95_ms': 85.5, 'corrida': '40200000000'},
-        'api_sin_medir': {'p95_ms': 0},
-      };
-
-      expect(leerLineaBaseK6(datos, 'api_carga_normal')?.p95Ms, 85.5);
-      expect(leerLineaBaseK6(datos, 'api_carga_normal')?.corrida,
-          '40200000000');
-      expect(leerLineaBaseK6(datos, 'api_sin_medir'), isNull);
-      expect(leerLineaBaseK6(datos, 'otro'), isNull);
-    });
-  });
-
   group('resumenK6 y lineaK6', () {
+    // La misma regla de tool/linea_base_rendimiento.json: +20 % y +25 ms.
+    const base = LineaBase(
+      medida: Medida.p95,
+      valor: 110,
+      toleranciaPorcentaje: 20,
+      toleranciaMinima: 25,
+    );
+
     test('la tabla trae peticiones, errores, tiempos y la comparación', () {
       final texto = resumenK6(
         leerK6(_resumen()),
         titulo: 'Carga normal de la API (k6)',
-        base: const LineaBaseK6(p95Ms: 110),
+        base: base,
       );
 
       expect(texto, startsWith('### 📈 Carga normal de la API (k6)\n'));
       expect(
         texto,
-        contains('| 840 | 27.9 | 0.0 % | 120 ms | 48 ms | 311 ms | 0 |'),
+        contains(
+          '| 840 | 27.9 | 0.0 % | 120.00 ms | 48.20 ms | 310.70 ms | 0 |',
+        ),
       );
       expect(
         texto,
-        contains('✅ p95 120 ms contra la línea base de 110 ms (máximo '
-            'permitido 132 ms, +20 %).'),
+        contains('✅ p95 120.00 ms contra la línea base de 110.00 ms (máximo '
+            'permitido 135.00 ms: falla solo si sube más de 20 % y más de '
+            '25 ms).'),
       );
     });
 
@@ -117,16 +106,16 @@ void main() {
       final texto = resumenK6(
         leerK6(_resumen(p95: 200)),
         titulo: 'Carga',
-        base: const LineaBaseK6(p95Ms: 100),
+        base: base,
       );
 
-      expect(texto, contains('❌ p95 200 ms'));
+      expect(texto, contains('❌ p95 200.00 ms'));
     });
 
-    test('la línea de evidencias resume la corrida', () {
+    test('la línea de evidencias resume la corrida con 2 decimales', () {
       expect(
-        lineaK6(leerK6(_resumen(fallas: 0.005))),
-        'k6: 840 peticiones · p95 120 ms · 0.5 % errores',
+        lineaK6(leerK6(_resumen(p95: 8.5596, fallas: 0.005))),
+        'k6: 840 peticiones · p95 8.56 ms · 0.5 % errores',
       );
     });
 
@@ -135,10 +124,15 @@ void main() {
       (datos['metrics'] as Map<String, dynamic>)[
           'http_req_duration{fase:recuperacion}'] = {'p(95)': 30.2};
 
-      expect(lineaK6(leerK6(datos)), endsWith('· recuperación p95 30 ms'));
+      expect(
+        lineaK6(leerK6(datos)),
+        endsWith('· recuperación p95 30.20 ms'),
+      );
       expect(
         resumenK6(leerK6(datos), titulo: 'Esfuerzo'),
-        contains('Recuperación después del pico: p95 30 ms · errores 0.0 %.'),
+        contains(
+          'Recuperación después del pico: p95 30.20 ms · errores 0.0 %.',
+        ),
       );
     });
   });

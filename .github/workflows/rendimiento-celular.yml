@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# RENDIMIENTO EN EL CELULAR FÍSICO (#61)
+#
+# Qué revisa: qué tan rápido abre la app y qué tan fluida se siente al
+#   recorrer el catálogo y pasar al pago, medido en un celular de verdad: el
+#   Samsung SM-N975U del equipo. Flutter solo mide bien la fluidez en un
+#   celular real (modo profile). La medición de referencia del Sprint 3 dio
+#   1.6 s de arranque.
+# Por qué está aparte: necesita una computadora propia registrada en GitHub
+#   (runner self-hosted, etiqueta android-device) con el celular conectado, y
+#   no hay ninguna registrada porque el repositorio es público y un Pull
+#   Request ajeno podría ejecutar código en ella. Por eso no está en el
+#   pipeline de los Pull Requests (pipeline.yml), donde el arranque se mide
+#   en el emulador (rendimiento.yml, «Arranque en frío en el emulador»).
+#   Antes era el trabajo «Arranque y fluidez en el celular» de
+#   rendimiento.yml; se pasó aquí tal cual.
+# Cuándo corre: solo a mano (Actions → Rendimiento en el celular físico →
+#   Run workflow), con el runner registrado. Mientras no lo haya, la
+#   medición se hace desde la laptop con el celular conectado y el mismo
+#   comando del paso «Medir con traceAction en modo profile»; los resultados
+#   se anotan en el issue de la medición.
+# Dónde ver el resultado: Actions → la corrida → Summary: cuánto tarda en
+#   dibujarse cada cuadro de la pantalla.
+# Issues: #61 (Sprint 3, medición de referencia) y #71 (Sprint 5, versión
+#   candidata).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Rendimiento en el celular físico
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Número de serie del Samsung SM-N975U del equipo (lo da `adb devices`).
+  DISPOSITIVO: RF8M835TANV
+
+jobs:
+  tiempos:
+    name: Arranque y fluidez en el celular
+    runs-on: [self-hosted, android-device]
+    timeout-minutes: 30
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      # La computadora del equipo ya tiene Flutter y las herramientas de
+      # Android instaladas.
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Abre la app en el Samsung en modo profile (casi tan rápida como la
+      # versión final, pero se deja medir) y graba cuánto tarda en dibujarse
+      # cada cuadro de la pantalla al abrir la app, recorrer el catálogo y
+      # pasar al pago. Para verse fluida, cada cuadro debe dibujarse en menos
+      # de 16 ms (60 cuadros por segundo).
+      # Se instala como «Pier DEV» (--flavor dev) para no tocar la app «Pier»
+      # del celular, apuntando al servidor real, y entra con la cuenta de
+      # prueba (los mismos secretos que el trabajo «flujos» de flujo-compra.yml).
+      - name: Medir con traceAction en modo profile
+        env:
+          USUARIO_PRUEBA: ${{ secrets.USUARIO_PRUEBA }}
+          CLAVE_PRUEBA: ${{ secrets.CLAVE_PRUEBA }}
+        run: >
+          flutter drive
+          --driver=test_driver/perf_driver.dart
+          --target=integration_test/rendimiento/rendimiento_test.dart
+          --profile --no-dds --flavor dev
+          -d ${{ env.DISPOSITIVO }}
+          --dart-define=API_BASE_URL=https://pier-reposteria-backend.onrender.com/api
+          --dart-define=USUARIO_PRUEBA="$(printf '%s' "$USUARIO_PRUEBA" | tr -d '\r\n')"
+          --dart-define=CLAVE_PRUEBA="$(printf '%s' "$CLAVE_PRUEBA" | tr -d '\r\n')"
+
+      # Escribe el resumen: una columna por medición con el tiempo promedio por
+      # cuadro, el del 90 % de los cuadros, el peor, y cuántos tardaron más de
+      # 16 ms.
+      - name: Mostrar el resultado en el resumen
+        run: dart run tool/resumen_pruebas.dart tiempos

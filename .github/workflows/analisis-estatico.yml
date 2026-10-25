@@ -48,7 +48,7 @@ env:
 jobs:
   flutter-analyze:
     name: Línea base de flutter analyze
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     # Los tres primeros pasos preparan la computadora que presta GitHub:
     # descargan el código, instalan Flutter y las librerías que usa la app.
@@ -92,7 +92,7 @@ jobs:
 
   sonarcloud:
     name: SonarCloud quality gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     # Solo corre si flutter analyze pasó: no vale la pena el segundo revisor
     # si el primero ya encontró problemas.

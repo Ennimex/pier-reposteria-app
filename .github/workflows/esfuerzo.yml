@@ -6,6 +6,11 @@
 #   · Uso aleatorio: monkey, una herramienta de Android, toca, desliza y
 #     escribe al azar miles de veces sobre la app instalada en un celular
 #     virtual (emulador): más rápido y con menos orden que cualquier persona.
+#     La app habla con la API del entorno aislado (contenedores, nunca
+#     producción). Los cierres y congelamientos se cuentan en logcat (los
+#     mensajes del celular) y, al terminar, se comprueba que la app se
+#     recupera: vuelve a abrir en frío (am start -W) y la API sigue
+#     contestando /api/health con 200.
 #   · Esfuerzo de la API: k6 (pruebas/k6/esfuerzo.js) sube los clientes,
 #     los sostiene, llega a un pico de 25 y baja, contra la API del entorno
 #     aislado (contenedores, nunca producción). Después del pico, un
@@ -25,14 +30,15 @@
 #   artículos) no está aquí: sus pruebas todavía no existen, así que vive en
 #   esfuerzo-volumen.yml, que se lanza a mano, para no dejar un trabajo
 #   omitido en cada Pull Request.
-# Ojo: monkey usa la app normal, así que lo que toque sí llega al servidor
-#   real. Como la app recién instalada no tiene sesión iniciada, casi todo es
-#   navegar por el catálogo.
+# Ojo: monkey usa la app normal, armada para hablar con la API del
+#   contenedor (http://10.0.2.2:3000/api), así que lo que toque llega al
+#   entorno aislado y nunca al servidor real. Como la app recién instalada no
+#   tiene sesión iniciada, casi todo es navegar por el catálogo.
 # Si falla: el pipeline falla y GitHub no deja unir el Pull Request.
 # Dónde ver el resultado: Actions → la corrida → Summary: cuántos toques se
-#   dieron, cuántas veces se cerró o se congeló la app y la tabla de k6 con
-#   la recuperación. La bitácora de monkey, el logcat y el resumen de k6
-#   quedan en Artifacts.
+#   dieron, cuántas veces se cerró o se congeló la app, cuánto tardó en
+#   volver a abrir y la tabla de k6 con la recuperación. La bitácora de
+#   monkey, el logcat, la reapertura y el resumen de k6 quedan en Artifacts.
 # Issue: #70 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de esfuerzo
@@ -76,7 +82,7 @@ env:
 jobs:
   monkey:
     name: Uso aleatorio (monkey)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Descargar el código
@@ -98,10 +104,18 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      # Descarga el backend al commit fijo y enciende la API y la base en
+      # contenedores (.github/actions/entorno-aislado). Queda en el puerto
+      # 3000 de esta computadora, que el emulador ve como 10.0.2.2.
+      - name: Levantar el entorno aislado
+        uses: ./.github/actions/entorno-aislado
+
       # Arma el APK de la versión de producción (sin --flavor), que queda en
-      # build/app/outputs/flutter-apk/app-prod-debug.apk.
+      # build/app/outputs/flutter-apk/app-prod-debug.apk, apuntando a la API
+      # del contenedor: al arrancar, la app pide ahí la configuración de
+      # pagos (GET /pagos/config), que contesta en milisegundos.
       - name: Compilar el APK de depuración
-        run: flutter build apk --debug
+        run: flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
 
       # Deja que el emulador use el procesador directamente (más detalle en
       # integracion.yml).
@@ -160,30 +174,23 @@ jobs:
       #   · --throttle 100 deja 100 ms entre toques, rápido pero posible.
       #   · --pct-syskeys 0 no usa los botones del sistema (Inicio, Atrás…),
       #     para que monkey no se salga de la app.
-      # La app, al arrancar, pide la configuración de pagos al servidor real
-      # (GET /pagos/config) antes de dibujar su primera pantalla. El servidor
-      # (plan gratuito de Render) se duerme si nadie lo usa y tarda cerca de
-      # un minuto en despertar: mientras tanto la app no muestra su ventana y,
-      # si recibe un toque, Android la marca como congelada (corridas
-      # 40170191471 y 40172543786). Se despierta antes, como en
-      # flujo-compra.yml, con una consulta de solo lectura que se reintenta
-      # hasta que conteste.
-      - name: Despertar el servidor
-        run: >
-          curl --silent --show-error --fail --output /dev/null
-          --retry 5 --retry-delay 10 --retry-all-errors --max-time 90
-          https://pier-reposteria-backend.onrender.com/api/pagos/config
-
-      # Antes de soltar a monkey, la app se abre con am start -W, que espera a
-      # que su ventana aparezca e imprime cuánto tardó (TotalTime); queda en
-      # arranque.txt. Si en 10 s no apareció (Status: timeout), el paso falla
-      # ahí, con ese motivo: monkey no tendría a qué mandarle los eventos.
+      # Antes, logcat se agranda a 16 MB (para que no se pierdan mensajes en
+      # las corridas largas) y se vacía, y la app se abre con am start -W, que
+      # espera a que su ventana aparezca e imprime cuánto tardó (TotalTime,
+      # en arranque.txt): si en 10 s no apareció (Status: timeout), el paso
+      # falla ahí, con ese motivo.
       # Lo que hace monkey se guarda en monkey.txt y los mensajes del celular
       # en logcat.txt. Si monkey reporta que la app se cerró (CRASH) o se
       # congeló (ANR / NOT RESPONDING), el paso falla.
-      # Dos detalles: esos reportes salen por la salida de errores, por eso
-      # 2>&1 los junta antes de guardarlos; y cada renglón de este script corre
-      # por separado, por eso la revisión final va en un solo renglón.
+      # Recuperación: la app se cierra y se vuelve a abrir en frío
+      # (tool/arranque_en_frio.sh, que falla si no abre) y la API debe seguir
+      # contestando /api/health con 200 (curl --fail); los dos resultados
+      # quedan en recuperacion.txt. Al final se vuelve a guardar logcat, ya
+      # con la reapertura, y las bitácoras de los contenedores.
+      # Dos detalles: los reportes de monkey salen por la salida de errores,
+      # por eso 2>&1 los junta antes de guardarlos; y cada renglón de este
+      # script corre por separado, por eso cada revisión va en un solo
+      # renglón.
       - name: Instalar la app y lanzar los eventos aleatorios
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -195,23 +202,32 @@ jobs:
           disable-animations: true
           script: |
             adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
+            adb logcat -G 16M
             adb logcat -c
             adb shell am start -W -n ${{ env.PAQUETE }}/.MainActivity | tee arranque.txt
             if grep -q "Status: timeout" arranque.txt; then echo "::error::La app no mostró su ventana en 10 s (am start -W); monkey no puede empezar."; exit 1; fi
             adb shell monkey -p ${{ env.PAQUETE }} -s 42 --throttle 100 --pct-syskeys 0 -v ${{ steps.carga.outputs.eventos }} 2>&1 | tee monkey.txt
             adb logcat -d -v time > logcat.txt
             if grep -qE "CRASH|ANR in|NOT RESPONDING" monkey.txt; then echo "::error::La app se cerró o dejó de responder bajo carga; revisa el resumen de la corrida."; exit 1; fi
+            bash tool/arranque_en_frio.sh ${{ env.PAQUETE }} 1 recuperacion.txt
+            curl --silent --show-error --fail --max-time 10 --output /dev/null --write-out "GET /api/health: %{http_code}\n" http://localhost:3000/api/health >> recuperacion.txt
+            adb logcat -d -v time > logcat.txt
+            bash tool/entorno_pruebas.sh logs > entorno_logs.txt
 
-      # Escribe el resumen: cuántos toques se dieron y que la app no se cerró
-      # ni se congeló. Si pasó, el paso anterior ya detuvo el job y la tabla
-      # de evidencias del pipeline lo dice, con la bitácora que se sube abajo.
-      - name: Mostrar el resultado en el resumen
-        run: dart run tool/resumen_pruebas.dart monkey monkey.txt logcat.txt
+      # Cuenta en logcat las veces que Android registró que la app se cerró o
+      # se congeló y escribe el resumen: cuántos toques se dieron, los cierres
+      # y congelamientos, y la reapertura con la respuesta de /api/health.
+      # Falla si logcat registra algún cierre o congelamiento de la app,
+      # aunque monkey no lo haya visto (por ejemplo, durante la reapertura).
+      - name: Contar cierres y congelamientos en logcat y mostrar el resultado
+        run: >
+          dart run tool/resumen_pruebas.dart monkey monkey.txt logcat.txt
+          --recuperacion recuperacion.txt
 
-      # Guarda la bitácora de monkey y los mensajes del celular (logcat) 30
-      # días en Artifacts. Corre siempre (if: always()): si la app se cerró,
-      # ahí está el reporte del error, y el job sigue fallando por el paso que
-      # falló.
+      # Guarda la bitácora de monkey, los mensajes del celular (logcat), la
+      # reapertura y las bitácoras de los contenedores 30 días en Artifacts.
+      # Corre siempre (if: always()): si la app se cerró, ahí está el reporte
+      # del error, y el job sigue fallando por el paso que falló.
       - name: Guardar la bitácora de monkey y el logcat
         if: always()
         uses: actions/upload-artifact@v7
@@ -221,12 +237,14 @@ jobs:
             arranque.txt
             monkey.txt
             logcat.txt
+            recuperacion.txt
+            entorno_logs.txt
           if-no-files-found: warn
           retention-days: 30
 
   esfuerzo-api:
     name: Esfuerzo de la API (k6)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Descargar el código

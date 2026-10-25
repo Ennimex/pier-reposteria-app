@@ -49,7 +49,7 @@ env:
 jobs:
   regresion:
     name: Bugs corregidos (etiqueta regresion)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Los tres primeros pasos preparan la computadora que presta GitHub:
     # descargan el código, instalan Flutter y las librerías que usa la app.

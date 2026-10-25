@@ -7,11 +7,13 @@ import 'dart:io';
 import 'dart:math';
 
 import 'analisis.dart';
+import 'arranque.dart';
 import 'cobertura.dart';
 import 'esfuerzo.dart';
 import 'evidencias.dart';
 import 'flujo.dart';
 import 'k6.dart';
+import 'linea_base.dart';
 import 'markdown.dart';
 import 'pruebas.dart';
 import 'regresion.dart';
@@ -26,6 +28,7 @@ const _rutaSuite = 'build/resultados/suite.json';
 const _rutaCobertura = 'coverage/lcov.info';
 const _rutaFlujo = 'build/resultados/aceptacion_emulador.json';
 const _rutaLineaBaseDeRendimiento = 'tool/linea_base_rendimiento.json';
+const _rutaArranque = 'build/resultados/arranque_en_frio.txt';
 const _carpetaApk = 'build/app/outputs/flutter-apk';
 
 /// Etapas de pipeline.yml, en orden: nombre en la tabla y opción del comando
@@ -55,17 +58,24 @@ Comandos:
       $_carpetaApk y el desglose en ~/.flutter-devtools/).
   tiempos [carpeta]
       Archivos *.timeline_summary.json de flutter drive (por omisión build/).
-  monkey <monkey.txt> [logcat.txt]
-      Bitácora de adb shell monkey -v y, si hubo fallas, errores de logcat.
+  monkey <monkey.txt> [logcat.txt] [--recuperacion <recuperacion.txt>]
+      Bitácora de adb shell monkey -v, cierres y congelamientos contados en
+      logcat y la reapertura de la app después de monkey (am start -W y
+      /api/health). Termina con 1 si la app se cerró o se congeló.
+  arranque <arranque_en_frio.txt> [--escenario <clave>]
+      Aperturas en frío de tool/arranque_en_frio.sh (am start -W) y su
+      mediana; con --escenario la compara con su línea base.
   flujo [reporte.json]
       Reporte del flujo principal en el emulador que deja
       test_driver/aceptacion_driver.dart (por omisión $_rutaFlujo).
   k6 <resumen.json> --titulo <texto> [--escenario <clave>]
       Resumen de k6 run --summary-export; con --escenario lo compara con su
       línea base en $_rutaLineaBaseDeRendimiento.
-  comparar-rendimiento <resumen.json> <clave>
-      Falla si el p95 de k6 supera en más de 20 % la línea base <clave> de
-      $_rutaLineaBaseDeRendimiento (o si no hay línea base).
+  comparar-rendimiento <medición> <clave>
+      Compara la medición con la línea base <clave> de
+      $_rutaLineaBaseDeRendimiento: el resumen de k6 (p95_ms), la salida de
+      tool/arranque_en_frio.sh (mediana_ms) o el APK (bytes). Falla si la
+      rebasa según su tolerancia o si no hay línea base.
   evidencias <carpeta> --unitarias <r> --analisis <r> --aceptacion <r>
       --integracion <r> --regresion <r> --rendimiento <r> --esfuerzo <r>
       Tabla final de pipeline.yml con las métricas de los artefactos de cada
@@ -81,9 +91,10 @@ Comandos:
 ''';
 
 /// Devuelve el código de salida: 0 aunque las pruebas hayan fallado (eso ya
-/// lo marca su propio paso); 1 si falta la línea base, si el tag no es la
-/// versión del pubspec o si falta la lista de commits; 64 si el comando está
-/// mal escrito.
+/// lo marca su propio paso); 1 si falta la línea base o una medición la
+/// rebasa, si logcat registra que la app se cerró o se congeló con monkey,
+/// si el tag no es la versión del pubspec o si falta la lista de commits; 64
+/// si el comando está mal escrito.
 int ejecutar(
   List<String> argumentos, {
   required String raiz,
@@ -99,6 +110,7 @@ int ejecutar(
     'tiempos' => _tiempos(opciones, archivos),
     'monkey' => _monkey(opciones, archivos),
     'flujo' => _flujo(opciones, archivos),
+    'arranque' => _arranque(opciones, archivos),
     'k6' => _k6(opciones, archivos),
     'comparar-rendimiento' => _compararRendimiento(opciones, archivos),
     'evidencias' => _evidencias(opciones, archivos, entorno),
@@ -259,14 +271,50 @@ int ejecutar(
       0,
     );
   }
-  final logcat = opciones.posicional(2);
+  final rutaLogcat = opciones.posicional(2);
+  final logcat = rutaLogcat == null ? '' : archivos.leer(rutaLogcat) ?? '';
+  final corrida = leerMonkey(bitacora);
+  final rutaRecuperacion = opciones.valores['recuperacion'];
+  final recuperacion =
+      rutaRecuperacion == null ? null : archivos.leer(rutaRecuperacion);
   return (
     resumenMonkey(
-      leerMonkey(bitacora),
-      logcat: logcat == null ? '' : archivos.leer(logcat) ?? '',
+      corrida,
+      logcat: logcat,
+      recuperacion: recuperacion == null
+          ? null
+          : leerAperturas(recuperacion).lastOrNull ??
+              const Apertura(estado: 'sin salida', tipo: '—'),
+      salud: recuperacion == null ? null : _saludDeLaApi(recuperacion),
     ),
-    0,
+    hayFallas(corrida, logcat: logcat) ? 1 : 0,
   );
+}
+
+/// El código HTTP del renglón «GET /api/health: 200» que agrega esfuerzo.yml
+/// a recuperacion.txt.
+int? _saludDeLaApi(String recuperacion) => int.tryParse(
+      RegExp(r'GET /api/health: (\d{3})').firstMatch(recuperacion)?.group(1) ??
+          '',
+    );
+
+(String, int) _arranque(_Argumentos opciones, _Archivos archivos) {
+  final ruta = opciones.posicional(1) ?? _rutaArranque;
+  final salida = archivos.leer(ruta);
+  if (salida == null) {
+    return (
+      '### 🚀 Arranque en frío en el emulador\n\n> ⚠️ No se generó la '
+          'medición (`$ruta`): el emulador no arrancó o la app no abrió. '
+          'Revisa el log del paso.\n',
+      0,
+    );
+  }
+  final escenario = opciones.valores['escenario'];
+  final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
+  final base = escenario == null || lineasBase == null
+      ? null
+      : leerLineaBaseDeRendimiento(lineasBase, escenario);
+  return (resumenArranque(leerAperturas(salida), base: base), 0);
 }
 
 (String, int) _flujo(_Argumentos opciones, _Archivos archivos) {
@@ -300,48 +348,66 @@ int ejecutar(
   final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
   final base = escenario == null || lineasBase == null
       ? null
-      : leerLineaBaseK6(lineasBase, escenario);
+      : leerLineaBaseDeRendimiento(lineasBase, escenario);
   return (resumenK6(leerK6(datos), titulo: titulo, base: base), 0);
 }
 
-/// Termina con 1 si el p95 rebasa la línea base en más de 20 % o si no hay
-/// contra qué comparar: sin línea base, la prueba no probaría nada.
+/// Termina con 1 si la medición rebasa su línea base (más que su
+/// porcentaje y, si tiene piso, más que su piso) o si no hay contra qué
+/// comparar: sin línea base, la prueba no probaría nada. Qué se lee de la
+/// medición lo dice la línea base: p95_ms (resumen de k6), mediana_ms (salida
+/// de tool/arranque_en_frio.sh) o bytes (el peso del archivo).
 (String, int)? _compararRendimiento(_Argumentos opciones, _Archivos archivos) {
   final ruta = opciones.posicional(1);
   final escenario = opciones.posicional(2);
   if (ruta == null || escenario == null) return null;
   const titulo = '### ⏱️ Rendimiento contra la línea base\n\n';
-  final datos = archivos.leerJson(ruta);
-  if (datos == null) {
-    return ('$titulo> ❌ No se generó el resumen de k6 (`$ruta`).\n', 1);
-  }
   final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
-  final base =
-      lineasBase == null ? null : leerLineaBaseK6(lineasBase, escenario);
+  final base = lineasBase == null
+      ? null
+      : leerLineaBaseDeRendimiento(lineasBase, escenario);
   if (base == null) {
     return (
       '$titulo> ❌ $_rutaLineaBaseDeRendimiento no trae la línea base '
-          '«$escenario» (p95_ms).\n',
+          '«$escenario» (p95_ms, mediana_ms o bytes, con '
+          'tolerancia_porcentaje).\n',
       1,
     );
   }
-  final reporte = leerK6(datos);
-  final permitido = p95Permitido(base);
-  if (rebasaLaLineaBase(reporte, base)) {
+  final medido = _medir(base.medida, ruta, archivos);
+  if (medido == null) {
+    return ('$titulo> ❌ No se generó la medición (`$ruta`).\n', 1);
+  }
+  final valores = 'la línea base es ${base.formato(base.valor)} y el máximo '
+      'permitido ${base.formato(base.permitido)} (${base.regla})';
+  if (base.rebasa(medido)) {
     return (
-      '$titulo> ❌ El p95 de «$escenario» subió a '
-          '${reporte.p95Ms.toStringAsFixed(0)} ms: la línea base es '
-          '${base.p95Ms.toStringAsFixed(0)} ms y el máximo permitido '
-          '${permitido.toStringAsFixed(0)} ms (+20 %).\n',
+      '$titulo> ❌ ${base.medida.nombre} de «$escenario» subió a '
+          '${base.formato(medido)}: $valores.\n',
       1,
     );
   }
   return (
-    '$titulo✅ El p95 de «$escenario» es ${reporte.p95Ms.toStringAsFixed(0)} '
-        'ms: dentro del máximo de ${permitido.toStringAsFixed(0)} ms (línea '
-        'base ${base.p95Ms.toStringAsFixed(0)} ms + 20 %).\n',
+    '$titulo✅ ${base.medida.nombre} de «$escenario» es '
+        '${base.formato(medido)}: dentro del máximo; $valores.\n',
     0,
   );
+}
+
+/// La medición de [ruta] en las unidades de [medida], o null si no existe o
+/// no trae el dato.
+double? _medir(Medida medida, String ruta, _Archivos archivos) {
+  switch (medida) {
+    case Medida.p95:
+      final datos = archivos.leerJson(ruta);
+      return datos == null ? null : leerK6(datos).p95Ms;
+    case Medida.medianaDeArranque:
+      final salida = archivos.leer(ruta);
+      return salida == null ? null : medianaDeArranque(leerAperturas(salida));
+    case Medida.peso:
+      final archivo = archivos.archivo(ruta);
+      return archivo.existsSync() ? archivo.lengthSync().toDouble() : null;
+  }
 }
 
 /// Las métricas salen de los archivos que cada etapa subió como artefacto;
@@ -383,9 +449,13 @@ int ejecutar(
   final datosDelFlujo = flujo == null ? null : jsonDecode(flujo);
   final integracion = corrida('integracion.json');
   final pruebasDeLaApi = corrida('api.json');
+  final flujoDeCompra = corrida('flujo_entorno_aislado.json');
   final regresion = corrida('regresion.json');
   final apk = buscar((nombre) => nombre.endsWith('-release.apk'));
+  final arranque = leer('arranque_en_frio.txt');
   final monkey = leer('monkey.txt');
+  final logcat = leer('logcat.txt') ?? '';
+  final recuperacion = leer('recuperacion.txt');
   ReporteK6? k6(String nombre) {
     final contenido = leer(nombre);
     final datos = contenido == null ? null : jsonDecode(contenido);
@@ -412,14 +482,24 @@ int ejecutar(
     'integracion': [
       if (integracion != null) 'Emulador: ${lineaPruebas(integracion)}',
       if (pruebasDeLaApi != null) 'API: ${lineaPruebas(pruebasDeLaApi)}',
+      if (flujoDeCompra != null)
+        'Flujo de compra: ${lineaPruebas(flujoDeCompra)}',
     ],
     'regresion': [if (regresion != null) lineaPruebas(regresion)],
     'rendimiento': [
       if (apk != null) 'APK de release: ${tamano(apk.lengthSync())}',
+      if (arranque != null) lineaArranque(leerAperturas(arranque)),
       if (cargaNormal != null) lineaK6(cargaNormal),
     ],
     'esfuerzo': [
-      if (monkey != null) lineaMonkey(leerMonkey(monkey)),
+      if (monkey != null)
+        lineaMonkey(
+          leerMonkey(monkey),
+          logcat: logcat,
+          recuperacion: recuperacion == null
+              ? null
+              : leerAperturas(recuperacion).lastOrNull,
+        ),
       if (esfuerzoDeLaApi != null) lineaK6(esfuerzoDeLaApi),
     ],
   };
@@ -446,6 +526,7 @@ int ejecutar(
         ?gherkin,
         ?integracion,
         ?pruebasDeLaApi,
+        ?flujoDeCompra,
         ?regresion,
       ],
     ),

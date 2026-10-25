@@ -1,12 +1,18 @@
 // integration_test/flujos/compra_test.dart — #58: el flujo de compra de punta
-// a punta con la app real y el servidor real, en el celular virtual del
-// pipeline (integracion.yml, trabajo «Flujo de compra contra el servidor
-// real»).
+// a punta con la app real, en el celular virtual (emulador). Corre en dos
+// lugares:
+//   · contra el servidor real (flujo-compra.yml y la regresión completa de
+//     los martes), con la cuenta de prueba: los dos escenarios;
+//   · contra el entorno aislado (integracion.yml, «Flujo de compra en el
+//     entorno aislado», dentro de pipeline.yml), con API_BASE_URL apuntando
+//     al contenedor y la cuenta ficticia de la semilla: solo el primer
+//     escenario. El del pago se excluye por nombre en la línea de comandos
+//     (--plain-name) porque la llave de Stripe del contenedor es ficticia.
 //
-// La prueba inicia sesión con la cuenta de prueba (USUARIO_PRUEBA y
-// CLAVE_PRUEBA, que el workflow pasa con --dart-define desde los secretos del
-// repositorio), añade un producto con existencias, llega al checkout y toca
-// «Pagar». La hoja de pago de Stripe es nativa y la prueba no puede llenarla:
+// La prueba inicia sesión con la cuenta que llega en USUARIO_PRUEBA y
+// CLAVE_PRUEBA (--dart-define; contra el servidor real, desde los secretos
+// del repositorio), añade un producto con existencias, llega al checkout y
+// toca «Pagar». La hoja de pago de Stripe es nativa y la prueba no puede llenarla:
 // una pasarela espía guarda el intento de pago que creó el servidor y cierra
 // la hoja sin pagar. El pedido solo se guarda cuando el pago se completa, así
 // que la prueba no deja pedidos; el carrito se vacía al empezar y al terminar.

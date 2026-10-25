@@ -54,7 +54,7 @@ env:
 jobs:
   regression:
     name: Suite completa y APK de depuración
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Descargar el código
@@ -194,7 +194,7 @@ jobs:
 
   avisar:
     name: Abrir un issue si falla
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: regression
     # Solo corre si la regresión falló: es un aviso, no una prueba.
     if: failure()

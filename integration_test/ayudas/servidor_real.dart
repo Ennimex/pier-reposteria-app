@@ -5,7 +5,10 @@
 //
 // Las dos inician sesión con la cuenta de prueba (USUARIO_PRUEBA y
 // CLAVE_PRUEBA, que llegan con --dart-define). Sin las credenciales (en local
-// o en un Pull Request sin acceso a los secretos) las pruebas se omiten.
+// o en un Pull Request sin acceso a los secretos) las pruebas se omiten. El
+// flujo de compra también corre contra el entorno aislado (integracion.yml):
+// ahí el servidor es el del contenedor (API_BASE_URL) y la cuenta, la
+// ficticia de la semilla.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/app.dart';
