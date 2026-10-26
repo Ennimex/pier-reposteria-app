@@ -189,7 +189,7 @@ Las actividades de prueba son los issues con la etiqueta `prueba` y el título e
 MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
 Todas corren encadenadas en **`pipeline.yml`** con cada Pull Request hacia
-`main` y cada push a `main`: cada etapa empieza solo si pasaron las anteriores,
+`develop` o `main` y cada push a esas ramas: cada etapa empieza solo si pasaron las anteriores,
 y el job final **Evidencias y decisión** escribe una tabla con el resultado y
 las métricas de cada etapa y falla si alguna no pasó.
 
@@ -299,18 +299,33 @@ y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
 resultado del quality gate de SonarCloud; el quality gate y su umbral de
 cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.
 
-## Estrategia de ramas (GitHub Flow)
+## Estrategia de ramas
 
-- `main` es la única rama de larga vida y está **protegida**: no se puede hacer
-  push directo ni force push.
-- Todo cambio nace en una rama `feature/<descripcion-corta>` creada desde `main`
-  (por ejemplo `feature/versionado-semantico`). Para correcciones puede usarse
-  `fix/<descripcion>`.
-- La rama se integra a `main` **únicamente mediante Pull Request**, con al menos
-  **una aprobación** de otro integrante y las verificaciones en verde.
-- Cada PR debe enlazar el issue que resuelve (`Closes #N`) para mantener la
-  trazabilidad entre tablero, issue, rama, PR y commit.
-- No existe rama `develop`: `main` siempre debe poder liberarse.
+Desde el 25-oct-2026 los cambios pasan por una rama de integración antes de
+llegar a la versión estable:
+
+```
+feature/<descripción> ──PR──► develop ──PR──► main ──► tag vX.Y.Z
+                                ▲               │
+                                └── hotfix/* ◄──┘ (sale de main)
+```
+
+| Rama | Regla |
+|---|---|
+| `main` | La versión estable. Solo recibe Pull Requests desde `develop` o desde `hotfix/*`, y de ahí salen los tags `vX.Y.Z` que publica `release.yml`. |
+| `develop` | La integración. Recibe Pull Requests desde `feature/*`. |
+| `feature/<descripción>` | Sale de `develop` y regresa por Pull Request (por ejemplo `feature/flujo-develop`). |
+| `hotfix/<descripción>` | Sale de `main` para urgencias y se integra a `main` y a `develop`. |
+
+- Cada Pull Request necesita el pipeline en verde (`pipeline.yml`, que corre en
+  los Pull Requests y pushes de `main` y `develop`) y **una aprobación** de otro
+  integrante. `main` y `develop` están **protegidas**: no se puede hacer push
+  directo ni force push.
+- Cada Pull Request enlaza el issue que resuelve (`Closes #N`) para mantener la
+  trazabilidad entre tablero, issue, rama, Pull Request y commit.
+- Las ramas anteriores (`feat/`, `fix/`, `test/`, `docs/`, `refactor/` y las
+  `feature/*` que salían de `main`) son del flujo previo, GitHub Flow, en el
+  que todo cambio iba directo a `main`.
 
 ## Convención de commits (Conventional Commits)
 
@@ -349,8 +364,8 @@ Refs #73
 Una historia o una tarea está terminada cuando:
 
 1. Cumple todos sus criterios de aceptación.
-2. Su Pull Request hacia `main` declara `Closes #N` y fue aprobado por el compañero.
-3. `flutter analyze` no reporta errores ni avisos nuevos respecto a `main`.
+2. Su Pull Request hacia `develop` (o hacia `main` si es un `hotfix/*`) declara `Closes #N` y fue aprobado por el compañero.
+3. `flutter analyze` no reporta errores ni avisos nuevos respecto a la rama de destino.
 4. `flutter test` pasa en verde, y el cambio agrega o actualiza pruebas cuando toca lógica.
 5. No introduce secretos: sin llaves, tokens, keystores, `key.properties` ni archivos `.env`.
 6. Se probó en dispositivo físico o emulador, y el Pull Request anota qué se probó.
@@ -380,7 +395,8 @@ Al subir la versión se cambian, en el mismo commit, `pubspec.yaml` y
 
 Flujo de liberación:
 
-1. Pull Request `build: subir versión a X.Y.Z+N` hacia `main`.
+1. Pull Request `build: subir versión a X.Y.Z+N` hacia `develop` y, después,
+   el Pull Request `develop` → `main`.
 2. Con el PR mezclado, crear el tag sobre `main`:
    `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. El tag `v*` dispara **Publicar versión** (`release.yml`): primero prueba el

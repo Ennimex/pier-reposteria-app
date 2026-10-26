@@ -780,6 +780,27 @@ void main() {
       expect(texto, contains('**Decisión:** ❌ no pasaron: Esfuerzo.'));
     });
 
+    test('en un Pull Request hacia develop la decisión nombra develop', () {
+      final codigo = _ejecutar(
+        argumentos(),
+        entorno: const {
+          'GITHUB_BASE_REF': 'develop',
+          'GITHUB_HEAD_REF': 'feature/flujo-develop',
+        },
+      );
+
+      expect(codigo, 0);
+      final texto = _salida.toString();
+      expect(texto, contains('Rama `feature/flujo-develop`'));
+      expect(texto, contains('el Pull Request puede unirse a develop.'));
+    });
+
+    test('en un push a main la decisión nombra main', () {
+      expect(_ejecutar(argumentos()), 0);
+
+      expect(_salida.toString(), contains('pasaron las 7 etapas en main.'));
+    });
+
     test('sin el resultado de alguna etapa explica el uso', () {
       final incompletos = argumentos().sublist(0, argumentos().length - 2);
 
