@@ -6,7 +6,7 @@
 #   workflow reutilizable (workflow_call); cada uno explica en su encabezado
 #   qué prueba.
 #
-#     Pull Request / push a main
+#     Pull Request / push a main o develop
 #      ├─ unitarias ─────────┐
 #      └─ análisis estático ─┤   al mismo tiempo
 #                            ▼
@@ -33,14 +33,17 @@
 #   con la que se midieron las líneas base (corrida 40203353175), y no en
 #   ubuntu-latest, que cambia de versión cuando GitHub lo decide (migra a
 #   Ubuntu 26) y cambiaría el entorno de las pruebas sin avisar.
-# Cuándo corre: en cada Pull Request hacia main, en cada push a main (así
-#   SonarCloud tiene al día la versión oficial) y a mano (Actions → Pipeline
-#   de pruebas → Run workflow). A mano se puede marcar «completo»:
-#   rendimiento y esfuerzo corren con toda su carga en vez de la versión
-#   reducida de los Pull Requests. Cambia cuánta carga, no qué pruebas corren.
+# Cuándo corre: en cada Pull Request hacia develop (desde feature/*) o
+#   hacia main (desde develop o hotfix/*), en cada push a develop o a main
+#   (así SonarCloud tiene al día la versión de integración y la oficial) y a
+#   mano (Actions → Pipeline de pruebas → Run workflow). A mano se puede
+#   marcar «completo»: rendimiento y esfuerzo corren con toda su carga en vez
+#   de la versión reducida de los Pull Requests. Cambia cuánta carga, no qué
+#   pruebas corren. La estrategia de ramas está en el README.
 # Si falla: el job «Evidencias y decisión» falla y GitHub no deja unir el
-#   Pull Request (regla «Proteger main»). Ninguna etapa usa
-#   continue-on-error ni se salta: un job que falla hace fallar el pipeline.
+#   Pull Request (las reglas de protección de main y develop). Su tabla dice
+#   a qué rama aplica la decisión. Ninguna etapa usa continue-on-error ni se
+#   salta: un job que falla hace fallar el pipeline.
 # Dónde ver el resultado: Actions → la corrida → Summary. Arriba, la tabla de
 #   evidencias: una fila por etapa con su resultado y sus métricas clave;
 #   debajo, el resumen de cada etapa. Los reportes y las capturas están en
@@ -50,9 +53,9 @@ name: Pipeline de pruebas
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   push:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
     inputs:
       completo:
@@ -66,8 +69,8 @@ permissions:
   pull-requests: read
 
 # Un cambio nuevo en el mismo Pull Request cancela la corrida anterior: ya no
-# tiene caso probar una versión que cambió. En main no se cancela ninguna:
-# cada cambio unido conserva su resultado completo.
+# tiene caso probar una versión que cambió. En main y develop no se cancela
+# ninguna: cada cambio unido conserva su resultado completo.
 concurrency:
   group: pipeline-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -170,7 +173,8 @@ jobs:
           path: build/evidencias
 
       # Escribe en el Summary la tabla: una fila por etapa con su resultado y
-      # sus métricas clave, la decisión y, si alguna prueba falló, cuál.
+      # sus métricas clave, la decisión (con la rama a la que aplica) y, si
+      # alguna prueba falló, cuál.
       - name: Escribir la tabla de evidencias
         run: >
           dart run tool/resumen_pruebas.dart evidencias build/evidencias
@@ -195,8 +199,11 @@ jobs:
 
       # La decisión: el pipeline pasa solo si las siete etapas terminaron en
       # success. Una etapa que falló, se canceló o no corrió porque falló una
-      # anterior (skipped) hace fallar este job, y con él el pipeline.
-      - name: Decidir si el cambio puede unirse a main
+      # anterior (skipped) hace fallar este job, y con él el pipeline. El
+      # mensaje nombra la rama: en un Pull Request, la de destino
+      # (GITHUB_BASE_REF: develop o main); en un push o a mano, la rama donde
+      # corrió (GITHUB_REF_NAME).
+      - name: Decidir si el cambio pasa
         env:
           UNITARIAS: ${{ needs.unitarias.result }}
           ANALISIS_ESTATICO: ${{ needs.analisis-estatico.result }}
@@ -214,8 +221,15 @@ jobs:
               etapas_que_no_pasaron="$etapas_que_no_pasaron $etapa=$resultado_de_la_etapa"
             fi
           done
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            si_no_pasa="El cambio no puede unirse a $GITHUB_BASE_REF."
+            si_pasa="el cambio puede unirse a $GITHUB_BASE_REF."
+          else
+            si_no_pasa="El pipeline falla en $GITHUB_REF_NAME."
+            si_pasa="la versión de $GITHUB_REF_NAME pasó."
+          fi
           if [ -n "$etapas_que_no_pasaron" ]; then
-            echo "::error::No pasaron:$etapas_que_no_pasaron. El cambio no puede unirse a main."
+            echo "::error::No pasaron:$etapas_que_no_pasaron. $si_no_pasa"
             exit 1
           fi
-          echo "Pasaron las siete etapas: el cambio puede unirse a main."
+          echo "Pasaron las siete etapas: $si_pasa"

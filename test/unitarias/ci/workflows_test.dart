@@ -5,7 +5,9 @@
 //   · ningún trabajo de las etapas de pipeline.yml es condicional: en un
 //     Pull Request ninguno puede salir «skipped»;
 //   · release.yml solo publica un candidato que pasó las pruebas en el
-//     entorno de liberación y que se aprobó en el Environment «produccion».
+//     entorno de liberación y que se aprobó en el Environment «produccion»;
+//   · pipeline.yml corre en los Pull Requests y pushes de main y de develop
+//     (estrategia de ramas del README).
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -89,6 +91,22 @@ void main() {
     expect(
       publicar,
       contains('https://pier-reposteria-backend.onrender.com/api/health'),
+    );
+  });
+
+  test('pipeline.yml corre en los Pull Requests y pushes de main y develop', () {
+    final pipeline = _workflows()['pipeline.yml']!;
+    final disparadores = RegExp(
+      r'^  (pull_request|push):\s*\n    branches: \[(.*)\]',
+      multiLine: true,
+    ).allMatches(pipeline.replaceAll('\r\n', '\n'));
+
+    expect(
+      {
+        for (final disparador in disparadores)
+          disparador.group(1): disparador.group(2),
+      },
+      {'pull_request': 'main, develop', 'push': 'main, develop'},
     );
   });
 }
