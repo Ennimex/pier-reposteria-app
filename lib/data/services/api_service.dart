@@ -11,7 +11,20 @@ import 'package:pier_reposteria/utils/logger.dart';
 // Implementa el contrato ApiClient (data/services/api_client.dart): los
 // repositorios dependen de la interfaz, y en pruebas se sustituye por
 // FakeApiClient sin tocar la red.
+//
+// Patrón Singleton: la app usa un solo cliente HTTP, que comparten los 17
+// repositorios. El constructor generativo es privado (ApiService._interno),
+// la instancia única vive en _instancia y el constructor público es un
+// factory que siempre la devuelve: `ApiService()` en cualquier parte de la
+// app es el mismo objeto.
 class ApiService implements ApiClient {
+  /// Devuelve la instancia única de la app.
+  factory ApiService() => _instancia;
+
+  ApiService._interno();
+
+  static final ApiService _instancia = ApiService._interno();
+
   final StorageService _storage = StorageService();
 
   /// Lo que ve el cliente cuando la petición no llega al backend (sin red,

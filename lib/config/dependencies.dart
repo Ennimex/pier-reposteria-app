@@ -43,7 +43,6 @@ import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
 import 'package:pier_reposteria/data/services/pasarela_pago.dart';
-import 'package:pier_reposteria/data/services/pasarela_stripe.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
@@ -110,8 +109,8 @@ List<SingleChildWidget> dependencias(ApiClient api) => [
       Provider<ResenasRepository>(
         create: (context) => ResenasRepositoryRemote(api: context.read()),
       ),
-      // ── Servicios
-      Provider<PasarelaPago>(create: (_) => PasarelaStripe()),
+      // ── Servicios (la fábrica PasarelaPago() elige la implementación)
+      Provider<PasarelaPago>(create: (_) => PasarelaPago()),
       // ── Providers globales (estado compartido entre pantallas)
       ChangeNotifierProvider(
         create: (context) => AuthProvider(auth: context.read()),

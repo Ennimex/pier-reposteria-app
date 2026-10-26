@@ -71,19 +71,23 @@ lib/
     │   ├── ui/        # Widgets reutilizables
     │   └── state/     # ChangeNotifiers globales (auth, carrito, pedidos, …)
     └── <función>/     # auth, home, products, cart, checkout, orders, …
-        └── widgets/   # Pantallas (*_screen.dart) y widgets de esa función
+        ├── widgets/   # Pantallas (*_screen.dart) y widgets de esa función
+        └── view_model/  # Un ViewModel por pantalla
 ```
 
 La app sigue la arquitectura MVVM de la
-[guía oficial de Flutter](https://docs.flutter.dev/app-architecture) (migración en curso):
+[guía oficial de Flutter](https://docs.flutter.dev/app-architecture). Las capas, el
+diagrama y los patrones de diseño (Singleton, Factory, Repository y Observer), cada uno
+con el archivo donde está, se explican en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**:
 
-- **data** es la única capa que habla con el backend. Las pantallas y los providers
-  piden los datos a un repositorio; nadie fuera de `lib/data/` importa `ApiService`
-  ni `ApiConstants`.
-- Cada repositorio recibe un `ApiClient` opcional (`X({ApiClient? api})`), lo que
-  permite probarlo sin red con `test/fakes/fake_api_client.dart`.
-- **ui** pinta y navega; el estado global vive en `ui/core/state`. Los ViewModels por
-  pantalla (`ui/<función>/view_model/`) llegan en la siguiente fase.
+- **data** es la única capa que habla con el backend. Las pantallas y los ViewModels
+  piden los datos a un repositorio; fuera de `lib/data/` solo `main.dart` crea el
+  `ApiService` (un Singleton) y nadie más importa `ApiConstants`.
+- Cada repositorio recibe el `ApiClient` en su constructor
+  (`XRepositoryRemote({required ApiClient api})`) y `lib/config/dependencies.dart` los
+  registra una sola vez; en las pruebas se usa `test/fakes/fake_api_client.dart`.
+- **ui** pinta y navega: cada pantalla tiene su ViewModel en `ui/<función>/view_model/`
+  y el estado global vive en `ui/core/state`.
 - Los imports son absolutos: `package:pier_reposteria/...`.
 
 ## Requisitos previos
@@ -435,6 +439,7 @@ cronograma tipo Gantt está en la vista **Cronograma** del tablero.
 ## Enlaces
 
 - Tablero de planeación (GitHub Projects): https://github.com/users/Ennimex/projects/2
+- Arquitectura y patrones de diseño: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)
 - Documentación técnica en DeepWiki: https://deepwiki.com/Ennimex/pier-reposteria-app
   (se genera desde el código; la estructura de páginas está en `.devin/wiki.json`)
 - Documento de evidencias (Actividad 2): [docs/ACTIVIDAD2_EVIDENCIAS.pdf](docs/ACTIVIDAD2_EVIDENCIAS.pdf)
