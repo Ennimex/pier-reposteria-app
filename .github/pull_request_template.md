@@ -17,7 +17,7 @@ Closes #
 
 ## Checklist
 
-- [ ] La rama sale de `main` y sigue el patrón `feature/*` (o `fix/*`)
+- [ ] La rama sigue la estrategia de ramas: `feature/*` desde `develop` (o `hotfix/*` desde `main`)
 - [ ] Los commits siguen Conventional Commits
 - [ ] `flutter analyze` pasa sin errores nuevos
 - [ ] `flutter test` pasa (o se agregaron/actualizaron pruebas)

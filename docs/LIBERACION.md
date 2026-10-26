@@ -5,7 +5,8 @@ clientes (#22). Las métricas que deciden cada paso están en #24.
 
 ## Publicar una versión
 
-1. Pull Request `build: subir versión a X.Y.Z+N` hacia `main`, con la versión
+1. Pull Request `build: subir versión a X.Y.Z+N` hacia `develop` y después
+   `develop` → `main` (estrategia de ramas del README), con la versión
    nueva en `pubspec.yaml` y en `lib/config/app_version.dart` (ver
    [Versionado](../README.md#versionado-semver)).
 2. Con el PR mezclado, crear el tag sobre `main`:
