@@ -302,6 +302,10 @@ estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
 y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
 resultado del quality gate de SonarCloud; el quality gate y su umbral de
 cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.
+El plan de SonarCloud de la organización solo da el quality gate de `main` y de
+los Pull Requests: en un push a `develop`, el análisis se sube sin esperarlo,
+porque ese cambio ya lo pasó en su Pull Request, y el resumen lo dice. En los
+Pull Requests y en el push a `main` el quality gate es obligatorio.
 
 ## Estrategia de ramas
 
