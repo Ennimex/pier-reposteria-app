@@ -13,12 +13,22 @@
 #     del código nuevo tenga pruebas y que no más del 3 % esté repetido. A
 #     esa condición le llama quality gate.
 # Cuándo corre: es la primera etapa de pipeline.yml, junto con las pruebas
-#   unitarias: en cada Pull Request (la solicitud para unir cambios a main,
-#   la versión oficial del código) y cada vez que algo se une a main (así
-#   SonarCloud tiene al día la versión oficial). También se puede lanzar
-#   sola, a mano.
+#   unitarias: en cada Pull Request hacia develop o main (la solicitud para
+#   unir cambios) y cada vez que algo se une a develop o a main (así
+#   SonarCloud tiene al día el código). También se puede lanzar sola, a mano.
+# SonarCloud y develop: el plan de SonarCloud de la organización solo da el
+#   quality gate de main y de los Pull Requests; para cualquier otra rama
+#   responde «Organization is not allowed to access data from non main
+#   branches» (corrida 40273588965). Por eso, en un push a develop, el job de
+#   SonarCloud analiza y sube el resultado, pero no espera el quality gate:
+#   ese cambio ya lo pasó en el Pull Request que lo llevó a develop, y el
+#   resumen y la tabla de evidencias lo dicen. En los Pull Requests (hacia
+#   develop y hacia main) y en el push a main, el quality gate es
+#   obligatorio. Se decide con una expresión (ESPERA_EL_QUALITY_GATE), no con
+#   un if: el job y todos sus pasos corren siempre.
 # Si falla: el pipeline se detiene aquí y GitHub no deja unir el Pull
-#   Request; los dos revisores son obligatorios en la regla «Proteger main».
+#   Request; los dos revisores son obligatorios en la regla «Proteger main»,
+#   que protege main y develop.
 # Dónde ver el resultado: Actions → la corrida → Summary: la tabla contra la
 #   línea base, los avisos agrupados por regla y el veredicto de SonarCloud
 #   con su enlace. La salida completa de flutter analyze queda en Artifacts
@@ -28,8 +38,8 @@
 name: Análisis de código estático
 
 on:
-  # pipeline.yml lo llama en cada Pull Request y en cada push a main, y le
-  # pasa la clave de SonarCloud.
+  # pipeline.yml lo llama en cada Pull Request y en cada push a develop o a
+  # main, y le pasa la clave de SonarCloud.
   workflow_call:
     secrets:
       SONAR_TOKEN:
@@ -97,6 +107,11 @@ jobs:
     # Solo corre si flutter analyze pasó: no vale la pena el segundo revisor
     # si el primero ya encontró problemas.
     needs: flutter-analyze
+    # Si este análisis espera el quality gate: «true» siempre, salvo en un
+    # push a develop, donde SonarCloud no lo da (ver el encabezado). Lo usan
+    # el escaneo (sonar.qualitygate.wait) y el resumen.
+    env:
+      ESPERA_EL_QUALITY_GATE: ${{ github.event_name != 'push' || github.ref_name != 'develop' }}
     steps:
       - name: Descargar el código con todo el historial
         uses: actions/checkout@v7
@@ -146,10 +161,12 @@ jobs:
           flutter pub get
           flutter test --coverage --exclude-tags api
 
-      # Envía el código y la cobertura a SonarCloud y espera su veredicto. Si
-      # no se cumple el quality gate (80 % de cobertura y máximo 3 % repetido
-      # en el código nuevo), el paso falla.
-      - name: Escanear con SonarCloud y esperar el quality gate
+      # Envía el código y la cobertura a SonarCloud. Cuando el job espera el
+      # quality gate (ESPERA_EL_QUALITY_GATE: Pull Requests y push a main),
+      # espera su veredicto y, si no se cumple (80 % de cobertura y máximo
+      # 3 % repetido en el código nuevo), el paso falla. En un push a develop
+      # solo sube el análisis.
+      - name: Escanear con SonarCloud
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -158,11 +175,13 @@ jobs:
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
             -Dsonar.organization=ennimex
             -Dsonar.dart.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.wait=${{ env.ESPERA_EL_QUALITY_GATE }}
 
       # Agrega al resumen el veredicto de SonarCloud y el enlace a su reporte
-      # (el del Pull Request o el de la rama). Llega aquí solo si el quality
-      # gate se aprobó; si no, el paso anterior ya detuvo el job.
+      # (el del Pull Request o el de la rama). Si el job esperó el quality
+      # gate, llega aquí solo si se aprobó (si no, el paso anterior ya detuvo
+      # el job). En un push a develop dice que el análisis se subió y que el
+      # quality gate se verificó en el Pull Request.
       - name: Mostrar el resultado en el resumen
         env:
           PROYECTO: ${{ vars.SONAR_PROJECT_KEY }}
@@ -174,8 +193,13 @@ jobs:
           else
             reporte="https://sonarcloud.io/dashboard?id=$PROYECTO&branch=$RAMA"
           fi
+          if [ "$ESPERA_EL_QUALITY_GATE" = true ]; then
+            veredicto="✅ Quality gate aprobado"
+          else
+            veredicto="☁️ Análisis de $RAMA subido sin esperar el quality gate: se verificó en el Pull Request (el plan de SonarCloud no da el de ramas que no son main)"
+          fi
           {
             echo "### ☁️ SonarCloud"
             echo
-            echo "✅ Quality gate aprobado · [Ver el reporte en SonarCloud]($reporte)"
+            echo "$veredicto · [Ver el reporte en SonarCloud]($reporte)"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -71,19 +71,23 @@ lib/
     │   ├── ui/        # Widgets reutilizables
     │   └── state/     # ChangeNotifiers globales (auth, carrito, pedidos, …)
     └── <función>/     # auth, home, products, cart, checkout, orders, …
-        └── widgets/   # Pantallas (*_screen.dart) y widgets de esa función
+        ├── widgets/   # Pantallas (*_screen.dart) y widgets de esa función
+        └── view_model/  # Un ViewModel por pantalla
 ```
 
 La app sigue la arquitectura MVVM de la
-[guía oficial de Flutter](https://docs.flutter.dev/app-architecture) (migración en curso):
+[guía oficial de Flutter](https://docs.flutter.dev/app-architecture). Las capas, el
+diagrama y los patrones de diseño (Singleton, Factory, Repository y Observer), cada uno
+con el archivo donde está, se explican en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**:
 
-- **data** es la única capa que habla con el backend. Las pantallas y los providers
-  piden los datos a un repositorio; nadie fuera de `lib/data/` importa `ApiService`
-  ni `ApiConstants`.
-- Cada repositorio recibe un `ApiClient` opcional (`X({ApiClient? api})`), lo que
-  permite probarlo sin red con `test/fakes/fake_api_client.dart`.
-- **ui** pinta y navega; el estado global vive en `ui/core/state`. Los ViewModels por
-  pantalla (`ui/<función>/view_model/`) llegan en la siguiente fase.
+- **data** es la única capa que habla con el backend. Las pantallas y los ViewModels
+  piden los datos a un repositorio; fuera de `lib/data/` solo `main.dart` crea el
+  `ApiService` (un Singleton) y nadie más importa `ApiConstants`.
+- Cada repositorio recibe el `ApiClient` en su constructor
+  (`XRepositoryRemote({required ApiClient api})`) y `lib/config/dependencies.dart` los
+  registra una sola vez; en las pruebas se usa `test/fakes/fake_api_client.dart`.
+- **ui** pinta y navega: cada pantalla tiene su ViewModel en `ui/<función>/view_model/`
+  y el estado global vive en `ui/core/state`.
 - Los imports son absolutos: `package:pier_reposteria/...`.
 
 ## Requisitos previos
@@ -189,7 +193,7 @@ Las actividades de prueba son los issues con la etiqueta `prueba` y el título e
 MAYÚSCULAS (#15 a #17 y #52 a #72); cada una dice qué historias cubre.
 
 Todas corren encadenadas en **`pipeline.yml`** con cada Pull Request hacia
-`main` y cada push a `main`: cada etapa empieza solo si pasaron las anteriores,
+`develop` o `main` y cada push a esas ramas: cada etapa empieza solo si pasaron las anteriores,
 y el job final **Evidencias y decisión** escribe una tabla con el resultado y
 las métricas de cada etapa y falla si alguna no pasó.
 
@@ -298,19 +302,38 @@ estático requiere configurar `SONAR_TOKEN` como secreto del repositorio
 y `SONAR_PROJECT_KEY` como variable del repositorio. El análisis espera el
 resultado del quality gate de SonarCloud; el quality gate y su umbral de
 cobertura deben configurarse en SonarCloud conforme a los criterios del proyecto.
+El plan de SonarCloud de la organización solo da el quality gate de `main` y de
+los Pull Requests: en un push a `develop`, el análisis se sube sin esperarlo,
+porque ese cambio ya lo pasó en su Pull Request, y el resumen lo dice. En los
+Pull Requests y en el push a `main` el quality gate es obligatorio.
 
-## Estrategia de ramas (GitHub Flow)
+## Estrategia de ramas
 
-- `main` es la única rama de larga vida y está **protegida**: no se puede hacer
-  push directo ni force push.
-- Todo cambio nace en una rama `feature/<descripcion-corta>` creada desde `main`
-  (por ejemplo `feature/versionado-semantico`). Para correcciones puede usarse
-  `fix/<descripcion>`.
-- La rama se integra a `main` **únicamente mediante Pull Request**, con al menos
-  **una aprobación** de otro integrante y las verificaciones en verde.
-- Cada PR debe enlazar el issue que resuelve (`Closes #N`) para mantener la
-  trazabilidad entre tablero, issue, rama, PR y commit.
-- No existe rama `develop`: `main` siempre debe poder liberarse.
+Desde el 25-oct-2026 los cambios pasan por una rama de integración antes de
+llegar a la versión estable:
+
+```
+feature/<descripción> ──PR──► develop ──PR──► main ──► tag vX.Y.Z
+                                ▲               │
+                                └── hotfix/* ◄──┘ (sale de main)
+```
+
+| Rama | Regla |
+|---|---|
+| `main` | La versión estable. Solo recibe Pull Requests desde `develop` o desde `hotfix/*`, y de ahí salen los tags `vX.Y.Z` que publica `release.yml`. |
+| `develop` | La integración. Recibe Pull Requests desde `feature/*`. |
+| `feature/<descripción>` | Sale de `develop` y regresa por Pull Request (por ejemplo `feature/flujo-develop`). |
+| `hotfix/<descripción>` | Sale de `main` para urgencias y se integra a `main` y a `develop`. |
+
+- Cada Pull Request necesita el pipeline en verde (`pipeline.yml`, que corre en
+  los Pull Requests y pushes de `main` y `develop`) y **una aprobación** de otro
+  integrante. `main` y `develop` están **protegidas**: no se puede hacer push
+  directo ni force push.
+- Cada Pull Request enlaza el issue que resuelve (`Closes #N`) para mantener la
+  trazabilidad entre tablero, issue, rama, Pull Request y commit.
+- Las ramas anteriores (`feat/`, `fix/`, `test/`, `docs/`, `refactor/` y las
+  `feature/*` que salían de `main`) son del flujo previo, GitHub Flow, en el
+  que todo cambio iba directo a `main`.
 
 ## Convención de commits (Conventional Commits)
 
@@ -349,8 +372,8 @@ Refs #73
 Una historia o una tarea está terminada cuando:
 
 1. Cumple todos sus criterios de aceptación.
-2. Su Pull Request hacia `main` declara `Closes #N` y fue aprobado por el compañero.
-3. `flutter analyze` no reporta errores ni avisos nuevos respecto a `main`.
+2. Su Pull Request hacia `develop` (o hacia `main` si es un `hotfix/*`) declara `Closes #N` y fue aprobado por el compañero.
+3. `flutter analyze` no reporta errores ni avisos nuevos respecto a la rama de destino.
 4. `flutter test` pasa en verde, y el cambio agrega o actualiza pruebas cuando toca lógica.
 5. No introduce secretos: sin llaves, tokens, keystores, `key.properties` ni archivos `.env`.
 6. Se probó en dispositivo físico o emulador, y el Pull Request anota qué se probó.
@@ -380,7 +403,8 @@ Al subir la versión se cambian, en el mismo commit, `pubspec.yaml` y
 
 Flujo de liberación:
 
-1. Pull Request `build: subir versión a X.Y.Z+N` hacia `main`.
+1. Pull Request `build: subir versión a X.Y.Z+N` hacia `develop` y, después,
+   el Pull Request `develop` → `main`.
 2. Con el PR mezclado, crear el tag sobre `main`:
    `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. El tag `v*` dispara **Publicar versión** (`release.yml`): primero prueba el
@@ -419,6 +443,7 @@ cronograma tipo Gantt está en la vista **Cronograma** del tablero.
 ## Enlaces
 
 - Tablero de planeación (GitHub Projects): https://github.com/users/Ennimex/projects/2
+- Arquitectura y patrones de diseño: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)
 - Documentación técnica en DeepWiki: https://deepwiki.com/Ennimex/pier-reposteria-app
   (se genera desde el código; la estructura de páginas está en `.devin/wiki.json`)
 - Documento de evidencias (Actividad 2): [docs/ACTIVIDAD2_EVIDENCIAS.pdf](docs/ACTIVIDAD2_EVIDENCIAS.pdf)

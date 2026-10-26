@@ -465,6 +465,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
   final cargaNormal = k6('k6_rendimiento.json');
   final esfuerzoDeLaApi = k6('k6_esfuerzo.json');
 
+  final destino = destinoDelCambio(entorno);
   final metricas = <String, List<String>>{
     'unitarias': [
       if (unitarias != null) lineaPruebas(unitarias),
@@ -473,6 +474,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
     'analisis': [
       if (analisis != null && lineaBase != null)
         lineaAnalisis(leerAnalisis(analisis), lineaBase),
+      ?lineaSonarCloud(destino),
     ],
     'aceptacion': [
       if (gherkin != null) 'Gherkin: ${lineaPruebas(gherkin)}',
@@ -529,6 +531,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
         ?flujoDeCompra,
         ?regresion,
       ],
+      destino: destino,
     ),
     0,
   );

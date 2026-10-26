@@ -780,6 +780,48 @@ void main() {
       expect(texto, contains('**Decisión:** ❌ no pasaron: Esfuerzo.'));
     });
 
+    test('en un Pull Request hacia develop la decisión nombra develop', () {
+      final codigo = _ejecutar(
+        argumentos(),
+        entorno: const {
+          'GITHUB_BASE_REF': 'develop',
+          'GITHUB_HEAD_REF': 'feature/flujo-develop',
+        },
+      );
+
+      expect(codigo, 0);
+      final texto = _salida.toString();
+      expect(texto, contains('Rama `feature/flujo-develop`'));
+      expect(texto, contains('el Pull Request puede unirse a develop.'));
+    });
+
+    test('en un push a main la decisión nombra main', () {
+      expect(_ejecutar(argumentos()), 0);
+
+      final texto = _salida.toString();
+      expect(texto, contains('pasaron las 7 etapas en main.'));
+      expect(texto, isNot(contains('SonarCloud')));
+    });
+
+    test('en un push a develop la fila de análisis dice que el quality gate '
+        'se verificó en el Pull Request', () {
+      final codigo = _ejecutar(
+        argumentos(),
+        entorno: const {'GITHUB_BASE_REF': '', 'GITHUB_REF_NAME': 'develop'},
+      );
+
+      expect(codigo, 0);
+      final texto = _salida.toString();
+      expect(
+        texto,
+        contains(
+          '| Análisis estático | ✅ Pasó | SonarCloud: análisis de develop '
+          'subido; el quality gate se verificó en el Pull Request |',
+        ),
+      );
+      expect(texto, contains('pasaron las 7 etapas en develop.'));
+    });
+
     test('sin el resultado de alguna etapa explica el uso', () {
       final incompletos = argumentos().sublist(0, argumentos().length - 2);
 

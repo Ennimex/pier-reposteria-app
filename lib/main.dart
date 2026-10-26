@@ -13,7 +13,9 @@ Future<void> main() => Monitoreo.arrancar(_arrancarApp);
 Future<void> _arrancarApp() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Un solo cliente HTTP para toda la app (lo reciben todos los repositorios).
+  // ApiService es un Singleton: ApiService() devuelve siempre la misma
+  // instancia, el único cliente HTTP de la app, y dependencias() se la pasa a
+  // los 17 repositorios.
   final api = ApiService();
 
   // Cargar publishable key del backend para no hardcodearla
