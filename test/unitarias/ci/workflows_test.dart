@@ -109,4 +109,28 @@ void main() {
       {'pull_request': 'main, develop', 'push': 'main, develop'},
     );
   });
+
+  test('SonarCloud espera el quality gate salvo en un push a develop, sin '
+      'if:', () {
+    final analisis = _workflows()['analisis-estatico.yml']!
+        .replaceAll('\r\n', '\n');
+    final trabajoDeSonar = analisis.substring(
+      analisis.indexOf('\n  sonarcloud:'),
+    );
+
+    // La expresión: verdadera en los Pull Requests y en el push a main.
+    expect(
+      trabajoDeSonar,
+      contains(
+        r"ESPERA_EL_QUALITY_GATE: ${{ github.event_name != 'push' || "
+        "github.ref_name != 'develop' }}",
+      ),
+    );
+    expect(
+      trabajoDeSonar,
+      contains(r'-Dsonar.qualitygate.wait=${{ env.ESPERA_EL_QUALITY_GATE }}'),
+    );
+    // Ni el trabajo ni sus pasos son condicionales: corren siempre.
+    expect(RegExp(r'^\s+if:', multiLine: true).hasMatch(trabajoDeSonar), isFalse);
+  });
 }
