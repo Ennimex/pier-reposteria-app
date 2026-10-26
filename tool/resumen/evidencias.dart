@@ -33,6 +33,23 @@ DestinoDelCambio? destinoDelCambio(Map<String, String> entorno) {
       : DestinoDelCambio.rama(ramaDondeCorrio);
 }
 
+/// Las ramas cuyo quality gate no da SonarCloud: el plan de la organización
+/// solo da el de main y el de los Pull Requests. En un push a una de ellas,
+/// analisis-estatico.yml sube el análisis sin esperar el quality gate
+/// (ESPERA_EL_QUALITY_GATE), porque el cambio ya lo pasó en su Pull Request.
+const ramasSinQualityGate = {'develop'};
+
+/// La métrica de SonarCloud para la fila de análisis estático cuando en esta
+/// corrida no se esperó el quality gate (un push a una rama de
+/// [ramasSinQualityGate]); null en los Pull Requests y en el push a main,
+/// donde el quality gate es obligatorio y su resultado ya es el de la etapa.
+String? lineaSonarCloud(DestinoDelCambio? destino) {
+  if (destino == null || destino.esPullRequest) return null;
+  if (!ramasSinQualityGate.contains(destino.rama)) return null;
+  return 'SonarCloud: análisis de ${destino.rama} subido; el quality gate se '
+      'verificó en el Pull Request';
+}
+
 class EtapaDelPipeline {
   const EtapaDelPipeline({
     required this.nombre,

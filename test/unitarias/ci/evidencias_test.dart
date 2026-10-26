@@ -175,4 +175,25 @@ void main() {
       expect(destinoDelCambio(const {'GITHUB_REF_NAME': ''}), isNull);
     });
   });
+
+  // SonarCloud no da el quality gate de develop: en su push, el análisis se
+  // sube sin esperarlo y la tabla dice que se verificó en el Pull Request.
+  group('lineaSonarCloud', () {
+    test('en un push a develop dice que el quality gate se verificó en el '
+        'Pull Request', () {
+      expect(
+        lineaSonarCloud(const DestinoDelCambio.rama('develop')),
+        'SonarCloud: análisis de develop subido; el quality gate se verificó '
+        'en el Pull Request',
+      );
+    });
+
+    test('en los Pull Requests y en el push a main el quality gate es '
+        'obligatorio: no agrega nada', () {
+      expect(lineaSonarCloud(const DestinoDelCambio.pullRequest('develop')), isNull);
+      expect(lineaSonarCloud(const DestinoDelCambio.pullRequest('main')), isNull);
+      expect(lineaSonarCloud(const DestinoDelCambio.rama('main')), isNull);
+      expect(lineaSonarCloud(null), isNull);
+    });
+  });
 }
