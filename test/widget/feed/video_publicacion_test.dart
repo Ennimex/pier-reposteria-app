@@ -18,8 +18,9 @@ final _medio = MedioPublicacion.fromJson({
   'duracion': 12,
 });
 
-/// Un espacio alto, el video y otro espacio: el video empieza fuera de la
-/// pantalla (800 de alto) y se trae con [_ver].
+/// Un espacio, el video y otro espacio: el video empieza fuera de la
+/// pantalla de pruebas (600 de alto), pero cerca, así que la lista no lo
+/// destruye al ir y venir; se trae con [_ver] y se aleja con [_salir].
 Future<void> _montar(WidgetTester tester, {bool reducido = false}) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -31,7 +32,7 @@ Future<void> _montar(WidgetTester tester, {bool reducido = false}) async {
         child: Scaffold(
           body: ListView(
             children: [
-              const SizedBox(height: 1000),
+              const SizedBox(height: 700),
               SizedBox(
                 height: 300,
                 child: VideoPublicacion(
@@ -50,12 +51,12 @@ Future<void> _montar(WidgetTester tester, {bool reducido = false}) async {
 }
 
 Future<void> _ver(WidgetTester tester) async {
-  await tester.drag(find.byType(ListView), const Offset(0, -900));
+  await tester.drag(find.byType(ListView), const Offset(0, -500));
   await tester.pumpAndSettle();
 }
 
 Future<void> _salir(WidgetTester tester) async {
-  await tester.drag(find.byType(ListView), const Offset(0, 900));
+  await tester.drag(find.byType(ListView), const Offset(0, 500));
   await tester.pumpAndSettle();
 }
 
