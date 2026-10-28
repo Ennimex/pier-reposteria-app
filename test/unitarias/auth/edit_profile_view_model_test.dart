@@ -110,6 +110,15 @@ void main() {
       expect(vm.error, isNull);
     });
 
+    test('#221: el teléfono vacío se manda como "" para borrarlo', () async {
+      final api = _backendOk();
+      final vm = _vm(api)..editar(nombre: 'Ana', apellido: 'López', telefono: '  ');
+
+      await vm.guardar();
+
+      expect(api.ultima(_endpoint)!.body?['telefono'], '');
+    });
+
     test('si falla devuelve null, expone el error y conserva los cambios',
         () async {
       final api = FakeApiClient()..fallar(_endpoint, 'Error al actualizar perfil');
