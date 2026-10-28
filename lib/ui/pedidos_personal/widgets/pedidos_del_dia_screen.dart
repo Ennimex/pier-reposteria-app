@@ -152,15 +152,18 @@ class _PedidosDelDiaScreenState extends State<PedidosDelDiaScreen>
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: true, label: Text('Hoy y vencidos')),
-              ButtonSegment(value: false, label: Text('Todos los abiertos')),
-            ],
-            selected: {_vm.soloHoy},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) => _vm.verSoloHoy(valor: s.first),
-          ),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            ChoiceChip(
+              label: const Text('Hoy y vencidos'),
+              selected: _vm.soloHoy,
+              onSelected: (_) => _vm.verSoloHoy(valor: true),
+            ),
+            ChoiceChip(
+              label: const Text('Todos los abiertos'),
+              selected: !_vm.soloHoy,
+              onSelected: (_) => _vm.verSoloHoy(valor: false),
+            ),
+          ]),
           if (otros > 0)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -357,9 +360,12 @@ class _Etiqueta extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icono, size: 12, color: color),
         const SizedBox(width: 4),
-        Text(texto,
-            style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        Flexible(
+          child: Text(texto,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ),
       ]),
     );
   }
