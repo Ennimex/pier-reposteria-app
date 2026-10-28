@@ -58,6 +58,57 @@ void main() {
       expect(info.historiaTitulo, isNull);
     });
 
+    test('lee el recorrido y el equipo (#170)', () async {
+      final info = await ConfiguracionRepositoryRemote(
+        api: _backendCon({
+          'timeline': '[{"year":"2015","title":"El inicio",'
+              '"description":"Una cocina","image":"local:producto2.jpg"},'
+              '{"year":"2020","title":"  "},'
+              '{"year":"2024","title":"Sucursal","image":"http://x.com/a.jpg"}]',
+          'equipo': [
+            {
+              'name': 'Pier',
+              'role': 'Fundadora',
+              'description': 'Repostera',
+              'emoji': '🧁',
+              'photo': 'https://res.cloudinary.com/demo/image/upload/a.jpg',
+            },
+            {'name': 'Ana', 'photo': ''},
+            {'role': 'Sin nombre'},
+            'no es mapa',
+          ],
+        }),
+      ).nosotros();
+
+      expect(info.recorrido.map((e) => e.titulo), ['El inicio', 'Sucursal']);
+      final inicio = info.recorrido.first;
+      expect(inicio.anio, '2015');
+      expect(inicio.descripcion, 'Una cocina');
+      expect(inicio.imagen, 'assets/images/sitio/producto2.webp');
+      // Solo fotos del sitio o https: lo demás se omite.
+      expect(info.recorrido.last.imagen, isNull);
+      expect(info.recorrido.last.descripcion, isNull);
+
+      expect(info.equipo.map((p) => p.nombre), ['Pier', 'Ana']);
+      final pier = info.equipo.first;
+      expect(pier.puesto, 'Fundadora');
+      expect(pier.descripcion, 'Repostera');
+      expect(pier.emoji, '🧁');
+      expect(pier.foto, 'https://res.cloudinary.com/demo/image/upload/a.jpg');
+      final ana = info.equipo.last;
+      expect(ana.puesto, '');
+      expect(ana.emoji, isNull);
+      expect(ana.foto, isNull);
+    });
+
+    test('sin recorrido ni equipo los deja vacíos', () async {
+      final info = await ConfiguracionRepositoryRemote(
+        api: _backendCon({'timeline': 'no es lista', 'equipo': null}),
+      ).nosotros();
+      expect(info.recorrido, isEmpty);
+      expect(info.equipo, isEmpty);
+    });
+
     test('si el backend falla lanza ApiException', () async {
       final api = FakeApiClient()..fallar(_endpoint, 'Sección no encontrada');
       await expectLater(
@@ -94,6 +145,27 @@ void main() {
       expect(vm.historiaTitulo, 'Nuestra Historia');
       expect(vm.valores, ['Calidad', 'Amor']);
       expect(vm.valoresDelPanel, isTrue);
+      // Sin capturar, recorrido y equipo quedan vacíos (no se muestran).
+      expect(vm.recorrido, isEmpty);
+      expect(vm.equipo, isEmpty);
+    });
+
+    test('expone el recorrido y el equipo capturados', () async {
+      final vm = _vm(
+        _backendCon({
+          'timeline': [
+            {'year': '2015', 'title': 'El inicio'},
+          ],
+          'equipo': [
+            {'name': 'Pier', 'role': 'Fundadora'},
+          ],
+        }),
+      );
+
+      await vm.cargar();
+
+      expect(vm.recorrido.single.titulo, 'El inicio');
+      expect(vm.equipo.single.nombre, 'Pier');
     });
 
     test('sin estadísticas calcula los años desde la fundación', () async {
