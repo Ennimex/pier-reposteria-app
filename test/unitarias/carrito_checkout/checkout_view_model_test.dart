@@ -258,11 +258,11 @@ void main() {
       expect(r.total, 540);
       expect(p.pasarela.cobros, 1);
       expect(p.api.ultima(ApiConstants.crearPaymentIntent)!.body,
-          {'horario_recogida': '2026-10-13 17:00'});
+          {'horario_recogida': '2026-10-13T23:00:00.000Z'});
       expect(p.api.ultima(ApiConstants.confirmarPago)!.body, {
         'payment_intent_id': 'pi_123',
         'notas': '',
-        'horario_recogida': '2026-10-13 17:00',
+        'horario_recogida': '2026-10-13T23:00:00.000Z',
       });
       expect(p.vm.errorPago, isNull);
     });
@@ -278,7 +278,7 @@ void main() {
       expect(p.api.ultima(ApiConstants.crearPaymentIntent)!.body,
           {'tipo_entrega': 'domicilio', 'direccion_id': '2'});
       expect(p.api.ultima(ApiConstants.confirmarPago)!.body!['horario_entrega'],
-          '2026-10-13 17:00');
+          '2026-10-13T23:00:00.000Z');
     });
 
     test('si el backend no crea el intent avisa y no cobra', () async {
