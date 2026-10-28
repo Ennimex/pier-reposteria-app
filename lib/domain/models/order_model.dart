@@ -51,6 +51,37 @@ class OrderItem {
   }
 }
 
+/// La última solicitud de reembolso de un pedido (GET /pedidos/mis-pedidos
+/// trae `reembolso`: null o {id, estado, monto}, #172). Puede venir de la
+/// sucursal: si cancela un pedido pagado, la solicitud se genera sola.
+class ReembolsoDelPedido {
+  const ReembolsoDelPedido({required this.id, required this.estado, this.monto});
+
+  static ReembolsoDelPedido? fromJson(Object? json) {
+    if (json is! Map) return null;
+    return ReembolsoDelPedido(
+      id: json['id']?.toString() ?? '',
+      estado: json['estado']?.toString() ?? '',
+      monto: double.tryParse(json['monto']?.toString() ?? ''),
+    );
+  }
+
+  /// Los estados en los que el backend no deja pedir otra (409); una
+  /// rechazada sí lo permite.
+  static const Set<String> estadosVivos = {
+    'pendiente',
+    'en_revision',
+    'aprobado',
+    'procesado',
+  };
+
+  final String id;
+  final String estado;
+  final double? monto;
+
+  bool get vivo => estadosVivos.contains(estado);
+}
+
 class Order {
   final String id;
   final String numero;
@@ -68,6 +99,8 @@ class Order {
   // flujo nuevo, todo pedido 'pendiente' nace con esta bandera.
   final bool porConfirmar;
   final DateTime createdAt;
+  // Su última solicitud de reembolso; null si no tiene (#172).
+  final ReembolsoDelPedido? reembolso;
 
   Order({
     required this.id,
@@ -82,6 +115,7 @@ class Order {
     this.status = OrderStatus.pending,
     this.porConfirmar = false,
     required this.createdAt,
+    this.reembolso,
   });
 
   bool get esDomicilio => tipoEntrega == 'domicilio';
@@ -98,6 +132,13 @@ class Order {
   /// 'pendiente' o 'listo'; al pasar a 'asignado' ya no aplica.
   bool get esCancelablePorCliente =>
       status == OrderStatus.pending || status == OrderStatus.ready;
+
+  /// El cliente puede pedir su reembolso: recogido ('completado') o
+  /// entregado a domicilio ('entregado'), sin otra solicitud viva. Espejo
+  /// de POST /reembolsos (#172).
+  bool get reembolsable =>
+      (status == OrderStatus.completed || status == OrderStatus.delivered) &&
+      !(reembolso?.vivo ?? false);
 
   factory Order.fromJson(Map<String, dynamic> json) {
     final itemsRaw = json['items'] ?? [];
@@ -125,6 +166,7 @@ class Order {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      reembolso: ReembolsoDelPedido.fromJson(json['reembolso']),
     );
   }
 

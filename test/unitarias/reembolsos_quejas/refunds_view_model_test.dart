@@ -270,7 +270,8 @@ void main() {
   });
 
   group('RefundsViewModel', () {
-    test('carga el historial y solo los pedidos completados', () async {
+    test('carga el historial y los pedidos recogidos o entregados (#172)',
+        () async {
       final vm = _vm(FakeApiClient(respuestas: _conDatos));
       expect(vm.cargandoReembolsos, isTrue);
 
@@ -278,7 +279,73 @@ void main() {
 
       expect(vm.cargandoReembolsos, isFalse);
       expect(vm.reembolsos, hasLength(2));
-      expect(vm.pedidos.map((p) => p.numero), ['PIER-9', 'PIER-11']);
+      expect(vm.pedidos.map((p) => p.numero), ['PIER-9', 'PIER-10', 'PIER-11']);
+    });
+
+    test('un pedido con solicitud viva no se ofrece; uno rechazado sí (#172)',
+        () async {
+      final vm = _vm(FakeApiClient(respuestas: {
+        ..._conDatos,
+        _pedidos: {
+          'success': true,
+          'pedidos': [
+            for (final (id, estado) in [
+              (1, 'pendiente'),
+              (2, 'en_revision'),
+              (3, 'aprobado'),
+              (4, 'procesado'),
+              (5, 'rechazado'),
+            ])
+              {
+                'id': id,
+                'numero': 'PIER-$id',
+                'estado': 'entregado',
+                'total': '100',
+                'reembolso': {'id': id * 10, 'estado': estado, 'monto': '100'},
+              },
+            {'id': 6, 'numero': 'PIER-6', 'estado': 'en_camino', 'total': '9'},
+          ],
+        },
+      }));
+
+      await vm.cargar();
+
+      expect(vm.pedidos.map((p) => p.numero), ['PIER-5']);
+      expect(vm.pedidos.single.reembolso?.monto, 100);
+    });
+
+    test('si el backend responde que ya hay solicitud, el pedido se quita',
+        () async {
+      final api = FakeApiClient(respuestas: _conDatos)
+        ..fallar(_crear,
+            'Este pedido ya tiene una solicitud de reembolso (pendiente)');
+      final vm = _vm(api);
+      await vm.cargar();
+      vm
+        ..seleccionarPedido(vm.pedidos[1])
+        ..seleccionarMotivo('otro');
+      api.responder(_pedidos, {
+        'success': true,
+        'pedidos': [
+          {'id': 9, 'numero': 'PIER-9', 'estado': 'completado', 'total': '640'},
+          {
+            'id': 10,
+            'numero': 'PIER-10',
+            'estado': 'entregado',
+            'total': '300',
+            'reembolso': {'id': 7, 'estado': 'pendiente', 'monto': '300'},
+          },
+        ],
+      });
+
+      final error = await vm.enviar(descripcion: 'Llegó aplastado');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(error,
+          'Este pedido ya tiene una solicitud de reembolso (pendiente)');
+      expect(api.llamadas.where((l) => l.endpoint == _crear), hasLength(1));
+      expect(vm.pedidos.map((p) => p.numero), ['PIER-9']);
+      expect(vm.pedidoSeleccionado?.numero, 'PIER-9');
     });
 
     test('sin elegir, el pedido seleccionado es el primero', () async {
@@ -287,7 +354,7 @@ void main() {
 
       expect(vm.pedidoSeleccionado?.numero, 'PIER-9');
 
-      vm.seleccionarPedido(vm.pedidos[1]);
+      vm.seleccionarPedido(vm.pedidos.last);
       expect(vm.pedidoSeleccionado?.numero, 'PIER-11');
     });
 
@@ -313,7 +380,7 @@ void main() {
       final vm = _vm(api);
       await vm.cargar();
       vm
-        ..seleccionarPedido(vm.pedidos[1])
+        ..seleccionarPedido(vm.pedidos.last)
         ..seleccionarMotivo('cantidad_incorrecta');
       final antes = api.llamadas.where((l) => l.endpoint == _mis).length;
 
