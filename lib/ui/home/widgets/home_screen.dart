@@ -15,6 +15,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/domain/models/config_testimonios.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
@@ -222,7 +223,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         )),
                   _seccion('resenas', _vm.resenasDestacadas.isEmpty
                       ? null
-                      : HomeResenasDestacadas(resenas: _vm.resenasDestacadas)),
+                      : HomeResenasDestacadas(
+                          resenas: _vm.resenasDestacadas,
+                          titulo: _vm.testimonios?.titulo ??
+                              ConfigTestimonios.tituloPorDefecto,
+                          subtitulo: _vm.testimonios?.subtitulo,
+                        )),
                   _sliver('sucursal', EntradaInicio(
                     id: 'sucursal',
                     child: HomeSucursal(

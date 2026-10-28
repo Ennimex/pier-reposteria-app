@@ -8,6 +8,7 @@ import 'package:pier_reposteria/data/repositories/configuracion_repository_remot
 import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/config_testimonios.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/domain/models/slide_hero.dart';
 import 'package:pier_reposteria/ui/home/view_model/home_view_model.dart';
@@ -140,6 +141,121 @@ void main() {
       expect(vm.promociones.banner, isNull);
       expect(vm.contacto, isEmpty);
       expect(vm.slides, HomeViewModel.slidesDeRespaldo);
+    });
+  });
+
+  group('HomeViewModel: testimonios de Dirección (#169)', () {
+    Map<String, dynamic> contenido(Map<String, dynamic> bloques) =>
+        {'success': true, 'contenido': bloques};
+    Map<String, dynamic> resena(int id) =>
+        {'id': id, 'autor_nombre': 'Cliente $id', 'rating': 5};
+
+    test('pide las reseñas con cantidad y estrellas, con título y subtítulo',
+        () async {
+      final api = _backend()
+        ..responder(
+            ApiConstants.contenido,
+            contenido({
+              'inicio.testimonios': {
+                'titulo': 'Clientes felices',
+                'subtitulo': 'Reseñas reales',
+                'cantidad': 4,
+                'min_estrellas': 5,
+              },
+            }));
+      final vm = _vm(api);
+
+      await vm.cargar();
+
+      expect(
+          api.llamo(ApiConstants.resenasDestacadasCon(
+              limite: 4, minEstrellas: 5)),
+          isTrue);
+      expect(vm.testimonios?.titulo, 'Clientes felices');
+      expect(vm.testimonios?.subtitulo, 'Reseñas reales');
+    });
+
+    test('nunca muestra más de la cantidad configurada', () async {
+      final api = _backend()
+        ..responder(
+            ApiConstants.contenido,
+            contenido({
+              'inicio.testimonios': {'cantidad': 2, 'min_estrellas': 4},
+            }))
+        ..responder(ApiConstants.resenasDestacadas,
+            _ok('resenas', [resena(1), resena(2), resena(3)]));
+      final vm = _vm(api);
+
+      await vm.cargar();
+
+      expect(vm.resenasDestacadas, hasLength(2));
+      expect(vm.testimonios?.titulo, ConfigTestimonios.tituloPorDefecto);
+    });
+
+    test('sin reseñas que cumplan, la sección queda vacía', () async {
+      final api = _backend()
+        ..responder(
+            ApiConstants.contenido,
+            contenido({
+              'inicio.testimonios': {'cantidad': 3, 'min_estrellas': 5},
+            }));
+      final vm = _vm(api);
+      await vm.cargar();
+      expect(vm.resenasDestacadas, isNotEmpty);
+
+      api.responder(ApiConstants.resenasDestacadas, _ok('resenas', []));
+      await vm.cargarResenasDestacadas();
+
+      expect(vm.resenasDestacadas, isEmpty);
+    });
+
+    test('sin configuración pide las destacadas como antes', () async {
+      final api = _backend();
+      final vm = _vm(api);
+
+      await vm.cargar();
+
+      expect(vm.testimonios, isNull);
+      expect(api.ultima(ApiConstants.resenasDestacadas), isNotNull);
+      expect(
+          api.llamadas.any((l) => l.endpoint.startsWith(
+              '${ApiConstants.resenasDestacadas}?')),
+          isFalse);
+    });
+  });
+
+  group('ConfigTestimonios.desdeContenido', () {
+    test('usa la clave anterior si no viene la nueva', () {
+      final config = ConfigTestimonios.desdeContenido({
+        'inicio.testimonios_config': {
+          'titulo': 'Opiniones',
+          'cantidad': '3',
+          'min_estrellas': '4',
+        },
+      });
+
+      expect(config?.titulo, 'Opiniones');
+      expect(config?.cantidad, 3);
+      expect(config?.minEstrellas, 4);
+      expect(config?.subtitulo, isNull);
+    });
+
+    test('fuera de rango o con otra forma no cuenta', () {
+      for (final bloque in <Object?>[
+        null,
+        'texto',
+        {'cantidad': 0, 'min_estrellas': 5},
+        {'cantidad': 7, 'min_estrellas': 5},
+        {'cantidad': 3, 'min_estrellas': 6},
+        {'cantidad': 'x', 'min_estrellas': 5},
+      ]) {
+        expect(
+          ConfigTestimonios.desdeContenido({'inicio.testimonios': bloque}),
+          isNull,
+          reason: '$bloque',
+        );
+      }
+      expect(ConfigTestimonios.desdeContenido(null), isNull);
     });
   });
 
