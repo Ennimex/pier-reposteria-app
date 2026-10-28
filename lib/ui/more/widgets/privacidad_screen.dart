@@ -64,11 +64,12 @@ class _PrivacidadScreenState extends State<PrivacidadScreen> {
             : ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+                  // Material y no un Container con color: el interruptor
+                  // pinta su fondo y su onda sobre el Material más cercano.
+                  Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
                         SwitchListTile(

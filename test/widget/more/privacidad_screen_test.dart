@@ -3,13 +3,16 @@
 // diagnósticos se aplica en el momento.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pier_reposteria/config/dependencies.dart';
 import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/data/services/preferencias_service.dart';
 import 'package:pier_reposteria/ui/more/view_model/privacidad_view_model.dart';
 import 'package:pier_reposteria/ui/more/widgets/privacidad_screen.dart';
 import 'package:pier_reposteria/ui/public/widgets/legal_screen.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';
 
 bool _valor(WidgetTester tester, String titulo) => tester
@@ -62,7 +65,11 @@ void main() {
       'pierreposteria_registrar_busquedas': false,
     });
 
-    await tester.pumpApp(const PrivacidadScreen());
+    // Sin pumpApp: borraría las preferencias guardadas arriba.
+    await tester.pumpWidget(MultiProvider(
+      providers: dependencias(FakeApiClient()),
+      child: const MaterialApp(home: PrivacidadScreen()),
+    ));
     await tester.pumpAndSettle();
 
     expect(_valor(tester, PrivacidadScreen.diagnosticos), isFalse);
