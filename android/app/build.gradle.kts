@@ -86,6 +86,19 @@ android {
         release {
             signingConfig =
                 signingConfigs.getByName(if (hayLlaveRelease) "release" else "debug")
+            // R8 (#224): reduce y renombra el código de Java/Kotlin (la app
+            // y los plugins) y quita los recursos que nadie usa. El plugin de
+            // Flutter ya lo encendía por omisión; aquí queda explícito, con
+            // las reglas de Android, las de Flutter (las agrega su plugin),
+            // las de cada librería (consumer rules) y las propias de
+            // proguard-rules.pro. El código Dart va compilado en libapp.so:
+            // ese se ofusca aparte con --obfuscate (docs/LIBERACION.md).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
