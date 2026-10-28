@@ -171,6 +171,9 @@ class TarjetaProducto extends StatelessWidget {
         Wrap(spacing: 8, runSpacing: 8, children: [
           ChoiceChip(
             label: Text('Chico · ${moneda(p.precioChico / 100)}'),
+            // Como en la agenda: con el verde lleno del tema el texto
+            // seleccionado no se veía (Samsung, 28-oct).
+            selectedColor: AppColors.pierVerde.withValues(alpha: 0.18),
             selected: !producto.grande,
             onSelected: (_) => vm.editar(() => producto.grande = false),
           ),
@@ -178,6 +181,7 @@ class TarjetaProducto extends StatelessWidget {
             label: Text(grande == null
                 ? 'Sin grande'
                 : 'Grande · ${moneda(grande / 100)}'),
+            selectedColor: AppColors.pierVerde.withValues(alpha: 0.18),
             selected: producto.grande,
             onSelected: grande == null
                 ? null

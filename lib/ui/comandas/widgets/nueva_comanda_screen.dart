@@ -142,8 +142,11 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
     final creada = await _vm.guardar();
     if (creada == null || !mounted) return;
     final avisos = ScaffoldMessenger.of(context);
-    if (_vm.editando) {
-      // El detalle se actualiza al volver.
+    if (_vm.editando || Navigator.canPop(context)) {
+      // Al editar, regresa al detalle, que se actualiza. Al crear desde la
+      // agenda, regresa con la comanda: la agenda abre su detalle y se
+      // actualiza al volver de él (en el Samsung se quedaba desactualizada
+      // porque se recargaba antes, al reemplazar esta pantalla).
       Navigator.pop(context, creada);
     } else {
       Navigator.pushReplacement(
