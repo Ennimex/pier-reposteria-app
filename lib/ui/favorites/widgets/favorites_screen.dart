@@ -111,7 +111,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           const SizedBox(width: 8),
           Expanded(
               child: Text(
-                  'Anotamos tu interés en "${p.nombre}". Te avisaremos cuando vuelva.')),
+                  'Anotamos tu interés en "${p.nombre}".')),
         ]),
         backgroundColor: AppColors.pierDoradoOscuro,
         behavior: SnackBarBehavior.floating,
