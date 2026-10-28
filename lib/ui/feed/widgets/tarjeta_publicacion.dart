@@ -3,12 +3,13 @@
 // Tarjeta de una publicación del inicio (#132): la marca y cuándo se publicó,
 // el texto («Ver más» si es largo), las fotos o videos (deslizables, con su
 // proporción acotada), «Me encanta», «Comentar» y los comentarios más
-// recientes (#133). Los videos muestran su portada; la reproducción llega en
-// #134.
+// recientes (#133). Los videos se reproducen en la tarjeta (#134,
+// video_publicacion.dart).
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/feed/widgets/video_publicacion.dart';
 
 const _mesesCortos = [
   'ene',
@@ -243,22 +244,18 @@ class _Medio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imagen = medio.esVideo ? medio.portada : medio.url;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (imagen == null)
-          const ColoredBox(color: Colors.black87)
-        else
-          ImagenFeed(imagen),
-        if (medio.esVideo) ...[
-          const Center(
-            child: CircleAvatar(
-              radius: 28,
-              backgroundColor: Colors.black54,
-              child: Icon(LucideIcons.play, color: Colors.white, size: 28),
-            ),
-          ),
+    if (!medio.esVideo) return ImagenFeed(medio.url);
+    // Antes de reproducirse: la portada con su duración.
+    final portada = medio.portada;
+    return VideoPublicacion(
+      medio: medio,
+      portada: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (portada == null)
+            const ColoredBox(color: Colors.black87)
+          else
+            ImagenFeed(portada),
           if (medio.duracion case final segundos?)
             Positioned(
               bottom: 10,
@@ -266,7 +263,7 @@ class _Medio extends StatelessWidget {
               child: _Pastilla(duracionVideo(segundos)),
             ),
         ],
-      ],
+      ),
     );
   }
 }
