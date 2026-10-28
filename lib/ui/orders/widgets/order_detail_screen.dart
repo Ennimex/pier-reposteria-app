@@ -272,9 +272,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   valor: pedido.esDomicilio
                       ? 'A domicilio'
                       : 'Recoger en sucursal'),
-              if ((pedido.esDomicilio
+              if (pedido.esDomicilio
                       ? pedido.horarioEntrega
-                      : pedido.horarioRecogida)
+                      : pedido.horarioRecogida
                   case final horario?) ...[
                 const DivisorDetalle(),
                 FilaInfo(
