@@ -73,12 +73,14 @@ class Monitoreo {
       ..environment = ambiente.name
       ..release = 'mx.com.pierreposteria@${AppVersion.full}'
       ..tracesSampleRate = tasaDeMuestreo('', ambiente)
-      ..tracesSampler = (contexto) =>
-          tasaDeMuestreo(contexto.transactionContext.operation, ambiente)
+      // Entre paréntesis: sin ellos, la cascada siguiente quedaría dentro
+      // del cuerpo de la función.
+      ..tracesSampler = ((contexto) =>
+          tasaDeMuestreo(contexto.transactionContext.operation, ambiente))
       // El cliente puede oponerse con la app abierta (#223).
-      ..beforeSend = (evento, _) => diagnosticosPermitidos ? evento : null
+      ..beforeSend = ((evento, _) => diagnosticosPermitidos ? evento : null)
       ..beforeSendTransaction =
-          (transaccion, _) => diagnosticosPermitidos ? transaccion : null;
+          ((transaccion, _) => diagnosticosPermitidos ? transaccion : null);
   }
 
   /// Le dice a Sentry en qué pantalla está el usuario (#60): cada error lleva

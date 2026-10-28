@@ -12,6 +12,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _dsn = 'https://clave@o1.ingest.sentry.io/2';
 
+/// Una traza cualquiera: SentryTracer, que la construye, no se exporta.
+class _TrazaFalsa extends Fake implements SentryTransaction {}
+
 /// Toma el lugar de SentryFlutter.init: guarda lo que recibió y no toca la
 /// red ni el SDK nativo.
 class _SentryFalso {
@@ -81,7 +84,7 @@ void main() {
     });
 
     test('#223: si el cliente se opuso, la app arranca sin Sentry', () async {
-      await PreferenciasService().guardarEnviaDiagnosticos(false);
+      await PreferenciasService().guardarEnviaDiagnosticos(envia: false);
       final sentry = _SentryFalso();
       var arranques = 0;
 
@@ -121,8 +124,7 @@ void main() {
     test('con diagnósticos permitidos los eventos y trazas pasan', () async {
       final opciones = configurada();
       final evento = SentryEvent();
-      final traza = SentryTransaction(SentryTracer(
-          SentryTransactionContext('pago', 'checkout.pagar'), HubAdapter()));
+      final traza = _TrazaFalsa();
 
       expect(await opciones.beforeSend!(evento, Hint()), same(evento));
       expect(await opciones.beforeSendTransaction!(traza, Hint()), same(traza));
@@ -131,8 +133,7 @@ void main() {
     test('al oponerse se descartan desde ese momento', () async {
       final opciones = configurada();
       Monitoreo.diagnosticosPermitidos = false;
-      final traza = SentryTransaction(SentryTracer(
-          SentryTransactionContext('pago', 'checkout.pagar'), HubAdapter()));
+      final traza = _TrazaFalsa();
 
       expect(await opciones.beforeSend!(SentryEvent(), Hint()), isNull);
       expect(await opciones.beforeSendTransaction!(traza, Hint()), isNull);

@@ -4,6 +4,8 @@
 // diagnósticos y si se registran sus búsquedas. No pide sesión: aplica a
 // quien use la app en este teléfono.
 // MVVM: el estado vive en PrivacidadViewModel; esta vista solo lo pinta.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
@@ -38,7 +40,7 @@ class _PrivacidadScreenState extends State<PrivacidadScreen> {
   @override
   void initState() {
     super.initState();
-    _vm.cargar();
+    unawaited(_vm.cargar());
   }
 
   @override
@@ -57,7 +59,7 @@ class _PrivacidadScreenState extends State<PrivacidadScreen> {
       body: ListenableBuilder(
         listenable: _vm,
         builder: (context, _) => _vm.cargando
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: AppColors.pierVerde))
             : ListView(
                 padding: const EdgeInsets.all(20),
@@ -71,7 +73,8 @@ class _PrivacidadScreenState extends State<PrivacidadScreen> {
                       children: [
                         SwitchListTile(
                           value: _vm.enviaDiagnosticos,
-                          onChanged: _vm.cambiarDiagnosticos,
+                          onChanged: (v) =>
+                              unawaited(_vm.cambiarDiagnosticos(envia: v)),
                           activeThumbColor: Colors.white,
                           activeTrackColor: AppColors.pierVerde,
                           title: const Text(PrivacidadScreen.diagnosticos),
@@ -81,7 +84,8 @@ class _PrivacidadScreenState extends State<PrivacidadScreen> {
                         const Divider(height: 1),
                         SwitchListTile(
                           value: _vm.registraBusquedas,
-                          onChanged: _vm.cambiarBusquedas,
+                          onChanged: (v) =>
+                              unawaited(_vm.cambiarBusquedas(registra: v)),
                           activeThumbColor: Colors.white,
                           activeTrackColor: AppColors.pierVerde,
                           title: const Text(PrivacidadScreen.busquedas),
@@ -96,8 +100,8 @@ class _PrivacidadScreenState extends State<PrivacidadScreen> {
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const LegalScreen(
-                              pestana: LegalScreen.privacidad)),
+                          // Abre en la pestaña del Aviso de Privacidad.
+                          builder: (_) => const LegalScreen()),
                     ),
                     child: const Text('Leer el Aviso de Privacidad'),
                   ),

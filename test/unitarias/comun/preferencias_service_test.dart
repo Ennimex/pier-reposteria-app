@@ -60,12 +60,12 @@ void main() {
     test('cada interruptor se guarda por separado', () async {
       final preferencias = PreferenciasService();
 
-      await preferencias.guardarEnviaDiagnosticos(false);
+      await preferencias.guardarEnviaDiagnosticos(envia: false);
       expect(await preferencias.enviaDiagnosticos(), isFalse);
       expect(await preferencias.registraBusquedas(), isTrue);
 
-      await preferencias.guardarRegistraBusquedas(false);
-      await preferencias.guardarEnviaDiagnosticos(true);
+      await preferencias.guardarRegistraBusquedas(registra: false);
+      await preferencias.guardarEnviaDiagnosticos(envia: true);
       expect(await preferencias.enviaDiagnosticos(), isTrue);
       expect(await preferencias.registraBusquedas(), isFalse);
     });

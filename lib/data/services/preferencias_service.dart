@@ -47,14 +47,14 @@ class PreferenciasService {
   /// que el cliente se oponga (#223).
   Future<bool> enviaDiagnosticos() => _leer(_diagnosticosKey);
 
-  Future<void> guardarEnviaDiagnosticos(bool envia) =>
+  Future<void> guardarEnviaDiagnosticos({required bool envia}) =>
       _guardar(_diagnosticosKey, envia);
 
   /// ¿Se registran las búsquedas y los clics en productos agotados (demanda
   /// no atendida)? Sí, hasta que el cliente se oponga (#223).
   Future<bool> registraBusquedas() => _leer(_busquedasKey);
 
-  Future<void> guardarRegistraBusquedas(bool registra) =>
+  Future<void> guardarRegistraBusquedas({required bool registra}) =>
       _guardar(_busquedasKey, registra);
 
   /// Si no se puede leer, vale lo de omisión (encendido).

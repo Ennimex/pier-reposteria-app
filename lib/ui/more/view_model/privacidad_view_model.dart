@@ -32,17 +32,17 @@ class PrivacidadViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> cambiarDiagnosticos(bool envia) async {
+  Future<void> cambiarDiagnosticos({required bool envia}) async {
     _diagnosticos = envia;
     Monitoreo.diagnosticosPermitidos = envia;
     notifyListeners();
-    await _preferencias.guardarEnviaDiagnosticos(envia);
+    await _preferencias.guardarEnviaDiagnosticos(envia: envia);
   }
 
-  Future<void> cambiarBusquedas(bool registra) async {
+  Future<void> cambiarBusquedas({required bool registra}) async {
     _busquedas = registra;
     notifyListeners();
-    await _preferencias.guardarRegistraBusquedas(registra);
+    await _preferencias.guardarRegistraBusquedas(registra: registra);
   }
 
   @override
