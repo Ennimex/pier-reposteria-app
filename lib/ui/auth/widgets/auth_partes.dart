@@ -657,11 +657,11 @@ class _Elevar extends AnimatedWidget {
 /// [disparo] la sacude cuando falta marcarla.
 class CasillaLegal extends StatefulWidget {
   const CasillaLegal({
-    super.key,
     required this.aceptada,
     required this.alCambiar,
     required this.disparo,
     this.antes = 'Acepto los ',
+    super.key,
   });
 
   final bool aceptada;
