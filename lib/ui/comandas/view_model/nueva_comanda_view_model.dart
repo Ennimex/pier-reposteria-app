@@ -6,6 +6,11 @@
 // mensajes que la web (src/comandas/formulario/validacion.ts) antes de
 // mandarla. Si el backend la rechaza se muestran todos sus motivos. Lo crea
 // NuevaComandaScreen.
+//
+// Con [NuevaComandaViewModel.editarId] edita una comanda (#228): la carga
+// con su versión, conserva lo que este formulario no muestra (colores de la
+// mesa de postres, color de fondo e insumos del pastel, indicaciones del
+// producto) y, si otra persona la guardó antes, lo dice y deja recargarla.
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/comandas_repository.dart';
@@ -35,6 +40,10 @@ class PastelBorrador extends RenglonBorrador {
   String precio = '';
   String leyenda = '';
   String descripcion = '';
+
+  /// Solo al editar: se conservan tal como estaban (#228).
+  String? colorFondo;
+  String? insumos;
 }
 
 /// Un producto del catálogo en tamaño chico o grande, con su precio.
@@ -43,6 +52,12 @@ class ProductoBorrador extends RenglonBorrador {
 
   final ProductoCatalogo producto;
   bool grande = false;
+
+  /// Solo al editar: se conservan tal como estaban (#228).
+  String? indicaciones;
+
+  /// Al editar, el producto ya no está en el catálogo.
+  bool descontinuado = false;
 
   /// Precio unitario en centavos según el tamaño (null: no hay grande).
   int? get precio => grande ? producto.precioGrande : producto.precioChico;
@@ -62,12 +77,16 @@ class FotoBorrador {
 }
 
 class NuevaComandaViewModel extends ChangeNotifier {
-  /// [ahora] solo se pasa en pruebas (reloj fijo).
+  /// [editarId]: la comanda que se edita (null para una nueva). [ahora]
+  /// solo se pasa en pruebas (reloj fijo).
   NuevaComandaViewModel({
     required ComandasRepository repo,
+    this.editarId,
     DateTime Function()? ahora,
   })  : _repo = repo,
         _ahora = ahora ?? DateTime.now;
+
+  final int? editarId;
 
   final ComandasRepository _repo;
   final DateTime Function() _ahora;
@@ -78,6 +97,8 @@ class NuevaComandaViewModel extends ChangeNotifier {
   static const int maxDias = 400;
 
   CatalogoComanda? _catalogo;
+  ComandaParaEditar? _original;
+  bool _desactualizada = false;
   bool _cargando = false;
   String? _errorCarga;
   bool _guardando = false;
@@ -99,6 +120,14 @@ class NuevaComandaViewModel extends ChangeNotifier {
   final List<FotoBorrador> fotos = [];
 
   CatalogoComanda? get catalogo => _catalogo;
+
+  bool get editando => editarId != null;
+
+  /// El folio de la comanda que se edita.
+  int? get folio => _original?.folio;
+
+  /// Otra persona la guardó mientras se editaba: hay que recargarla.
+  bool get desactualizada => _desactualizada;
   bool get cargando => _cargando;
   String? get errorCarga => _errorCarga;
   bool get guardando => _guardando;
@@ -124,8 +153,13 @@ class NuevaComandaViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final c = await _repo.catalogo();
+      final id = editarId;
+      final original = id == null || _original != null
+          ? _original
+          : await _repo.paraEditar(id);
       if (_cerrado) return;
       _catalogo = c;
+      if (original != null && _original == null) _llenar(original);
     } on SesionInvalidaException catch (e) {
       _errorCarga = e.message;
       _sesionInvalida = true;
@@ -136,6 +170,90 @@ class NuevaComandaViewModel extends ChangeNotifier {
     _cargando = false;
     notifyListeners();
   }
+
+  /// Vuelve a traer la comanda que se edita (la versión que otra persona
+  /// guardó) y descarta lo que se había cambiado aquí.
+  Future<void> recargarComanda() async {
+    final id = editarId;
+    if (id == null) return;
+    try {
+      final original = await _repo.paraEditar(id);
+      if (_cerrado) return;
+      _llenar(original);
+      _desactualizada = false;
+      _errores = const [];
+    } on ApiException catch (e) {
+      _errores = [e.message];
+    }
+    if (!_cerrado) notifyListeners();
+  }
+
+  /// Llena el formulario con [c].
+  void _llenar(ComandaParaEditar c) {
+    _original = c;
+    nombre = c.clienteNombre;
+    telefono = c.clienteTelefono;
+    final f = c.fechaEntrega.split('-').map(int.tryParse).toList();
+    fecha = f.length == 3 && !f.contains(null)
+        ? DateTime(f[0]!, f[1]!, f[2]!)
+        : null;
+    hora = c.horaEntrega.length >= 5 ? c.horaEntrega.substring(0, 5) : null;
+    notas = c.notas ?? '';
+    descuento = c.descuento == 0 ? '' : _pesos(c.descuento);
+    anticipo = _pesos(c.anticipo);
+    renglones.clear();
+    fotos.clear();
+    final productos = _catalogo?.productos ?? const <ProductoCatalogo>[];
+    for (final r in c.renglones) {
+      String? opcional(Object? v) {
+        final t = v?.toString().trim() ?? '';
+        return t.isEmpty ? null : t;
+      }
+
+      final precio = centavosDe(r['precio_unitario']) ?? 0;
+      if (r['tipo'] == 'producto') {
+        final id = (r['producto_id'] as num?)?.toInt() ?? 0;
+        final grande = r['tamano_catalogo'] == 'grande';
+        final delCatalogo = productos.where((p) => p.id == id).firstOrNull;
+        renglones.add(ProductoBorrador(
+          _siguiente++,
+          delCatalogo ??
+              ProductoCatalogo(
+                id: id,
+                nombre: opcional(r['nombre']) ?? 'Producto',
+                precioChico: precio,
+                precioGrande: grande ? precio : null,
+              ),
+        )
+          ..grande = grande
+          ..cantidad = '${r['cantidad'] ?? 1}'
+          ..indicaciones = opcional(r['indicaciones'])
+          ..descontinuado = delCatalogo == null);
+      } else {
+        renglones.add(PastelBorrador(_siguiente++)
+          ..sabor = opcional(r['sabor']) ?? ''
+          ..tamano = opcional(r['tamano']) ?? ''
+          ..forma = opcional(r['forma']) ?? ''
+          ..decoracion = opcional(r['decoracion']) ?? ''
+          ..pisos = (r['num_pisos'] as num?)?.toInt() ?? 1
+          ..cantidad = '${r['cantidad'] ?? 1}'
+          ..precio = _pesos(precio)
+          ..leyenda = opcional(r['leyenda']) ?? ''
+          ..descripcion = opcional(r['descripcion']) ?? ''
+          ..colorFondo = opcional(r['color_fondo'])
+          ..insumos = opcional(r['insumos']));
+      }
+    }
+    for (final im in c.imagenes) {
+      fotos.add(FotoBorrador(_siguiente++, im.url)
+        ..estado = EstadoFoto.lista
+        ..subida = im);
+    }
+  }
+
+  /// «450.00» (sin separador de miles: es lo que se edita).
+  static String _pesos(int centavos) =>
+      '${centavos ~/ 100}.${(centavos % 100).toString().padLeft(2, '0')}';
 
   /// Aplica [cambio] a lo capturado y repinta (los totales se recalculan).
   void editar(VoidCallback cambio) {
@@ -355,6 +473,10 @@ class NuevaComandaViewModel extends ChangeNotifier {
 
   void _validarProducto(List<String> e, ProductoBorrador p) {
     final pre = '${p.producto.nombre} · ';
+    if (p.descontinuado) {
+      e.add('${pre}Este producto ya no está disponible; quítalo de la '
+          'comanda');
+    }
     if (p.precio == null) {
       e.add('${pre}Este producto solo se vende en tamaño chico');
     }
@@ -412,12 +534,15 @@ class NuevaComandaViewModel extends ChangeNotifier {
                 'leyenda': opcional(r.leyenda),
                 'descripcion': opcional(r.descripcion),
                 'precio_unitario': pesos(leerCentavos(r.precio) ?? 0),
+                'color_fondo': ?r.colorFondo,
+                'insumos': ?r.insumos,
               },
             ProductoBorrador() => {
                 'tipo': 'producto',
                 'producto_id': r.producto.id,
                 'tamano_catalogo': r.grande ? 'grande' : 'chico',
                 'cantidad': int.parse(r.cantidad.trim()),
+                'indicaciones': ?r.indicaciones,
               },
           },
       ],
@@ -425,6 +550,8 @@ class NuevaComandaViewModel extends ChangeNotifier {
         for (final f in fotos)
           if (f.subida case final subida?) subida.toJson(),
       ],
+      // Al editar, los colores de la mesa de postres se quedan como estaban.
+      ...?_original?.coloresMesa,
     };
   }
 
@@ -442,7 +569,23 @@ class NuevaComandaViewModel extends ChangeNotifier {
     notifyListeners();
     ComandaCreada? creada;
     try {
-      creada = await _repo.crear(cuerpo());
+      final id = editarId;
+      final original = _original;
+      if (id != null && original != null) {
+        final r = await _repo.guardarCambios(id, cuerpo(),
+            actualizadaEn: original.actualizadaEn);
+        creada = ComandaCreada(
+          id: id,
+          folio: original.folio,
+          mensaje: r.mensaje,
+          advertencias: r.advertencias,
+        );
+      } else {
+        creada = await _repo.crear(cuerpo());
+      }
+    } on ConflictoComandaException catch (e) {
+      _errores = [e.message];
+      _desactualizada = true;
     } on SesionInvalidaException catch (e) {
       _errores = [e.message];
       _sesionInvalida = true;

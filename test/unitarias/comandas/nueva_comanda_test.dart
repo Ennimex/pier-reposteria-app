@@ -452,4 +452,128 @@ void main() {
       );
     });
   });
+
+  group('Editar (#228)', () {
+    (NuevaComandaViewModel, FakeApiClient) editar({int productoId = 10}) {
+      final api = FakeApiClient()
+        ..responder(ApiConstants.comandasCatalogo, catalogoJson())
+        ..responder(ApiConstants.comandaDetalle(7),
+            comandaEditableJson(productoId: productoId));
+      return (
+        NuevaComandaViewModel(
+          repo: ComandasRepositoryRemote(api: api),
+          editarId: 7,
+          ahora: _ahora,
+        ),
+        api,
+      );
+    }
+
+    test('carga la comanda en el formulario', () async {
+      final (vm, _) = editar();
+      expect(vm.editando, isTrue);
+      await vm.cargar();
+
+      expect(vm.folio, 5003);
+      expect(vm.nombre, 'María López');
+      expect(vm.telefono, '7711234567');
+      expect(vm.fecha, DateTime(2026, 10, 20));
+      expect(vm.hora, '16:30');
+      expect(vm.notas, 'Sin nuez');
+      expect(vm.descuento, '');
+      expect(vm.anticipo, '400.00');
+      final pastel = vm.renglones.first as PastelBorrador;
+      expect([pastel.sabor, pastel.tamano, pastel.forma, pastel.decoracion],
+          ['Chocolate', '20 personas', 'Redondo', 'Flores']);
+      expect(pastel.pisos, 2);
+      expect(pastel.precio, '450.00');
+      expect(pastel.leyenda, 'Feliz cumple');
+      final producto = vm.renglones.last as ProductoBorrador;
+      expect(producto.producto.precioGrande, 12000);
+      expect(producto.grande, isTrue);
+      expect(producto.cantidad, '2');
+      expect(vm.fotos.single.estado, EstadoFoto.lista);
+      expect(vm.subtotal, 69000);
+      expect(vm.validar(), isEmpty);
+    });
+
+    test('guarda con la versión y conserva lo que el formulario no edita',
+        () async {
+      final (vm, api) = editar();
+      await vm.cargar();
+      api.responder(ApiConstants.comandaDetalle(7), {
+        'success': true,
+        'comanda': {'id': 7, 'folio': 5003, 'version': 2},
+        'advertencias': <String>[],
+        'message': 'Comanda #5003 actualizada',
+      });
+      vm.notas = 'Con nuez';
+
+      final r = await vm.guardar();
+
+      expect(r!.folio, 5003);
+      expect(r.mensaje, 'Comanda #5003 actualizada');
+      final body = api.ultima(ApiConstants.comandaDetalle(7))!.body!;
+      expect(api.ultima(ApiConstants.comandaDetalle(7))!.metodo, 'PUT-Auth');
+      expect(body['actualizada_en'], '2026-10-12T15:00:00.123Z');
+      expect(body['notas'], 'Con nuez');
+      expect(body['mesa_color_capacillos'], 'Dorado');
+      expect(body['mesa_color_betun'], isNull);
+      final items = body['items'] as List;
+      expect(items.first, containsPair('color_fondo', 'Rosa'));
+      expect(items.first, containsPair('insumos', 'Velas'));
+      expect(items.last, containsPair('indicaciones', 'Sin fresa'));
+      expect(body['imagenes'], [
+        {
+          'url': 'https://res.cloudinary.com/demo/image/upload/a.jpg',
+          'public_id': 'pier-reposteria/comandas/a',
+        },
+      ]);
+    });
+
+    test('si otra persona la guardó antes, lo dice y deja recargarla',
+        () async {
+      final (vm, api) = editar();
+      await vm.cargar();
+      api.responder(ApiConstants.comandaDetalle(7), {
+        'success': false,
+        'codigo': 'COMANDA_DESACTUALIZADA',
+        'message': 'Alguien más modificó esta comanda mientras la editabas. '
+            'Recárgala para ver la versión actual.',
+      });
+      vm.notas = 'Mi cambio';
+
+      expect(await vm.guardar(), isNull);
+      expect(vm.desactualizada, isTrue);
+      expect(vm.errores.single, startsWith('Alguien más modificó'));
+
+      api.responder(ApiConstants.comandaDetalle(7),
+          comandaEditableJson(actualizada: '2026-10-12T16:00:00.000Z'));
+      await vm.recargarComanda();
+
+      expect(vm.desactualizada, isFalse);
+      expect(vm.errores, isEmpty);
+      expect(vm.notas, 'Sin nuez');
+    });
+
+    test('un producto que ya no está en el catálogo pide quitarlo', () async {
+      final (vm, _) = editar(productoId: 99);
+      await vm.cargar();
+
+      final producto = vm.renglones.last as ProductoBorrador;
+      expect(producto.descontinuado, isTrue);
+      expect(producto.precio, 12000);
+      expect(vm.validar(), contains(
+          'Gelatina · Este producto ya no está disponible; quítalo de la '
+          'comanda'));
+    });
+
+    test('si la comanda no carga se ve el motivo', () async {
+      final (vm, api) = editar();
+      api.fallar(ApiConstants.comandaDetalle(7), 'Comanda no encontrada');
+      await vm.cargar();
+      expect(vm.catalogo, isNull);
+      expect(vm.errorCarga, 'Comanda no encontrada');
+    });
+  });
 }

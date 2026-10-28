@@ -9,6 +9,9 @@
 //   texto "450.00"; precio_grande puede ser null).
 // - POST /comandas/imagenes (multipart `imagen`) -> imagen{url, public_id}.
 // - POST /comandas -> comanda{id, folio}, advertencias[], message.
+// - Edición (#228): GET /comandas/:id trae lo capturado con
+//   `actualizada_en`, que se devuelve en PUT /comandas/:id; si otra persona
+//   la guardó antes, 409 COMANDA_DESACTUALIZADA.
 // Los montos se llevan en centavos, como la web, para no perder centavos al
 // sumar.
 
@@ -154,6 +157,90 @@ class ComandaCreada {
   /// P. ej. «La entrega es en menos de 3 días: confirma con producción que
   /// alcanza.»
   final List<String> advertencias;
+}
+
+/// Lo capturado de una comanda para editarla (GET /comandas/:id).
+class ComandaParaEditar {
+  const ComandaParaEditar({
+    required this.id,
+    required this.folio,
+    required this.actualizadaEn,
+    required this.clienteNombre,
+    required this.clienteTelefono,
+    required this.fechaEntrega,
+    required this.horaEntrega,
+    this.notas,
+    this.coloresMesa = const {},
+    this.descuento = 0,
+    this.anticipo = 0,
+    this.renglones = const [],
+    this.imagenes = const [],
+  });
+
+  factory ComandaParaEditar.fromJson(Map<String, dynamic> respuesta) {
+    final c = respuesta['comanda'] is Map
+        ? Map<String, dynamic>.from(respuesta['comanda'] as Map)
+        : <String, dynamic>{};
+    String texto(Object? v) => v?.toString().trim() ?? '';
+    List<Map<String, dynamic>> mapas(Object? v) => [
+          if (v is List)
+            for (final x in v)
+              if (x is Map) Map<String, dynamic>.from(x),
+        ];
+    return ComandaParaEditar(
+      id: (c['id'] as num?)?.toInt() ?? 0,
+      folio: (c['folio'] as num?)?.toInt() ?? 0,
+      actualizadaEn: texto(c['actualizada_en']),
+      clienteNombre: texto(c['cliente_nombre']),
+      clienteTelefono: texto(c['cliente_telefono']),
+      fechaEntrega: texto(c['fecha_entrega']),
+      horaEntrega: texto(c['hora_entrega']),
+      notas: c['notas']?.toString(),
+      coloresMesa: {
+        for (final clave in const [
+          'mesa_color_capacillos',
+          'mesa_color_betun',
+          'mesa_color_grageas',
+        ])
+          clave: c[clave]?.toString(),
+      },
+      descuento: centavosDe(c['descuento']) ?? 0,
+      anticipo: centavosDe(c['anticipo']) ?? 0,
+      renglones: mapas(c['items']),
+      imagenes: [
+        for (final im in mapas(c['imagenes']))
+          if (texto(im['url']).isNotEmpty && texto(im['public_id']).isNotEmpty)
+            FotoComanda(url: texto(im['url']), publicId: texto(im['public_id'])),
+      ],
+    );
+  }
+
+  final int id;
+  final int folio;
+
+  /// La versión que se editó; se devuelve al guardar.
+  final String actualizadaEn;
+  final String clienteNombre;
+  final String clienteTelefono;
+
+  /// 'YYYY-MM-DD'.
+  final String fechaEntrega;
+
+  /// 'HH:MM'.
+  final String horaEntrega;
+  final String? notas;
+
+  /// Los colores de la mesa de postres tal como están (el formulario de la
+  /// app no los edita, pero se conservan al guardar).
+  final Map<String, String?> coloresMesa;
+
+  /// En centavos.
+  final int descuento;
+  final int anticipo;
+
+  /// Los renglones como llegan (pastel o producto).
+  final List<Map<String, dynamic>> renglones;
+  final List<FotoComanda> imagenes;
 }
 
 /// Pesos de la API ("450.00", 450, 450.5) a centavos; null si no es un

@@ -50,4 +50,19 @@ abstract class ComandasRepository {
   /// backend la rechaza, ApiException con todos sus motivos, uno por
   /// renglón.
   Future<ComandaCreada> crear(Map<String, dynamic> datos);
+
+  /// GET /comandas/:id: lo capturado para editarlo, con su versión
+  /// (`actualizada_en`).
+  Future<ComandaParaEditar> paraEditar(int id);
+
+  /// PUT /comandas/:id con [datos] y la versión que se editó
+  /// ([actualizadaEn]). ConflictoComandaException si otra persona la
+  /// guardó antes (409 COMANDA_DESACTUALIZADA); ApiException con todos los
+  /// motivos si el backend la rechaza. Devuelve el mensaje y las
+  /// advertencias.
+  Future<({String mensaje, List<String> advertencias})> guardarCambios(
+    int id,
+    Map<String, dynamic> datos, {
+    required String actualizadaEn,
+  });
 }

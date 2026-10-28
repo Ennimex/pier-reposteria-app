@@ -334,10 +334,15 @@ class _Miniatura extends StatelessWidget {
       child: Stack(fit: StackFit.expand, children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            File(foto.ruta),
+          // Al editar, las fotos que ya tenía vienen de la red.
+          child: Image(
+            image: ResizeImage(
+              foto.ruta.startsWith('https://')
+                  ? NetworkImage(foto.ruta)
+                  : FileImage(File(foto.ruta)) as ImageProvider,
+              width: 264,
+            ),
             fit: BoxFit.cover,
-            cacheWidth: 264,
             errorBuilder: (_, _, _) => ColoredBox(
               color: AppColors.pierArenaOscuro,
               child: const Icon(LucideIcons.image, color: Colors.white),

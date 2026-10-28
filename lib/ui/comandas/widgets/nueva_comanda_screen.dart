@@ -6,6 +6,9 @@
 // comanda creada con su folio; si el backend la rechaza, el recuadro de
 // arriba del botón dice qué corregir sin perder lo capturado. Las piezas
 // están en nueva_comanda_partes.dart; el estado, en NuevaComandaViewModel.
+// Con [NuevaComandaScreen.editarId] edita una comanda (#228): al guardar
+// regresa al detalle con el resultado; si otra persona la guardó antes,
+// ofrece recargarla.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -22,18 +25,20 @@ import 'package:pier_reposteria/utils/moneda.dart';
 import 'package:provider/provider.dart';
 
 class NuevaComandaScreen extends StatefulWidget {
-  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
-  const NuevaComandaScreen({super.key, this.viewModel});
+  /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo
+  /// (para editar la comanda [editarId] si se da).
+  const NuevaComandaScreen({super.key, this.viewModel, this.editarId});
 
   final NuevaComandaViewModel? viewModel;
+  final int? editarId;
 
   @override
   State<NuevaComandaScreen> createState() => _NuevaComandaScreenState();
 }
 
 class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
-  late final NuevaComandaViewModel _vm =
-      widget.viewModel ?? NuevaComandaViewModel(repo: context.read());
+  late final NuevaComandaViewModel _vm = widget.viewModel ??
+      NuevaComandaViewModel(repo: context.read(), editarId: widget.editarId);
   final _picker = ImagePicker();
   bool _saliendo = false;
 
@@ -137,12 +142,17 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
     final creada = await _vm.guardar();
     if (creada == null || !mounted) return;
     final avisos = ScaffoldMessenger.of(context);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => DetalleComandaScreen(id: creada.id),
-      ),
-    );
+    if (_vm.editando) {
+      // El detalle se actualiza al volver.
+      Navigator.pop(context, creada);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => DetalleComandaScreen(id: creada.id),
+        ),
+      );
+    }
     avisos.showSnackBar(SnackBar(
       content: Text([creada.mensaje, ...creada.advertencias].join('\n')),
       backgroundColor: creada.advertencias.isEmpty
@@ -161,7 +171,14 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.pierVerde,
         foregroundColor: Colors.white,
-        title: const Text('Nueva comanda'),
+        title: ListenableBuilder(
+          listenable: _vm,
+          builder: (_, _) => Text(!_vm.editando
+              ? 'Nueva comanda'
+              : _vm.folio == null
+                  ? 'Editar comanda'
+                  : 'Editar comanda #${_vm.folio}'),
+        ),
       ),
       body: ListenableBuilder(
         listenable: _vm,
@@ -190,7 +207,8 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
                         : const Icon(LucideIcons.check, size: 18),
                     label: Text(_vm.guardando
                         ? 'Guardando…'
-                        : 'Guardar · ${moneda(_vm.total / 100)}'),
+                        : '${_vm.editando ? 'Guardar cambios' : 'Guardar'}'
+                            ' · ${moneda(_vm.total / 100)}'),
                   ),
                 ),
               ),
@@ -338,6 +356,12 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
           ],
         ),
         if (_vm.errores.isNotEmpty) ErroresComanda(_vm.errores),
+        if (_vm.desactualizada)
+          OutlinedButton.icon(
+            onPressed: _vm.recargarComanda,
+            icon: const Icon(LucideIcons.refreshCw, size: 18),
+            label: const Text('Recargar la comanda'),
+          ),
       ],
     );
   }
