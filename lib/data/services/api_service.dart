@@ -44,11 +44,11 @@ class ApiService implements ApiClient {
       Future<T> Function(http.Client cliente) peticion) async {
     final fijo = cliente;
     if (fijo != null) return peticion(fijo);
-    final cliente = http.Client();
+    final nuevo = http.Client();
     try {
-      return await peticion(cliente);
+      return await peticion(nuevo);
     } finally {
-      cliente.close();
+      nuevo.close();
     }
   }
 
