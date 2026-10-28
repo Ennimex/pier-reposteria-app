@@ -4,11 +4,13 @@
 // NotificationProvider compartido marcar una o todas como leídas.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/data/repositories/comandas_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/notificaciones_repository_remote.dart';
 import 'package:pier_reposteria/domain/models/notificacion.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/notifications/view_model/notifications_view_model.dart';
 
+import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';
 
 /// Sábado 10 de octubre de 2026, 18:00 (hora local).
@@ -44,6 +46,19 @@ Map<String, dynamic> get _lista => {
       notificaciones: provider, ahora: () => _ahora);
   return (vm, provider, api);
 }
+
+Notificacion _deTitulo(String titulo) =>
+    Notificacion(id: '5', tipo: 'pedido', titulo: titulo, mensaje: '');
+
+/// ViewModel del personal: busca las comandas en [api].
+NotificationsViewModel _personal(FakeApiClient api) => NotificationsViewModel(
+      notificaciones:
+          NotificationProvider(repo: NotificacionesRepositoryRemote(api: api)),
+      comandas: ComandasRepositoryRemote(api: api),
+    );
+
+String _agenda(String vista, int folio) =>
+    ApiConstants.agendaComandas(vista, busqueda: '$folio');
 
 Notificacion _creada(DateTime? fecha) =>
     Notificacion(id: '9', tipo: 'aviso', titulo: '', mensaje: '', creadaEn: fecha);
@@ -192,6 +207,77 @@ void main() {
 
       expect(await vm.marcarTodas(), 'Error al marcar');
       expect(vm.noLeidas, 2);
+    });
+  });
+
+  group('Notificacion: folio de la comanda (#136)', () {
+    test('lee el folio de los títulos que manda el backend', () {
+      expect(_deTitulo('Nueva comanda #5001').folioComanda, 5001);
+      expect(_deTitulo('Cambió la comanda #42').folioComanda, 42);
+      expect(_deTitulo('Comanda #7 cancelada').folioComanda, 7);
+      expect(_deTitulo('Comanda sin folio').folioComanda, isNull);
+    });
+
+    test('solo los avisos que hablan de una comanda', () {
+      expect(_deTitulo('Comanda #7 cancelada').esDeComanda, isTrue);
+      expect(_deTitulo('Cobro sin pedido').esDeComanda, isFalse);
+    });
+  });
+
+  group('NotificationsViewModel: comandas del personal (#136)', () {
+    test('el cliente no abre comandas', () {
+      final (vm, _, _) = _armar();
+      expect(vm.esPersonal, isFalse);
+      expect(vm.abreComanda(_deTitulo('Nueva comanda #5001')), isFalse);
+    });
+
+    test('encuentra la comanda activa por su folio', () async {
+      final api = FakeApiClient()
+        ..responder(_agenda('activas', 5001), agendaJson([
+          comandaJson(id: 3, folio: 5010),
+          comandaJson(id: 11),
+        ]));
+      final vm = _personal(api);
+
+      expect(vm.esPersonal, isTrue);
+      expect(vm.abreComanda(_deTitulo('Nueva comanda #5001')), isTrue);
+      expect(vm.abreComanda(_deTitulo('Cobro sin pedido')), isFalse);
+      expect(await vm.comandaDe(_deTitulo('Nueva comanda #5001')), 11);
+    });
+
+    test('si no está activa la busca entre las entregadas', () async {
+      final api = FakeApiClient()
+        ..responder(_agenda('activas', 5001), agendaJson([]))
+        ..responder(_agenda('entregadas', 5001), agendaJson([
+          comandaJson(id: 12, estado: 'entregada'),
+        ]));
+
+      expect(await _personal(api).comandaDe(_deTitulo('Cambió la comanda #5001')),
+          12);
+    });
+
+    test('una cancelada se busca primero entre las canceladas', () async {
+      final api = FakeApiClient()
+        ..responder(_agenda('canceladas', 5001), agendaJson([
+          comandaJson(id: 13, estado: 'cancelada'),
+        ]));
+
+      expect(await _personal(api).comandaDe(_deTitulo('Comanda #5001 cancelada')),
+          13);
+      expect(api.llamo(_agenda('activas', 5001)), isFalse);
+    });
+
+    test('sin folio, sin encontrarla o si falla devuelve null', () async {
+      final api = FakeApiClient()
+        ..responder(_agenda('activas', 5001), agendaJson([]))
+        ..responder(_agenda('entregadas', 5001), agendaJson([]))
+        ..fallar(_agenda('activas', 5002), 'Sin conexión');
+      final vm = _personal(api);
+
+      expect(await vm.comandaDe(_deTitulo('Comanda sin folio')), isNull);
+      expect(api.llamadas, isEmpty);
+      expect(await vm.comandaDe(_deTitulo('Nueva comanda #5001')), isNull);
+      expect(await vm.comandaDe(_deTitulo('Nueva comanda #5002')), isNull);
     });
   });
 }

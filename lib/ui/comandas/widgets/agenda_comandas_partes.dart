@@ -10,6 +10,7 @@ import 'package:pier_reposteria/domain/models/comanda.dart';
 import 'package:pier_reposteria/routing/app_routes.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/comandas_formato.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/utils/moneda.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +34,8 @@ void avisoComandas(BuildContext context, String mensaje, {Color? color}) {
 Future<void> salirDeComandas(BuildContext context, {String? mensaje}) async {
   final avisos = ScaffoldMessenger.of(context);
   final router = GoRouter.of(context);
+  // Deja de consultar las notificaciones y vacía la campana.
+  context.read<NotificationProvider>().stopPolling();
   await context.read<AuthProvider>().logout();
   router.go(AppRoutes.login);
   if (mensaje != null) {

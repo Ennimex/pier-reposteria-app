@@ -5,9 +5,12 @@
 // Anteriores con su «hace cuánto», y se marcan como leídas una o todas. La
 // lista vive en NotificationProvider, que comparten la campana de inicio y
 // su sondeo; este ViewModel lo observa y devuelve a la vista el motivo de
-// cada rechazo del backend.
+// cada rechazo del backend. Para el personal (#136) además encuentra la
+// comanda de la que habla cada aviso.
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/comandas_repository.dart';
+import 'package:pier_reposteria/domain/models/comanda.dart';
 import 'package:pier_reposteria/domain/models/notificacion.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/utils/formatters.dart';
@@ -19,16 +22,20 @@ typedef GrupoNotificaciones = ({
 });
 
 class NotificationsViewModel extends ChangeNotifier {
+  /// [comandas] solo para el personal (abre la comanda de cada aviso);
   /// [ahora] solo se pasa en pruebas (reloj fijo).
   NotificationsViewModel({
     required NotificationProvider notificaciones,
+    ComandasRepository? comandas,
     DateTime Function()? ahora,
   })  : _notificaciones = notificaciones,
+        _comandas = comandas,
         _ahora = ahora ?? DateTime.now {
     _notificaciones.addListener(_avisar);
   }
 
   final NotificationProvider _notificaciones;
+  final ComandasRepository? _comandas;
   final DateTime Function() _ahora;
   bool _cerrado = false;
   bool _cargando = false;
@@ -70,6 +77,40 @@ class NotificationsViewModel extends ChangeNotifier {
       _notificaciones.marcarLeida(notificacion.id);
 
   Future<String?> marcarTodas() => _notificaciones.marcarTodasLeidas();
+
+  /// true si la sesión es del personal: sus avisos son de comandas.
+  bool get esPersonal => _comandas != null;
+
+  /// true si tocar [notificacion] lleva a una comanda (o a la agenda).
+  bool abreComanda(Notificacion notificacion) =>
+      esPersonal && notificacion.esDeComanda;
+
+  /// El id de la comanda de la que habla [notificacion], buscada por el
+  /// folio del título: primero entre las activas y luego en el historial
+  /// (una cancelada, primero entre las canceladas). null si el título no
+  /// trae folio, no se encontró o el backend no respondió: la vista abre
+  /// entonces la agenda.
+  Future<int?> comandaDe(Notificacion notificacion) async {
+    final repo = _comandas;
+    final folio = notificacion.folioComanda;
+    if (repo == null || folio == null) return null;
+    final cancelada =
+        notificacion.titulo.toLowerCase().contains('cancelada');
+    final vistas = cancelada
+        ? const [VistaAgenda.canceladas, VistaAgenda.activas]
+        : const [VistaAgenda.activas, VistaAgenda.entregadas];
+    try {
+      for (final vista in vistas) {
+        final agenda = await repo.agenda(vista: vista, busqueda: '$folio');
+        for (final c in agenda.comandas) {
+          if (c.folio == folio) return c.id;
+        }
+      }
+    } on ApiException {
+      // La agenda dirá qué pasa (y cierra la sesión si ya no es válida).
+    }
+    return null;
+  }
 
   /// Las notificaciones por día de calendario, sin grupos vacíos. Sin fecha
   /// van a «Anteriores».

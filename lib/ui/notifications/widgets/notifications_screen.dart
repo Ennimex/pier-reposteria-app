@@ -2,7 +2,9 @@
 //
 // «Notificaciones» (MVVM, Fase 5): encabezado con «Leer todas», título con
 // cuántas faltan por leer y la lista agrupada en Hoy, Ayer y Anteriores
-// (tarjetas en notificaciones_partes.dart). Tocar una la marca como leída.
+// (tarjetas en notificaciones_partes.dart). Tocar una la marca como leída;
+// al personal, si habla de una comanda, además le abre esa comanda (o su
+// agenda si no se encuentra, #136).
 // El estado vive en NotificationsViewModel; si el backend rechaza algo se
 // avisa con un SnackBar.
 //
@@ -13,7 +15,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/domain/models/notificacion.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
@@ -38,7 +45,14 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationsViewModel _vm = widget.viewModel ??
       NotificationsViewModel(
-          notificaciones: context.read<NotificationProvider>());
+        notificaciones: context.read<NotificationProvider>(),
+        comandas: AppRoutes.esPersonal(context.read<AuthProvider>().rol)
+            ? context.read()
+            : null,
+      );
+
+  /// Evita abrir dos veces la misma comanda con dos toques seguidos.
+  bool _abriendo = false;
 
   @override
   void initState() {
@@ -72,6 +86,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _explorarMenu() {
     Navigator.pop(context);
     context.read<NavigationProvider>().goCatalogo();
+  }
+
+  /// Regresa a la agenda de comandas (de donde el personal abrió la lista).
+  void _verAgenda() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      GoRouter.of(context).go(AppRoutes.comandas);
+    }
+  }
+
+  /// La marca como leída y, si es del personal y habla de una comanda, la
+  /// abre; si no se encuentra, abre la agenda.
+  Future<void> _tocar(Notificacion n) async {
+    final leer = _hacer(() => _vm.marcarLeida(n));
+    if (!_vm.abreComanda(n) || _abriendo) return leer;
+    _abriendo = true;
+    final id = await _vm.comandaDe(n);
+    _abriendo = false;
+    if (!mounted) return;
+    if (id == null) {
+      _verAgenda();
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => DetalleComandaScreen(id: id)),
+    );
   }
 
   @override
@@ -242,11 +284,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         AvisoNotificaciones(
           icono: LucideIcons.bellOff,
           titulo: 'Sin notificaciones',
-          texto: 'Aquí aparecerán tus pedidos, promociones y novedades de '
-              'Pier Repostería.',
-          boton: 'Explorar Menú',
-          iconoBoton: LucideIcons.cake,
-          onPressed: _explorarMenu,
+          texto: _vm.esPersonal
+              ? 'Aquí aparecerán las comandas nuevas, sus cambios y '
+                  'cancelaciones.'
+              : 'Aquí aparecerán tus pedidos, promociones y novedades de '
+                  'Pier Repostería.',
+          boton: _vm.esPersonal ? 'Ver comandas' : 'Explorar Menú',
+          iconoBoton:
+              _vm.esPersonal ? LucideIcons.clipboardList : LucideIcons.cake,
+          onPressed: _vm.esPersonal ? _verAgenda : _explorarMenu,
           mecerIcono: true,
         ),
       );
@@ -295,7 +341,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: NotificacionTarjeta(
               notificacion: n,
               cuando: _vm.cuando(n),
-              onTap: () => _hacer(() => _vm.marcarLeida(n)),
+              onTap: () => _tocar(n),
             ),
           ),
         ));

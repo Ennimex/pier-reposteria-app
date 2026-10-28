@@ -36,12 +36,21 @@ class NotificacionTarjeta extends StatelessWidget {
         'resena' => Icons.star_outline_rounded,
         'reembolso' => LucideIcons.rotateCcw,
         'producto' => LucideIcons.cake,
+        'alerta' => LucideIcons.triangleAlert,
+        'aviso' => LucideIcons.mail,
         _ => LucideIcons.bell,
       };
+
+  /// Color del ícono (y del punto) mientras no se lee: las alertas al
+  /// personal (comanda cambiada o cancelada, cobro sin pedido) van en
+  /// terracota; lo demás, en verde.
+  static Color acento(String tipo) =>
+      tipo == 'alerta' ? AppColors.error : AppColors.pierVerde;
 
   @override
   Widget build(BuildContext context) {
     final leida = notificacion.leida;
+    final color = acento(notificacion.tipo);
     // Fondo, borde, ícono y título cambian con el mismo ritmo.
     final duracion = AppMovimiento.duracion(context, AppMovimiento.corta);
     const curva = AppMovimiento.curvaEstandar;
@@ -78,14 +87,14 @@ class NotificacionTarjeta extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: leida
                       ? AppColors.textSecondary.withValues(alpha: 0.08)
-                      : AppColors.pierVerde.withValues(alpha: 0.12),
+                      : color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TweenAnimationBuilder<Color?>(
                   tween: ColorTween(
                       end: leida
                           ? AppColors.textSecondary.withValues(alpha: 0.5)
-                          : AppColors.pierVerde),
+                          : color),
                   duration: duracion,
                   curve: curva,
                   builder: (_, color, _) =>
@@ -108,7 +117,7 @@ class NotificacionTarjeta extends StatelessWidget {
                     height: 8,
                     margin: const EdgeInsets.only(top: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.pierVerde,
+                      color: color,
                       shape: BoxShape.circle,
                     ),
                   ),
