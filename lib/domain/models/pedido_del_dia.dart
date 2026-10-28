@@ -86,8 +86,10 @@ class PedidoDelDia {
         if (json['items'] case final List items)
           for (final i in items)
             if (i is Map && texto(i['nombre']) != null)
-              '${i['cantidad'] ?? 1} × ${texto(i['nombre'])}'
-                  '${texto(i['tamano']) == null ? '' : ' (${texto(i['tamano'])})'}',
+              [
+                '${i['cantidad'] ?? 1} × ${texto(i['nombre'])}',
+                if (texto(i['tamano']) case final t?) '($t)',
+              ].join(' '),
       ],
     );
   }
