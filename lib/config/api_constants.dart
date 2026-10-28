@@ -126,6 +126,9 @@ class ApiConstants {
   static const String resenasDestacadas = '/resenas/destacadas';
   static String resenasPorProducto(String id) => '/resenas/producto/$id';
   static String likeResena(String id)          => '/resenas/$id/like';
+  // Reseñas de un producto que el cliente marcó «útil» (#42)
+  static String misUtiles(String productoId) =>
+      '/resenas/mis-utiles?producto_id=$productoId';
   static String editarResena(String id)        => '/resenas/$id';
 
   // ── REEMBOLSOS ────────────────────────────────────────────────────

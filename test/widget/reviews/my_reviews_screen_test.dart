@@ -112,5 +112,36 @@ void main() {
       expect(llamada.body?['rating'], 5);
       expect(llamada.body?['comentario'], 'Muy esponjoso');
     });
+
+    testWidgets('#42: al editar también exige 10 caracteres', (tester) async {
+      final api = FakeApiClient(
+        respuestas: {
+          ApiConstants.misResenas: {
+            'success': true,
+            'resenas': [
+              {
+                'id': 7,
+                'rating': 4,
+                'comentario': 'Muy esponjoso',
+                'estado': 'aprobada',
+                'producto_nombre': 'Fresa Matcha Bliss',
+              },
+            ],
+          },
+          ApiConstants.editarResena('7'): {'success': true},
+        },
+      );
+      await _montar(tester, api);
+
+      await tester.tap(find.byIcon(LucideIcons.pencil));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'Rico');
+      await tester.tap(find.text('Guardar'));
+      await tester.pump();
+
+      expect(find.text('El comentario debe tener al menos 10 caracteres'),
+          findsOneWidget);
+      expect(api.llamo(ApiConstants.editarResena('7')), isFalse);
+    });
   });
 }

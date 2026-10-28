@@ -19,6 +19,7 @@ import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/themes/app_dimensions.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/public/widgets/movimiento_contenido.dart';
+import 'package:pier_reposteria/ui/reviews/view_model/create_review_view_model.dart';
 import 'package:pier_reposteria/ui/reviews/view_model/my_reviews_view_model.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 import 'package:provider/provider.dart';
@@ -592,9 +593,12 @@ class _EditarResenaSheetState extends State<_EditarResenaSheet> {
 
   void _guardar() {
     final comentario = _comentarioCtrl.text.trim();
-    if (comentario.isEmpty) {
+    // El mismo mínimo que al escribirla (#42).
+    if (comentario.length < CreateReviewViewModel.minimoComentario) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El comentario es obligatorio')),
+        const SnackBar(
+            content: Text('El comentario debe tener al menos '
+                '${CreateReviewViewModel.minimoComentario} caracteres')),
       );
       return;
     }
