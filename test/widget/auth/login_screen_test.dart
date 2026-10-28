@@ -7,6 +7,7 @@ import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
 import 'package:pier_reposteria/ui/auth/view_model/login_view_model.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/public/widgets/legal_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
@@ -24,6 +25,15 @@ LoginScreen _conGoogle(FakeApiClient api, FakeGoogleSignIn google) =>
         repo: AuthRepositoryRemote(api: api, google: google),
       ),
     );
+
+/// Marca la casilla del aviso (#220) y toca «Continuar con Google».
+Future<void> _continuarConGoogle(WidgetTester tester) async {
+  await tester.ensureVisible(find.byType(Checkbox));
+  await tester.tap(find.byType(Checkbox));
+  await tester.pump();
+  await tester.ensureVisible(find.text('Continuar con Google'));
+  await tester.tap(find.text('Continuar con Google'));
+}
 
 Future<void> _tocarIniciarSesion(WidgetTester tester) async {
   await tester.ensureVisible(_botonLogin);
@@ -111,8 +121,7 @@ void main() {
         api: api,
       );
 
-      await tester.ensureVisible(find.text('Continuar con Google'));
-      await tester.tap(find.text('Continuar con Google'));
+      await _continuarConGoogle(tester);
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Error al iniciar sesión con Google'),
@@ -126,8 +135,7 @@ void main() {
       final api = FakeApiClient();
       await tester.pumpApp(_conGoogle(api, FakeGoogleSignIn()), api: api);
 
-      await tester.ensureVisible(find.text('Continuar con Google'));
-      await tester.tap(find.text('Continuar con Google'));
+      await _continuarConGoogle(tester);
       await tester.pumpAndSettle();
 
       expect(find.byType(SnackBar), findsNothing);
@@ -145,12 +153,53 @@ void main() {
         api: api,
       );
 
-      await tester.ensureVisible(find.text('Continuar con Google'));
-      await tester.tap(find.text('Continuar con Google'));
+      await _continuarConGoogle(tester);
       await tester.pumpAndSettle();
 
       final contexto = tester.element(find.byType(LoginScreen));
       expect(contexto.read<AuthProvider>().currentUser?['nombre'], 'Ana');
+    });
+
+    testWidgets('#220: sin aceptar el aviso, Google avisa y no se abre',
+        (tester) async {
+      final api = FakeApiClient();
+      await tester.pumpApp(
+        _conGoogle(api, FakeGoogleSignIn(idToken: 'id-token')),
+        api: api,
+      );
+
+      final casilla = tester.widget<Checkbox>(find.byType(Checkbox));
+      expect(casilla.value, isFalse);
+      await tester.ensureVisible(find.text('Continuar con Google'));
+      await tester.tap(find.text('Continuar con Google'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(LoginViewModel.faltaAviso), findsOneWidget);
+      expect(api.llamo(ApiConstants.googleMobile), isFalse);
+    });
+
+    testWidgets('#220: cada enlace abre el aviso en su pestaña',
+        (tester) async {
+      await tester.pumpApp(const LoginScreen());
+
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.tapOnText(find.textRange.ofSubstring('Aviso de Privacidad'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LegalScreen), findsOneWidget);
+      expect(
+        tester.widget<TabBar>(find.byType(TabBar)).controller!.index,
+        LegalScreen.privacidad,
+      );
+
+      tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+      await tester.pumpAndSettle();
+      await tester.tapOnText(
+          find.textRange.ofSubstring('Términos y Condiciones'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TabBar>(find.byType(TabBar)).controller!.index,
+        LegalScreen.terminos,
+      );
     });
 
     testWidgets('el ojito muestra y oculta la contraseña', (tester) async {

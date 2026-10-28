@@ -7,11 +7,13 @@
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/public/widgets/legal_screen.dart';
 
 /// Espera de la cascada de una pantalla de auth según cómo llegó. Con
 /// context.go es una página raíz de go_router (sus RouteSettings son la
@@ -646,6 +648,92 @@ class _Elevar extends AnimatedWidget {
     return Transform.translate(
       offset: Offset(0, -altura * math.sin(math.pi * t)),
       child: child,
+    );
+  }
+}
+
+/// Casilla para aceptar los Términos y el Aviso de Privacidad (registro y
+/// Google, #220): empieza sin marcar, cada enlace abre su pestaña del aviso y
+/// [disparo] la sacude cuando falta marcarla.
+class CasillaLegal extends StatefulWidget {
+  const CasillaLegal({
+    super.key,
+    required this.aceptada,
+    required this.alCambiar,
+    required this.disparo,
+    this.antes = 'Acepto los ',
+  });
+
+  final bool aceptada;
+  final ValueChanged<bool> alCambiar;
+  final int disparo;
+
+  /// Texto antes de «Términos y Condiciones».
+  final String antes;
+
+  @override
+  State<CasillaLegal> createState() => _CasillaLegalState();
+}
+
+class _CasillaLegalState extends State<CasillaLegal> {
+  late final TapGestureRecognizer _terminos = TapGestureRecognizer()
+    ..onTap = () => _abrir(LegalScreen.terminos);
+  late final TapGestureRecognizer _privacidad = TapGestureRecognizer()
+    ..onTap = () => _abrir(LegalScreen.privacidad);
+
+  void _abrir(int pestana) => Navigator.push(context,
+      MaterialPageRoute(builder: (_) => LegalScreen(pestana: pestana)));
+
+  @override
+  void dispose() {
+    _terminos.dispose();
+    _privacidad.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enlace = TextStyle(
+        color: AppColors.pierVerde, fontWeight: FontWeight.bold);
+    return Sacudida(
+      disparo: widget.disparo,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Checkbox(
+              value: widget.aceptada,
+              activeColor: AppColors.pierVerde,
+              onChanged: (v) => widget.alCambiar(v ?? false),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13),
+                children: [
+                  TextSpan(text: widget.antes),
+                  TextSpan(
+                    text: 'Términos y Condiciones',
+                    style: enlace,
+                    recognizer: _terminos,
+                  ),
+                  const TextSpan(text: ' y el '),
+                  TextSpan(
+                    text: 'Aviso de Privacidad',
+                    style: enlace,
+                    recognizer: _privacidad,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
