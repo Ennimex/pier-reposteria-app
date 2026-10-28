@@ -9,7 +9,7 @@ class _AndroidFalso extends GeolocatorPlatform {
   bool servicioEncendido = true;
   LocationPermission permiso = LocationPermission.whileInUse;
   LocationPermission respuesta = LocationPermission.whileInUse;
-  Object? errorAlLeer;
+  Exception? errorAlLeer;
   int solicitudes = 0;
   int ajustesAbiertos = 0;
 
