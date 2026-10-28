@@ -153,13 +153,17 @@ class _PedidosDelDiaScreenState extends State<PedidosDelDiaScreen>
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           Wrap(spacing: 8, runSpacing: 8, children: [
+            // Mismo verde suave que la agenda: con el del tema el texto
+            // seleccionado no se veía (Samsung, 28-oct).
             ChoiceChip(
               label: const Text('Hoy y vencidos'),
+              selectedColor: AppColors.pierVerde.withValues(alpha: 0.18),
               selected: _vm.soloHoy,
               onSelected: (_) => _vm.verSoloHoy(valor: true),
             ),
             ChoiceChip(
               label: const Text('Todos los abiertos'),
+              selectedColor: AppColors.pierVerde.withValues(alpha: 0.18),
               selected: !_vm.soloHoy,
               onSelected: (_) => _vm.verSoloHoy(valor: false),
             ),
