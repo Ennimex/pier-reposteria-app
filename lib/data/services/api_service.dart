@@ -34,18 +34,15 @@ class ApiService implements ApiClient {
   @override
   Stream<void> get sesionExpirada => _sesionExpirada.stream;
 
-  http.Client? _clienteFijo;
-
   /// Cliente para todas las peticiones. En producción, main.dart pone el que
   /// fija el certificado del API (#219, cliente_seguro.dart). Sin uno fijo
   /// (pruebas, entorno aislado por http) cada petición usa un http.Client()
   /// nuevo, como antes.
-  http.Client? get cliente => _clienteFijo;
-  set cliente(http.Client? cliente) => _clienteFijo = cliente;
+  http.Client? cliente;
 
   Future<T> _conCliente<T>(
       Future<T> Function(http.Client cliente) peticion) async {
-    final fijo = _clienteFijo;
+    final fijo = cliente;
     if (fijo != null) return peticion(fijo);
     final cliente = http.Client();
     try {
