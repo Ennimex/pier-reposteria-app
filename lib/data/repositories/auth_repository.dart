@@ -59,6 +59,10 @@ abstract class AuthRepository {
   /// Verificar si hay sesión activa (para Splash)
   Future<bool> isAuthenticated();
 
+  /// Avisa cuando el servidor rechaza el token de la sesión (401, #218). La
+  /// sesión del teléfono ya se borró; falta cerrarla en la app.
+  Stream<void> get sesionExpirada;
+
   /// Obtener usuario guardado localmente
   Future<Map<String, dynamic>?> getCurrentUser();
 }

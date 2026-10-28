@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/services/api_service.dart';
+import 'package:pier_reposteria/data/services/storage_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Ejecuta [accion] con un cliente que registra la petición y responde
@@ -178,6 +179,116 @@ void main() {
 
       expect(r['success'], isFalse);
       expect(r['message'], 'No se pudo subir la imagen. Intenta de nuevo.');
+    });
+  });
+
+  group('ApiService: sesión expirada (#218)', () {
+    const conSesion = {
+      'pierreposteria_token': 'jwt-vencido',
+      'pierreposteria_current_user': '{"id":1}',
+    };
+    const vencido = '{"success": false, "message": "Token expirado"}';
+
+    /// Corre [accion] contra un servidor que responde [status] y devuelve
+    /// cuántos avisos de sesión expirada salieron.
+    Future<(Map<String, dynamic>, int)> avisos(
+      Future<Map<String, dynamic>> Function(ApiService api) accion, {
+      int status = 401,
+      String cuerpo = vencido,
+    }) async {
+      var avisos = 0;
+      final suscripcion = ApiService().sesionExpirada.listen((_) => avisos++);
+      final (r, _) = await _con(accion, status: status, cuerpo: cuerpo);
+      await Future<void>.delayed(Duration.zero);
+      await suscripcion.cancel();
+      return (r, avisos);
+    }
+
+    test('un 401 con token borra la sesión del teléfono y avisa', () async {
+      SharedPreferences.setMockInitialValues(conSesion);
+
+      final (r, n) = await avisos((api) => api.getAuth('/carrito'));
+
+      expect(n, 1);
+      expect(r['success'], isFalse);
+      expect(r['message'], 'Token expirado');
+      expect(await StorageService().getToken(), isNull);
+      expect(await StorageService().getUser(), isNull);
+    });
+
+    test('POST, PUT y DELETE con token también avisan', () async {
+      final llamadas = <Future<Map<String, dynamic>> Function(ApiService)>[
+        (api) => api.postAuth('/carrito', {'producto_id': 1}),
+        (api) => api.putAuth('/carrito/1', {'cantidad': 2}),
+        (api) => api.deleteAuth('/carrito/1'),
+      ];
+      for (final llamada in llamadas) {
+        SharedPreferences.setMockInitialValues(conSesion);
+        final (_, n) = await avisos(llamada);
+        expect(n, 1);
+      }
+    });
+
+    test('el 401 de cerrar sesión no vuelve a avisar', () async {
+      SharedPreferences.setMockInitialValues(conSesion);
+
+      final (_, n) =
+          await avisos((api) => api.postAuth(ApiConstants.logout, {}));
+
+      expect(n, 0);
+    });
+
+    test('sin sesión un 401 no es una sesión expirada', () async {
+      final (_, n) = await avisos((api) => api.getAuth('/carrito'));
+
+      expect(n, 0);
+    });
+
+    test('el 401 del inicio de sesión (credenciales malas) no avisa',
+        () async {
+      SharedPreferences.setMockInitialValues(conSesion);
+
+      final (r, n) = await avisos(
+        (api) => api.post(ApiConstants.login, {'email': 'a@b.mx'}),
+        cuerpo: '{"success": false, "message": "Credenciales inválidas"}',
+      );
+
+      expect(n, 0);
+      expect(r['message'], 'Credenciales inválidas');
+      expect(await StorageService().getToken(), 'jwt-vencido');
+    });
+
+    test('otros errores (403, 500) no cierran la sesión', () async {
+      for (final status in [403, 500]) {
+        SharedPreferences.setMockInitialValues(conSesion);
+        final (_, n) = await avisos((api) => api.getAuth('/carrito'),
+            status: status, cuerpo: '{"success": false, "message": "x"}');
+        expect(n, 0);
+        expect(await StorageService().getToken(), 'jwt-vencido');
+      }
+    });
+
+    test('subir una imagen con el token vencido también avisa', () async {
+      SharedPreferences.setMockInitialValues(conSesion);
+      final dir = await Directory.systemTemp.createTemp('pier_upload_401');
+      final foto = File('${dir.path}/foto.png')..writeAsBytesSync([1, 2, 3]);
+      var n = 0;
+      final suscripcion = ApiService().sesionExpirada.listen((_) => n++);
+      final cliente = MockClient.streaming((req, stream) async {
+        await stream.drain<void>();
+        return http.StreamedResponse(Stream.value(utf8.encode(vencido)), 401);
+      });
+
+      final r = await http.runWithClient(
+        () => ApiService().uploadImageAuth('/resenas/7/foto', foto.path, {}),
+        () => cliente,
+      );
+      await Future<void>.delayed(Duration.zero);
+      await suscripcion.cancel();
+      await dir.delete(recursive: true);
+
+      expect(r['success'], isFalse);
+      expect(n, 1);
     });
   });
 }

@@ -165,6 +165,9 @@ class AuthRepositoryRemote implements AuthRepository {
   }
 
   @override
+  Stream<void> get sesionExpirada => _api.sesionExpirada;
+
+  @override
   Future<bool> isAuthenticated() async {
     return _storage.isAuthenticated();
   }

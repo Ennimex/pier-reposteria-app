@@ -11,6 +11,8 @@
 //   api.demorar('/auth/login', const Duration(seconds: 1)); // estado de carga
 //   ...
 //   expect(api.llamo('/resenas/mis-resenas', metodo: 'GET-Auth'), true);
+import 'dart:async';
+
 import 'package:pier_reposteria/data/services/api_client.dart';
 
 /// Una llamada registrada por el falso.
@@ -36,6 +38,16 @@ class FakeApiClient implements ApiClient {
 
   /// Todas las llamadas recibidas, en orden.
   final List<LlamadaApi> llamadas = [];
+
+  final StreamController<void> _sesionExpirada =
+      StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get sesionExpirada => _sesionExpirada.stream;
+
+  /// Simula que el servidor rechazó el token (401, #218), como lo avisa
+  /// ApiService.
+  void expirarSesion() => _sesionExpirada.add(null);
 
   FakeApiClient({Map<String, dynamic>? respuestas})
       : _respuestas = {...?respuestas};
