@@ -5,6 +5,8 @@
 // borrar la cuenta u oponerse al uso de los datos, el aviso de privacidad
 // pide escribir al correo de Pier.
 // MVVM: el estado vive en MisDatosViewModel; esta vista solo lo pinta.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/business_info.dart';
@@ -42,7 +44,7 @@ class _MisDatosScreenState extends State<MisDatosScreen> {
   @override
   void initState() {
     super.initState();
-    _vm.cargar();
+    unawaited(_vm.cargar());
   }
 
   @override
@@ -73,7 +75,7 @@ class _MisDatosScreenState extends State<MisDatosScreen> {
 
   Widget _contenido() {
     if (_vm.cargando) {
-      return const Center(
+      return Center(
           child: CircularProgressIndicator(color: AppColors.pierVerde));
     }
     final error = _vm.error;
