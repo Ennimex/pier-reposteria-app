@@ -277,6 +277,8 @@ void main() {
     expect(NotificacionTarjeta.icono('resena'), Icons.star_outline_rounded);
     expect(NotificacionTarjeta.icono('reembolso'), LucideIcons.rotateCcw);
     expect(NotificacionTarjeta.icono('producto'), LucideIcons.cake);
-    expect(NotificacionTarjeta.icono('aviso'), LucideIcons.bell);
+    expect(NotificacionTarjeta.icono('alerta'), LucideIcons.triangleAlert);
+    expect(NotificacionTarjeta.icono('aviso'), LucideIcons.mail);
+    expect(NotificacionTarjeta.icono('sistema'), LucideIcons.bell);
   });
 }

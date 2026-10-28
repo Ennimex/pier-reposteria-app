@@ -41,11 +41,13 @@ class SeccionComanda extends StatelessWidget {
           Row(children: [
             Icon(icono, size: 18, color: AppColors.pierVerde),
             const SizedBox(width: 8),
-            Text(titulo,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
+            Expanded(
+              child: Text(titulo,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+            ),
           ]),
           const SizedBox(height: 12),
           ...children,
@@ -165,25 +167,23 @@ class TarjetaProducto extends StatelessWidget {
       importe: vm.importe(producto),
       alQuitar: () => vm.quitar(producto),
       children: [
-        SegmentedButton<bool>(
-          segments: [
-            ButtonSegment(
-              value: false,
-              label: Text('Chico · ${moneda(p.precioChico / 100)}'),
-            ),
-            ButtonSegment(
-              value: true,
-              enabled: grande != null,
-              label: Text(grande == null
-                  ? 'Sin grande'
-                  : 'Grande · ${moneda(grande / 100)}'),
-            ),
-          ],
-          selected: {producto.grande},
-          showSelectedIcon: false,
-          onSelectionChanged: (s) =>
-              vm.editar(() => producto.grande = s.first),
-        ),
+        // Chips en un Wrap: en pantallas angostas bajan a otro renglón.
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          ChoiceChip(
+            label: Text('Chico · ${moneda(p.precioChico / 100)}'),
+            selected: !producto.grande,
+            onSelected: (_) => vm.editar(() => producto.grande = false),
+          ),
+          ChoiceChip(
+            label: Text(grande == null
+                ? 'Sin grande'
+                : 'Grande · ${moneda(grande / 100)}'),
+            selected: producto.grande,
+            onSelected: grande == null
+                ? null
+                : (_) => vm.editar(() => producto.grande = true),
+          ),
+        ]),
         const SizedBox(height: 10),
         TextFormField(
           initialValue: producto.cantidad,
