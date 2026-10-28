@@ -89,15 +89,22 @@ void main() {
       await vm.cargar();
 
       expect(vm.cargando, isFalse);
-      expect([
-        for (final (g, ps) in vm.grupos) (g, ps.map((p) => p.id).toList()),
-      ], [
-        (GrupoPedido.porConfirmar, ['2']),
-        (GrupoPedido.pendientes, ['1', '8']),
-        (GrupoPedido.listosRecoger, ['3']),
-        (GrupoPedido.listosEnvio, ['4']),
-        (GrupoPedido.enReparto, ['5']),
-        (GrupoPedido.fallidos, ['6']),
+      // Por separado: un record compara sus listas por identidad.
+      expect(vm.grupos.map((g) => g.$1), [
+        GrupoPedido.porConfirmar,
+        GrupoPedido.pendientes,
+        GrupoPedido.listosRecoger,
+        GrupoPedido.listosEnvio,
+        GrupoPedido.enReparto,
+        GrupoPedido.fallidos,
+      ]);
+      expect(vm.grupos.map((g) => g.$2.map((p) => p.id).toList()), [
+        ['2'],
+        ['1', '8'],
+        ['3'],
+        ['4'],
+        ['5'],
+        ['6'],
       ]);
       expect(vm.deOtrosDias, 1);
 
