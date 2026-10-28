@@ -1,6 +1,8 @@
 // test/unitarias/comun/about_us_view_model_test.dart — «Nosotros» (MVVM, Fase 3) sin red:
 // el repositorio interpreta configuracion/nosotros y el ViewModel mezcla lo
 // capturado en el panel con los textos por defecto.
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
@@ -61,10 +63,21 @@ void main() {
     test('lee el recorrido y el equipo (#170)', () async {
       final info = await ConfiguracionRepositoryRemote(
         api: _backendCon({
-          'timeline': '[{"year":"2015","title":"El inicio",'
-              '"description":"Una cocina","image":"local:producto2.jpg"},'
-              '{"year":"2020","title":"  "},'
-              '{"year":"2024","title":"Sucursal","image":"http://x.com/a.jpg"}]',
+          // Llega como JSON en texto.
+          'timeline': jsonEncode([
+            {
+              'year': '2015',
+              'title': 'El inicio',
+              'description': 'Una cocina',
+              'image': 'local:producto2.jpg',
+            },
+            {'year': '2020', 'title': '  '},
+            {
+              'year': '2024',
+              'title': 'Sucursal',
+              'image': 'http://x.com/a.jpg',
+            },
+          ]),
           'equipo': [
             {
               'name': 'Pier',
