@@ -25,6 +25,9 @@ bool debeFijarCertificado(String baseUrl) {
 /// Cliente que solo confía en [certificados] (PEM; por omisión los de
 /// [CertificadosApi.fijados]).
 http.Client clienteConCertificadoFijo({List<String>? certificados}) {
+  // Sin las raíces del sistema: solo las fijadas. Se dice aunque sea el
+  // valor por omisión, porque de eso depende el pin.
+  // ignore: avoid_redundant_argument_values
   final contexto = SecurityContext(withTrustedRoots: false);
   final pems =
       certificados ?? [for (final c in CertificadosApi.fijados) c.pem];

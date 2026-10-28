@@ -40,6 +40,7 @@ class ApiService implements ApiClient {
   /// fija el certificado del API (#219, cliente_seguro.dart). Sin uno fijo
   /// (pruebas, entorno aislado por http) cada petición usa un http.Client()
   /// nuevo, como antes.
+  http.Client? get cliente => _clienteFijo;
   set cliente(http.Client? cliente) => _clienteFijo = cliente;
 
   Future<T> _conCliente<T>(

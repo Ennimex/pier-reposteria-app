@@ -85,5 +85,5 @@ p/SgguMh1YQdc4acLa/KNJvxn7kjNuK8YAOdgLOaVsjh4rsUecrNIdSUtUlD
   );
 
   /// Los certificados en los que confía el cliente del API, en orden.
-  static const fijados = [gtsWe1, gtsRootR4];
+  static const List<CertificadoFijado> fijados = [gtsWe1, gtsRootR4];
 }
