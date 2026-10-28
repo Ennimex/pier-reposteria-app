@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:pier_reposteria/app.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/config/dependencies.dart';
 import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
 import 'package:pier_reposteria/data/services/api_service.dart';
+import 'package:pier_reposteria/data/services/cliente_seguro.dart';
 import 'package:provider/provider.dart';
 
 // Sentry (#23) envuelve todo el arranque si el build trae SENTRY_DSN.
@@ -17,6 +19,12 @@ Future<void> _arrancarApp() async {
   // instancia, el único cliente HTTP de la app, y dependencias() se la pasa a
   // los 17 repositorios.
   final api = ApiService();
+
+  // Con el API de producción, el cliente HTTP solo acepta su certificado
+  // (#219); el entorno aislado por http queda como antes.
+  if (debeFijarCertificado(ApiConstants.baseUrl)) {
+    api.cliente = clienteConCertificadoFijo();
+  }
 
   // Cargar publishable key del backend para no hardcodearla
   try {

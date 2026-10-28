@@ -93,6 +93,30 @@ llave el workflow se detiene: nunca publica un APK firmado con la llave de
 pruebas. Sin `SENTRY_DSN` publica, pero avisa que esa versión no reportará
 errores.
 
+## Certificado fijado del API
+
+Desde #219 la app solo acepta la conexión con
+`pier-reposteria-backend.onrender.com` si su cadena llega a uno de los
+certificados de `lib/data/services/certificados_api.dart`: el intermedio
+**GTS WE1** (vence el **20-feb-2029**) o, de respaldo, la raíz **GTS Root R4**
+(vence el 22-jun-2036). La hoja (`onrender.com`) se renueva cada ~90 días y no
+se fija. El entorno aislado por http y los demás servicios (Stripe,
+Cloudinary, Google, Sentry) no se fijan.
+
+**Revisarlo** antes de que venza el intermedio (a más tardar a fines de 2028),
+cada vez que Render anuncie un cambio de certificados, y si la app empieza a
+decir «No pudimos conectar con Pier» con el servidor arriba:
+
+```sh
+openssl s_client -showcerts -servername pier-reposteria-backend.onrender.com   -connect pier-reposteria-backend.onrender.com:443 < /dev/null
+```
+
+Si el intermedio o la raíz cambiaron, se agregan los nuevos **junto a** los
+actuales en `certificados_api.dart` (con su huella:
+`openssl x509 -noout -fingerprint -sha256`), se publica una versión y se
+quitan los viejos hasta que todos la instalaron. Un certificado fijado que ya
+no corresponde deja a todos sin servicio hasta que instalen un APK nuevo.
+
 ## Estrategia canary
 
 Cada versión pasa primero por un grupo pequeño y avanza solo si las métricas
