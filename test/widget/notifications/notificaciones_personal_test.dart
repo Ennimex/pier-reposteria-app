@@ -146,9 +146,10 @@ void main() {
 
       expect(find.byType(NotificationsScreen), findsOneWidget);
       expect(api.llamo(ApiConstants.marcarNotificacionLeida('1')), isTrue);
+      // No buscó ninguna comanda por folio.
       expect(
-        api.llamadas.where((l) => l.endpoint.startsWith('/comandas?')),
-        hasLength(1), // solo la agenda al montarse
+        api.llamadas.where((l) => l.endpoint.contains('busqueda=')),
+        isEmpty,
       );
     });
 
