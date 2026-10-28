@@ -6,6 +6,7 @@
 // Vistas y ViewModels dependen de esta clase abstracta; la implementación
 // HTTP es ComandasRepositoryRemote, registrada en lib/config/dependencies.dart.
 import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/domain/models/nueva_comanda.dart';
 
 /// Resultado de entregar: el mensaje del backend y las áreas que no habían
 /// confirmado (entregar no exige firmas, pero queda dicho).
@@ -36,4 +37,17 @@ abstract class ComandasRepository {
   /// PUT /comandas/:id/cancelar: la cancela con [motivo] (5 a 300
   /// caracteres). Solo quien la tomó, gerencia o dirección.
   Future<String> cancelar(int id, {required String motivo});
+
+  /// GET /comandas/catalogo: opciones del pastel, reglas de cobro y
+  /// productos del catálogo (vacío para producción).
+  Future<CatalogoComanda> catalogo();
+
+  /// POST /comandas/imagenes: sube la foto de [ruta] y devuelve lo que se
+  /// manda con la comanda (url y public_id).
+  Future<FotoComanda> subirFoto(String ruta);
+
+  /// POST /comandas con [datos] (el mismo cuerpo que manda la web). Si el
+  /// backend la rechaza, ApiException con todos sus motivos, uno por
+  /// renglón.
+  Future<ComandaCreada> crear(Map<String, dynamic> datos);
 }

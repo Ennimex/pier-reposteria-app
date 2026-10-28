@@ -6,6 +6,7 @@
 // jalar hacia abajo y al volver a la app. Si el backend rechaza la sesión
 // (cuenta desactivada o cambiada), la cierra y vuelve al login. La campana
 // cuenta las notificaciones sin leer (se consultan cada 2 minutos, #136).
+// Empleado, gerencia y dirección capturan comandas nuevas (#130).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ import 'package:pier_reposteria/domain/models/comanda.dart';
 import 'package:pier_reposteria/ui/comandas/view_model/agenda_comandas_view_model.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/nueva_comanda_screen.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
@@ -108,6 +110,15 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     if (mounted) unawaited(_vm.recargar());
   }
 
+  /// Captura una comanda; al volver, la agenda se actualiza.
+  Future<void> _nueva() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const NuevaComandaScreen()),
+    );
+    if (mounted) unawaited(_vm.recargar());
+  }
+
   Future<void> _abrirSitio() async {
     final ok = await launchUrl(
       Uri.parse(BusinessInfo.sitioWeb),
@@ -123,6 +134,16 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     final area = _vm.area;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
+      // Producción (hornos y decoración) solo confirma: no captura.
+      floatingActionButton: area == null
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.pierVerde,
+              foregroundColor: Colors.white,
+              onPressed: () => unawaited(_nueva()),
+              icon: const Icon(LucideIcons.plus),
+              label: const Text('Nueva comanda'),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: AppColors.pierVerde,
         foregroundColor: Colors.white,
