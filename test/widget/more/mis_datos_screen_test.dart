@@ -32,6 +32,9 @@ void main() {
     expect(find.text('ana@pier.mx'), findsOneWidget);
     expect(find.text('7711234567'), findsOneWidget);
     expect(find.text('Cliente'), findsOneWidget);
+    // Va al final de la lista: se baja hasta verlo.
+    await tester.dragUntilVisible(find.text(MisDatosScreen.otrosDerechos),
+        find.byType(ListView), const Offset(0, -200));
     expect(find.text(MisDatosScreen.otrosDerechos), findsOneWidget);
   });
 
