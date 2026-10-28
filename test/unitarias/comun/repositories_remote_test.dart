@@ -65,6 +65,24 @@ void main() {
       await esperar();
       expect(api.llamo(ApiConstants.busquedas), isTrue);
     });
+
+    test('#223: si el cliente se opuso, las búsquedas no se mandan',
+        () async {
+      SharedPreferences.setMockInitialValues(
+          {'pierreposteria_registrar_busquedas': false});
+      addTearDown(() => SharedPreferences.setMockInitialValues({}));
+      final api = _apiOk([ApiConstants.busquedas, ApiConstants.clicsAgotados]);
+
+      DemandaRepositoryRemote(api: api)
+        ..registrarBusqueda('fresa', 0)
+        ..registrarClicAgotado('12');
+      await esperar();
+      await esperar();
+
+      expect(api.llamo(ApiConstants.busquedas), isFalse);
+      // «Avísame» lo pide el cliente: se manda siempre.
+      expect(api.llamo(ApiConstants.clicsAgotados), isTrue);
+    });
   });
 
   group('DireccionesRepositoryRemote', () {

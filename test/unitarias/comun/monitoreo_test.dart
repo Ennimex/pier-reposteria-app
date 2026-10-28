@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/config/app_version.dart';
 import 'package:pier_reposteria/config/monitoreo.dart';
+import 'package:pier_reposteria/data/services/preferencias_service.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _dsn = 'https://clave@o1.ingest.sentry.io/2';
 
@@ -28,6 +30,11 @@ class _SentryFalso {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+  tearDown(() => Monitoreo.diagnosticosPermitidos = true);
+
   group('Monitoreo.arrancar', () {
     test('sin DSN arranca la app y no inicia Sentry', () async {
       final sentry = _SentryFalso();
@@ -71,6 +78,64 @@ void main() {
       await Monitoreo.arrancar(() {}, dsn: _dsn, iniciarSentry: sentry.init);
 
       expect(sentry.opciones.environment, 'prod');
+    });
+
+    test('#223: si el cliente se opuso, la app arranca sin Sentry', () async {
+      await PreferenciasService().guardarEnviaDiagnosticos(false);
+      final sentry = _SentryFalso();
+      var arranques = 0;
+
+      await Monitoreo.arrancar(
+        () => arranques++,
+        dsn: _dsn,
+        iniciarSentry: sentry.init,
+      );
+
+      expect(arranques, 1);
+      expect(sentry.llamadas, 0);
+      expect(Monitoreo.diagnosticosPermitidos, isFalse);
+    });
+
+    test('#223: la decisión puede venir de fuera', () async {
+      final sentry = _SentryFalso();
+
+      await Monitoreo.arrancar(
+        () {},
+        dsn: _dsn,
+        iniciarSentry: sentry.init,
+        permitido: () async => true,
+      );
+
+      expect(sentry.llamadas, 1);
+      expect(Monitoreo.diagnosticosPermitidos, isTrue);
+    });
+  });
+
+  group('Monitoreo: oposición en caliente (#223)', () {
+    SentryFlutterOptions configurada() {
+      final opciones = SentryFlutterOptions();
+      Monitoreo.configurar(opciones, dsn: _dsn, ambiente: Ambiente.prod);
+      return opciones;
+    }
+
+    test('con diagnósticos permitidos los eventos y trazas pasan', () async {
+      final opciones = configurada();
+      final evento = SentryEvent();
+      final traza = SentryTransaction(SentryTracer(
+          SentryTransactionContext('pago', 'checkout.pagar'), HubAdapter()));
+
+      expect(await opciones.beforeSend!(evento, Hint()), same(evento));
+      expect(await opciones.beforeSendTransaction!(traza, Hint()), same(traza));
+    });
+
+    test('al oponerse se descartan desde ese momento', () async {
+      final opciones = configurada();
+      Monitoreo.diagnosticosPermitidos = false;
+      final traza = SentryTransaction(SentryTracer(
+          SentryTransactionContext('pago', 'checkout.pagar'), HubAdapter()));
+
+      expect(await opciones.beforeSend!(SentryEvent(), Hint()), isNull);
+      expect(await opciones.beforeSendTransaction!(traza, Hint()), isNull);
     });
   });
 

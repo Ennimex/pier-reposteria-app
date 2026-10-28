@@ -47,4 +47,27 @@ void main() {
 
     expect(await PreferenciasService().aceptacionPrivacidad(), isNull);
   });
+
+  group('oposición (#223)', () {
+    test('sin elección guardada, diagnósticos y búsquedas están encendidos',
+        () async {
+      final preferencias = PreferenciasService();
+
+      expect(await preferencias.enviaDiagnosticos(), isTrue);
+      expect(await preferencias.registraBusquedas(), isTrue);
+    });
+
+    test('cada interruptor se guarda por separado', () async {
+      final preferencias = PreferenciasService();
+
+      await preferencias.guardarEnviaDiagnosticos(false);
+      expect(await preferencias.enviaDiagnosticos(), isFalse);
+      expect(await preferencias.registraBusquedas(), isTrue);
+
+      await preferencias.guardarRegistraBusquedas(false);
+      await preferencias.guardarEnviaDiagnosticos(true);
+      expect(await preferencias.enviaDiagnosticos(), isTrue);
+      expect(await preferencias.registraBusquedas(), isFalse);
+    });
+  });
 }
