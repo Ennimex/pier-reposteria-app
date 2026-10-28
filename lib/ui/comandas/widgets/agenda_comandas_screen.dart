@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/domain/models/nueva_comanda.dart';
 import 'package:pier_reposteria/ui/comandas/view_model/agenda_comandas_view_model.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart';
@@ -90,11 +91,13 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
   }
 
   /// Abre el detalle; al volver, la agenda se actualiza (pudo confirmar).
-  Future<void> _abrir(ResumenComanda comanda) async {
+  Future<void> _abrir(ResumenComanda comanda) => _abrirDetalle(comanda.id);
+
+  Future<void> _abrirDetalle(int id) async {
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => DetalleComandaScreen(id: comanda.id),
+        builder: (_) => DetalleComandaScreen(id: id),
       ),
     );
     if (mounted) unawaited(_vm.recargar());
@@ -111,12 +114,19 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
   }
 
   /// Captura una comanda; al volver, la agenda se actualiza.
+  /// Captura una comanda; si se creó, abre su detalle (la agenda se
+  /// actualiza al volver de él).
   Future<void> _nueva() async {
-    await Navigator.push(
+    final creada = await Navigator.push<ComandaCreada>(
       context,
-      MaterialPageRoute<void>(builder: (_) => const NuevaComandaScreen()),
+      MaterialPageRoute(builder: (_) => const NuevaComandaScreen()),
     );
-    if (mounted) unawaited(_vm.recargar());
+    if (!mounted) return;
+    if (creada == null) {
+      unawaited(_vm.recargar());
+      return;
+    }
+    await _abrirDetalle(creada.id);
   }
 
   Future<void> _abrirSitio() async {

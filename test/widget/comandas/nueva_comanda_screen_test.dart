@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/repositories/comandas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/nueva_comanda.dart';
 import 'package:pier_reposteria/ui/comandas/view_model/nueva_comanda_view_model.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_screen.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart';
@@ -155,6 +156,60 @@ void main() {
       final body = api.ultima(ApiConstants.comandas)!.body!;
       expect(body['cliente_nombre'], 'María López');
       expect(body['anticipo'], 45.5);
+    });
+
+    testWidgets('abierta desde la agenda, regresa con la comanda creada',
+        (tester) async {
+      final api = _backend()
+        ..responder(ApiConstants.comandas, {
+          'success': true,
+          'comanda': {'id': 7, 'folio': 5120},
+          'message': 'Comanda #5120 creada',
+        });
+      final vm = NuevaComandaViewModel(
+        repo: ComandasRepositoryRemote(api: api),
+        ahora: () => DateTime(2026, 10, 12, 10),
+      );
+      Object? resultado;
+      await montarComandas(
+        tester,
+        api,
+        // Con Scaffold, como la agenda: ahí se ve el aviso al regresar.
+        pantalla: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => resultado = await Navigator.push<Object?>(
+                context,
+                MaterialPageRoute<Object?>(
+                  builder: (_) => NuevaComandaScreen(viewModel: vm),
+                ),
+              ),
+              child: const Text('abrir'),
+            ),
+          ),
+        ),
+        rol: 'empleado',
+      );
+      await tester.tap(find.text('abrir'));
+      await tester.pumpAndSettle();
+      vm.editar(() {
+        vm
+          ..nombre = 'María López'
+          ..telefono = '7711234567'
+          ..fecha = DateTime(2026, 10, 20)
+          ..hora = '16:30'
+          ..anticipo = '45.50';
+        vm.agregarProducto(vm.catalogo!.productos.first);
+      });
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.textContaining('Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NuevaComandaScreen), findsNothing);
+      expect(find.byType(DetalleComandaScreen), findsNothing);
+      expect((resultado! as ComandaCreada).folio, 5120);
+      expect(find.text('Comanda #5120 creada'), findsOneWidget);
     });
 
     testWidgets('la entrega cercana avisa sin impedir guardar',
