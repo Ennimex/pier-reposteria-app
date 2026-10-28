@@ -89,7 +89,9 @@ void main() {
       await vm.cargar();
 
       expect(vm.cargando, isFalse);
-      expect([for (final (g, ps) in vm.grupos) (g, ps.map((p) => p.id))], [
+      expect([
+        for (final (g, ps) in vm.grupos) (g, ps.map((p) => p.id).toList()),
+      ], [
         (GrupoPedido.porConfirmar, ['2']),
         (GrupoPedido.pendientes, ['1', '8']),
         (GrupoPedido.listosRecoger, ['3']),
