@@ -1,10 +1,10 @@
 // lib/data/services/storage_service.dart
 //
-// El JWT vive en el almacenamiento cifrado del sistema (Keystore en Android,
-// Keychain en iOS) con flutter_secure_storage (#25). El usuario actual no es
-// secreto y sigue en SharedPreferences. Versiones anteriores guardaban el
-// token en SharedPreferences (XML en claro): getToken lo migra la primera vez
-// y lo borra de ahí.
+// El JWT y el usuario actual (nombre, correo, teléfono, rol…) viven en el
+// almacenamiento cifrado del sistema (Keystore en Android, Keychain en iOS)
+// con flutter_secure_storage (#25, #217). Versiones anteriores los guardaban
+// en SharedPreferences (XML en claro): getToken y getUser los migran la
+// primera vez y los borran de ahí.
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pier_reposteria/utils/logger.dart';
@@ -55,18 +55,42 @@ class StorageService {
     await prefs.remove(_tokenKey); // por si quedó uno sin migrar
   }
 
-  // Usuario actual
+  // Usuario actual (datos personales: cifrado, #217)
   Future<void> saveUser(String userJson) async {
+    await _seguro.write(key: _currentUserKey, value: userJson);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_currentUserKey, userJson);
+    await prefs.remove(_currentUserKey); // por si quedó uno sin migrar
   }
 
   Future<String?> getUser() async {
+    final String? usuario;
+    try {
+      usuario = await _seguro.read(key: _currentUserKey);
+    } on PlatformException catch (e) {
+      // Sin el usuario la sesión queda a medias (sin rol, la app abriría
+      // la pantalla equivocada): se descarta completa.
+      PierLog.error('Usuario ilegible, se cierra la sesión: ${e.code}');
+      await _seguro.delete(key: _currentUserKey);
+      await removeToken();
+      return null;
+    }
+    return usuario ?? _migrarUsuarioAntiguo();
+  }
+
+  /// Mueve el usuario de SharedPreferences (versiones anteriores) al
+  /// almacenamiento cifrado.
+  Future<String?> _migrarUsuarioAntiguo() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_currentUserKey);
+    final antiguo = prefs.getString(_currentUserKey);
+    if (antiguo == null) return null;
+    await _seguro.write(key: _currentUserKey, value: antiguo);
+    await prefs.remove(_currentUserKey);
+    PierLog.auth('Usuario migrado al almacenamiento seguro');
+    return antiguo;
   }
 
   Future<void> removeUser() async {
+    await _seguro.delete(key: _currentUserKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_currentUserKey);
   }
@@ -77,9 +101,15 @@ class StorageService {
     await removeUser();
   }
 
-  // Verificar si hay sesión activa
+  /// Hay sesión si hay token y usuario. Un token sin usuario (p. ej. el
+  /// usuario no se pudo descifrar) no cuenta: se borra y se pide iniciar
+  /// sesión, en lugar de abrir la app sin rol.
   Future<bool> isAuthenticated() async {
     final token = await getToken();
-    return token != null && token.isNotEmpty;
+    if (token == null || token.isEmpty) return false;
+    if (await getUser() != null) return true;
+    PierLog.auth('Token sin usuario: se cierra la sesión');
+    await clearAll();
+    return false;
   }
 }
