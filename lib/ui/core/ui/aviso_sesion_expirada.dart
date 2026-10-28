@@ -10,7 +10,7 @@ import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 class AvisoSesionExpirada extends StatefulWidget {
-  const AvisoSesionExpirada({super.key, required this.child});
+  const AvisoSesionExpirada({required this.child, super.key});
 
   final Widget child;
 
