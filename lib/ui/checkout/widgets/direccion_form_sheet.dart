@@ -13,10 +13,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/data/services/ubicacion_service.dart';
 import 'package:pier_reposteria/domain/models/direccion_model.dart';
 import 'package:pier_reposteria/ui/checkout/view_model/direccion_form_view_model.dart';
 import 'package:pier_reposteria/ui/checkout/widgets/tamano_animado.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/explicacion_permiso.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:provider/provider.dart';
 
@@ -104,6 +106,13 @@ class _DireccionFormSheetState extends State<DireccionFormSheet> {
       backgroundColor: AppColors.error,
       behavior: SnackBarBehavior.floating,
     ));
+  }
+
+  /// «Usar mi ubicación» (#227): primero explica para qué; solo si el
+  /// cliente sigue se pide el permiso.
+  Future<void> _usarUbicacion() async {
+    if (!await explicarPermiso(context, ExplicacionDePermiso.ubicacion)) return;
+    await _vm.usarMiUbicacion();
   }
 
   /// Un renglón de la cascada: llega cuando la hoja ya casi terminó de
@@ -207,6 +216,8 @@ class _DireccionFormSheetState extends State<DireccionFormSheet> {
                   _Campo(_telCtrl, 'Teléfono de contacto (opcional)', LucideIcons.phone,
                       teclado: TextInputType.phone),
                 ),
+                const SizedBox(height: 12),
+                _paso(5, _Ubicacion(vm: vm, alUsar: _usarUbicacion)),
                 const SizedBox(height: 22),
                 _paso(
                   6,
@@ -342,6 +353,54 @@ class _Campo extends StatelessWidget {
           borderSide: BorderSide(color: AppColors.pierVerde, width: 1.5),
         ),
       ),
+    );
+  }
+}
+
+/// «Usar mi ubicación» y cómo terminó (#227). Si el permiso se negó para
+/// siempre, ofrece abrir los Ajustes de la app.
+class _Ubicacion extends StatelessWidget {
+  const _Ubicacion({required this.vm, required this.alUsar});
+
+  final DireccionFormViewModel vm;
+  final VoidCallback alUsar;
+
+  @override
+  Widget build(BuildContext context) {
+    final aviso = vm.avisoUbicacion;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton.icon(
+          onPressed: vm.ubicando ? null : alUsar,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.pierVerde,
+            side: BorderSide(color: AppColors.pierVerde.withValues(alpha: 0.5)),
+          ),
+          icon: vm.ubicando
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(vm.conUbicacion ? LucideIcons.circleCheck : LucideIcons.mapPin,
+                  size: 18),
+          label: Text(vm.conUbicacion ? 'Ubicación agregada' : 'Usar mi ubicación'),
+        ),
+        if (aviso != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(aviso,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary)),
+          ),
+        if (vm.estadoUbicacion == EstadoUbicacion.sinPermisoParaSiempre)
+          TextButton(
+            onPressed: vm.abrirAjustes,
+            child: const Text('Abrir Ajustes'),
+          ),
+      ],
     );
   }
 }
