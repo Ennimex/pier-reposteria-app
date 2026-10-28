@@ -7,7 +7,7 @@ import 'package:pier_reposteria/ui/home/widgets/home_secciones.dart';
 
 import '../../helpers/pump_app.dart';
 
-const _resenas = [
+const List<Map<String, dynamic>> _resenas = [
   {
     'id': 1,
     'autor_nombre': 'Ana',
