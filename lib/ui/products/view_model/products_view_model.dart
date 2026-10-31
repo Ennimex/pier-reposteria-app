@@ -3,8 +3,10 @@
 // Estado del catálogo (MVVM, Fase 4): categoría elegida, búsqueda, orden,
 // filtros de sabor/tamaño/tipo (globales o propios de la categoría),
 // corazones de favoritos (optimistas) y el registro de demanda no atendida
-// (búsquedas y "Avísame"). Los filtros se aplican en local sobre el catálogo
-// que ya cargó ProductProvider (mismo comportamiento que antes de MVVM).
+// (búsquedas y "Avísame"). Los productos se piden al servidor de 20 en 20
+// con la consulta actual (#37), con el patrón del feed: un turno descarta lo
+// que llega de una consulta anterior, una sola petición a la vez, sin
+// repetir productos y con los agotados al final cuando ya no hay más.
 //
 // La sesión, el carrito y la navegación no se tocan desde aquí: la vista
 // decide si manda a iniciar sesión y avisa cuando cambia la sesión.
@@ -30,17 +32,19 @@ class ProductsViewModel extends ChangeNotifier {
     required ProductosRepository productosRepo,
     required FavoritosRepository favoritosRepo,
     required DemandaRepository demandaRepo,
-    required List<Product> Function() catalogo,
     String categoriaInicial = todas,
+    this.esperaBusqueda = const Duration(milliseconds: 400),
     this.esperaRegistroBusqueda = const Duration(milliseconds: 1200),
   })  : _productosRepo = productosRepo,
         _favoritosRepo = favoritosRepo,
         _demandaRepo = demandaRepo,
-        _catalogo = catalogo,
         _categoria = categoriaInicial;
 
   /// Categoría que muestra todo el catálogo.
   static const String todas = ConsultaCatalogo.todas;
+
+  /// Productos por página, como la web.
+  static const int porPagina = 20;
 
   /// Chips de categoría mientras el backend no manda las suyas.
   static const List<String> categoriasDeRespaldo = [
@@ -52,15 +56,22 @@ class ProductsViewModel extends ChangeNotifier {
     'Cafetería',
   ];
 
+  /// Cuánto se espera tras la última tecla para preguntarle al servidor (no
+  /// una petición por tecla).
+  final Duration esperaBusqueda;
+
   /// Cuánto se espera tras la última tecla para registrar la búsqueda.
   final Duration esperaRegistroBusqueda;
 
   final ProductosRepository _productosRepo;
   final FavoritosRepository _favoritosRepo;
   final DemandaRepository _demandaRepo;
-  final List<Product> Function() _catalogo;
   bool _cerrado = false;
+  Timer? _esperaDeBusqueda;
   Timer? _registroBusqueda;
+  // Término que ya se dejó de teclear y espera a su primera página para
+  // registrarse con cuántos resultados dio.
+  String? _terminoPorRegistrar;
 
   String _categoria;
   String _busqueda = '';
@@ -75,6 +86,27 @@ class ProductsViewModel extends ChangeNotifier {
   String? _filtroTipo;
   final Set<String> _favoritos = {};
 
+  // Páginas de la consulta que se ve. Los agotados esperan aparte hasta que
+  // ya no hay más páginas.
+  ConsultaCatalogo? _consultaPedida;
+  final List<Product> _disponibles = [];
+  final List<Product> _agotados = [];
+  final Set<String> _ids = {};
+  List<Product> _productos = const [];
+  // Lo que el servidor mandó completo (órdenes sin páginas del servidor);
+  // null = se pide por páginas.
+  List<Product>? _todo;
+  // Filas ya recibidas (o ya mostradas de _todo): el offset de la siguiente.
+  int _offset = 0;
+  int _cantidadPrimeraPagina = 0;
+  bool _iniciado = false;
+  bool _fin = false;
+  bool _cargando = false;
+  bool _cargandoMas = false;
+  String? _error;
+  String? _errorMas;
+  int _turno = 0;
+
   String get categoria => _categoria;
   String get busqueda => _busqueda;
   SortOption get orden => _orden;
@@ -82,6 +114,37 @@ class ProductsViewModel extends ChangeNotifier {
   String? get filtroSabor => _filtroSabor;
   String? get filtroTamano => _filtroTamano;
   String? get filtroTipo => _filtroTipo;
+
+  /// Lo que el cliente pide ver ahora. La búsqueda va recortada: «pay» y
+  /// « pay» son la misma consulta.
+  ConsultaCatalogo get consulta => ConsultaCatalogo(
+        categoria: _categoria,
+        busqueda: _busqueda.trim(),
+        sabor: _filtroSabor,
+        tamano: _filtroTamano,
+        tipo: _filtroTipo,
+        orden: _orden,
+      );
+
+  /// Lo que se ve: los disponibles de las páginas que ya llegaron y, cuando
+  /// ya no hay más, los agotados al final (como la web).
+  List<Product> get productos => _productos;
+
+  /// Se espera la primera página de la consulta; mientras, se queda lo que
+  /// ya se veía.
+  bool get cargando => _cargando;
+
+  /// Se espera la siguiente página.
+  bool get cargandoMas => _cargandoMas;
+
+  /// Por qué no llegó la primera página (sin nada que mostrar).
+  String? get error => _error;
+
+  /// Por qué no llegó la siguiente página (lo que se ve se queda).
+  String? get errorMas => _errorMas;
+
+  /// Ya llegó la última página: una con menos de [porPagina] o vacía.
+  bool get fin => _fin;
 
   /// 'Todos' y las categorías del backend, o las de respaldo si no hay.
   List<String> get nombresCategorias => _categorias.isEmpty
@@ -114,12 +177,95 @@ class ProductsViewModel extends ChangeNotifier {
 
   // ── Carga ────────────────────────────────────────────────────────────────
 
-  /// Carga categorías, filtros y favoritos a la vez.
+  /// Carga la primera página, categorías, filtros y favoritos a la vez.
   Future<void> cargar({required bool autenticado}) => Future.wait([
+        cargarProductos(),
         cargarCategorias(),
         cargarFiltros(),
         cargarFavoritos(autenticado: autenticado),
       ]);
+
+  /// Jalar para refrescar y «Reintentar»: la página 1 otra vez, con
+  /// categorías y filtros.
+  Future<void> recargar() => Future.wait([
+        cargarProductos(),
+        cargarCategorias(),
+        cargarFiltros(),
+      ]);
+
+  /// Primera página de la consulta actual. Lo que se ve se queda hasta que
+  /// llega y entonces se reemplaza; lo que llegue de una consulta anterior
+  /// se descarta. Los órdenes sin páginas del servidor se piden completos una
+  /// vez y se muestran de [porPagina] en [porPagina].
+  Future<void> cargarProductos() async {
+    _esperaDeBusqueda?.cancel();
+    final turno = ++_turno;
+    final pedida = consulta;
+    _consultaPedida = pedida;
+    _cargando = true;
+    _cargandoMas = false;
+    _error = null;
+    _errorMas = null;
+    _avisar();
+    try {
+      final respuesta = await _productosRepo.buscarProductos(
+        pedida,
+        limite: pedida.pideTodo ? null : porPagina,
+      );
+      if (turno != _turno) return;
+      _vaciar();
+      if (pedida.pideTodo) _todo = respuesta;
+      final primera = pedida.pideTodo ? _siguientesDe(respuesta) : respuesta;
+      _agregar(primera);
+      _cantidadPrimeraPagina = primera.length;
+      _iniciado = true;
+      PierLog.info('✅ Catálogo: ${primera.length} en la primera página');
+    } on ApiException catch (e) {
+      if (turno != _turno) return;
+      PierLog.error('Error al cargar el catálogo: ${e.message}');
+      _vaciar();
+      _error = e.message;
+    }
+    _cargando = false;
+    _avisar();
+    _registrarBusquedaPendiente();
+  }
+
+  /// La siguiente página de lo que se ve: del servidor o, si la consulta se
+  /// pidió completa, los siguientes [porPagina] sin red. Se llama al
+  /// acercarse al final; no hace nada mientras carga, si ya no hay más o si
+  /// la primera página no llegó.
+  Future<void> cargarMas() async {
+    final pedida = _consultaPedida;
+    if (pedida == null || !_iniciado || _cargando || _cargandoMas || _fin) {
+      return;
+    }
+    final todo = _todo;
+    if (todo != null) {
+      _agregar(_siguientesDe(todo));
+      _avisar();
+      return;
+    }
+    final turno = _turno;
+    _cargandoMas = true;
+    _errorMas = null;
+    _avisar();
+    try {
+      final pagina = await _productosRepo.buscarProductos(
+        pedida,
+        limite: porPagina,
+        offset: _offset,
+      );
+      if (turno != _turno) return;
+      _agregar(pagina);
+    } on ApiException catch (e) {
+      if (turno != _turno) return;
+      PierLog.error('Error al cargar más productos: ${e.message}');
+      _errorMas = e.message;
+    }
+    _cargandoMas = false;
+    _avisar();
+  }
 
   Future<void> cargarCategorias() async {
     try {
@@ -200,6 +346,8 @@ class ProductsViewModel extends ChangeNotifier {
         _filtroTipo = null;
       }
       notifyListeners();
+      // Si se limpió alguno, la página 1 otra vez sin él.
+      _reiniciarSiCambio();
       PierLog.info('✅ Opciones de "$solicitada" — '
           'sabores:${opciones.sabores.length} tipos:${opciones.tipos.length}');
     } on ApiException {
@@ -208,52 +356,61 @@ class ProductsViewModel extends ChangeNotifier {
   }
 
   // ── Acciones del cliente ─────────────────────────────────────────────────
+  // Cada cambio de búsqueda, categoría, filtro u orden vuelve a la página 1.
 
   Future<void> seleccionarCategoria(String nombre) {
     _categoria = nombre;
     notifyListeners();
+    _reiniciarSiCambio();
     return _cargarOpcionesCategoria();
   }
 
-  /// Filtra al instante y registra el término (con cuántos resultados dio)
-  /// [esperaRegistroBusqueda] después de la última tecla, como la web.
+  /// Pide la búsqueda [esperaBusqueda] después de la última tecla y registra
+  /// el término [esperaRegistroBusqueda] después, con cuántos resultados dio
+  /// su primera página, como la web.
   void buscar(String texto) {
     _busqueda = texto;
     notifyListeners();
-    _registroBusqueda?.cancel();
+    _olvidarBusquedaPendiente();
+    _esperaDeBusqueda = Timer(esperaBusqueda, _reiniciarSiCambio);
     final termino = texto.trim();
     if (termino.length < 2) return;
     _registroBusqueda = Timer(esperaRegistroBusqueda, () {
-      if (_cerrado || _busqueda.trim() != termino) return;
-      _demandaRepo.registrarBusqueda(termino, filtrar(_catalogo()).length);
+      _terminoPorRegistrar = termino;
+      _registrarBusquedaPendiente();
     });
   }
 
   void limpiarBusqueda() {
-    _registroBusqueda?.cancel();
+    _olvidarBusquedaPendiente();
     _busqueda = '';
     notifyListeners();
+    _reiniciarSiCambio();
   }
 
   void ordenarPor(SortOption orden) {
     _orden = orden;
     notifyListeners();
+    _reiniciarSiCambio();
   }
 
   /// Pone el sabor, o lo quita si ya estaba puesto.
   void alternarSabor(String sabor) {
     _filtroSabor = _filtroSabor == sabor ? null : sabor;
     notifyListeners();
+    _reiniciarSiCambio();
   }
 
   void alternarTamano(String tamano) {
     _filtroTamano = _filtroTamano == tamano ? null : tamano;
     notifyListeners();
+    _reiniciarSiCambio();
   }
 
   void alternarTipo(String tipo) {
     _filtroTipo = _filtroTipo == tipo ? null : tipo;
     notifyListeners();
+    _reiniciarSiCambio();
   }
 
   /// "Limpiar" de la hoja de filtros: solo sabor, tamaño y tipo.
@@ -262,12 +419,13 @@ class ProductsViewModel extends ChangeNotifier {
     _filtroTamano = null;
     _filtroTipo = null;
     notifyListeners();
+    _reiniciarSiCambio();
   }
 
   /// "Quitar filtros": búsqueda, categoría, orden y filtros.
   void limpiarTodo() {
     PierLog.debug('Filtros limpiados');
-    _registroBusqueda?.cancel();
+    _olvidarBusquedaPendiente();
     _busqueda = '';
     _categoria = todas;
     _orden = SortOption.popular;
@@ -276,6 +434,7 @@ class ProductsViewModel extends ChangeNotifier {
     _filtroTipo = null;
     _opcionesCategoria = const FiltrosCatalogo();
     notifyListeners();
+    _reiniciarSiCambio();
   }
 
   /// Pone o quita el corazón al instante y lo confirma con el backend; si
@@ -311,61 +470,71 @@ class ProductsViewModel extends ChangeNotifier {
   void avisarme(Product producto) =>
       _demandaRepo.registrarClicAgotado(producto.id);
 
-  // ── Filtrado local ───────────────────────────────────────────────────────
+  // ── Páginas ──────────────────────────────────────────────────────────────
 
-  /// Lo que se ve de [todos] con la categoría, búsqueda, filtros y orden
-  /// actuales. Lo agotado siempre al final (como la web), conservando el
-  /// orden elegido dentro de cada grupo.
-  List<Product> filtrar(List<Product> todos) {
-    var lista = _categoria == todas
-        ? List<Product>.from(todos)
-        : todos.where((p) => p.categoria == _categoria).toList();
+  /// Vuelve a la página 1 si lo que se pide ya no es lo que se pidió.
+  void _reiniciarSiCambio() {
+    if (consulta != _consultaPedida) unawaited(cargarProductos());
+  }
 
-    if (_busqueda.isNotEmpty) {
-      final q = _busqueda.toLowerCase();
-      lista = lista
-          .where((p) =>
-              p.nombre.toLowerCase().contains(q) ||
-              p.descripcion.toLowerCase().contains(q) ||
-              p.categoria.toLowerCase().contains(q))
-          .toList();
+  /// Suma una página a lo que se ve: sin repetir productos y con los
+  /// agotados aparte hasta que ya no hay más.
+  void _agregar(List<Product> pagina) {
+    _offset += pagina.length;
+    for (final p in pagina) {
+      if (!_ids.add(p.id)) continue;
+      (p.agotado ? _agotados : _disponibles).add(p);
     }
-    if (_filtroSabor != null && _filtroSabor != todas) {
-      lista = lista.where((p) => p.sabor == _filtroSabor).toList();
-    }
-    if (_filtroTamano != null && _filtroTamano != todas) {
-      lista = lista.where((p) => p.tamano == _filtroTamano).toList();
-    }
-    if (_filtroTipo != null && _filtroTipo != todas) {
-      lista = lista.where((p) => p.tipo == _filtroTipo).toList();
-    }
+    final todo = _todo;
+    _fin = todo == null ? pagina.length < porPagina : _offset >= todo.length;
+    _productos = List.unmodifiable([..._disponibles, if (_fin) ..._agotados]);
+  }
 
-    switch (_orden) {
-      case SortOption.priceAsc:
-        lista.sort((a, b) => a.precio.compareTo(b.precio));
-      case SortOption.priceDesc:
-        lista.sort((a, b) => b.precio.compareTo(a.precio));
-      case SortOption.nameAsc:
-        lista.sort((a, b) => a.nombre.compareTo(b.nombre));
-      case SortOption.rating:
-        lista.sort((a, b) => b.rating.compareTo(a.rating));
-      case SortOption.popular:
-        lista.sort((a, b) {
-          if (a.popular && !b.popular) return -1;
-          if (!a.popular && b.popular) return 1;
-          return 0;
-        });
+  /// Los siguientes [porPagina] de [todo] que aún no se muestran.
+  List<Product> _siguientesDe(List<Product> todo) =>
+      todo.skip(_offset).take(porPagina).toList();
+
+  /// Olvida las páginas de la consulta anterior.
+  void _vaciar() {
+    _disponibles.clear();
+    _agotados.clear();
+    _ids.clear();
+    _productos = const [];
+    _todo = null;
+    _offset = 0;
+    _iniciado = false;
+    _fin = false;
+  }
+
+  /// Registra el término que se dejó de teclear con cuántos productos trajo
+  /// la primera página de su búsqueda, en cuanto esa página llega.
+  void _registrarBusquedaPendiente() {
+    final termino = _terminoPorRegistrar;
+    if (termino == null ||
+        _cargando ||
+        !_iniciado ||
+        _consultaPedida?.busqueda != termino) {
+      return;
     }
-    return [
-      ...lista.where((p) => !p.agotado),
-      ...lista.where((p) => p.agotado),
-    ];
+    _terminoPorRegistrar = null;
+    _demandaRepo.registrarBusqueda(termino, _cantidadPrimeraPagina);
+  }
+
+  /// Cancela la búsqueda y el registro que esperaban a la última tecla.
+  void _olvidarBusquedaPendiente() {
+    _esperaDeBusqueda?.cancel();
+    _registroBusqueda?.cancel();
+    _terminoPorRegistrar = null;
+  }
+
+  void _avisar() {
+    if (!_cerrado) notifyListeners();
   }
 
   @override
   void dispose() {
     _cerrado = true;
-    _registroBusqueda?.cancel();
+    _olvidarBusquedaPendiente();
     super.dispose();
   }
 }

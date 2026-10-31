@@ -1,8 +1,9 @@
 // lib/ui/products/widgets/products_screen.dart
 //
 // Catálogo (MVVM, Fase 4): la vista pinta lo que expone ProductsViewModel
-// (categoría, búsqueda, filtros, orden, favoritos) sobre el catálogo que
-// carga ProductProvider. Aquí solo queda lo que es de la interfaz: el texto
+// (categoría, búsqueda, filtros, orden, favoritos y los productos que pide
+// por páginas, #37); de ProductProvider solo toma las promociones de las
+// tarjetas. Aquí solo queda lo que es de la interfaz: el texto
 // del buscador, cuadrícula/lista, el rebote del botón de carrito, el vuelo de
 // la miniatura al carrito, la entrada en cascada de las tarjetas, mandar a
 // iniciar sesión y los avisos (SnackBar).
@@ -48,7 +49,6 @@ class _ProductsScreenState extends State<ProductsScreen>
         productosRepo: context.read(),
         favoritosRepo: context.read(),
         demandaRepo: context.read(),
-        catalogo: () => context.read<ProductProvider>().productos,
         categoriaInicial: widget.initialCategory ?? ProductsViewModel.todas,
       );
   final TextEditingController _searchController = TextEditingController();
@@ -165,14 +165,14 @@ class _ProductsScreenState extends State<ProductsScreen>
     _vm.limpiarTodo();
   }
 
-  /// Deslizar para recargar y «Reintentar» (catálogo sin conexión, #160). No
+  /// Deslizar para recargar y «Reintentar» (catálogo sin conexión, #160): las
+  /// promociones de las tarjetas y la página 1 con categorías y filtros. No
   /// se limpia el imageCache global: recargar los datos basta y evita que
   /// TODA la app vuelva a descargar imágenes.
-  Future<void> _recargar() async {
-    await context.read<ProductProvider>().refrescar();
-    await _vm.cargarCategorias();
-    await _vm.cargarFiltros();
-  }
+  Future<void> _recargar() => Future.wait([
+        context.read<ProductProvider>().refrescar(),
+        _vm.recargar(),
+      ]);
 
   void _aviso(String texto,
       {required IconData icono, required Color color, int segundos = 2}) {
@@ -249,13 +249,15 @@ class _ProductsScreenState extends State<ProductsScreen>
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
+    // Solo por las promociones de las tarjetas; los productos son del VM.
     final productProvider = context.watch<ProductProvider>();
     final cartCount = context.watch<CartProvider>().totalQuantity;
 
     return ListenableBuilder(
       listenable: _vm,
       builder: (context, _) {
-        final products = _vm.filtrar(productProvider.productos);
+        final products = _vm.productos;
+        final error = _vm.error;
         // Tanda de entrada de las tarjetas: cambia con lo que decide «qué se
         // ve» (categoría, filtros, orden, vista) y entonces todas entran otra
         // vez en cascada. Escribir en el buscador no la cambia: las tarjetas
@@ -303,19 +305,20 @@ class _ProductsScreenState extends State<ProductsScreen>
                           child: _quitarFiltros(),
                         ),
                       ),
-                      if (productProvider.isLoading)
+                      if (_vm.cargando && products.isEmpty)
                         _grid((context, i) => const ProductSkeletonCard(), 6)
-                      // El catálogo no pudo cargar (p. ej. sin internet): no
-                      // es «Sin resultados» de los filtros (#160).
-                      else if (productProvider.errorMessage != null &&
-                          productProvider.productos.isEmpty)
+                      // La primera página no pudo llegar (p. ej. sin
+                      // internet): no es «Sin resultados» de los filtros
+                      // (#160).
+                      else if (error != null && products.isEmpty)
                         SliverFillRemaining(
                           child: CatalogoVacio.sinConexion(
-                            mensaje: productProvider.errorMessage!,
+                            mensaje: error,
                             onReintentar: _recargar,
                           ),
                         )
-                      else if (products.isEmpty)
+                      // La primera página llegó vacía.
+                      else if (_vm.fin && products.isEmpty)
                         SliverFillRemaining(
                             child: CatalogoVacio(onLimpiar: _limpiarTodo))
                       else

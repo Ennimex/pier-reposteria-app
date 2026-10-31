@@ -1,7 +1,8 @@
 // test/widget/products/products_screen_test.dart — el catálogo pinta lo que
-// expone su ViewModel (MVVM, Fase 4) sobre el catálogo de ProductProvider,
-// sin red: tarjetas en cuadrícula y lista, badges de promoción, categorías,
-// hojas de filtros y orden, estado vacío y acciones sin sesión.
+// expone su ViewModel (MVVM, Fase 4), que le pide los productos a un servidor
+// falso que filtra y ordena como el real (#37), sin red: tarjetas en
+// cuadrícula y lista, badges de promoción, categorías, hojas de filtros y
+// orden, estado vacío y acciones sin sesión.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -40,18 +41,43 @@ Map<String, dynamic> _p(
       'rating': 4.5,
     };
 
+final List<Map<String, dynamic>> _productos = [
+  _p(1, 'Chocoflan', precio: 300, sabor: 'Chocolate', popular: true),
+  _p(2, 'Cheesecake', precio: 450, categoria: 'Pays', sabor: 'Fresa'),
+  _p(3, 'Pay de limón', precio: 200, categoria: 'Pays', agotado: true),
+  _p(4, 'Rosca', precio: 380, popular: true),
+  _p(5, 'Tres leches', precio: 320),
+  _p(6, 'Flan napolitano', precio: 150),
+];
+
+/// GET /productos como el servidor: filtra por categoría, sabor y búsqueda
+/// (en nombre o descripción) y ordena por precio. El catálogo es chico: la
+/// primera página ya es la última.
+Map<String, dynamic> _catalogo(LlamadaApi llamada) {
+  final q = Uri.parse(llamada.endpoint).queryParameters;
+  final busqueda = q['busqueda']?.toLowerCase();
+  final productos = [
+    for (final p in _productos)
+      if ((q['categoria'] == null || p['categoria'] == q['categoria']) &&
+          (q['sabor'] == null || p['sabor'] == q['sabor']) &&
+          (busqueda == null ||
+              '${p['nombre']} ${p['descripcion']}'
+                  .toLowerCase()
+                  .contains(busqueda)))
+        p,
+  ];
+  if (q['ordenar'] == 'precio-desc') {
+    productos.sort((a, b) =>
+        (b['precio_chico'] as num).compareTo(a['precio_chico'] as num));
+  }
+  return {'success': true, 'productos': productos};
+}
+
+/// Lo que la búsqueda espera a que se deje de teclear antes de preguntar.
+const _esperaBusqueda = Duration(milliseconds: 400);
+
 FakeApiClient _backend() => FakeApiClient(respuestas: {
-      ApiConstants.productos: {
-        'success': true,
-        'productos': [
-          _p(1, 'Chocoflan', precio: 300, sabor: 'Chocolate', popular: true),
-          _p(2, 'Cheesecake', precio: 450, categoria: 'Pays', sabor: 'Fresa'),
-          _p(3, 'Pay de limón', precio: 200, categoria: 'Pays', agotado: true),
-          _p(4, 'Rosca', precio: 380, popular: true),
-          _p(5, 'Tres leches', precio: 320),
-          _p(6, 'Flan napolitano', precio: 150),
-        ],
-      },
+      ApiConstants.productos: _catalogo,
       ApiConstants.promocionesActivas: {
         'success': true,
         'promociones': [
@@ -211,6 +237,7 @@ void main() {
       await _montar(tester);
 
       await tester.enterText(find.byType(TextField), 'zzz');
+      await tester.pump(_esperaBusqueda);
       await tester.pumpAndSettle();
       expect(find.text('Sin resultados'), findsOneWidget);
 
@@ -264,6 +291,7 @@ void main() {
       await _montar(tester);
 
       await tester.enterText(find.byType(TextField), 'choco');
+      await tester.pump(_esperaBusqueda);
       await tester.pumpAndSettle();
       expect(find.text('Rosca'), findsNothing);
 

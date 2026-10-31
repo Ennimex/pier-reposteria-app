@@ -82,16 +82,35 @@ class _Carrito {
   }
 }
 
+final List<Map<String, dynamic>> _catalogo = [
+  _producto(1, 'Chocoflan'),
+  _producto(2, 'Cheesecake', precio: 450, categoria: 'Pays'),
+  _producto(3, 'Rosca', precio: 380),
+];
+
+/// GET /productos como el servidor: los que tienen la `busqueda` en el
+/// nombre (sin ella, todos).
+Map<String, dynamic> _productosQueCoinciden(LlamadaApi llamada) {
+  final busqueda =
+      Uri.parse(llamada.endpoint).queryParameters['busqueda'] ?? '';
+  return {
+    'success': true,
+    'productos': [
+      for (final p in _catalogo)
+        if ((p['nombre'] as String).toLowerCase().contains(
+          busqueda.toLowerCase(),
+        ))
+          p,
+    ],
+  };
+}
+
+/// Lo que la búsqueda espera a que se deje de teclear antes de preguntar.
+const _esperaBusqueda = Duration(milliseconds: 400);
+
 FakeApiClient _backendCatalogo({_Carrito? carrito}) => FakeApiClient(
   respuestas: {
-    ApiConstants.productos: {
-      'success': true,
-      'productos': [
-        _producto(1, 'Chocoflan'),
-        _producto(2, 'Cheesecake', precio: 450, categoria: 'Pays'),
-        _producto(3, 'Rosca', precio: 380),
-      ],
-    },
+    ApiConstants.productos: _productosQueCoinciden,
     ApiConstants.promocionesActivas: {
       'success': true,
       'promociones': <Map<String, dynamic>>[],
@@ -463,13 +482,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(opacidadEn(tester, _entradaDe('Rosca')), 1);
 
-      // Buscar filtra al instante: lo que sigue (o vuelve) no se repite.
+      // Al llegar lo buscado, lo que sigue (o vuelve) no se repite.
       await tester.enterText(find.byType(TextField), 'Ch');
-      await tester.pump();
+      await tester.pump(_esperaBusqueda);
       expect(find.text('Rosca'), findsNothing);
       expect(opacidadEn(tester, _entradaDe('Chocoflan')), 1);
       await tester.enterText(find.byType(TextField), '');
-      await tester.pump();
+      await tester.pump(_esperaBusqueda);
       expect(opacidadEn(tester, _entradaDe('Rosca')), 1);
       await tester.pumpAndSettle();
     });
@@ -505,7 +524,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'zzz');
-      await tester.pump();
+      await tester.pump(_esperaBusqueda);
       double opacidadDe(String texto) => tester
           .widget<FadeTransition>(
             find
