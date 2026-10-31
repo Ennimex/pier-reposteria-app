@@ -22,8 +22,10 @@ clientes (#22). Las métricas que deciden cada paso están en #24.
       - levanta el entorno aislado de las pruebas con `tool/entorno_pruebas.sh`
         (la API del backend y su base en contenedores, con datos ficticios);
       - construye el **candidato de liberación**: el APK en modo release,
-        flavor `prod`, apuntando a ese entorno (`http://10.0.2.2:3000/api`
-        desde el emulador), sin Sentry y firmado con la llave de pruebas;
+        flavor `prod`, ofuscado como el que se publica (ver
+        [Ofuscación y símbolos](#ofuscación-y-símbolos)), apuntando a ese
+        entorno (`http://10.0.2.2:3000/api` desde el emulador), sin Sentry y
+        firmado con la llave de pruebas;
       - lo instala en el emulador (Android 14, Pixel 6) y corre el smoke
         (`tool/smoke_liberacion.dart`): la app abre, la pestaña «Catálogo»
         muestra un producto de la semilla y, desde «Más» → «Iniciar Sesión»,
@@ -33,9 +35,13 @@ clientes (#22). Las métricas que deciden cada paso están en #24.
    2. **APK firmado y Release** (`publicar`), solo si el smoke pasó y alguien
       con permiso lo aprueba en el Environment `produccion`:
       - comprueba que el tag sea la versión del `pubspec.yaml`;
-      - arma el APK de release (flavor `prod`) con Sentry encendido;
+      - arma el APK de release (flavor `prod`), ofuscado y con Sentry
+        encendido;
       - comprueba que lo firmó la llave del equipo (huella SHA-1
         `F3:A4:02:DF:C1:97:80:28:A1:D4:17:23:66:40:2C:64:AD:C3:B0:C1`);
+      - sube a Sentry los símbolos de Dart y el mapa de nombres
+        (`tool/subir_simbolos.sh`) y los guarda 90 días en Artifacts
+        (`simbolos-vX.Y.Z`); si falta el token o la subida falla, no publica;
       - publica la Release `vX.Y.Z` con el APK `pier-reposteria-vX.Y.Z.apk` y
         las notas sacadas de los commits desde el tag anterior;
       - revisa, sin escribir nada, que producción responda:
@@ -47,7 +53,9 @@ dice por qué.
 
 **Probar sin publicar (ensayo):** Actions → Publicar versión → Run workflow, con
 «Ensayo» marcado (viene así por omisión). Corre las pruebas en el entorno de
-liberación completas y no publica nada, sin crear tags. Desde la terminal:
+liberación completas y no publica nada, sin crear tags. Además sube a Sentry
+los símbolos del candidato, para comprobar el token y la subida, y deja el APK
+ofuscado 7 días en Artifacts (`candidato-ofuscado`). Desde la terminal:
 `gh workflow run release.yml --ref main -f ensayo=true`.
 
 ## Environment `produccion`
@@ -80,6 +88,7 @@ En Settings → Secrets and variables → Actions → New repository secret:
 | `ANDROID_KEY_ALIAS` | `keyAlias` de `android/key.properties` |
 | `ANDROID_KEY_PASSWORD` | `keyPassword` de `android/key.properties` |
 | `SENTRY_DSN` | El DSN del proyecto `flutter` en Sentry (Settings → Client Keys) |
+| `SENTRY_AUTH_TOKEN` | Token de organización de Sentry para subir los símbolos: organización `pier-reposteria` → Settings → Developer Settings → Organization Tokens (permiso `org:ci`) |
 
 Para la llave en base64, en PowerShell (copia el resultado al portapapeles, sin
 mostrarlo en pantalla):
@@ -91,7 +100,37 @@ mostrarlo en pantalla):
 Un secreto guardado ya no se puede leer, solo reemplazar. Sin los cuatro de la
 llave el workflow se detiene: nunca publica un APK firmado con la llave de
 pruebas. Sin `SENTRY_DSN` publica, pero avisa que esa versión no reportará
-errores.
+errores. Sin `SENTRY_AUTH_TOKEN` se detiene antes de publicar: una versión
+ofuscada sin sus símbolos en Sentry manda errores ilegibles.
+
+## Ofuscación y símbolos
+
+La versión publicada va ofuscada en sus dos capas (#224):
+
+- **Java/Kotlin** (la parte nativa de Android y los plugins): R8 la reduce y
+  renombra (`android/app/build.gradle.kts`, `proguard-rules.pro`).
+- **Dart** (la app, compilada en `libapp.so`): `--obfuscate` renombra las
+  clases y funciones, y `--split-debug-info` guarda aparte sus símbolos, un
+  `app.android-<arquitectura>.symbols` por arquitectura, con el mapa de
+  nombres (`obfuscation.map.json`, de `--save-obfuscation-map`).
+
+`release.yml` sube los símbolos y el mapa a Sentry con `sentry-cli` (versión
+fija en `tool/subir_simbolos.sh`): así Sentry muestra los rastros de los
+errores y los tipos de excepción con sus nombres reales. También quedan en
+Artifacts; para leer a mano un rastro ofuscado:
+`flutter symbolize -i rastro.txt -d app.android-arm64.symbols`.
+
+Al escribir código:
+
+- no depender de `runtimeType.toString()` ni de nombres de clases como texto
+  (en la versión publicada salen renombrados);
+- los nombres de los `enum` (`.name`) no se ofuscan;
+- las rutas de go_router, que Sentry usa como nombre de pantalla, son texto y
+  no cambian.
+
+El repositorio es público: los símbolos en Artifacts no revelan nada que no
+esté ya en el código. La ofuscación dificulta leer el APK, no lo protege:
+ningún secreto debe ir dentro de la app.
 
 ## Estrategia canary
 
