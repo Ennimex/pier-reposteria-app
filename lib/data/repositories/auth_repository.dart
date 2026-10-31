@@ -59,6 +59,11 @@ abstract class AuthRepository {
   /// Verificar si hay sesión activa (para Splash)
   Future<bool> isAuthenticated();
 
+  /// Guarda que el cliente aceptó el aviso de privacidad (#220) por [via]
+  /// («correo» al registrarse o «google»). Hoy queda en el teléfono; cuando
+  /// el backend lo reciba, se mandará con el registro.
+  Future<void> aceptarAvisoDePrivacidad({required String via});
+
   /// Obtener usuario guardado localmente
   Future<Map<String, dynamic>?> getCurrentUser();
 }
