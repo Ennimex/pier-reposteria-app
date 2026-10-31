@@ -63,7 +63,6 @@ void main() {
       expect(await _enSeguro(_token), 'jwt');
       expect(await _enPrefs(_token), isNull);
       expect(await storage.getToken(), 'jwt');
-      expect(await storage.isAuthenticated(), isTrue);
     });
 
     test('sin token no hay sesión', () async {
@@ -132,6 +131,84 @@ void main() {
       await storage.clearAll();
 
       expect(await storage.getToken(), isNull);
+      expect(await _enPrefs(_usuario), isNull);
+      expect(await _enSeguro(_usuario), isNull);
+    });
+  });
+
+  group('StorageService: usuario cifrado (#217)', () {
+    test('saveUser lo guarda cifrado y nunca en SharedPreferences', () async {
+      await StorageService().saveUser('{"email":"ana@pier.mx"}');
+
+      expect(await _enSeguro(_usuario), '{"email":"ana@pier.mx"}');
+      expect(await _enPrefs(_usuario), isNull);
+    });
+
+    test('un usuario de la versión anterior se migra y se borra del XML',
+        () async {
+      SharedPreferences.setMockInitialValues({_usuario: '{"id":7}'});
+
+      expect(await StorageService().getUser(), '{"id":7}');
+      expect(await _enSeguro(_usuario), '{"id":7}');
+      expect(await _enPrefs(_usuario), isNull);
+    });
+
+    test('guardar borra el que hubiera quedado sin migrar', () async {
+      SharedPreferences.setMockInitialValues({_usuario: '{"id":7}'});
+
+      await StorageService().saveUser('{"id":8}');
+
+      expect(await _enPrefs(_usuario), isNull);
+      expect(await StorageService().getUser(), '{"id":8}');
+    });
+
+    test('si el usuario no se puede descifrar, se descarta la sesión completa',
+        () async {
+      final seguro = _SeguroIlegible();
+
+      expect(await StorageService(seguro: seguro).getUser(), isNull);
+      expect(seguro.borradas, [_usuario, _token]);
+    });
+
+    test('removeUser lo borra de ambos lados', () async {
+      SharedPreferences.setMockInitialValues({_usuario: '{"id":7}'});
+      FlutterSecureStorage.setMockInitialValues({_usuario: '{"id":8}'});
+
+      await StorageService().removeUser();
+
+      expect(await _enSeguro(_usuario), isNull);
+      expect(await _enPrefs(_usuario), isNull);
+    });
+  });
+
+  group('StorageService: sesión (#217)', () {
+    test('con token y usuario hay sesión', () async {
+      final storage = StorageService();
+      await storage.saveToken('jwt');
+      await storage.saveUser('{"id":1}');
+
+      expect(await storage.isAuthenticated(), isTrue);
+    });
+
+    test('un token sin usuario no cuenta como sesión y se borra', () async {
+      final storage = StorageService();
+      await storage.saveToken('jwt');
+
+      expect(await storage.isAuthenticated(), isFalse);
+      expect(await storage.getToken(), isNull);
+    });
+
+    test('con el usuario de la versión anterior la sesión se conserva',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        _token: 'jwt-viejo',
+        _usuario: '{"id":7}',
+      });
+
+      final storage = StorageService();
+
+      expect(await storage.isAuthenticated(), isTrue);
+      expect(await _enPrefs(_token), isNull);
       expect(await _enPrefs(_usuario), isNull);
     });
   });
