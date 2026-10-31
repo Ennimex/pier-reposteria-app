@@ -36,6 +36,17 @@ if [ ! -x "$cli" ]; then
     "@sentry/cli@$VERSION_SENTRY_CLI" > /dev/null
 fi
 
+# Lo que respondió Sentry para un Debug ID en la salida de sentry-cli.
+estado() {
+  if grep -qiF "OK $2" <<< "$1"; then
+    echo "procesado"
+  elif grep -qF "Nothing to upload, all files are on the server" <<< "$1"; then
+    echo "ya estaba en Sentry"
+  else
+    echo "sin confirmar (ver el paso)"
+  fi
+}
+
 for carpeta in "$@"; do
   mapa="$carpeta/obfuscation.map.json"
   shopt -s nullglob
@@ -48,18 +59,30 @@ for carpeta in "$@"; do
   fi
 
   # --wait espera a que Sentry procese cada archivo y falla si alguno no sirve.
-  bitacora="${RUNNER_TEMP:-/tmp}/subida-$(basename "$carpeta").txt"
-  "$cli" debug-files upload --type elf --wait "$carpeta" | tee "$bitacora"
+  # Si el build es idéntico a uno ya subido (el AAB y el APK salen con los
+  # mismos Debug ID), Sentry responde que ya los tiene.
+  subida=$("$cli" debug-files upload --type elf --wait "$carpeta")
+  echo "$subida"
 
   echo "### 🔣 Símbolos en Sentry: \`$carpeta\`" >> "$resumen"
   for archivo in "${simbolos[@]}"; do
-    "$cli" dart-symbol-map upload "$mapa" "$archivo"
-    id=$("$cli" debug-files check "$archivo" | awk '/Debug ID:/ {print $NF; exit}')
-    if grep -qi "OK.*$id" "$bitacora"; then
-      estado="procesado"
-    else
-      estado="sin «OK» en la salida de sentry-cli: ver el paso"
+    # El Debug ID, del JSON completo de sentry-cli (cortar su salida a la
+    # mitad lo hace fallar).
+    id=$("$cli" debug-files check --json "$archivo" | jq -r '.variants[0].debug_id // empty')
+    if [ -z "$id" ]; then
+      echo "::error::No se pudo leer el Debug ID de $archivo."
+      exit 1
     fi
-    echo "- \`$(basename "$archivo")\` · Debug ID \`$id\` · $estado · con mapa de nombres" >> "$resumen"
+
+    # Sentry descarta un mapa con el mismo contenido que otro ya subido, y las
+    # tres arquitecturas comparten el mismo: como sentry_dart_plugin, cada una
+    # sube una copia que empieza con ["SENTRY_DEBUG_ID_MARKER", <Debug ID>].
+    # El mapa original no se toca.
+    copia="${RUNNER_TEMP:-/tmp}/dartsymbolmap-$id.json"
+    jq -c --arg id "$id" '["SENTRY_DEBUG_ID_MARKER", $id] + .' "$mapa" > "$copia"
+    salida_mapa=$("$cli" dart-symbol-map upload "$copia" "$archivo")
+    echo "$salida_mapa"
+
+    echo "- \`$(basename "$archivo")\` · Debug ID \`$id\` · símbolos: $(estado "$subida" "$id") · mapa de nombres: $(estado "$salida_mapa" "$id")" >> "$resumen"
   done
 done

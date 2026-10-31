@@ -64,6 +64,12 @@ void main() {
     expect(script, isNot(contains('--auth-token')));
     expect(script, isNot(contains('set -x')));
 
+    // Las tres arquitecturas comparten el mapa y Sentry descarta uno con el
+    // mismo contenido: cada una sube una copia marcada con su Debug ID (como
+    // sentry_dart_plugin), leído del JSON completo de sentry-cli.
+    expect(script, contains('debug-files check --json'));
+    expect(script, contains(r'''["SENTRY_DEBUG_ID_MARKER", $id] + .'''));
+
     // Una versión exacta de sentry-cli, no «latest».
     expect(
       RegExp(r'^VERSION_SENTRY_CLI=\d+\.\d+\.\d+$', multiLine: true)
