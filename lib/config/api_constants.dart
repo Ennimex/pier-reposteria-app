@@ -94,6 +94,13 @@ class ApiConstants {
   // Cancelación por el propio cliente: solo estados pendiente/listo,
   // mientras ningún repartidor haya tomado el pedido
   static String pedidoCancelar(String id) => '/pedidos/$id/cancelar';
+  // Gestión del personal (#137): abiertos con productos y entrega activa;
+  // cambiar estado {estado, nota_cancelacion?}; aprobar o rechazar {motivo}
+  // los que están por confirmar
+  static const String pedidosAbiertos = '/pedidos?vista=abiertos&completo=1';
+  static String pedidoEstado(String id)   => '/pedidos/$id/estado';
+  static String pedidoAprobar(String id)  => '/pedidos/$id/aprobar';
+  static String pedidoRechazar(String id) => '/pedidos/$id/rechazar';
 
   // ── PAGOS (Stripe) ────────────────────────────────────────────────
   static const String crearPaymentIntent = '/pagos/crear-intent';
@@ -169,6 +176,11 @@ class ApiConstants {
   static String entregaEstado(String id)   => '/entregas/$id/estado';
   // Aviso "llegué al domicilio": notifica al cliente sin cambiar estado
   static String entregaLlegue(String id)   => '/entregas/$id/llegue';
+  // Personal (#137): repartidores, asignar {pedido_id, repartidor_id} y
+  // avisar demora {pedido_id} de un pedido a domicilio en «listo»
+  static const String repartidores   = '/entregas/repartidores';
+  static const String asignarEntrega = '/entregas';
+  static const String avisarDemora   = '/entregas/avisar-demora';
 
   // ── COMANDAS (personal y producción; rol releído de la base) ──────
   // Agenda: ?vista=proximas|activas|entregadas|canceladas&busqueda=folio|nombre
