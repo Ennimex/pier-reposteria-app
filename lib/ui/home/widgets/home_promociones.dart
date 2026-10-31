@@ -360,8 +360,11 @@ class HomeOfertasRelampago extends StatelessWidget {
                             // El color de la tarjeta mientras la foto llega
                             // (y si no hay foto o falla).
                             ColoredBox(color: gradientColor),
+                            // La foto reducida, como en las demás tarjetas
+                            // de producto del Inicio.
                             if (imagenUrl.isNotEmpty)
-                              Image.network(imagenUrl,
+                              Image(
+                                  image: fotoDeTarjeta(imagenUrl),
                                   fit: BoxFit.cover,
                                   frameBuilder: _fundido,
                                   errorBuilder: (_, _, _) =>

@@ -8,7 +8,9 @@
 // detalle, el vuelo al carrito y la foto de abajo de la galería comparten la
 // misma entrada de ImageCache, y por eso el aterrizaje del Hero y la
 // miniatura del carrito salen con la foto desde el primer cuadro. Las fotos
-// del carrusel del detalle siguen completas (Image.network).
+// del carrusel del detalle siguen completas (Image.network), salvo la primera
+// cuando es la de la tarjeta y no es de Cloudinary: esa ya es la completa y
+// la galería usa su misma entrada.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
 import 'package:pier_reposteria/utils/fotos.dart';
