@@ -121,8 +121,10 @@ class ResenasRepositoryRemote implements ResenasRepository {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> listarDestacadas() async {
-    final r = await destacadas();
+  Future<List<Map<String, dynamic>>> listarDestacadas(
+      {int? limite, int? minEstrellas}) async {
+    final r = await _api.get(ApiConstants.resenasDestacadasCon(
+        limite: limite, minEstrellas: minEstrellas));
     if (r['success'] != true) {
       throw ApiException(
         r['message']?.toString() ?? 'No se pudieron cargar las reseñas',

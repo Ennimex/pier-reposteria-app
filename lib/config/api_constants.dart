@@ -124,6 +124,16 @@ class ApiConstants {
   static const String crearResena       = '/resenas';
   static const String misResenas        = '/resenas/mis-resenas';
   static const String resenasDestacadas = '/resenas/destacadas';
+  // Con la configuración de Dirección (#169): cuántas y desde cuántas estrellas.
+  static String resenasDestacadasCon({int? limite, int? minEstrellas}) {
+    final query = [
+      if (limite != null) 'limite=$limite',
+      if (minEstrellas != null) 'min_rating=$minEstrellas',
+    ];
+    return query.isEmpty
+        ? resenasDestacadas
+        : '$resenasDestacadas?${query.join('&')}';
+  }
   static String resenasPorProducto(String id) => '/resenas/producto/$id';
   static String likeResena(String id)          => '/resenas/$id/like';
   // Reseñas de un producto que el cliente marcó «útil» (#42)

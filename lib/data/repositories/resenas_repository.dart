@@ -65,5 +65,8 @@ abstract class ResenasRepository {
   /// GET /resenas/destacadas tipado a la lista (cada reseña como la manda
   /// el backend: autor, producto, rating, comentario). Lanza ApiException si
   /// falla.
-  Future<List<Map<String, dynamic>>> listarDestacadas();
+  /// Con [limite] y [minEstrellas] aplica la configuración de Dirección
+  /// (#169); sin ellos, lo que decida el backend.
+  Future<List<Map<String, dynamic>>> listarDestacadas(
+      {int? limite, int? minEstrellas});
 }
