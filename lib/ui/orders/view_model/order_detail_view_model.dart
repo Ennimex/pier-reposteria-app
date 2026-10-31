@@ -32,9 +32,11 @@ class OrderDetailViewModel extends ChangeNotifier {
         _pedido = pedido,
         _alCambiarEstado = alCambiarEstado;
 
-  /// Mensaje si el backend falló después de cancelar.
+  /// Mensaje si el backend falló después de cancelar. No se sabe si generó
+  /// el reembolso: solo lo hace si el pedido se pagó en línea (#40).
   static const String mensajeCancelado =
-      'Pedido cancelado; tu reembolso ya está en proceso';
+      'Pedido cancelado. Si lo pagaste en línea, tu reembolso queda en '
+      'proceso';
 
   final PedidosRepository _repo;
   final ValueChanged<Order>? _alCambiarEstado;

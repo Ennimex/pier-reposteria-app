@@ -9,6 +9,7 @@ import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/repartidor/view_model/repartidor_view_model.dart';
 import 'package:pier_reposteria/ui/repartidor/widgets/movimiento_repartidor.dart';
+import 'package:pier_reposteria/utils/formatters.dart';
 
 /// Formatea un monto a "$1,250 MXN" (sin decimales, con separador de miles).
 String formatMoneyMxn(double value) {
@@ -31,15 +32,17 @@ String formatHora(DateTime dt) {
   return '$h:$m $ampm';
 }
 
-/// Formatea el `horario_entrega` del backend (que puede llegar como timestamp
-/// ISO tipo "2026-07-05T09:00:00.000Z") a algo legible: "5 jul · 9:00 AM".
-/// Si no es una fecha parseable, devuelve el texto tal cual. Preserva la hora
-/// escrita (no convierte de zona horaria) para no desfasar el horario elegido.
+/// Formatea el `horario_entrega` del backend (ISO en UTC, p. ej.
+/// "2026-07-05T15:00:00.000Z") en la hora de México: "5 jul · 9:00 AM". La
+/// app y la web mandan el horario en UTC (#216), así que se convierte como
+/// cualquier otra fecha. Si no es una fecha parseable, devuelve el texto tal
+/// cual.
 String formatHorarioEntrega(String? raw) {
   final t = raw?.trim() ?? '';
   if (t.isEmpty) return 'Sin horario';
-  final dt = DateTime.tryParse(t);
-  if (dt == null) return t;
+  final instante = DateTime.tryParse(t);
+  if (instante == null) return t;
+  final dt = enHoraDeMexico(instante);
   const meses = [
     'ene', 'feb', 'mar', 'abr', 'may', 'jun',
     'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
