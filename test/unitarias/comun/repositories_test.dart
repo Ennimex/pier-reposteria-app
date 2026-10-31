@@ -43,14 +43,23 @@ void main() {
       expect(api.llamo('/pedidos/7/cancelar', metodo: 'PUT-Auth'), true);
     });
 
-    test('cancelarPedido sin mensaje usa el de reembolso en proceso',
-        () async {
+    test('#40: sin mensaje, con reembolso generado lo dice', () async {
       final api = FakeApiClient(respuestas: {
-        '/pedidos/7/cancelar': {'success': true},
+        '/pedidos/7/cancelar': {'success': true, 'reembolso_generado': true},
       });
       expect(
         await PedidosRepositoryRemote(api: api).cancelarPedido('7'),
         'Pedido cancelado; tu reembolso ya está en proceso',
+      );
+    });
+
+    test('#40: sin mensaje y sin reembolso no promete uno', () async {
+      final api = FakeApiClient(respuestas: {
+        '/pedidos/7/cancelar': {'success': true, 'reembolso_generado': false},
+      });
+      expect(
+        await PedidosRepositoryRemote(api: api).cancelarPedido('7'),
+        'Pedido cancelado',
       );
     });
 

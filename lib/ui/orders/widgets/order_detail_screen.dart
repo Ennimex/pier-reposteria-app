@@ -81,9 +81,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           title: const Text('¿Cancelar pedido?',
               style: TextStyle(
                   fontFamily: 'Playfair Display', fontWeight: FontWeight.bold)),
+          // El reembolso solo se genera si el pedido se pagó en línea (#40).
           content: const Text(
-              'Se cancelará tu pedido y generaremos tu solicitud de '
-              'reembolso; te avisaremos cuando se procese.'),
+              'Se cancelará tu pedido. Si lo pagaste en línea, generaremos '
+              'tu solicitud de reembolso y te avisaremos cuando se procese.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -260,18 +261,36 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   icono: LucideIcons.calendar,
                   etiqueta: 'Fecha',
                   valor: fechaConHora(pedido.createdAt)),
-              if (pedido.horarioRecogida case final horario?) ...[
+              const DivisorDetalle(),
+              // El tipo de entrega como dato (#39); la sucursal solo cuando
+              // se recoge.
+              FilaInfo(
+                  icono: pedido.esDomicilio
+                      ? LucideIcons.truck
+                      : LucideIcons.store,
+                  etiqueta: 'Entrega',
+                  valor: pedido.esDomicilio
+                      ? 'A domicilio'
+                      : 'Recoger en sucursal'),
+              if (pedido.esDomicilio
+                      ? pedido.horarioEntrega
+                      : pedido.horarioRecogida
+                  case final horario?) ...[
                 const DivisorDetalle(),
                 FilaInfo(
                     icono: LucideIcons.clock,
-                    etiqueta: 'Horario de recogida',
-                    valor: horario),
+                    etiqueta: pedido.esDomicilio
+                        ? 'Horario de entrega'
+                        : 'Horario de recogida',
+                    valor: horarioDelPedido(horario)),
               ],
-              const DivisorDetalle(),
-              const FilaInfo(
-                  icono: LucideIcons.store,
-                  etiqueta: 'Sucursal',
-                  valor: 'Principal — Huejutla de Reyes'),
+              if (!pedido.esDomicilio) ...[
+                const DivisorDetalle(),
+                const FilaInfo(
+                    icono: LucideIcons.store,
+                    etiqueta: 'Sucursal',
+                    valor: 'Principal — Huejutla de Reyes'),
+              ],
               if (pedido.notas case final notas? when notas.isNotEmpty) ...[
                 const DivisorDetalle(),
                 FilaInfo(

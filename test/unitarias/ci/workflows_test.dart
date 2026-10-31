@@ -94,6 +94,42 @@ void main() {
     );
   });
 
+  test('release.yml arma el AAB en el ensayo y publica el firmado (#226)', () {
+    final release = _workflows()['release.yml']!.replaceAll('\r\n', '\n');
+    final inicioDePublicar = release.indexOf('\n  publicar:');
+    final pruebas = release.substring(0, inicioDePublicar);
+    final publicar = release.substring(inicioDePublicar);
+    const aabDeGradle =
+        'build/app/outputs/bundle/prodRelease/app-prod-release.aab';
+
+    // En las pruebas (también en el ensayo) se comprueba que el AAB compila
+    // y trae el código de las tres arquitecturas.
+    expect(pruebas, contains('flutter build appbundle --release --flavor prod'));
+    expect(pruebas, contains(aabDeGradle));
+    for (final arquitectura in ['arm64-v8a', 'armeabi-v7a', 'x86_64']) {
+      expect(pruebas, contains('base/lib/$arquitectura/libapp.so'));
+    }
+
+    // Al publicar: el AAB con Sentry, firmado con la llave del equipo (la
+    // huella se compara antes de copiarlo) y adjunto a la Release.
+    expect(
+      publicar,
+      contains('flutter build appbundle --release --flavor prod '
+          r'--dart-define=SENTRY_DSN="$SENTRY_DSN"'),
+    );
+    final verificacion = publicar.indexOf('keytool -printcert -jarfile');
+    expect(verificacion, isNonNegative);
+    expect(
+      publicar.indexOf(r'cp "$aab"'),
+      greaterThan(verificacion),
+    );
+    expect(
+      publicar,
+      contains(r'build/pier-reposteria-${{ github.ref_name }}.aab'),
+    );
+    expect(publicar, contains('build/pier-reposteria-*.aab'));
+  });
+
   test('pipeline.yml corre en los Pull Requests y pushes de main y develop', () {
     final pipeline = _workflows()['pipeline.yml']!;
     final disparadores = RegExp(

@@ -8,6 +8,7 @@ import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/more/view_model/edit_profile_view_model.dart';
 import 'package:pier_reposteria/utils/logger.dart';
+import 'package:pier_reposteria/utils/validators.dart';
 import 'package:provider/provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -301,6 +302,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               hint: '7711234567',
                               icon: LucideIcons.smartphone,
                               keyboardType: TextInputType.phone,
+                              validator: Validators.telefonoOpcional,
                             ),
                           ],
                         ),

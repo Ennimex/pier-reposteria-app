@@ -12,6 +12,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/entrega_model.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/explicacion_permiso.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/repartidor/view_model/confirmar_entrega_view_model.dart';
 import 'package:pier_reposteria/ui/repartidor/widgets/movimiento_repartidor.dart';
@@ -59,7 +60,12 @@ class _ConfirmarEntregaScreenState extends State<ConfirmarEntregaScreen> {
     super.dispose();
   }
 
+  /// Antes de abrir la cámara se explica para qué (#227).
   Future<void> _pick(ImageSource source) async {
+    if (source == ImageSource.camera &&
+        !await explicarPermiso(context, ExplicacionDePermiso.camaraEntrega)) {
+      return;
+    }
     try {
       final img = await _picker.pickImage(
         source: source,

@@ -166,7 +166,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void _avisarme() {
     _vm.avisarme();
     _aviso(
-        'Anotamos tu interés en "${_producto.nombre}". Te avisaremos cuando vuelva.',
+        'Anotamos tu interés en "${_producto.nombre}".',
         icono: LucideIcons.bellRing,
         color: AppColors.pierDoradoOscuro,
         segundos: 3);

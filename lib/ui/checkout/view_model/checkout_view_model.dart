@@ -15,7 +15,6 @@
 // las fallas del servidor o de la conexión cuentan contra el objetivo de
 // errores del pago (docs/SLO.md).
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
@@ -27,6 +26,7 @@ import 'package:pier_reposteria/domain/models/direccion_model.dart';
 import 'package:pier_reposteria/domain/models/pago.dart';
 import 'package:pier_reposteria/utils/command.dart';
 import 'package:pier_reposteria/utils/config_format.dart';
+import 'package:pier_reposteria/utils/formatters.dart';
 
 enum TipoEntrega { pickup, domicilio }
 
@@ -295,9 +295,9 @@ class CheckoutViewModel extends ChangeNotifier {
     notifyListeners();
 
     // Se manda en crear-intent y en confirmar: con fecha FUTURA el backend
-    // acepta productos sin stock hoy (pedido "por confirmar").
-    final horario = '${DateFormat('yyyy-MM-dd').format(_fecha!)} '
-        '${_hora!.split(' - ').first}';
+    // acepta productos sin stock hoy (pedido "por confirmar"). Va en UTC,
+    // como lo manda la web: sin zona, el backend la guardaba 6 h antes (#216).
+    final horario = horarioEnUtc(_fecha!, _hora!.split(' - ').first);
 
     final String intentId;
     final double total;
