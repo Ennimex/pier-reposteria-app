@@ -147,14 +147,25 @@ class ApiConstants {
   static String misUtiles(String productoId) =>
       '/resenas/mis-utiles?producto_id=$productoId';
   static String editarResena(String id)        => '/resenas/$id';
+  // Personal (#138): todas las reseñas; moderar {estado, motivo_rechazo?,
+  // respuesta_negocio?} o solo responder {respuesta_negocio}
+  static const String resenasPersonal = '/resenas';
+  static String moderarResena(String id) => '/resenas/$id/estado';
 
   // ── REEMBOLSOS ────────────────────────────────────────────────────
   static const String crearReembolso = '/reembolsos';
   static const String misReembolsos  = '/reembolsos/mis-reembolsos';
+  // Personal (#138): todas las solicitudes y cada paso {estado,
+  // respuesta_admin?, justificacion_rechazo?}
+  static const String reembolsosPersonal = '/reembolsos';
+  static String resolverReembolso(String id) => '/reembolsos/$id';
 
   // ── QUEJAS Y SUGERENCIAS ──────────────────────────────────────────
   static const String crearQueja = '/quejas';       // ✅ NUEVO: POST auth
   static const String misQuejas  = '/quejas/mis-quejas'; // ✅ NUEVO: GET auth
+  // Personal (#138): todas las quejas y atender una {estado, respuesta?}
+  static const String quejasPersonal = '/quejas';
+  static String atenderQueja(String id) => '/quejas/$id';
 
   // ── CONTACTO ──────────────────────────────────────────────────────
   static const String enviarContacto = '/contacto';

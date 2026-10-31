@@ -4,7 +4,11 @@
 // /resenas/producto/:id (público) -> resenas[{id, rating, titulo,
 // comentario, util_count, verificada, created_at, autor_nombre,
 // autor_apellido, respuesta_negocio}]. El detalle del producto (GET
-// /productos/:id) las manda con `likes_count` y `user_has_liked`.
+// /productos/:id) las manda con `likes_count` y `user_has_liked`. La
+// respuesta de Pier la escribe el personal (#138) y llega escapada por el
+// backend: se guarda como se escribió.
+import 'package:pier_reposteria/utils/texto_sanitizado.dart';
+
 class ResenaProducto {
   const ResenaProducto({
     required this.id,
@@ -17,6 +21,7 @@ class ResenaProducto {
     required this.autorApellido,
     this.creadaEn,
     this.marcadaUtil = false,
+    this.respuestaNegocio,
   });
 
   /// Tolera números como texto, faltantes y fechas inválidas.
@@ -36,6 +41,7 @@ class ResenaProducto {
         marcadaUtil: j['user_has_liked'] == true ||
             j['user_has_liked'] == 1 ||
             j['has_liked'] == 1,
+        respuestaNegocio: _respuesta(j['respuesta_negocio']),
       );
 
   final String id;
@@ -52,6 +58,9 @@ class ResenaProducto {
 
   /// ¿El cliente con sesión ya la marcó útil? (solo lo manda el detalle).
   final bool marcadaUtil;
+
+  /// La respuesta pública de Pier Repostería; null si no hay.
+  final String? respuestaNegocio;
 
   /// Estrellas redondeadas (para filtrar y la distribución).
   int get estrellas => rating.round();
@@ -73,5 +82,11 @@ class ResenaProducto {
         autorApellido: autorApellido,
         creadaEn: creadaEn,
         marcadaUtil: marcadaUtil ?? this.marcadaUtil,
+        respuestaNegocio: respuestaNegocio,
       );
+
+  static String? _respuesta(Object? v) {
+    final s = v?.toString().trim() ?? '';
+    return s.isEmpty ? null : decodificarSanitizado(s);
+  }
 }

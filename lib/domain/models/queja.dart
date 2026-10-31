@@ -3,7 +3,9 @@
 // Una queja, sugerencia o comentario del propio cliente («Mis Quejas»).
 // Fuente: GET /quejas/mis-quejas -> quejas[{id, ticket, pedido_id, tipo,
 // categoria, asunto, descripcion, estado, respuesta, created_at}]. El backend
-// no manda el número del pedido, solo su id.
+// no manda el número del pedido, solo su id. La respuesta la escribe el
+// personal (#138) y llega escapada: se guarda como se escribió.
+import 'package:pier_reposteria/utils/texto_sanitizado.dart';
 
 /// Qué registra el cliente. [name] es el valor que guarda el backend.
 enum TipoQueja {
@@ -68,7 +70,7 @@ class Queja {
         },
         tipo: j['tipo']?.toString() ?? '',
         categoria: j['categoria']?.toString() ?? '',
-        respuesta: _textoOpcional(j['respuesta']),
+        respuesta: _legible(j['respuesta']),
         pedidoId: _textoOpcional(j['pedido_id']),
         creadaEn:
             DateTime.tryParse(j['created_at']?.toString() ?? '')?.toLocal(),
@@ -100,5 +102,11 @@ class Queja {
   static String? _textoOpcional(Object? v) {
     final s = v?.toString() ?? '';
     return s.isEmpty ? null : s;
+  }
+
+  /// Como [_textoOpcional], sin el escapado del backend.
+  static String? _legible(Object? v) {
+    final s = _textoOpcional(v);
+    return s == null ? null : decodificarSanitizado(s);
   }
 }
