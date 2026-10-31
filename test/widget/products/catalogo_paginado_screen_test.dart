@@ -318,6 +318,70 @@ void main() {
       expect(find.text('Producto 1'), findsOneWidget);
     });
 
+    testWidgets('en el primer cuadro ya hay esqueletos y no una cuadrícula vacía',
+        (tester) async {
+      _pantalla(tester, alto: 4000);
+      final api = _backend()..demorar(_primera, _demora);
+      await tester.pumpApp(const ProductsScreen(), api: api);
+      // Un solo cuadro: la carga la lanza el callback posterior al cuadro.
+      expect(find.byType(ProductSkeletonCard), findsNWidgets(6));
+      expect(find.byType(ProductoCatalogoCard), findsNothing);
+      expect(find.text('Sin resultados'), findsNothing);
+
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductSkeletonCard), findsNothing);
+      expect(find.text('Producto 1'), findsOneWidget);
+    });
+
+    testWidgets('los esqueletos se anuncian una vez como «Cargando productos»',
+        (tester) async {
+      final semantica = tester.ensureSemantics();
+      _pantalla(tester, alto: 4000);
+      final api = _backend()..demorar(_primera, _demora);
+      await tester.pumpApp(const ProductsScreen(), api: api);
+      await tester.pump();
+
+      expect(find.bySemanticsLabel('Cargando productos'), findsOneWidget);
+
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Cargando productos'), findsNothing);
+      semantica.dispose();
+    });
+
+    testWidgets('el indicador de abajo se anuncia como «Cargando más productos»',
+        (tester) async {
+      final semantica = tester.ensureSemantics();
+      final api = _backend()..demorar(_segunda, _demora);
+      await _montar(tester, api: api);
+
+      await _alFinal(tester);
+
+      expect(find.bySemanticsLabel('Cargando más productos'), findsOneWidget);
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+      semantica.dispose();
+    });
+
+    testWidgets('«Mejor calificados» lleva la estrella en la hoja de orden',
+        (tester) async {
+      await _montar(tester);
+      await tester.tap(find.byTooltip('Ordenar'));
+      await tester.pumpAndSettle();
+
+      final fila = find.ancestor(
+        of: find.text('Mejor calificados'),
+        matching: find.byType(Row),
+      );
+      expect(
+        find.descendant(
+            of: fila.first, matching: find.byIcon(LucideIcons.star)),
+        findsOneWidget,
+      );
+      expect(find.byIcon(LucideIcons.thumbsUp), findsNothing);
+    });
+
     testWidgets('la hoja de orden ofrece Mejor calificados y no Z–A',
         (tester) async {
       final api = await _montar(tester);

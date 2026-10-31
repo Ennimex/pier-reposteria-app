@@ -28,7 +28,10 @@ class PieCatalogo extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
-                child: CircularProgressIndicator(color: AppColors.pierVerde),
+                child: CircularProgressIndicator(
+                  color: AppColors.pierVerde,
+                  semanticsLabel: 'Cargando más productos',
+                ),
               ),
             );
           }
