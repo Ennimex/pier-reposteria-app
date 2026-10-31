@@ -17,6 +17,7 @@ import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/public/view_model/about_us_view_model.dart';
+import 'package:pier_reposteria/ui/public/widgets/about_us_partes.dart';
 import 'package:pier_reposteria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:provider/provider.dart';
 
@@ -244,6 +245,16 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       ),
 
                     const SizedBox(height: 28),
+
+                    // ── RECORRIDO Y EQUIPO (solo si Dirección los capturó) ──
+                    if (_vm.recorrido.isNotEmpty) ...[
+                      SeccionRecorrido(etapas: _vm.recorrido),
+                      const SizedBox(height: 16),
+                    ],
+                    if (_vm.equipo.isNotEmpty) ...[
+                      SeccionEquipo(integrantes: _vm.equipo),
+                      const SizedBox(height: 28),
+                    ],
 
                     // ── SUCURSAL ──────────────────────────────────────
                     const EntradaAlVer(

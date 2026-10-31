@@ -7,6 +7,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
+import 'package:pier_reposteria/domain/models/info_nosotros.dart';
 
 class AboutUsViewModel extends ChangeNotifier {
   /// [anioActual] solo se pasa en pruebas (años de experiencia).
@@ -39,6 +40,8 @@ class AboutUsViewModel extends ChangeNotifier {
   ];
   bool _valoresDelPanel = false;
   List<(String, String)> _stats = _statsPorDefecto;
+  List<EtapaRecorrido> _recorrido = const [];
+  List<IntegranteEquipo> _equipo = const [];
 
   String get historiaTitulo => _historiaTitulo;
   String get historia => _historia;
@@ -53,6 +56,14 @@ class AboutUsViewModel extends ChangeNotifier {
   /// Pares (número, etiqueta); como máximo 4.
   List<(String, String)> get stats => _stats;
 
+  /// Etapas de «Nuestro recorrido»; sin capturar, la sección no se muestra
+  /// (la app no inventa un recorrido).
+  List<EtapaRecorrido> get recorrido => _recorrido;
+
+  /// Personas del equipo; sin capturar, la sección no se muestra (como en la
+  /// web).
+  List<IntegranteEquipo> get equipo => _equipo;
+
   Future<void> cargar() async {
     try {
       final info = await _repo.nosotros();
@@ -66,6 +77,8 @@ class AboutUsViewModel extends ChangeNotifier {
         _valores = info.valores;
         _valoresDelPanel = true;
       }
+      _recorrido = info.recorrido;
+      _equipo = info.equipo;
 
       if (info.estadisticas.isNotEmpty) {
         _stats = info.estadisticas.take(4).toList();
