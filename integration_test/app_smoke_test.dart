@@ -9,9 +9,11 @@ import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../test/fakes/fake_api_client.dart';
+import 'ayudas/esperas.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  toquesPerdidosFallan();
 
   group('Smoke tests sin backend', () {
     late FakeApiClient api;
@@ -60,9 +62,10 @@ void main() {
       );
       await tester.enterText(find.byType(TextFormField).at(1), 'incorrecta');
       // En un celular real de pantalla chica (Galaxy A10 en Test Lab, #75) el
-      // teclado tapa el botón: se cierra y se espera a que la vista se
-      // acomode antes de tocar.
-      FocusManager.instance.primaryFocus?.unfocus();
+      // teclado tapa el botón: se cierra y se espera a que se vaya de verdad
+      // (el cierre es nativo y pumpAndSettle no lo espera; con el teclado
+      // aún arriba el aviso de error no cabía, PR #214 y #215).
+      await cerrarTeclado(tester);
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Iniciar Sesión'));
       await tester.pumpAndSettle();

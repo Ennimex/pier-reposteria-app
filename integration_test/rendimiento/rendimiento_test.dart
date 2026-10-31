@@ -29,6 +29,7 @@ const _ventana = Duration(seconds: 3);
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  toquesPerdidosFallan();
 
   /// Mide [accion] con los cuadros que pide el motor como en la app real
   /// (vsync), no la prueba: ahí tester.pump solo espera. Fuera de la medición

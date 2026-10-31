@@ -32,6 +32,7 @@ import '../ayudas/servidor_real.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  toquesPerdidosFallan();
 
   group('#58 Flujo de compra contra el servidor real', () {
     // Escenario: del inicio de sesión al checkout
@@ -140,17 +141,32 @@ Future<void> _elegirRecogidaManana(WidgetTester tester) async {
   );
   await esperar(tester, aceptar);
   await tester.tap(aceptar);
-  await tester.pump(const Duration(milliseconds: 500));
+  // El toque en «Hora» caía en el selector que todavía se cerraba (#215).
+  await esperarQueSeCierre(tester, find.byType(DatePickerDialog));
 
-  await tester.ensureVisible(find.text('Hora'));
-  await tester.tap(find.text('Hora'));
   final horario = RegExp(r'^\d{2}:\d{2} - \d{2}:\d{2}$');
   final horas = find.byWidgetPredicate(
     (widget) => widget is Text && horario.hasMatch(widget.data ?? ''),
   );
-  await esperar(tester, horas);
+  // Las que se ven con el menú cerrado (las copias que miden el botón).
+  final cerrado = horas.evaluate().length;
+  await tester.ensureVisible(find.text('Hora'));
+  await tester.tap(find.text('Hora'));
+  await esperarQue(
+    tester,
+    () => horas.evaluate().length > cerrado,
+    motivo: 'no se abrió el menú de horas',
+    limite: const Duration(seconds: 10),
+  );
   final primera = (tester.widget(horas.first) as Text).data!;
   // .last: la opción del menú abierto, no la copia que mide el botón.
   await tester.tap(find.text(primera).last);
-  await tester.pump(const Duration(milliseconds: 500));
+  // El siguiente toque no debe caer en el menú que se está cerrando: queda
+  // a lo más la hora elegida en el botón.
+  await esperarQue(
+    tester,
+    () => horas.evaluate().length <= cerrado + 1,
+    motivo: 'no se cerró el menú de horas',
+    limite: const Duration(seconds: 10),
+  );
 }
