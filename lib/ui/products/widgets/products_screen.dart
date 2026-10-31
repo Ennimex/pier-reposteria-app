@@ -367,10 +367,19 @@ class _ProductsScreenState extends State<ProductsScreen>
                           ),
                         ),
                         // Esqueletos mientras llega la primera página: 6 en
-                        // cuadrícula y 4 en lista.
-                        if (_vm.cargando && products.isEmpty)
-                          _grid((context, i) => const ProductSkeletonCard(),
-                              _isGridView ? 6 : 4)
+                        // cuadrícula y 4 en lista. También en el primer
+                        // cuadro, antes de que arranque la carga: sin
+                        // productos, sin error y sin haber llegado al final
+                        // se está esperando, nunca es una cuadrícula vacía.
+                        // Un lector de pantalla oye un solo aviso.
+                        if (products.isEmpty && error == null && !_vm.fin)
+                          SliverSemantics(
+                            label: 'Cargando productos',
+                            sliver: _grid(
+                                (context, i) => const ExcludeSemantics(
+                                    child: ProductSkeletonCard()),
+                                _isGridView ? 6 : 4),
+                          )
                         // La primera página no pudo llegar (p. ej. sin
                         // internet): no es «Sin resultados» de los filtros
                         // (#160).
