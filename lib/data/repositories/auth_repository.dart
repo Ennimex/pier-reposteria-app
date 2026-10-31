@@ -59,6 +59,10 @@ abstract class AuthRepository {
   /// Verificar si hay sesión activa (para Splash)
   Future<bool> isAuthenticated();
 
+  /// Avisa cuando el servidor rechaza el token de la sesión (401, #218). La
+  /// sesión del teléfono ya se borró; falta cerrarla en la app.
+  Stream<void> get sesionExpirada;
+
   /// Guarda que el cliente aceptó el aviso de privacidad (#220) por [via]
   /// («correo» al registrarse o «google»). Hoy queda en el teléfono; cuando
   /// el backend lo reciba, se mandará con el registro.
