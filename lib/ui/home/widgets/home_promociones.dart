@@ -17,6 +17,7 @@ import 'package:pier_reposteria/domain/models/promociones_inicio.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/home/view_model/home_view_model.dart';
 import 'package:pier_reposteria/ui/home/widgets/movimiento_inicio.dart';
@@ -56,7 +57,8 @@ Widget _fundido(BuildContext _, Widget foto, int? cuadro, bool sincrona) =>
 /// los carruseles de productos. Cada tarjeta lleva su propio ámbito (sección
 /// e índice): un producto puede repetirse entre ofertas y en los carruseles.
 /// Mientras vuela, la tarjeta deja ver su propio fondo (el tinte o la arena
-/// de mientras la foto llega).
+/// de mientras la foto llega). [foto] se pinta con `fotoDeTarjeta(imagenUrl)`,
+/// igual que el vuelo.
 Widget _fotoQueVuela({
   required Map<String, dynamic> promo,
   required String ambito,
@@ -620,7 +622,9 @@ class HomeOfertasTemporada extends StatelessWidget {
                       imagenUrl: imagenUrl,
                       radio: const BorderRadius.vertical(
                           top: Radius.circular(18)),
-                      foto: Image.network(imagenUrl, fit: BoxFit.cover,
+                      foto: Image(
+                          image: fotoDeTarjeta(imagenUrl),
+                          fit: BoxFit.cover,
                           frameBuilder: _fundido,
                           errorBuilder: (_, _, _) => ColoredBox(
                             color: fondoFoto,
@@ -858,7 +862,8 @@ class HomePromoDestacado extends StatelessWidget {
                               imagenUrl: imagenUrl,
                               radio: const BorderRadius.horizontal(
                                   left: Radius.circular(16)),
-                              foto: Image.network(imagenUrl,
+                              foto: Image(
+                                  image: fotoDeTarjeta(imagenUrl),
                                   fit: BoxFit.cover,
                                   frameBuilder: _fundido,
                                   errorBuilder: (_, _, _) => ColoredBox(

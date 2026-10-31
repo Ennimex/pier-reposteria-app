@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 import '../../../helpers/movimiento.dart';
@@ -250,16 +251,18 @@ void main() {
   testWidgets('la miniatura reusa la foto que ya pintó la tarjeta', (
     tester,
   ) async {
-    const url = 'https://pier.mx/pastel.png';
+    const url = 'https://res.cloudinary.com/pier/image/upload/v1/pastel.png';
     await tester.pumpWidget(_app(const _Tienda(imagenUrl: url)));
     await tester.tap(_boton);
     await tester.pump();
     final miniatura = tester.widget<Image>(
       find.descendant(of: _miniatura, matching: find.byType(Image)),
     );
-    // El mismo proveedor (y la misma entrada de ImageCache) que el
-    // Image.network(url) de la tarjeta: sin ResizeImage ni otra descarga.
-    expect(miniatura.image, Image.network(url).image);
+    // El mismo proveedor (y la misma entrada de ImageCache) que la foto
+    // reducida de la tarjeta, fotoDeTarjeta(url): sin ResizeImage ni otra
+    // descarga, y no la foto completa.
+    expect(miniatura.image, fotoDeTarjeta(url));
+    expect(miniatura.image, isNot(Image.network(url).image));
     await tester.pump(AppMovimiento.vuelo);
     await tester.pump(AppMovimiento.media);
   });

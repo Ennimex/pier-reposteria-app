@@ -2,16 +2,18 @@
 //
 // La foto del producto vuela de la tarjeta al detalle (y de regreso, también
 // con el gesto de regresar de iOS). El vuelo pinta SIEMPRE la foto de la
-// tarjeta (ya en caché) y redondea o endereza sus esquinas en el camino;
-// nunca vuela la galería del detalle, cuya primera foto puede ser otra URL
-// aún sin descargar. Mientras vuela, la tarjeta deja un hueco color arena en
-// lugar de un hoyo blanco.
+// tarjeta, con fotoDeTarjeta: la reducida que la tarjeta ya pintó, o sea la
+// misma entrada de caché; redondea o endereza sus esquinas en el camino.
+// Nunca vuela la galería del detalle, cuya primera foto es la completa y
+// puede estar aún sin descargar. Mientras vuela, la tarjeta deja un hueco
+// color arena en lugar de un hoyo blanco.
 //
 // Funciona porque MainScreen da un HeroController a cada pestaña. Con
 // movimiento reducido no hay vuelo (push normal).
 import 'package:flutter/material.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 
 class FotoProductoHero extends StatelessWidget {
   const FotoProductoHero({
@@ -29,7 +31,9 @@ class FotoProductoHero extends StatelessWidget {
   /// La URL de la foto principal (`producto.imagenUrl`), en ambos extremos.
   final String imagenUrl;
 
-  /// Lo que se ve en reposo (la imagen de la tarjeta o la galería).
+  /// Lo que se ve en reposo (la imagen de la tarjeta o la galería). La
+  /// tarjeta pinta su foto con `fotoDeTarjeta(imagenUrl)`, igual que el
+  /// vuelo: así este sale con la foto desde el primer cuadro.
   final Widget child;
 
   /// Esquinas de la foto en ESTE extremo: tarjeta de cuadrícula
@@ -117,8 +121,8 @@ class _FotoEnVuelo extends StatelessWidget {
   Widget build(BuildContext context) {
     final arena = ColoredBox(color: AppColors.pierArena);
     if (url.isEmpty) return arena;
-    return Image.network(
-      url,
+    return Image(
+      image: fotoDeTarjeta(url),
       fit: BoxFit.cover,
       gaplessPlayback: true,
       errorBuilder: (_, _, _) => arena,

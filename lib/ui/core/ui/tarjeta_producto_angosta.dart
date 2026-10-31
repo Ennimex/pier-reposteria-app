@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 class TarjetaProductoAngosta extends StatelessWidget {
@@ -183,9 +184,11 @@ class TarjetaProductoAngosta extends StatelessWidget {
 
   /// La foto: si llega de internet aparece con un fundido corto (la que ya
   /// está en caché se pinta tal cual) y, con [ambitoFoto], vuela al detalle.
+  /// Es la foto reducida y guardada en el teléfono (fotoDeTarjeta), la misma
+  /// que pinta el vuelo.
   Widget _foto(Product p) {
-    final foto = Image.network(
-      p.imagenUrl,
+    final foto = Image(
+      image: fotoDeTarjeta(p.imagenUrl),
       fit: BoxFit.cover,
       frameBuilder: (context, imagen, cuadro, sincrona) => sincrona
           ? imagen

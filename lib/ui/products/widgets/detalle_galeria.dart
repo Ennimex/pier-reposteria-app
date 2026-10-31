@@ -10,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/products/widgets/detalle_badges.dart';
 import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
@@ -203,17 +204,18 @@ class _DetalleGaleriaState extends State<DetalleGaleria> {
             size: 60, color: AppColors.textSecondary),
       ),
     );
-    // La primera foto del carrusel puede ser otra URL todavía sin bajar:
-    // debajo queda la de la tarjeta (ya en caché), así al aterrizar el Hero
-    // no queda un hueco y la de la galería aparece encima con un fundido.
+    // La primera foto del carrusel es la completa, todavía sin bajar (aunque
+    // sea la misma dirección que la de la tarjeta, que se pidió reducida):
+    // debajo queda la de la tarjeta (fotoDeTarjeta, ya en caché), así al
+    // aterrizar el Hero no queda un hueco y la de la galería aparece encima
+    // con un fundido.
     final deLaTarjeta = widget.producto.imagenUrl;
-    if (i != 0 || deLaTarjeta.isEmpty || deLaTarjeta == imagenes[i]) {
-      return foto;
-    }
+    if (i != 0 || deLaTarjeta.isEmpty) return foto;
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.network(deLaTarjeta,
+        Image(
+            image: fotoDeTarjeta(deLaTarjeta),
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) => const SizedBox.shrink()),
         foto,
