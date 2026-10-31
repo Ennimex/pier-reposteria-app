@@ -35,6 +35,19 @@ class Validators {
   static String? telefono(String? v) =>
       (v == null || v.length != 10) ? 'Debe tener 10 dígitos' : null;
 
+  /// Teléfono que se puede dejar vacío (editar el perfil, #221): vacío borra
+  /// el guardado; si trae algo, 10 dígitos como pide el backend (ignora
+  /// espacios y guiones, y la lada +52).
+  static String? telefonoOpcional(String? v) {
+    final texto = v?.trim() ?? '';
+    if (texto.isEmpty) return null;
+    var digitos = texto.replaceAll(RegExp(r'\D'), '');
+    if (digitos.length == 12 && digitos.startsWith('52')) {
+      digitos = digitos.substring(2);
+    }
+    return digitos.length == 10 ? null : 'Debe tener 10 dígitos';
+  }
+
   static String? nombre(String? v) =>
       (v == null || v.length < 2) ? 'Mínimo 2 caracteres' : null;
 }
