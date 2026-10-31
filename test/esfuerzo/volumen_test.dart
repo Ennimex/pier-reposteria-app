@@ -1,8 +1,12 @@
 // test/esfuerzo/volumen_test.dart — volumen de datos (#70): la app con mucho
-// más de lo que tiene en el uso normal, sin red. La corre
-// esfuerzo-volumen.yml (a mano). El catálogo de 1,000 productos se agrega
+// más de lo que tiene en el uso normal, sin red. La corre la etapa de
+// esfuerzo (esfuerzo.yml, trabajo «Volumen de datos») con la etiqueta
+// esfuerzo; las unitarias no. El catálogo de 1,000 productos se agrega
 // cuando el catálogo por páginas (#37) llegue a develop: cambia cómo se piden
 // los productos y la prueba tiene que escribirse sobre esa forma.
+@Tags(['esfuerzo'])
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
