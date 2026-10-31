@@ -51,7 +51,7 @@ class MisDatosViewModel extends ChangeNotifier {
 
     String fecha(String clave) {
       final valor = DateTime.tryParse(usuario[clave]?.toString() ?? '');
-      return valor == null ? 'Sin dato' : fechaConHora(valor.toLocal());
+      return valor == null ? 'Sin dato' : fechaConHora(valor);
     }
 
     String siNo(Object? valor) => valor == true ? 'Sí' : 'No';
