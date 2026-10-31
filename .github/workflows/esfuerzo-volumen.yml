@@ -4,10 +4,13 @@
 # Qué revisará: que las pantallas sigan respondiendo con mucho contenido: un
 #   catálogo de 1,000 productos y un carrito de 100 artículos, con el
 #   servidor de mentira (FakeApiClient).
-# Estado: sus pruebas (test/esfuerzo/) todavía no existen; son parte de #70
-#   (Sprint 5). Por eso vive aquí, aparte, y se lanza a mano: dentro de
-#   esfuerzo.yml dejaba un trabajo omitido en cada Pull Request. Cuando #70
-#   escriba las pruebas, se decide si entran al pipeline.
+# Estado: test/esfuerzo/volumen_test.dart ya tiene el carrito de 100
+#   artículos; el catálogo de 1,000 productos espera al catálogo por páginas
+#   (#37), que cambia cómo se piden los productos (#70, Sprint 5). Vive aquí,
+#   aparte, y se lanza a mano: dentro de esfuerzo.yml dejaba un trabajo
+#   omitido en cada Pull Request. Como está en test/, la etapa de unitarias
+#   también la corre en cada Pull Request (tarda segundos); si se quiere
+#   solo aquí, se decide al completar #70.
 # Cuándo corre: solo a mano (Actions → Esfuerzo con volumen de datos → Run
 #   workflow).
 # Si falla: no bloquea ningún Pull Request.
