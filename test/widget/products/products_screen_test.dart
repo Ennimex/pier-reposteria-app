@@ -283,6 +283,8 @@ void main() {
       await tester.pump();
 
       expect(find.textContaining('Anotamos tu interés'), findsOneWidget);
+      // #38: no promete un aviso que no existe.
+      expect(find.textContaining('Te avisaremos'), findsNothing);
       expect(api.ultima(ApiConstants.clicsAgotados)!.body, {'producto_id': 3});
     });
 

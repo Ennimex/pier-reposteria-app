@@ -129,8 +129,9 @@ de avance están en [SLO.md](SLO.md) (#24).
    ningún error nuevo en el pago.
 3. **Play Console, despliegue gradual:** 10 % → 50 % → 100 % de los usuarios.
    Cada paso espera 48 h y avanza solo si *crash-free sessions* sigue
-   ≥ 99.5 %. Play Store pide el paquete `.aab` (`flutter build appbundle`), no
-   el APK: se agregará al workflow con la primera subida a Play.
+   ≥ 99.5 %. Play Store pide el paquete `.aab`, no el APK: `release.yml` lo
+   arma firmado y lo adjunta a la Release (#226). Lo que pide la ficha y las
+   fechas de la prueba cerrada están en [PLAY_STORE.md](PLAY_STORE.md).
 4. **Rollback:** si *crash-free sessions* baja de 99 % o aparece un error grave,
    se detiene el despliegue en Play Console (los que ya actualizaron se quedan
    en esa versión; Play no deja regresar a la anterior), se corrige y se

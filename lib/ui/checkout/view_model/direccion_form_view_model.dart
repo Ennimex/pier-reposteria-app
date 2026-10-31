@@ -2,10 +2,12 @@
 //
 // Estado del formulario "Nueva / Editar dirección" del checkout (MVVM, Fase
 // 4): colonias con cobertura y su tarifa, la elegida y el guardado. Los
-// textos viven en los controladores de la vista.
+// textos viven en los controladores de la vista. «Usar mi ubicación» (#227)
+// agrega las coordenadas, que el repartidor usa para llegar.
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/direcciones_repository.dart';
+import 'package:pier_reposteria/data/services/ubicacion_service.dart';
 import 'package:pier_reposteria/domain/models/direccion_model.dart';
 import 'package:pier_reposteria/domain/models/zona_colonia.dart';
 
@@ -13,9 +15,12 @@ class DireccionFormViewModel extends ChangeNotifier {
   DireccionFormViewModel({
     required DireccionesRepository repo,
     this.editar,
-  }) : _repo = repo;
+    Ubicador ubicador = const UbicadorDelTelefono(),
+  })  : _repo = repo,
+        _ubicador = ubicador;
 
   final DireccionesRepository _repo;
+  final Ubicador _ubicador;
 
   /// La dirección que se edita (null = nueva).
   final DireccionCliente? editar;
@@ -25,12 +30,58 @@ class DireccionFormViewModel extends ChangeNotifier {
   String? _colonia;
   bool _cargandoColonias = true;
   bool _guardando = false;
+  bool _ubicando = false;
+  EstadoUbicacion? _estadoUbicacion;
+  double? _lat;
+  double? _lng;
 
   bool get esEdicion => editar != null;
   List<ZonaColonia> get colonias => _colonias;
   String? get colonia => _colonia;
   bool get cargandoColonias => _cargandoColonias;
   bool get guardando => _guardando;
+  bool get ubicando => _ubicando;
+
+  /// Cómo terminó el último «Usar mi ubicación» (null si no se ha usado).
+  EstadoUbicacion? get estadoUbicacion => _estadoUbicacion;
+
+  /// ¿Ya se agregaron las coordenadas del teléfono?
+  bool get conUbicacion => _lat != null && _lng != null;
+
+  /// El texto bajo el botón, según cómo terminó.
+  String? get avisoUbicacion => switch (_estadoUbicacion) {
+        null => null,
+        EstadoUbicacion.lista => 'Ubicación agregada: el repartidor llegará '
+            'a este punto.',
+        EstadoUbicacion.servicioApagado =>
+          'Activa la ubicación del teléfono e intenta de nuevo.',
+        EstadoUbicacion.sinPermiso =>
+          'Sin permiso de ubicación: puedes guardar la dirección así.',
+        EstadoUbicacion.sinPermisoParaSiempre =>
+          'El permiso de ubicación está apagado. Puedes darlo en Ajustes.',
+        EstadoUbicacion.fallo =>
+          'No pudimos leer tu ubicación. Puedes guardar la dirección así.',
+      };
+
+  /// Pide el permiso (si hace falta) y agrega las coordenadas del teléfono.
+  /// La vista ya explicó para qué se piden.
+  Future<void> usarMiUbicacion() async {
+    if (_ubicando) return;
+    _ubicando = true;
+    notifyListeners();
+    final resultado = await _ubicador.ubicacionActual();
+    if (_cerrado) return;
+    _estadoUbicacion = resultado.estado;
+    if (resultado.estado == EstadoUbicacion.lista) {
+      _lat = resultado.lat;
+      _lng = resultado.lng;
+    }
+    _ubicando = false;
+    notifyListeners();
+  }
+
+  /// Abre los ajustes de la app para dar el permiso.
+  Future<bool> abrirAjustes() => _ubicador.abrirAjustes();
 
   /// Tarifa de envío de la colonia elegida.
   double? get tarifa =>
@@ -80,6 +131,7 @@ class DireccionFormViewModel extends ChangeNotifier {
         if (_colonia != null) 'colonia': _colonia,
         'referencias': referencias.trim(),
         'telefono_contacto': telefono.trim(),
+        if (conUbicacion) ...{'lat': _lat, 'lng': _lng},
       }, id: editar?.id);
       return (guardada, null);
     } on ApiException catch (e) {

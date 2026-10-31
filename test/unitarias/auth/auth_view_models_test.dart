@@ -4,6 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_reposteria/data/services/preferencias_service.dart';
 import 'package:pier_reposteria/ui/auth/view_model/forgot_password_view_model.dart';
 import 'package:pier_reposteria/ui/auth/view_model/login_view_model.dart';
 import 'package:pier_reposteria/ui/auth/view_model/register_view_model.dart';
@@ -74,9 +75,11 @@ void main() {
       final api = FakeApiClient()..responder(ApiConstants.googleMobile, _sesion);
       final ok = LoginViewModel(
           repo: AuthRepositoryRemote(
-              api: api, google: FakeGoogleSignIn(idToken: 'id-token')));
+              api: api, google: FakeGoogleSignIn(idToken: 'id-token')))
+        ..aceptaAviso = true;
       final cancelado = LoginViewModel(
-          repo: AuthRepositoryRemote(api: api, google: FakeGoogleSignIn()));
+          repo: AuthRepositoryRemote(api: api, google: FakeGoogleSignIn()))
+        ..aceptaAviso = true;
 
       expect(await ok.iniciarSesionConGoogle(), _usuario);
       expect(ok.ingresandoConGoogle, isFalse);
@@ -88,10 +91,47 @@ void main() {
       final vm = LoginViewModel(
           repo: AuthRepositoryRemote(
               api: FakeApiClient(),
-              google: FakeGoogleSignIn(error: Exception('sin red'))));
+              google: FakeGoogleSignIn(error: Exception('sin red'))))
+        ..aceptaAviso = true;
 
       expect(await vm.iniciarSesionConGoogle(), isNull);
       expect(vm.error, contains('Google'));
+    });
+
+    test('#220: sin aceptar el aviso no abre Google', () async {
+      final api = FakeApiClient()..responder(ApiConstants.googleMobile, _sesion);
+      final vm = LoginViewModel(
+          repo: AuthRepositoryRemote(
+              api: api, google: FakeGoogleSignIn(idToken: 'id-token')));
+
+      expect(vm.aceptaAviso, isFalse);
+      expect(await vm.iniciarSesionConGoogle(), isNull);
+      expect(vm.error, LoginViewModel.faltaAviso);
+      expect(api.llamo(ApiConstants.googleMobile), isFalse);
+      expect(await PreferenciasService().aceptacionPrivacidad(), isNull);
+    });
+
+    test('#220: con Google guarda la aceptación del aviso', () async {
+      final api = FakeApiClient()..responder(ApiConstants.googleMobile, _sesion);
+      final vm = LoginViewModel(
+          repo: AuthRepositoryRemote(
+              api: api, google: FakeGoogleSignIn(idToken: 'id-token')))
+        ..aceptaAviso = true;
+
+      expect(await vm.iniciarSesionConGoogle(), _usuario);
+
+      final aceptacion = await PreferenciasService().aceptacionPrivacidad();
+      expect(aceptacion?.via, 'google');
+    });
+
+    test('#220: si Google se cancela no guarda la aceptación', () async {
+      final vm = LoginViewModel(
+          repo: AuthRepositoryRemote(
+              api: FakeApiClient(), google: FakeGoogleSignIn()))
+        ..aceptaAviso = true;
+
+      expect(await vm.iniciarSesionConGoogle(), isNull);
+      expect(await PreferenciasService().aceptacionPrivacidad(), isNull);
     });
 
     test('el ojito alterna la visibilidad de la contraseña', () {
@@ -129,20 +169,44 @@ void main() {
     test('registro correcto devuelve true sin abrir sesión', () async {
       final api = FakeApiClient()
         ..responder(ApiConstants.register, {'success': true});
-      final vm = RegisterViewModel(repo: _repo(api));
+      final vm = RegisterViewModel(repo: _repo(api))..aceptaTerminos = true;
 
       expect(await registrar(vm), isTrue);
       expect(vm.registrando, isFalse);
       expect(await _repo(api).isAuthenticated(), isFalse);
     });
 
-    test('registro rechazado devuelve false con el mensaje', () async {
+    test('#220: registrarse guarda la aceptación del aviso por correo',
+        () async {
       final api = FakeApiClient()
-        ..fallar(ApiConstants.register, 'El correo ya está registrado');
+        ..responder(ApiConstants.register, {'success': true});
+      final vm = RegisterViewModel(repo: _repo(api))..aceptaTerminos = true;
+
+      await registrar(vm);
+
+      final aceptacion = await PreferenciasService().aceptacionPrivacidad();
+      expect(aceptacion?.via, 'correo');
+      expect(aceptacion?.versionApp, isNotEmpty);
+    });
+
+    test('#220: sin aceptar los términos no llama al backend', () async {
+      final api = FakeApiClient()
+        ..responder(ApiConstants.register, {'success': true});
       final vm = RegisterViewModel(repo: _repo(api));
 
       expect(await registrar(vm), isFalse);
+      expect(vm.error, RegisterViewModel.faltanTerminos);
+      expect(api.llamo(ApiConstants.register), isFalse);
+    });
+
+    test('registro rechazado devuelve false con el mensaje', () async {
+      final api = FakeApiClient()
+        ..fallar(ApiConstants.register, 'El correo ya está registrado');
+      final vm = RegisterViewModel(repo: _repo(api))..aceptaTerminos = true;
+
+      expect(await registrar(vm), isFalse);
       expect(vm.error, 'El correo ya está registrado');
+      expect(await PreferenciasService().aceptacionPrivacidad(), isNull);
     });
 
     test('términos y ojitos son estado de la pantalla', () {
