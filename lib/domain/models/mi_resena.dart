@@ -3,7 +3,9 @@
 // Una reseña del propio cliente («Mis Reseñas»). Fuente: GET
 // /resenas/mis-resenas -> resenas[{id, rating, titulo, comentario, estado,
 // producto_nombre, producto_imagen, created_at, respuesta_negocio,
-// motivo_rechazo}].
+// motivo_rechazo}]. La respuesta y el motivo los escribe el personal
+// (#138) y llegan escapados: se guardan como se escribieron.
+import 'package:pier_reposteria/utils/texto_sanitizado.dart';
 
 /// Estado de moderación de la reseña.
 enum EstadoResena { aprobada, rechazada, enRevision }
@@ -62,6 +64,6 @@ class MiResena {
 
   static String? _textoOpcional(Object? v) {
     final s = v?.toString() ?? '';
-    return s.isEmpty ? null : s;
+    return s.isEmpty ? null : decodificarSanitizado(s);
   }
 }

@@ -147,14 +147,25 @@ class ApiConstants {
   static String misUtiles(String productoId) =>
       '/resenas/mis-utiles?producto_id=$productoId';
   static String editarResena(String id)        => '/resenas/$id';
+  // Personal (#138): todas las reseñas; moderar {estado, motivo_rechazo?,
+  // respuesta_negocio?} o solo responder {respuesta_negocio}
+  static const String resenasPersonal = '/resenas';
+  static String moderarResena(String id) => '/resenas/$id/estado';
 
   // ── REEMBOLSOS ────────────────────────────────────────────────────
   static const String crearReembolso = '/reembolsos';
   static const String misReembolsos  = '/reembolsos/mis-reembolsos';
+  // Personal (#138): todas las solicitudes y cada paso {estado,
+  // respuesta_admin?, justificacion_rechazo?}
+  static const String reembolsosPersonal = '/reembolsos';
+  static String resolverReembolso(String id) => '/reembolsos/$id';
 
   // ── QUEJAS Y SUGERENCIAS ──────────────────────────────────────────
   static const String crearQueja = '/quejas';       // ✅ NUEVO: POST auth
   static const String misQuejas  = '/quejas/mis-quejas'; // ✅ NUEVO: GET auth
+  // Personal (#138): todas las quejas y atender una {estado, respuesta?}
+  static const String quejasPersonal = '/quejas';
+  static String atenderQueja(String id) => '/quejas/$id';
 
   // ── CONTACTO ──────────────────────────────────────────────────────
   static const String enviarContacto = '/contacto';
@@ -221,6 +232,34 @@ class ApiConstants {
   // "qué buscó la gente y no tuvimos" del panel de Dirección.
   static const String busquedas     = '/busquedas';      // {texto, num_resultados}
   static const String clicsAgotados = '/clics-agotados'; // {producto_id}
+
+  // ── REPORTES (gerencia y dirección; el rol sale del JWT) ──────────
+  // Actividad del equipo (#139): equipo, últimos movimientos, zonas con
+  // más entregas y cifras de los últimos 30 días
+  static const String actividadEquipo = '/reportes/actividad-equipo';
+  // Bitácora (#139) por páginas de [limite], de la más reciente a la más
+  // antigua, con filtros opcionales (desde y hasta AAAA-MM-DD: días de
+  // México, inclusivos); la página siguiente lleva antes_de_id =
+  // siguiente_antes_de_id de la anterior
+  static const String auditoria = '/reportes/auditoria';
+  static String auditoriaFiltrada({
+    required int limite,
+    String? entidad,
+    int? usuarioId,
+    String? desde,
+    String? hasta,
+    int? antesDeId,
+  }) {
+    final query = [
+      'limite=$limite',
+      if (entidad != null) 'entidad=${Uri.encodeQueryComponent(entidad)}',
+      if (usuarioId != null) 'usuario_id=$usuarioId',
+      if (desde != null) 'desde=$desde',
+      if (hasta != null) 'hasta=$hasta',
+      if (antesDeId != null) 'antes_de_id=$antesDeId',
+    ];
+    return '$auditoria?${query.join('&')}';
+  }
 
   // ── UPLOAD ────────────────────────────────────────────────────────
   static const String uploadImagen        = '/upload/imagen';
