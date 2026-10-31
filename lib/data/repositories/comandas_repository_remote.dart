@@ -105,14 +105,10 @@ class ComandasRepositoryRemote implements ComandasRepository {
 
   @override
   Future<ComandaCreada> crear(Map<String, dynamic> datos) async {
-    final r = await _api.postAuth(ApiConstants.comandas, datos);
-    // El 400 de validación trae todos los motivos en `errores`.
-    final errores = r['errores'];
-    if (r['success'] != true && r['codigo'] == null && errores is List &&
-        errores.isNotEmpty) {
-      throw ApiException(errores.join('\n'));
-    }
-    final ok = await _exigir(Future.value(r), 'No se pudo crear la comanda');
+    final ok = await _exigirComanda(
+      await _api.postAuth(ApiConstants.comandas, datos),
+      'No se pudo crear la comanda',
+    );
     final comanda = ok['comanda'];
     final id = comanda is Map ? (comanda['id'] as num?)?.toInt() : null;
     final folio = comanda is Map ? (comanda['folio'] as num?)?.toInt() : null;
@@ -128,6 +124,58 @@ class ComandasRepositoryRemote implements ComandasRepository {
           for (final a in lista) a.toString(),
       ],
     );
+  }
+
+  @override
+  Future<ComandaParaEditar> paraEditar(int id) async {
+    final r = await _exigir(
+      _api.getAuth(ApiConstants.comandaDetalle(id)),
+      'No se pudo abrir la comanda',
+    );
+    return ComandaParaEditar.fromJson(r);
+  }
+
+  @override
+  Future<({String mensaje, List<String> advertencias})> guardarCambios(
+    int id,
+    Map<String, dynamic> datos, {
+    required String actualizadaEn,
+  }) async {
+    final ok = await _exigirComanda(
+      await _api.putAuth(ApiConstants.comandaDetalle(id), {
+        ...datos,
+        'actualizada_en': actualizadaEn,
+      }),
+      'No se pudo guardar la comanda',
+    );
+    return (
+      mensaje: ok['message']?.toString() ?? 'Comanda actualizada',
+      advertencias: [
+        if (ok['advertencias'] case final List lista)
+          for (final a in lista) a.toString(),
+      ],
+    );
+  }
+
+  /// Como [_exigir], más lo propio de guardar una comanda: el 400 de
+  /// validación trae todos los motivos en `errores` (uno por renglón) y el
+  /// 409 de edición dice que otra persona la guardó antes.
+  static Future<Map<String, dynamic>> _exigirComanda(
+    Map<String, dynamic> r,
+    String porDefecto,
+  ) {
+    final errores = r['errores'];
+    if (r['success'] != true && r['codigo'] == null && errores is List &&
+        errores.isNotEmpty) {
+      throw ApiException(errores.join('\n'));
+    }
+    if (r['codigo'] == 'COMANDA_DESACTUALIZADA') {
+      throw ConflictoComandaException(
+        r['message']?.toString() ?? porDefecto,
+        cambio: true,
+      );
+    }
+    return _exigir(Future.value(r), porDefecto);
   }
 
   /// La respuesta si trae success: true; si no, SesionInvalidaException
