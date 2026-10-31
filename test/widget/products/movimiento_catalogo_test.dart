@@ -1,6 +1,8 @@
 // test/widget/products/movimiento_catalogo_test.dart — el movimiento del
 // catálogo y del detalle de producto: las tarjetas entran en cascada una sola
-// vez por tanda (buscar no las repite, cambiar de categoría sí), el chip de
+// vez por tanda (buscar no las repite si lo buscado llega en el mismo cuadro;
+// si tarda, pasa por los esqueletos y entran otra vez, como al cambiar de
+// categoría), el chip de
 // una categoría pedida desde el inicio llega a la vista aunque esté al fondo
 // de la fila, el estado vacío entra y termina quieto, el «+» rebota, vuelve a
 // su tamaño y pasa a palomita, el detalle arma su hoja después del push, el
@@ -20,6 +22,7 @@ import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
 import 'package:pier_reposteria/ui/core/ui/tarjeta_producto_angosta.dart';
 import 'package:pier_reposteria/ui/main/widgets/main_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/catalogo_secciones.dart';
@@ -464,9 +467,8 @@ void main() {
   });
 
   group('catálogo', () {
-    testWidgets('las tarjetas entran en cascada y buscar no las repite', (
-      tester,
-    ) async {
+    testWidgets('las tarjetas entran en cascada y, si lo buscado llega en el '
+        'mismo cuadro, buscar no las repite', (tester) async {
       _pantallaAlta(tester);
       await tester.pumpApp(const ProductsScreen(), api: _backendCatalogo());
       await _hastaQueAparezca(tester, find.text('Rosca'));
@@ -492,6 +494,30 @@ void main() {
       await tester.pump(_esperaBusqueda);
       expect(opacidadEn(tester, _entradaDe('Rosca')), 1);
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('si lo buscado tarda, pasa por los esqueletos y las tarjetas '
+        'que siguen entran otra vez', (tester) async {
+      _pantallaAlta(tester);
+      const tarda = Duration(milliseconds: 300);
+      final api = _backendCatalogo()
+        ..demorar('/productos?busqueda=Ch&limite=20&offset=0', tarda);
+      await tester.pumpApp(const ProductsScreen(), api: api);
+      await tester.pumpAndSettle();
+      expect(opacidadEn(tester, _entradaDe('Chocoflan')), 1);
+
+      await tester.enterText(find.byType(TextField), 'Ch');
+      await tester.pump(_esperaBusqueda);
+      expect(find.byType(ProductSkeletonCard), findsWidgets);
+      expect(find.text('Chocoflan'), findsNothing);
+
+      // Chocoflan sigue en la lista, pero con otra tanda: entra otra vez.
+      await tester.pump(tarda);
+      expect(find.byType(ProductSkeletonCard), findsNothing);
+      expect(opacidadEn(tester, _entradaDe('Chocoflan')), 0);
+      await tester.pumpAndSettle();
+      expect(opacidadEn(tester, _entradaDe('Chocoflan')), 1);
+      await _desmontar(tester);
     });
 
     testWidgets('cambiar de categoría vuelve a repartir las tarjetas', (

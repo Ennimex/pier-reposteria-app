@@ -4,13 +4,16 @@
 // (categoría, búsqueda, filtros, orden, favoritos y los productos que pide
 // por páginas, #37); de ProductProvider solo toma las promociones de las
 // tarjetas. Aquí solo queda lo que es de la interfaz: el texto
-// del buscador, cuadrícula/lista, el rebote del botón de carrito, el vuelo de
-// la miniatura al carrito, la entrada en cascada de las tarjetas, mandar a
+// del buscador, cuadrícula/lista, pedir la siguiente página al acercarse al
+// final (con su pie y los esqueletos de la primera), llevar la lista arriba
+// al empezar otra consulta, el rebote del botón de carrito, el vuelo de la
+// miniatura al carrito, la entrada en cascada de las tarjetas, mandar a
 // iniciar sesión y los avisos (SnackBar).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/domain/models/consulta_catalogo.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
@@ -24,6 +27,7 @@ import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
 import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
 import 'package:pier_reposteria/ui/products/widgets/catalogo_secciones.dart';
 import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
+import 'package:pier_reposteria/ui/products/widgets/pie_catalogo.dart';
 import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/utils/logger.dart';
@@ -52,7 +56,15 @@ class _ProductsScreenState extends State<ProductsScreen>
         categoriaInicial: widget.initialCategory ?? ProductsViewModel.todas,
       );
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _control = ScrollController();
   bool _isGridView = true;
+
+  /// Margen (px) antes del final en el que se pide la siguiente página.
+  static const _margenCargarMas = 600.0;
+
+  // La consulta de la lista que se ve: cuando empieza a pedirse otra, la lista
+  // vuelve arriba (_alCambiar).
+  late ConsultaCatalogo _consultaVista;
 
   final Map<String, AnimationController> _cartControllers = {};
   final Map<String, Animation<double>> _cartAnims = {};
@@ -75,6 +87,8 @@ class _ProductsScreenState extends State<ProductsScreen>
   void initState() {
     super.initState();
     PierLog.nav('ProductsScreen abierto — categoría inicial: ${_vm.categoria}');
+    _consultaVista = _vm.consulta;
+    _vm.addListener(_alCambiar);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(context.read<ProductProvider>().cargarProductos());
@@ -126,10 +140,52 @@ class _ProductsScreenState extends State<ProductsScreen>
     }
   }
 
+  /// Cambió algo en el ViewModel. Cuando empieza a pedirse otra consulta (al
+  /// teclear todavía no: hasta que se pregunta), la lista vuelve arriba antes
+  /// de pintar sus esqueletos; si no, la nueva primera página se abriría donde
+  /// quedó el scroll de la anterior. Después de pintar lo que llegó se revisa
+  /// si ya se ve casi el final.
+  void _alCambiar() {
+    if (!mounted) return;
+    if (_vm.cargando && _vm.consulta != _consultaVista) {
+      _consultaVista = _vm.consulta;
+      _llevarArriba();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _quizaCargarMas());
+  }
+
+  void _llevarArriba() {
+    if (_control.hasClients && _control.position.pixels > 0) {
+      _control.jumpTo(0);
+    }
+  }
+
+  /// Pide la siguiente página si falta poco para el final, también cuando lo
+  /// cargado no alcanza a llenar la pantalla. Tras un error espera a que la
+  /// persona toque «Reintentar» (PieCatalogo).
+  void _quizaCargarMas() {
+    if (!mounted ||
+        !_control.hasClients ||
+        !_control.position.hasContentDimensions ||
+        _vm.errorMas != null) {
+      return;
+    }
+    if (_control.position.extentAfter < _margenCargarMas) {
+      unawaited(_vm.cargarMas());
+    }
+  }
+
+  bool _alDesplazar(ScrollNotification n) {
+    if (n.metrics.axis == Axis.vertical) _quizaCargarMas();
+    return false;
+  }
+
   @override
   void dispose() {
     _authRef?.removeListener(_onAuthChanged);
     _navRef?.removeListener(_onNavChanged);
+    _vm.removeListener(_alCambiar);
+    _control.dispose();
     _searchController.dispose();
     for (final c in _cartControllers.values) {
       c.dispose();
@@ -260,8 +316,10 @@ class _ProductsScreenState extends State<ProductsScreen>
         final error = _vm.error;
         // Tanda de entrada de las tarjetas: cambia con lo que decide «qué se
         // ve» (categoría, filtros, orden, vista) y entonces todas entran otra
-        // vez en cascada. Escribir en el buscador no la cambia: las tarjetas
-        // que siguen no se mueven.
+        // vez en cascada. Buscar no la cambia, pero tampoco la necesita: la
+        // consulta nueva pasa por los esqueletos, el ámbito se crea de nuevo
+        // y las tarjetas del resultado entran en cascada (solo si la respuesta
+        // llega en el mismo cuadro, las que siguen no se mueven).
         final generacion = [
           _vm.categoria,
           _vm.filtroSabor,
@@ -292,65 +350,86 @@ class _ProductsScreenState extends State<ProductsScreen>
                 child: RefreshIndicator(
                   onRefresh: _recargar,
                   color: AppColors.pierVerde,
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(child: _tituloYVista()),
-                      // "Quitar filtros" abre su espacio y aparece (o se
-                      // apaga y lo cierra): la cuadrícula se desliza en vez
-                      // de saltar.
-                      SliverToBoxAdapter(
-                        child: Aparicion(
-                          visible: _vm.hayFiltros,
-                          child: _quitarFiltros(),
-                        ),
-                      ),
-                      if (_vm.cargando && products.isEmpty)
-                        _grid((context, i) => const ProductSkeletonCard(), 6)
-                      // La primera página no pudo llegar (p. ej. sin
-                      // internet): no es «Sin resultados» de los filtros
-                      // (#160).
-                      else if (error != null && products.isEmpty)
-                        SliverFillRemaining(
-                          child: CatalogoVacio.sinConexion(
-                            mensaje: error,
-                            onReintentar: _recargar,
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: _alDesplazar,
+                    child: CustomScrollView(
+                      controller: _control,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(child: _tituloYVista()),
+                        // "Quitar filtros" abre su espacio y aparece (o se
+                        // apaga y lo cierra): la cuadrícula se desliza en
+                        // vez de saltar.
+                        SliverToBoxAdapter(
+                          child: Aparicion(
+                            visible: _vm.hayFiltros,
+                            child: _quitarFiltros(),
                           ),
-                        )
-                      // La primera página llegó vacía.
-                      else if (_vm.fin && products.isEmpty)
-                        SliverFillRemaining(
-                            child: CatalogoVacio(onLimpiar: _limpiarTodo))
-                      else
-                        // Entrada en cascada: cada tarjeta sube y aparece un
-                        // escalón después de la anterior (las del séptimo
-                        // escalón en adelante entran juntas). Cada producto
-                        // entra una sola vez por tanda: volver con scroll,
-                        // regresar del detalle o recargar favoritos no repite
-                        // nada, y las que aparecen al hacer scroll llegan
-                        // quietas.
-                        AmbitoEntradas(
-                          generacion: generacion,
-                          child: _grid(
-                            (context, i) => EntradaSuave(
-                              key: ValueKey<String>(products[i].id),
-                              id: products[i].id,
-                              retraso: retraso,
-                              child: _card(products[i], productProvider),
+                        ),
+                        // Esqueletos mientras llega la primera página: 6 en
+                        // cuadrícula y 4 en lista.
+                        if (_vm.cargando && products.isEmpty)
+                          _grid((context, i) => const ProductSkeletonCard(),
+                              _isGridView ? 6 : 4)
+                        // La primera página no pudo llegar (p. ej. sin
+                        // internet): no es «Sin resultados» de los filtros
+                        // (#160).
+                        else if (error != null && products.isEmpty)
+                          SliverFillRemaining(
+                            child: CatalogoVacio.sinConexion(
+                              mensaje: error,
+                              onReintentar: _recargar,
                             ),
-                            products.length,
-                            clave: ValueKey<String>(generacion),
-                            // Al buscar, la tarjeta de un producto que sigue
-                            // en la lista conserva su lugar en el árbol.
-                            indicePorClave: (clave) {
-                              if (clave is! ValueKey<String>) return null;
-                              final i = products
-                                  .indexWhere((p) => p.id == clave.value);
-                              return i < 0 ? null : i;
-                            },
+                          )
+                        // La primera página llegó vacía.
+                        else if (_vm.fin && products.isEmpty)
+                          SliverFillRemaining(
+                              child: CatalogoVacio(onLimpiar: _limpiarTodo))
+                        else ...[
+                          // Entrada en cascada: cada tarjeta sube y aparece
+                          // un escalón después de la anterior (las del
+                          // séptimo escalón en adelante entran juntas). Cada
+                          // producto entra una sola vez por tanda: volver con
+                          // scroll, regresar del detalle o recargar favoritos
+                          // no repite nada, y las que aparecen al hacer
+                          // scroll llegan quietas.
+                          AmbitoEntradas(
+                            generacion: generacion,
+                            child: _grid(
+                              (context, i) => EntradaSuave(
+                                key: ValueKey<String>(products[i].id),
+                                id: products[i].id,
+                                retraso: retraso,
+                                child: _card(products[i], productProvider),
+                              ),
+                              products.length,
+                              clave: ValueKey<String>(generacion),
+                              abajo: 0,
+                              // Si la lista cambia sin pasar por los
+                              // esqueletos (al recargar la misma consulta o
+                              // si la respuesta llega en el mismo cuadro), la
+                              // tarjeta de un producto que sigue en ella
+                              // conserva su lugar en el árbol.
+                              indicePorClave: (clave) {
+                                if (clave is! ValueKey<String>) return null;
+                                final i = products
+                                    .indexWhere((p) => p.id == clave.value);
+                                return i < 0 ? null : i;
+                              },
+                            ),
                           ),
-                        ),
-                    ],
+                          // Pie: cargando más o el aviso para reintentar.
+                          // Va pegado a la última fila; el espacio de siempre
+                          // al final de la lista (100 en total) queda
+                          // después de él.
+                          SliverPadding(
+                            padding: const EdgeInsets.only(bottom: 76),
+                            sliver: SliverToBoxAdapter(
+                                child: PieCatalogo(viewModel: _vm)),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -372,10 +451,12 @@ class _ProductsScreenState extends State<ProductsScreen>
         onAgregar: (boton) => _addToCart(p, boton),
       );
 
+  /// La cuadrícula (o la lista) de [cantidad] elementos; [abajo] es el espacio
+  /// que deja después de ella.
   Widget _grid(NullableIndexedWidgetBuilder builder, int cantidad,
-      {Key? clave, ChildIndexGetter? indicePorClave}) {
+      {Key? clave, ChildIndexGetter? indicePorClave, double abajo = 100}) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, abajo),
       sliver: SliverGrid(
         key: clave,
         delegate: SliverChildBuilderDelegate(builder,
