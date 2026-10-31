@@ -69,6 +69,9 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   very_good_analysis: ^10.0.0
+  # Plataforma de video falsa para probar ReproductorDeRed (#134); la misma
+  # versión que ya trae video_player.
+  video_player_platform_interface: ^6.9.0
 flutter:
   uses-material-design: true
   # Sin --flavor se compila prod (#12): `flutter run` y el CI no cambian.
