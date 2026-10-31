@@ -143,4 +143,78 @@ void main() {
       expect(auth.currentUser, isNull);
     });
   });
+
+  group('AuthProvider: sesión expirada (#218)', () {
+    test('al expirar cierra la sesión y deja pendiente el aviso', () async {
+      final api = FakeApiClient();
+      final auth = _conSesion(api: api);
+      var cambios = 0;
+      auth.addListener(() => cambios++);
+
+      api.expirarSesion();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(auth.isAuthenticated, isFalse);
+      expect(auth.currentUser, isNull);
+      expect(auth.sesionExpiro, isTrue);
+      expect(cambios, 1);
+      // No vuelve a llamar al servidor para cerrar la sesión.
+      expect(api.llamo(ApiConstants.logout), isFalse);
+    });
+
+    test('varios 401 a la vez cierran la sesión una sola vez', () async {
+      final api = FakeApiClient();
+      final auth = _conSesion(api: api);
+      var cambios = 0;
+      auth.addListener(() => cambios++);
+
+      api
+        ..expirarSesion()
+        ..expirarSesion()
+        ..expirarSesion();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cambios, 1);
+    });
+
+    test('sin sesión un aviso de expiración no hace nada', () async {
+      final api = FakeApiClient();
+      final auth = _auth(api);
+
+      api.expirarSesion();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(auth.sesionExpiro, isFalse);
+    });
+
+    test('el aviso se marca como mostrado y una sesión nueva lo limpia',
+        () async {
+      final api = FakeApiClient();
+      final auth = _conSesion(api: api);
+      api.expirarSesion();
+      await Future<void>.delayed(Duration.zero);
+
+      auth.avisoDeSesionMostrado();
+      expect(auth.sesionExpiro, isFalse);
+
+      auth.abrirSesion(_user());
+      api.expirarSesion();
+      await Future<void>.delayed(Duration.zero);
+      expect(auth.sesionExpiro, isTrue);
+
+      auth.abrirSesion(_user());
+      expect(auth.sesionExpiro, isFalse);
+      expect(auth.isAuthenticated, isTrue);
+    });
+
+    test('después de dispose ya no escucha', () async {
+      final api = FakeApiClient();
+      final auth = _conSesion(api: api)..dispose();
+
+      api.expirarSesion();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(auth.sesionExpiro, isFalse);
+    });
+  });
 }

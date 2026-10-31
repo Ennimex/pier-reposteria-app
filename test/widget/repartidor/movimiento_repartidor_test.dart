@@ -56,7 +56,7 @@ Map<String, dynamic> _entrega(
   'metodo_pago': pago,
   'cliente_nombre': 'Cliente',
   'cliente_apellido': id,
-  'horario_entrega': '2026-10-10T09:00:00',
+  'horario_entrega': '2026-10-10T15:00:00.000Z',
   'finalizado_at': finalizado,
   'direccion_entrega': {'colonia': 'Colonia $id'},
 };
@@ -67,7 +67,7 @@ Map<String, dynamic> _pedido(int id) => {
   'total': 300,
   'cliente_nombre': 'Ana',
   'cliente_apellido': 'López',
-  'horario_entrega': '2026-10-10T11:00:00',
+  'horario_entrega': '2026-10-10T17:00:00.000Z',
   'direccion_entrega': {'colonia': 'Aviación'},
 };
 

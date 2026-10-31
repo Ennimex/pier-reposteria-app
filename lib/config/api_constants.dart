@@ -94,6 +94,13 @@ class ApiConstants {
   // Cancelación por el propio cliente: solo estados pendiente/listo,
   // mientras ningún repartidor haya tomado el pedido
   static String pedidoCancelar(String id) => '/pedidos/$id/cancelar';
+  // Gestión del personal (#137): abiertos con productos y entrega activa;
+  // cambiar estado {estado, nota_cancelacion?}; aprobar o rechazar {motivo}
+  // los que están por confirmar
+  static const String pedidosAbiertos = '/pedidos?vista=abiertos&completo=1';
+  static String pedidoEstado(String id)   => '/pedidos/$id/estado';
+  static String pedidoAprobar(String id)  => '/pedidos/$id/aprobar';
+  static String pedidoRechazar(String id) => '/pedidos/$id/rechazar';
 
   // ── PAGOS (Stripe) ────────────────────────────────────────────────
   static const String crearPaymentIntent = '/pagos/crear-intent';
@@ -124,8 +131,21 @@ class ApiConstants {
   static const String crearResena       = '/resenas';
   static const String misResenas        = '/resenas/mis-resenas';
   static const String resenasDestacadas = '/resenas/destacadas';
+  // Con la configuración de Dirección (#169): cuántas y desde cuántas estrellas.
+  static String resenasDestacadasCon({int? limite, int? minEstrellas}) {
+    final query = [
+      if (limite != null) 'limite=$limite',
+      if (minEstrellas != null) 'min_rating=$minEstrellas',
+    ];
+    return query.isEmpty
+        ? resenasDestacadas
+        : '$resenasDestacadas?${query.join('&')}';
+  }
   static String resenasPorProducto(String id) => '/resenas/producto/$id';
   static String likeResena(String id)          => '/resenas/$id/like';
+  // Reseñas de un producto que el cliente marcó «útil» (#42)
+  static String misUtiles(String productoId) =>
+      '/resenas/mis-utiles?producto_id=$productoId';
   static String editarResena(String id)        => '/resenas/$id';
 
   // ── REEMBOLSOS ────────────────────────────────────────────────────
@@ -156,6 +176,11 @@ class ApiConstants {
   static String entregaEstado(String id)   => '/entregas/$id/estado';
   // Aviso "llegué al domicilio": notifica al cliente sin cambiar estado
   static String entregaLlegue(String id)   => '/entregas/$id/llegue';
+  // Personal (#137): repartidores, asignar {pedido_id, repartidor_id} y
+  // avisar demora {pedido_id} de un pedido a domicilio en «listo»
+  static const String repartidores   = '/entregas/repartidores';
+  static const String asignarEntrega = '/entregas';
+  static const String avisarDemora   = '/entregas/avisar-demora';
 
   // ── COMANDAS (personal y producción; rol releído de la base) ──────
   // Agenda: ?vista=proximas|activas|entregadas|canceladas&busqueda=folio|nombre
@@ -164,6 +189,10 @@ class ApiConstants {
       '$comandas?vista=$vista'
       '${busqueda.isEmpty ? '' : '&busqueda=${Uri.encodeQueryComponent(busqueda)}'}';
   static String comandaDetalle(int id)   => '$comandas/$id';
+  // Captura (#130): opciones, reglas y productos; fotos de referencia
+  // (multipart `imagen`) que se mandan después en POST /comandas
+  static const String comandasCatalogo = '$comandas/catalogo';
+  static const String comandasImagenes = '$comandas/imagenes';
   // «Enterado» de producción: {version} que se leyó (409 si cambió)
   static String comandaConfirmar(int id) => '$comandas/$id/confirmar';
   static String comandaEntregar(int id)  => '$comandas/$id/entregar';  // PUT {saldo_cobrado}

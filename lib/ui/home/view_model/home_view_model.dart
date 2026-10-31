@@ -15,6 +15,7 @@ import 'package:pier_reposteria/data/repositories/pedidos_repository.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/config_testimonios.dart';
 import 'package:pier_reposteria/domain/models/imagen_sitio.dart';
 import 'package:pier_reposteria/domain/models/order_model.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
@@ -175,6 +176,7 @@ class HomeViewModel extends ChangeNotifier {
 
   List<Categoria> _categorias = const [];
   List<Map<String, dynamic>> _resenasDestacadas = const [];
+  ConfigTestimonios? _testimonios;
   PromocionesInicio _promociones = const PromocionesInicio();
   Map<String, dynamic> _contacto = const {};
   List<SlideHero> _slides = slidesDeRespaldo;
@@ -186,6 +188,10 @@ class HomeViewModel extends ChangeNotifier {
       ? categoriasDeRespaldo
       : _categorias.map((c) => c.nombre).toList();
   List<Map<String, dynamic>> get resenasDestacadas => _resenasDestacadas;
+
+  /// Título, subtítulo y filtro de los testimonios que eligió Dirección
+  /// (null = como antes).
+  ConfigTestimonios? get testimonios => _testimonios;
   PromocionesInicio get promociones => _promociones;
 
   /// Config de la sección contacto (sucursales, horarios, teléfonos).
@@ -225,13 +231,19 @@ class HomeViewModel extends ChangeNotifier {
 
   // ── Carga ────────────────────────────────────────────────────────────────
 
-  /// Lo público del inicio (no depende de la sesión).
+  /// Lo público del inicio (no depende de la sesión). Las reseñas esperan a
+  /// la configuración: Dirección decide cuántas y desde cuántas estrellas
+  /// (#169).
   Future<void> cargar() => Future.wait([
         cargarCategorias(),
-        cargarResenasDestacadas(),
-        cargarConfiguracion(),
+        _configuracionYResenas(),
         cargarPromociones(),
       ]);
+
+  Future<void> _configuracionYResenas() async {
+    await cargarConfiguracion();
+    await cargarResenasDestacadas();
+  }
 
   Future<void> cargarCategorias() async {
     try {
@@ -245,12 +257,18 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
+  /// Con la configuración de Dirección si la hay. Una lista vacía también se
+  /// aplica: si ninguna reseña cumple, la sección se oculta (#169).
   Future<void> cargarResenasDestacadas() async {
+    final config = _testimonios;
     try {
-      final lista = await _resenasRepo.listarDestacadas();
-      if (_cerrado || lista.isEmpty) return;
+      final lista = await _resenasRepo.listarDestacadas(
+          limite: config?.cantidad, minEstrellas: config?.minEstrellas);
+      if (_cerrado) return;
       PierLog.info('✅ Reseñas destacadas: ${lista.length}');
-      _resenasDestacadas = lista;
+      _resenasDestacadas = config == null
+          ? lista
+          : lista.take(config.cantidad).toList();
       notifyListeners();
     } on ApiException catch (e) {
       PierLog.error('Error reseñas: ${e.message}');
@@ -287,6 +305,7 @@ class HomeViewModel extends ChangeNotifier {
     ]);
     if (_cerrado) return;
     if (secciones[0] != null) _contacto = secciones[0]!;
+    _testimonios = ConfigTestimonios.desdeContenido(secciones[3]);
     final slides = resolverSlides(secciones[1], secciones[2],
         carrusel: secciones[3]?['inicio.carrusel']);
     if (slides != null) {

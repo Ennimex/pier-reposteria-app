@@ -116,5 +116,14 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets('#41: el aviso ya no dice que solo se reseña lo comprado',
+        (tester) async {
+      await _montar(tester, FakeApiClient());
+
+      expect(find.textContaining('compra verificada'), findsOneWidget);
+      expect(find.textContaining('pasan por revisión'), findsOneWidget);
+      expect(find.textContaining('Solo puedes reseñar'), findsNothing);
+    });
   });
 }

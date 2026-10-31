@@ -9,6 +9,7 @@ import 'package:pier_reposteria/data/repositories/comandas_repository.dart';
 import 'package:pier_reposteria/data/repositories/respuesta_api.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
 import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/domain/models/nueva_comanda.dart';
 
 /// Implementación de [ComandasRepository] contra el backend vía [ApiClient].
 class ComandasRepositoryRemote implements ComandasRepository {
@@ -75,6 +76,106 @@ class ComandasRepositoryRemote implements ComandasRepository {
       'No se pudo cancelar la comanda',
     );
     return r['message']?.toString() ?? 'Comanda cancelada';
+  }
+
+  @override
+  Future<CatalogoComanda> catalogo() async {
+    final r = await _exigir(
+      _api.getAuth(ApiConstants.comandasCatalogo),
+      'No se pudo cargar el catálogo de comandas',
+    );
+    return CatalogoComanda.fromJson(r);
+  }
+
+  @override
+  Future<FotoComanda> subirFoto(String ruta) async {
+    const porDefecto = 'No se pudo subir la foto';
+    final r = await _exigir(
+      _api.uploadImageAuth(ApiConstants.comandasImagenes, ruta, const {}),
+      porDefecto,
+    );
+    final imagen = r['imagen'];
+    final url = imagen is Map ? imagen['url']?.toString() : null;
+    final publicId = imagen is Map ? imagen['public_id']?.toString() : null;
+    if (url == null || url.isEmpty || publicId == null || publicId.isEmpty) {
+      throw const ApiException(porDefecto);
+    }
+    return FotoComanda(url: url, publicId: publicId);
+  }
+
+  @override
+  Future<ComandaCreada> crear(Map<String, dynamic> datos) async {
+    final ok = await _exigirComanda(
+      await _api.postAuth(ApiConstants.comandas, datos),
+      'No se pudo crear la comanda',
+    );
+    final comanda = ok['comanda'];
+    final id = comanda is Map ? (comanda['id'] as num?)?.toInt() : null;
+    final folio = comanda is Map ? (comanda['folio'] as num?)?.toInt() : null;
+    if (id == null || folio == null) {
+      throw const ApiException('No se pudo crear la comanda');
+    }
+    return ComandaCreada(
+      id: id,
+      folio: folio,
+      mensaje: ok['message']?.toString() ?? 'Comanda #$folio creada',
+      advertencias: [
+        if (ok['advertencias'] case final List lista)
+          for (final a in lista) a.toString(),
+      ],
+    );
+  }
+
+  @override
+  Future<ComandaParaEditar> paraEditar(int id) async {
+    final r = await _exigir(
+      _api.getAuth(ApiConstants.comandaDetalle(id)),
+      'No se pudo abrir la comanda',
+    );
+    return ComandaParaEditar.fromJson(r);
+  }
+
+  @override
+  Future<({String mensaje, List<String> advertencias})> guardarCambios(
+    int id,
+    Map<String, dynamic> datos, {
+    required String actualizadaEn,
+  }) async {
+    final ok = await _exigirComanda(
+      await _api.putAuth(ApiConstants.comandaDetalle(id), {
+        ...datos,
+        'actualizada_en': actualizadaEn,
+      }),
+      'No se pudo guardar la comanda',
+    );
+    return (
+      mensaje: ok['message']?.toString() ?? 'Comanda actualizada',
+      advertencias: [
+        if (ok['advertencias'] case final List lista)
+          for (final a in lista) a.toString(),
+      ],
+    );
+  }
+
+  /// Como [_exigir], más lo propio de guardar una comanda: el 400 de
+  /// validación trae todos los motivos en `errores` (uno por renglón) y el
+  /// 409 de edición dice que otra persona la guardó antes.
+  static Future<Map<String, dynamic>> _exigirComanda(
+    Map<String, dynamic> r,
+    String porDefecto,
+  ) {
+    final errores = r['errores'];
+    if (r['success'] != true && r['codigo'] == null && errores is List &&
+        errores.isNotEmpty) {
+      throw ApiException(errores.join('\n'));
+    }
+    if (r['codigo'] == 'COMANDA_DESACTUALIZADA') {
+      throw ConflictoComandaException(
+        r['message']?.toString() ?? porDefecto,
+        cambio: true,
+      );
+    }
+    return _exigir(Future.value(r), porDefecto);
   }
 
   /// La respuesta si trae success: true; si no, SesionInvalidaException

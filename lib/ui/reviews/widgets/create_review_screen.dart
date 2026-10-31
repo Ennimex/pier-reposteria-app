@@ -636,7 +636,10 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Solo puedes reseñar productos que hayas comprado. Las reseñas con calificación ≥ 4 se publican automáticamente.',
+                                // #41: ni la app ni el backend limitan la
+                                // reseña a lo comprado; la compra solo la
+                                // marca como verificada.
+                                'Si compraste este producto, tu reseña aparecerá como compra verificada. Algunas reseñas pasan por revisión antes de publicarse.',
                                 style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,

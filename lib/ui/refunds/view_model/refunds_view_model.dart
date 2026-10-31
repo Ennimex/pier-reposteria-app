@@ -1,9 +1,12 @@
 // lib/ui/refunds/view_model/refunds_view_model.dart
 //
 // Estado de «Reembolsos» (MVVM, Fase 3): el historial de solicitudes y el
-// formulario de nueva solicitud (pedido, motivo, fotos y envío). Solo se
-// ofrecen los pedidos 'completado', igual que valida el backend. Si una
-// carga falla la lista se queda como estaba (la pantalla no muestra error).
+// formulario de nueva solicitud (pedido, motivo, fotos y envío). Se
+// ofrecen los pedidos recogidos o entregados a domicilio que no tengan ya
+// una solicitud viva, igual que valida el backend (#172); si aun así la
+// rechaza (409), se muestra su motivo y se vuelven a pedir los pedidos. Si
+// una carga falla la lista se queda como estaba (la pantalla no muestra
+// error).
 //
 // Fotos de evidencia (#117): hasta [maxFotos], opcionales. Se suben al
 // enviar; si una falla no se manda la solicitud a medias, y las que ya
@@ -45,7 +48,7 @@ class RefundsViewModel extends ChangeNotifier {
   List<Reembolso> get reembolsos => _reembolsos;
   bool get cargandoReembolsos => _cargandoReembolsos;
 
-  /// Pedidos que se pueden reembolsar (estado 'completado').
+  /// Pedidos que se pueden reembolsar ([Order.reembolsable]).
   List<Order> get pedidos => _pedidos;
 
   /// El elegido o, si no se ha elegido, el primero (el que ya muestra el
@@ -79,9 +82,12 @@ class RefundsViewModel extends ChangeNotifier {
   Future<void> _cargarPedidos() async {
     try {
       final todos = await _pedidosRepo.listarMisPedidos();
-      _pedidos = todos
-          .where((p) => p.status == OrderStatus.completed)
-          .toList();
+      _pedidos = todos.where((p) => p.reembolsable).toList();
+      // El elegido ya no se puede reembolsar (p. ej. tras un 409).
+      final elegido = _pedidoElegido;
+      if (elegido != null && !_pedidos.any((p) => p.id == elegido.id)) {
+        _pedidoElegido = null;
+      }
     } on ApiException {
       // Sin pedidos para elegir.
     }
@@ -122,6 +128,7 @@ class RefundsViewModel extends ChangeNotifier {
     _enviando = true;
     notifyListeners();
     String? error;
+    var rechazada = false;
     final urls = await _subirFotos();
     if (urls == null) {
       error = 'No se pudo subir una de las fotos. Intenta de nuevo.';
@@ -136,6 +143,7 @@ class RefundsViewModel extends ChangeNotifier {
         );
       } on ApiException catch (e) {
         error = e.message;
+        rechazada = true;
       }
     }
     if (_cerrado) return error;
@@ -148,8 +156,11 @@ class RefundsViewModel extends ChangeNotifier {
       _subidas.clear();
     }
     notifyListeners();
-    // El historial se recarga sin hacer esperar la confirmación.
+    // El historial se recarga sin hacer esperar la confirmación. Si el
+    // backend la rechazó (p. ej. ya hay una solicitud de ese pedido), los
+    // pedidos se vuelven a pedir para que ya no aparezca.
     if (error == null) unawaited(cargarReembolsos());
+    if (rechazada) unawaited(_cargarPedidos());
     return error;
   }
 

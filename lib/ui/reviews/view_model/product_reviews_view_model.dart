@@ -37,7 +37,8 @@ class ProductReviewsViewModel extends ChangeNotifier {
   int get filtroEstrellas => _filtroEstrellas;
   OrdenResenas get orden => _orden;
 
-  /// ¿El cliente la marcó «útil» en esta visita?
+  /// ¿El cliente la marcó «útil»? Con sesión, también las de visitas
+  /// anteriores (#42).
   bool esUtil(String id) => _utiles.contains(id);
 
   double get promedio => _resenas.isEmpty
@@ -70,7 +71,9 @@ class ProductReviewsViewModel extends ChangeNotifier {
     return lista;
   }
 
-  Future<void> cargar() async {
+  /// Carga las reseñas y, con sesión, cuáles ya marcó «útil» el cliente
+  /// (#42): sin eso el voto se veía apagado al volver a abrir.
+  Future<void> cargar({bool conSesion = false}) async {
     _cargando = true;
     notifyListeners();
     try {
@@ -78,6 +81,16 @@ class ProductReviewsViewModel extends ChangeNotifier {
       PierLog.info('✅ Reseñas cargadas: ${_resenas.length}');
     } on ApiException catch (e) {
       PierLog.error('Error al cargar reseñas: ${e.message}');
+    }
+    if (conSesion) {
+      try {
+        final marcadas = await _repo.misUtiles(_productoId);
+        _utiles
+          ..clear()
+          ..addAll(marcadas);
+      } on ApiException catch (e) {
+        PierLog.error('Error al cargar tus reseñas útiles: ${e.message}');
+      }
     }
     if (_cerrado) return;
     _cargando = false;
@@ -96,27 +109,30 @@ class ProductReviewsViewModel extends ChangeNotifier {
 
   /// Marca o desmarca «útil» al instante y lo confirma con el backend. El
   /// backend alterna por su cuenta: si ya estaba marcada de otra visita, la
-  /// quita, y aquí se ajusta a lo que responda. Si falla, se revierte.
-  Future<void> alternarUtil(String id) async {
+  /// quita, y aquí se ajusta a lo que responda. Si falla, se revierte y
+  /// devuelve el motivo para que la vista lo muestre (p. ej. «No puedes
+  /// marcar como útil tu propia opinión», #42).
+  Future<String?> alternarUtil(String id) async {
     final i = _resenas.indexWhere((r) => r.id == id);
-    if (i == -1) return;
+    if (i == -1) return null;
     final base = _resenas[i].utilCount;
     final marcada = _utiles.contains(id);
     _aplicar(id, marcada: !marcada, conteo: base + (marcada ? -1 : 1));
 
     try {
       final quedo = await _repo.alternarUtil(id);
-      if (_cerrado) return;
+      if (_cerrado) return null;
       if (quedo == marcada) {
         // El backend sabía algo que la app no (p. ej. ya la había marcado
         // en otra visita): el conteo real es el de antes ± 1.
         _aplicar(id, marcada: quedo, conteo: base + (quedo ? 1 : -1));
       }
       PierLog.info('Like ${quedo ? 'agregado' : 'removido'} en reseña $id');
-    } on ApiException {
+      return null;
+    } on ApiException catch (e) {
       PierLog.error('Error al dar like a reseña $id');
-      if (_cerrado) return;
-      _aplicar(id, marcada: marcada, conteo: base);
+      if (!_cerrado) _aplicar(id, marcada: marcada, conteo: base);
+      return e.message;
     }
   }
 

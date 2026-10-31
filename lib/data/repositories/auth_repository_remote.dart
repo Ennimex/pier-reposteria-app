@@ -9,9 +9,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/config/app_version.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/auth_repository.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/data/services/preferencias_service.dart';
 import 'package:pier_reposteria/data/services/storage_service.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 
@@ -24,6 +26,7 @@ class AuthRepositoryRemote implements AuthRepository {
 
   final ApiClient _api;
   final StorageService _storage = StorageService();
+  final PreferenciasService _preferencias = PreferenciasService();
   final GoogleSignIn _googleSignIn;
 
   @override
@@ -43,6 +46,14 @@ class AuthRepositoryRemote implements AuthRepository {
     });
     _exigirExito(result, 'Error al registrar');
   }
+
+  @override
+  Future<void> aceptarAvisoDePrivacidad({required String via}) =>
+      _preferencias.guardarAceptacionPrivacidad(AceptacionPrivacidad(
+        fecha: DateTime.now(),
+        versionApp: AppVersion.full,
+        via: via,
+      ));
 
   @override
   Future<Map<String, dynamic>> verificarEmail({
@@ -163,6 +174,9 @@ class AuthRepositoryRemote implements AuthRepository {
     });
     _exigirExito(result, 'Código inválido o expirado');
   }
+
+  @override
+  Stream<void> get sesionExpirada => _api.sesionExpirada;
 
   @override
   Future<bool> isAuthenticated() async {

@@ -21,9 +21,15 @@ import 'package:provider/provider.dart';
 
 class LegalScreen extends StatefulWidget {
   /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
-  const LegalScreen({super.key, this.viewModel});
+  /// [pestana] es la que se abre primero (#220: cada enlace abre la suya).
+  const LegalScreen({super.key, this.viewModel, this.pestana = privacidad});
+
+  static const privacidad = 0;
+  static const terminos = 1;
+  static const devoluciones = 2;
 
   final LegalViewModel? viewModel;
+  final int pestana;
 
   @override
   State<LegalScreen> createState() => _LegalScreenState();
@@ -32,7 +38,7 @@ class LegalScreen extends StatefulWidget {
 class _LegalScreenState extends State<LegalScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController =
-      TabController(length: 3, vsync: this);
+      TabController(length: 3, vsync: this, initialIndex: widget.pestana);
 
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final LegalViewModel _vm =

@@ -17,6 +17,8 @@ dependencies:
 
   # HTTP y API
   http: ^1.2.1
+  # Huella SHA-256 de los certificados fijados del API (#219)
+  crypto: ^3.0.6
 
   # Almacenamiento local (JWT)
   shared_preferences: ^2.2.3
@@ -53,9 +55,14 @@ dependencies:
   # Animaciones Lottie (empty states / éxito; assets locales recoloreados)
   lottie: ^3.1.2
   flutter_secure_storage: ^11.2.0
+  # Videos de las publicaciones (#134): reproducir y saber cuándo se ven.
+  video_player: ^2.10.0
+  visibility_detector: ^0.4.0+2
   # Errores y rendimiento en producción (#23; apagado sin --dart-define=SENTRY_DSN).
   # 9.x porque la 10 exige minSdk 26 y la app soporta desde Android 7 (minSdk 24).
   sentry_flutter: ^9.30.1
+  # Ubicación al guardar una dirección de entrega, con permiso en tiempo de ejecución (#227).
+  geolocator: ^14.1.2
 
 dev_dependencies:
   # test_driver/perf_driver.dart: resumen de las trazas de rendimiento (#61).
@@ -66,6 +73,9 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   very_good_analysis: ^10.0.0
+  # Plataforma de video falsa para probar ReproductorDeRed (#134); la misma
+  # versión que ya trae video_player.
+  video_player_platform_interface: ^6.9.0
 flutter:
   uses-material-design: true
   # Sin --flavor se compila prod (#12): `flutter run` y el CI no cambian.

@@ -1,4 +1,5 @@
 // lib/data/services/api_service.dart
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -26,6 +27,30 @@ class ApiService implements ApiClient {
   static final ApiService _instancia = ApiService._interno();
 
   final StorageService _storage = StorageService();
+
+  final StreamController<void> _sesionExpirada =
+      StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get sesionExpirada => _sesionExpirada.stream;
+
+  /// Cliente para todas las peticiones. En producción, main.dart pone el que
+  /// fija el certificado del API (#219, cliente_seguro.dart). Sin uno fijo
+  /// (pruebas, entorno aislado por http) cada petición usa un http.Client()
+  /// nuevo, como antes.
+  http.Client? cliente;
+
+  Future<T> _conCliente<T>(
+      Future<T> Function(http.Client cliente) peticion) async {
+    final fijo = cliente;
+    if (fijo != null) return peticion(fijo);
+    final nuevo = http.Client();
+    try {
+      return await peticion(nuevo);
+    } finally {
+      nuevo.close();
+    }
+  }
 
   /// Lo que ve el cliente cuando la petición no llega al backend (sin red,
   /// DNS, servidor caído). El detalle técnico queda solo en el log de debug.
@@ -66,10 +91,10 @@ class ApiService implements ApiClient {
   Future<Map<String, dynamic>> get(String endpoint) async {
     PierLog.api('GET $endpoint');
     try {
-      final response = await http.get(
-        Uri.parse(_url(endpoint)),
-        headers: _baseHeaders,
-      );
+      final response = await _conCliente((cliente) => cliente.get(
+            Uri.parse(_url(endpoint)),
+            headers: _baseHeaders,
+          ));
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error GET $endpoint: $e');
@@ -82,10 +107,12 @@ class ApiService implements ApiClient {
   Future<Map<String, dynamic>> getAuth(String endpoint) async {
     PierLog.api('GET-Auth $endpoint');
     try {
-      final response = await http.get(
-        Uri.parse(_url(endpoint)),
-        headers: await _authHeaders,
-      );
+      final headers = await _authHeaders;
+      final response = await _conCliente((cliente) => cliente.get(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+          ));
+      await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error GET-Auth $endpoint: $e');
@@ -99,11 +126,11 @@ class ApiService implements ApiClient {
       String endpoint, Map<String, dynamic> body) async {
     PierLog.api('POST $endpoint');
     try {
-      final response = await http.post(
-        Uri.parse(_url(endpoint)),
-        headers: _baseHeaders,
-        body: jsonEncode(body),
-      );
+      final response = await _conCliente((cliente) => cliente.post(
+            Uri.parse(_url(endpoint)),
+            headers: _baseHeaders,
+            body: jsonEncode(body),
+          ));
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error POST $endpoint: $e');
@@ -117,11 +144,13 @@ class ApiService implements ApiClient {
       String endpoint, Map<String, dynamic> body) async {
     PierLog.api('POST-Auth $endpoint');
     try {
-      final response = await http.post(
-        Uri.parse(_url(endpoint)),
-        headers: await _authHeaders,
-        body: jsonEncode(body),
-      );
+      final headers = await _authHeaders;
+      final response = await _conCliente((cliente) => cliente.post(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+            body: jsonEncode(body),
+          ));
+      await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error POST-Auth $endpoint: $e');
@@ -135,11 +164,13 @@ class ApiService implements ApiClient {
       String endpoint, Map<String, dynamic> body) async {
     PierLog.api('PUT-Auth $endpoint');
     try {
-      final response = await http.put(
-        Uri.parse(_url(endpoint)),
-        headers: await _authHeaders,
-        body: jsonEncode(body),
-      );
+      final headers = await _authHeaders;
+      final response = await _conCliente((cliente) => cliente.put(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+            body: jsonEncode(body),
+          ));
+      await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error PUT-Auth $endpoint: $e');
@@ -152,15 +183,35 @@ class ApiService implements ApiClient {
   Future<Map<String, dynamic>> deleteAuth(String endpoint) async {
     PierLog.api('DELETE-Auth $endpoint');
     try {
-      final response = await http.delete(
-        Uri.parse(_url(endpoint)),
-        headers: await _authHeaders,
-      );
+      final headers = await _authHeaders;
+      final response = await _conCliente((cliente) => cliente.delete(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+          ));
+      await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error DELETE-Auth $endpoint: $e');
       return _sinConexion;
     }
+  }
+
+  /// Un 401 a una petición con token significa que la sesión ya no sirve:
+  /// el token venció o se revocó, o la cuenta se desactivó (#218). Se borra
+  /// la sesión del teléfono y se avisa por [sesionExpirada]. No cuenta el 401
+  /// de /auth/logout (cerrar sesión con un token vencido no la vuelve a
+  /// cerrar) ni el de una petición que salió sin token.
+  Future<void> _revisarSesion(
+    http.Response response,
+    String endpoint,
+    Map<String, String> headers,
+  ) async {
+    if (response.statusCode != 401) return;
+    if (!headers.containsKey('Authorization')) return;
+    if (endpoint == ApiConstants.logout) return;
+    PierLog.auth('401 en $endpoint: la sesión expiró');
+    await _storage.clearAll();
+    _sesionExpirada.add(null);
   }
 
   // Manejo centralizado de respuestas
@@ -213,9 +264,9 @@ class ApiService implements ApiClient {
         contentType: MediaType('image', ext == 'jpg' ? 'jpeg' : ext),
       ));
       
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      
+      final response = await _conCliente((cliente) async =>
+          http.Response.fromStream(await cliente.send(request)));
+      await _revisarSesion(response, endpoint, request.headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error UPLOAD-Auth $endpoint: $e');

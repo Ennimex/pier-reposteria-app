@@ -79,9 +79,12 @@ class AppRoutes {
   /// El resto es cliente.
   static String homeForRole(String? rol) {
     if (rol == 'repartidor') return repartidor;
-    if (_rolesInternos.contains(rol)) return comandas;
+    if (esPersonal(rol)) return comandas;
     return main;
   }
+
+  /// true si [rol] es del personal (trabaja en la agenda de comandas).
+  static bool esPersonal(String? rol) => _rolesInternos.contains(rol);
 
   static const _rolesInternos = {
     'empleado', 'gerencia', 'direccion_general', 'hornos', 'decoracion',

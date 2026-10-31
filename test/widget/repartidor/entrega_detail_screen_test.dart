@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
 import 'package:pier_reposteria/domain/models/entrega_model.dart';
+import 'package:pier_reposteria/ui/core/ui/explicacion_permiso.dart';
 import 'package:pier_reposteria/ui/repartidor/view_model/confirmar_entrega_view_model.dart';
 import 'package:pier_reposteria/ui/repartidor/view_model/entrega_detail_view_model.dart';
 import 'package:pier_reposteria/ui/repartidor/widgets/confirmar_entrega_screen.dart';
@@ -395,13 +396,39 @@ void main() {
       addTearDown(() => mensajero.setMockMethodCallHandler(canal, null));
       await abrir(tester);
 
+      // Antes de abrir la cámara se explica para qué (#227).
       await _tocar(tester, find.text('Cámara'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text(ExplicacionDePermiso.camaraEntrega.titulo),
+          findsOneWidget);
+      await _tocar(tester, find.text('Continuar'));
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('No se pudo acceder a la imagen'), findsOneWidget);
 
       await _tocar(tester, find.text('Galería'));
       expect(fuentes, [0, 1]);
       expect(find.text('Cámara'), findsNothing); // ya hay foto
       expect(find.byIcon(LucideIcons.x), findsOneWidget);
+    });
+
+    testWidgets('#227: con «Ahora no» la cámara no se abre', (tester) async {
+      const canal = MethodChannel('plugins.flutter.io/image_picker');
+      final fuentes = <Object?>[];
+      final mensajero = tester.binding.defaultBinaryMessenger
+        ..setMockMethodCallHandler(canal, (llamada) async {
+          fuentes.add((llamada.arguments as Map)['source']);
+          return null;
+        });
+      addTearDown(() => mensajero.setMockMethodCallHandler(canal, null));
+      await abrir(tester);
+
+      await _tocar(tester, find.text('Cámara'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await _tocar(tester, find.text('Ahora no'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(fuentes, isEmpty);
+      expect(find.text('Cámara'), findsOneWidget);
     });
 
     testWidgets('con foto que no sube confirma sin evidencia y lo avisa',

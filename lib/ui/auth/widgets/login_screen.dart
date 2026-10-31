@@ -37,6 +37,9 @@ class _LoginScreenState extends State<LoginScreen> {
   // Cada intento fallido sacude el bloque de credenciales.
   int _errores = 0;
 
+  // Google sin aceptar el aviso de privacidad sacude la casilla (#220).
+  int _faltaAviso = 0;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -67,6 +70,11 @@ class _LoginScreenState extends State<LoginScreen> {
   // Con Google no se navega aquí: al abrirse la sesión, el redirect del
   // router saca al usuario del login según su rol.
   Future<void> _handleGoogleLogin() async {
+    if (!_vm.aceptaAviso) {
+      setState(() => _faltaAviso++);
+      mostrarAvisoAuth(context, LoginViewModel.faltaAviso);
+      return;
+    }
     final usuario = await _vm.iniciarSesionConGoogle();
     if (!mounted) return;
     if (usuario != null) {
@@ -235,6 +243,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
 
                     // ── GOOGLE ───────────────────────────────────────
+                    // Con Google la cuenta puede crearse en ese momento:
+                    // antes se acepta el aviso (#220).
+                    EntradaSuave(
+                      orden: 4,
+                      retraso: retraso,
+                      desplazamiento: Offset.zero,
+                      child: CasillaLegal(
+                        aceptada: _vm.aceptaAviso,
+                        alCambiar: (acepta) => _vm.aceptaAviso = acepta,
+                        disparo: _faltaAviso,
+                        antes: 'Para continuar con Google acepto los ',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     EntradaSuave(
                       orden: 4,
                       retraso: retraso,

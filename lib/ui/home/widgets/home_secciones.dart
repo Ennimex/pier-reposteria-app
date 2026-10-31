@@ -13,6 +13,7 @@
 // elegirnos aparecen creciendo apenas.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/domain/models/config_testimonios.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
@@ -238,14 +239,19 @@ class _BadgePopular extends StatelessWidget {
   }
 }
 
-/// Reseñas destacadas de clientes.
+/// Reseñas destacadas de clientes, con el título y el subtítulo que eligió
+/// Dirección (#169).
 class HomeResenasDestacadas extends StatelessWidget {
   const HomeResenasDestacadas({
     required this.resenas,
+    this.titulo = ConfigTestimonios.tituloPorDefecto,
+    this.subtitulo,
     super.key,
   });
 
   final List<Map<String, dynamic>> resenas;
+  final String titulo;
+  final String? subtitulo;
 
   @override
   Widget build(BuildContext context) {
@@ -261,13 +267,22 @@ class HomeResenasDestacadas extends StatelessWidget {
                   color: AppColors.pierDorado, size: 20),
             ),
             const SizedBox(width: 6),
-            const Text('Lo que dicen nuestros clientes',
-                style: TextStyle(
-                    fontFamily: 'Playfair Display',
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
+            Expanded(
+              child: Text(titulo,
+                  style: const TextStyle(
+                      fontFamily: 'Playfair Display',
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+            ),
           ]),
+          if (subtitulo case final texto?)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(texto,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary)),
+            ),
           const SizedBox(height: 14),
           ...resenas.indexed.map((entrada) {
             final (indice, r) = entrada;

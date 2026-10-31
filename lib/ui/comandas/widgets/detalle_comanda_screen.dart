@@ -18,6 +18,7 @@ import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart'
 import 'package:pier_reposteria/ui/comandas/widgets/comandas_acciones.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/comandas_formato.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_partes.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/nueva_comanda_screen.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/utils/command.dart';
@@ -126,6 +127,17 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
     if (motivo != null) unawaited(_vm.cancelar.execute(motivo));
   }
 
+  /// Edita la comanda (#228); al volver, el detalle se actualiza.
+  Future<void> _editar(DetalleComanda d) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => NuevaComandaScreen(editarId: d.id),
+      ),
+    );
+    if (mounted) unawaited(_vm.recargar());
+  }
+
   /// La hoja de impresión vive en la web (carta, blanco y negro).
   Future<void> _imprimir(DetalleComanda d) async {
     final url = '${BusinessInfo.sitioWeb}/comandas/${d.id}/imprimir';
@@ -178,6 +190,12 @@ class _DetalleComandaScreenState extends State<DetalleComandaScreen>
             foregroundColor: Colors.white,
             title: Text(d == null ? 'Comanda' : 'Comanda #${d.folio}'),
             actions: [
+              if (d != null && d.puedeEditar)
+                IconButton(
+                  tooltip: 'Editar',
+                  icon: const Icon(LucideIcons.pencil),
+                  onPressed: () => unawaited(_editar(d)),
+                ),
               if (d != null && d.puedeImprimir)
                 IconButton(
                   tooltip: 'Imprimir',

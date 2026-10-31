@@ -387,6 +387,7 @@ class DetalleComanda {
       puedeEntregar: permisos['entregar'] == true,
       puedeCancelar: permisos['cancelar'] == true,
       puedeImprimir: permisos['imprimir'] == true,
+      puedeEditar: permisos['editar'] == true,
     );
   }
 
@@ -421,6 +422,7 @@ class DetalleComanda {
     required this.puedeEntregar,
     required this.puedeCancelar,
     required this.puedeImprimir,
+    this.puedeEditar = false,
   });
 
   final int id;
@@ -471,6 +473,9 @@ class DetalleComanda {
   final bool puedeEntregar;
   final bool puedeCancelar;
   final bool puedeImprimir;
+
+  /// Activa y es de quien la tomó, gerencia o dirección (#228).
+  final bool puedeEditar;
 
   /// Áreas que no han confirmado la versión actual.
   List<AreaProduccion> get areasSinConfirmar =>

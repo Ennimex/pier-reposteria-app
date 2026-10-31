@@ -110,8 +110,21 @@ class ResenasRepositoryRemote implements ResenasRepository {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> listarDestacadas() async {
-    final r = await destacadas();
+  Future<Set<String>> misUtiles(String productoId) async {
+    final r = await _api.getAuth(ApiConstants.misUtiles(productoId));
+    final ids = r['ids'];
+    if (r['success'] != true || ids is! List) {
+      throw ApiException(
+          r['message']?.toString() ?? 'Error al obtener tus reseñas útiles');
+    }
+    return {for (final id in ids) id.toString()};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listarDestacadas(
+      {int? limite, int? minEstrellas}) async {
+    final r = await _api.get(ApiConstants.resenasDestacadasCon(
+        limite: limite, minEstrellas: minEstrellas));
     if (r['success'] != true) {
       throw ApiException(
         r['message']?.toString() ?? 'No se pudieron cargar las reseñas',

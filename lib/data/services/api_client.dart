@@ -36,4 +36,9 @@ abstract class ApiClient {
   /// Multipart con JWT (subida de imágenes: perfil, evidencia de entrega).
   Future<Map<String, dynamic>> uploadImageAuth(
       String endpoint, String filePath, Map<String, String> fields);
+
+  /// Avisa cada vez que una petición con token recibe 401: el token venció,
+  /// se revocó o la cuenta se desactivó (#218). Para entonces la sesión
+  /// guardada en el teléfono ya se borró.
+  Stream<void> get sesionExpirada;
 }

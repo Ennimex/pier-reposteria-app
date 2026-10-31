@@ -20,6 +20,7 @@ import 'package:pier_reposteria/domain/models/order_model.dart';
 import 'package:pier_reposteria/domain/models/reembolso.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/explicacion_permiso.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:pier_reposteria/ui/refunds/view_model/refunds_view_model.dart';
@@ -116,8 +117,13 @@ class _RefundsScreenState extends State<RefundsScreen>
     _tabController.animateTo(0);
   }
 
-  /// Cámara o galería (#117); la foto elegida va al ViewModel.
+  /// Cámara o galería (#117); la foto elegida va al ViewModel. Antes de abrir
+  /// la cámara se explica para qué (#227).
   Future<void> _elegirFoto(ImageSource fuente) async {
+    if (fuente == ImageSource.camera &&
+        !await explicarPermiso(context, ExplicacionDePermiso.camaraReembolso)) {
+      return;
+    }
     try {
       final img = await _picker.pickImage(
         source: fuente,
@@ -628,7 +634,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Solo se pueden reembolsar pedidos completados. El monto corresponde al total del pedido.',
+                      'Puedes pedir el reembolso de un pedido recogido o entregado a domicilio, una solicitud por pedido. El monto corresponde al total del pedido.',
                       style: TextStyle(
                           fontSize: 13,
                           color: AppColors.pierDoradoOscuro,
@@ -661,7 +667,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                         Icon(LucideIcons.info,
                             color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                         const SizedBox(width: 10),
-                        const Text('No tienes pedidos completados',
+                        const Text('No tienes pedidos para reembolsar',
                             style: TextStyle(
                                 color: AppColors.textSecondary, fontSize: 13)),
                       ]),

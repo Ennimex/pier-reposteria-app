@@ -4,19 +4,28 @@
 // comandas por día con su urgencia y las firmas de cada área, los pendientes
 // de mi área, cuatro vistas y búsqueda por folio o cliente. Se actualiza al
 // jalar hacia abajo y al volver a la app. Si el backend rechaza la sesión
-// (cuenta desactivada o cambiada), la cierra y vuelve al login.
+// (cuenta desactivada o cambiada), la cierra y vuelve al login. La campana
+// cuenta las notificaciones sin leer (se consultan cada 2 minutos, #136).
+// Empleado, gerencia y dirección capturan comandas nuevas (#130) y desde
+// aquí abren los pedidos del día (#137).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/domain/models/comanda.dart';
+import 'package:pier_reposteria/domain/models/nueva_comanda.dart';
 import 'package:pier_reposteria/ui/comandas/view_model/agenda_comandas_view_model.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart';
+import 'package:pier_reposteria/ui/comandas/widgets/nueva_comanda_screen.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
+import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_encabezado.dart';
+import 'package:pier_reposteria/ui/notifications/widgets/notifications_screen.dart';
+import 'package:pier_reposteria/ui/pedidos_personal/widgets/pedidos_del_dia_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -54,6 +63,7 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     WidgetsBinding.instance.addObserver(this);
     _vm.addListener(_revisarSesion);
     unawaited(_vm.cargar());
+    context.read<NotificationProvider>().startPolling();
   }
 
   @override
@@ -83,15 +93,48 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
   }
 
   /// Abre el detalle; al volver, la agenda se actualiza (pudo confirmar).
-  Future<void> _abrir(ResumenComanda comanda) async {
+  Future<void> _abrir(ResumenComanda comanda) => _abrirDetalle(comanda.id);
+
+  Future<void> _abrirDetalle(int id) async {
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => DetalleComandaScreen(id: comanda.id),
+        builder: (_) => DetalleComandaScreen(id: id),
       ),
     );
     if (mounted) unawaited(_vm.recargar());
   }
+
+  /// Abre las notificaciones; al volver, la agenda se actualiza (pudo
+  /// abrir y confirmar una comanda desde ahí).
+  Future<void> _abrirNotificaciones() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+    );
+    if (mounted) unawaited(_vm.recargar());
+  }
+
+  /// Captura una comanda; al volver, la agenda se actualiza.
+  /// Captura una comanda; si se creó, abre su detalle (la agenda se
+  /// actualiza al volver de él).
+  Future<void> _nueva() async {
+    final creada = await Navigator.push<ComandaCreada>(
+      context,
+      MaterialPageRoute(builder: (_) => const NuevaComandaScreen()),
+    );
+    if (!mounted) return;
+    if (creada == null) {
+      unawaited(_vm.recargar());
+      return;
+    }
+    await _abrirDetalle(creada.id);
+  }
+
+  Future<void> _abrirPedidos() => Navigator.push(
+        context,
+        MaterialPageRoute<void>(builder: (_) => const PedidosDelDiaScreen()),
+      );
 
   Future<void> _abrirSitio() async {
     final ok = await launchUrl(
@@ -108,11 +151,41 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     final area = _vm.area;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
+      // Producción (hornos y decoración) solo confirma: no captura.
+      floatingActionButton: area == null
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.pierVerde,
+              foregroundColor: Colors.white,
+              onPressed: () => unawaited(_nueva()),
+              icon: const Icon(LucideIcons.plus),
+              label: const Text('Nueva comanda'),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: AppColors.pierVerde,
         foregroundColor: Colors.white,
         title: Text(area == null ? 'Comandas' : 'Comandas · ${area.etiqueta}'),
         actions: [
+          if (area == null)
+            IconButton(
+              tooltip: 'Pedidos del día',
+              icon: const Icon(LucideIcons.shoppingBag),
+              onPressed: () => unawaited(_abrirPedidos()),
+            ),
+          Tooltip(
+            message: 'Notificaciones',
+            child: GestureDetector(
+              onTap: () => unawaited(_abrirNotificaciones()),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Builder(
+                  builder: (context) => CampanaNotificaciones(
+                    cantidad: context.watch<NotificationProvider>().noLeidas,
+                  ),
+                ),
+              ),
+            ),
+          ),
           PopupMenuButton<_Opcion>(
             tooltip: 'Más opciones',
             icon: const Icon(LucideIcons.ellipsisVertical),

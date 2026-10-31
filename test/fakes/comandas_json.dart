@@ -176,6 +176,7 @@ Map<String, dynamic> detalleJson({
   bool entregar = false,
   bool cancelar = false,
   bool imprimir = false,
+  bool editar = false,
 }) => {
   'success': true,
   'comanda': {
@@ -222,10 +223,119 @@ Map<String, dynamic> detalleJson({
     'cambios_pendientes': cambiosPendientes,
   },
   'permisos': {
-    'editar': false,
+    'editar': editar,
     'cancelar': cancelar,
     'entregar': entregar,
     'imprimir': imprimir,
     'confirmar': confirmar,
   },
+};
+
+/// Respuesta de GET /comandas/catalogo (#130): dos sabores, opciones de una
+/// sola, [pct] % de anticipo mínimo y [dias] de anticipación; productos con y
+/// sin tamaño grande, y uno sin precio (se omite).
+Map<String, dynamic> catalogoJson({int pct = 50, int dias = 3}) => {
+      'success': true,
+      'opciones': {
+        'sabor': [
+          {'id': 1, 'nombre': 'Chocolate', 'orden': 1},
+          {'id': 2, 'nombre': 'Vainilla', 'orden': 2},
+        ],
+        'tamano': [
+          {'id': 3, 'nombre': '20 personas', 'orden': 1},
+        ],
+        'forma': [
+          {'id': 4, 'nombre': 'Redondo', 'orden': 1},
+        ],
+        'decoracion': [
+          {'id': 5, 'nombre': 'Flores', 'orden': 1},
+          {'id': 6, 'nombre': '  ', 'orden': 2},
+        ],
+      },
+      'ajustes': {
+        'anticipo_minimo_pct': pct,
+        'dias_anticipacion_minima': dias,
+        'semaforo_rojo_dias': 1,
+      },
+      'productos': [
+        {
+          'id': 10,
+          'nombre': 'Gelatina',
+          'categoria': 'Postres',
+          'precio_chico': '45.50',
+          'precio_grande': '120.00',
+          'imagen_url': null,
+        },
+        {
+          'id': 11,
+          'nombre': 'Galleta',
+          'categoria': 'Mesa de postres',
+          'precio_chico': '12.00',
+          'precio_grande': null,
+        },
+        {'id': 12, 'nombre': 'Sin precio'},
+      ],
+    };
+
+/// GET /comandas/:id de una comanda que se va a editar (#228): un pastel con
+/// color de fondo e insumos, 2 gelatinas grandes con indicaciones, una foto
+/// y el color de capacillos de la mesa de postres.
+Map<String, dynamic> comandaEditableJson({
+  String actualizada = '2026-10-12T15:00:00.123Z',
+  int productoId = 10,
+  String fecha = '2026-10-20',
+}) => {
+  'success': true,
+  'comanda': {
+    'id': 7,
+    'folio': 5003,
+    'estado': 'activa',
+    'actualizada_en': actualizada,
+    'cliente_nombre': 'María López',
+    'cliente_telefono': '7711234567',
+    'fecha_entrega': fecha,
+    'hora_entrega': '16:30',
+    'notas': 'Sin nuez',
+    'mesa_color_capacillos': 'Dorado',
+    'mesa_color_betun': null,
+    'mesa_color_grageas': null,
+    'descuento': '0.00',
+    'anticipo': '400.00',
+    'total': '690.00',
+    'items': [
+      {
+        'tipo': 'pastel',
+        'nombre': 'Pastel Chocolate',
+        'cantidad': 1,
+        'sabor': 'Chocolate',
+        'tamano': '20 personas',
+        'forma': 'Redondo',
+        'decoracion': 'Flores',
+        'num_pisos': 2,
+        'leyenda': 'Feliz cumple',
+        'descripcion': null,
+        'color_fondo': 'Rosa',
+        'insumos': 'Velas',
+        'precio_unitario': '450.00',
+      },
+      {
+        'tipo': 'producto',
+        'nombre': 'Gelatina',
+        'producto_id': productoId,
+        'tamano_catalogo': 'grande',
+        'cantidad': 2,
+        'indicaciones': 'Sin fresa',
+        'precio_unitario': '120.00',
+      },
+    ],
+    'imagenes': [
+      {
+        'id': 1,
+        'url': 'https://res.cloudinary.com/demo/image/upload/a.jpg',
+        'public_id': 'pier-reposteria/comandas/a',
+        'orden': 0,
+      },
+    ],
+  },
+  'permisos': {'editar': true},
 };

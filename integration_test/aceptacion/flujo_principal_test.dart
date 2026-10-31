@@ -28,6 +28,7 @@ void main() {
   // pantalla de un paso anterior (corrida 40174857476).
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized()
     ..framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
+  toquesPerdidosFallan();
 
   group('Flujo principal #34 → #35 → #36', () {
     // Escenario: del inicio de sesión al checkout
@@ -87,8 +88,7 @@ Future<void> _iniciarSesion(WidgetTester tester) async {
   await tester.enterText(find.byType(TextFormField).at(0), _correo);
   await tester.enterText(find.byType(TextFormField).at(1), _clave);
   // En pantallas chicas el teclado tapa el botón (ver app_smoke_test.dart).
-  FocusManager.instance.primaryFocus?.unfocus();
-  await tester.pump(const Duration(milliseconds: 500));
+  await cerrarTeclado(tester);
   await tester.ensureVisible(find.text('Iniciar Sesión'));
   await tester.tap(find.text('Iniciar Sesión'));
   await esperar(tester, find.byType(BottomNavigationBar));

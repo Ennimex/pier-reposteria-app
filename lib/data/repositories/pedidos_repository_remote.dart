@@ -83,8 +83,12 @@ class PedidosRepositoryRemote implements PedidosRepository {
         r['message']?.toString() ?? 'No se pudo cancelar el pedido',
       );
     }
+    // El backend solo genera el reembolso si el pedido se pagó en línea y
+    // lo dice en reembolso_generado (#40).
     return r['message']?.toString() ??
-        'Pedido cancelado; tu reembolso ya está en proceso';
+        (r['reembolso_generado'] == true
+            ? 'Pedido cancelado; tu reembolso ya está en proceso'
+            : 'Pedido cancelado');
   }
 
   @override

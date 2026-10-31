@@ -25,7 +25,9 @@ Order _pedido({OrderStatus estado = OrderStatus.ready, String? tipoEntrega}) =>
       total: 300,
       tipoEntrega: tipoEntrega,
       status: estado,
-      createdAt: DateTime(2026, 10, 10, 9, 5),
+      // El backend manda las fechas en UTC; la app las muestra en la hora de
+      // México (#216): 15:05 UTC son las 09:05.
+      createdAt: DateTime.utc(2026, 10, 10, 15, 5),
     );
 
 Map<String, dynamic> _respuestaDetalle(String estado,
@@ -40,7 +42,7 @@ Map<String, dynamic> _respuestaDetalle(String estado,
         'total': 300,
         'horario_recogida': '10:00 - 11:00',
         'notas': 'Sin nuez',
-        'created_at': '2026-10-10T09:05:00',
+        'created_at': '2026-10-10T15:05:00.000Z',
       },
       'items': [
         {
@@ -139,6 +141,9 @@ void main() {
           findsOneWidget);
       expect(find.text('Recibido'), findsOneWidget);
       expect(find.text('10 Oct 2026 · 09:05 hrs'), findsOneWidget);
+      // #39: el tipo de entrega como dato y la sucursal al recoger.
+      expect(find.text('Recoger en sucursal'), findsOneWidget);
+      expect(find.text('Principal — Huejutla de Reyes'), findsOneWidget);
       expect(find.text('10:00 - 11:00'), findsOneWidget);
       expect(find.text('Sin nuez'), findsOneWidget);
       expect(find.text('Productos (1)'), findsOneWidget);
@@ -160,6 +165,32 @@ void main() {
       expect(find.textContaining('¡Tu pedido va en camino!'), findsOneWidget);
       expect(find.text('Asignado'), findsOneWidget);
       expect(find.text('Cancelar pedido'), findsNothing);
+      // #39: a domicilio no muestra la sucursal ni el horario de recogida.
+      await tester.scrollUntilVisible(find.text('A domicilio'), 200);
+      expect(find.text('A domicilio'), findsOneWidget);
+      expect(find.text('Principal — Huejutla de Reyes'), findsNothing);
+      expect(find.text('Horario de recogida'), findsNothing);
+    });
+
+    testWidgets('#216: el horario de entrega sale en la hora de México',
+        (tester) async {
+      await _montar(
+        tester,
+        pedido: _pedido(estado: OrderStatus.onTheWay, tipoEntrega: 'domicilio'),
+        respuestas: {
+          _detalle: {
+            ..._respuestaDetalle('en_camino', tipo: 'domicilio'),
+            'pedido': {
+              ...(_respuestaDetalle('en_camino', tipo: 'domicilio')['pedido']
+                  as Map<String, dynamic>),
+              'horario_entrega': '2026-10-28T15:00:00.000Z',
+            },
+          },
+        },
+      );
+
+      await tester.scrollUntilVisible(find.text('Horario de entrega'), 200);
+      expect(find.text('28 Oct 2026 · 09:00 hrs'), findsOneWidget);
     });
 
     testWidgets('un pedido cancelado avisa en lugar de la línea de tiempo',

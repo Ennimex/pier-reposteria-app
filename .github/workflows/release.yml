@@ -5,16 +5,22 @@
 #   1. Pruebas en el entorno de liberación: levanta el mismo entorno aislado
 #      de las pruebas (tool/entorno_pruebas.sh: la API del backend y su base
 #      en contenedores, con datos ficticios), construye el candidato de
-#      liberación en modo release apuntando a ese entorno, lo instala en un
-#      celular Android virtual (emulador) y corre el smoke: la app abre,
-#      carga el catálogo e inicia sesión (tool/smoke_liberacion.dart).
+#      liberación en modo release y ofuscado, como el que se publica,
+#      apuntando a ese entorno, lo instala en un celular Android virtual
+#      (emulador) y corre el smoke: la app abre, carga el catálogo e inicia
+#      sesión (tool/smoke_liberacion.dart). También arma el AAB (el paquete
+#      que pide Google Play) para comprobar que compila; ese no se publica.
+#      En el ensayo sube además a Sentry los símbolos del candidato, para
+#      comprobar el token y la subida.
 #   2. APK firmado y Release: solo si las pruebas pasaron y alguien con
 #      permiso lo aprueba en el Environment «produccion» (Settings →
-#      Environments: aprobación requerida y solo tags v*). Arma el APK final
-#      (release), lo firma con la llave del equipo, con Sentry encendido, lo
-#      publica en GitHub Releases con la lista de cambios desde la versión
-#      anterior y revisa, sin escribir nada, que el servidor de producción
-#      responda.
+#      Environments: aprobación requerida y solo tags v*). Arma el APK y el
+#      AAB finales (release y ofuscados, #224), los firma con la llave del
+#      equipo, con Sentry encendido, sube a Sentry los símbolos de Dart
+#      (tool/subir_simbolos.sh) y los guarda 90 días en Artifacts, los publica
+#      en GitHub Releases con la lista de cambios desde la versión anterior y
+#      revisa, sin escribir nada, que el servidor de producción responda. El
+#      AAB es el que se sube a Play Console (docs/PLAY_STORE.md).
 # Para qué sirve: que ninguna versión llegue a los celulares de los dueños
 #   (grupo canary) sin haberse probado antes como versión de release y sin
 #   una aprobación explícita. La estrategia completa está en
@@ -32,16 +38,19 @@
 #   ANDROID_KEY_ALIAS         el alias (keyAlias)
 #   ANDROID_KEY_PASSWORD      la contraseña del alias (keyPassword)
 #   SENTRY_DSN                el DSN del proyecto flutter en Sentry (#23)
+#   SENTRY_AUTH_TOKEN         token de organización de Sentry (org:ci) para
+#                             subir los símbolos (#224)
 #   Sin los cuatro de la llave el workflow se detiene: nunca publica un APK
-#   firmado con la llave de pruebas.
+#   firmado con la llave de pruebas. Sin SENTRY_AUTH_TOKEN también: una
+#   versión ofuscada sin sus símbolos en Sentry manda errores ilegibles.
 #   Las pruebas en el entorno de liberación no usan ningún secreto: el
 #   candidato apunta al contenedor y se firma con la llave de pruebas.
 # Si falla: no se publica nada. Revisa el paso en rojo; el Summary explica si
 #   fue el smoke del candidato (con sus capturas en Artifacts), la versión,
 #   la llave, la firma o el servidor de producción.
 # Dónde ver el resultado: la Release en la página del repositorio (con el APK
-#   adjunto) y, en la corrida, el Summary con el smoke del candidato y las
-#   notas de la versión.
+#   y el AAB adjuntos) y, en la corrida, el Summary con el smoke del
+#   candidato y las notas de la versión.
 # Issues: #22 (este pipeline), #23 (Sentry), #24 (métricas para decidir el
 #   rollout), #203 (entorno de liberación y aprobación).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -74,6 +83,10 @@ env:
   # Huella SHA-1 de la llave de release del equipo (es pública: la misma que
   # está registrada en Google Cloud para el inicio con Google).
   HUELLA_RELEASE: F3:A4:02:DF:C1:97:80:28:A1:D4:17:23:66:40:2C:64:AD:C3:B0:C1
+  # A dónde suben los símbolos (tool/subir_simbolos.sh): la organización y el
+  # proyecto «flutter» de Sentry, por su ID. No son secretos.
+  SENTRY_ORG: pier-reposteria
+  SENTRY_PROJECT: '4512111263219792'
 
 jobs:
   pruebas-entorno-liberacion:
@@ -113,15 +126,53 @@ jobs:
 
       # El candidato de liberación: la app en modo release (compilada, con
       # el código reducido y sin herramientas de depuración, como la que se
-      # publica), flavor prod, apuntando al entorno de liberación. Sin
+      # publica), flavor prod, apuntando al entorno de liberación. Ofuscada
+      # igual que la que se publica (#224), para que el smoke pruebe eso:
+      # --obfuscate renombra las clases y funciones de Dart en libapp.so y
+      # --split-debug-info guarda aparte sus símbolos, con el mapa de nombres
+      # (--save-obfuscation-map), en build/simbolos/candidato-apk. Sin
       # SENTRY_DSN, para que las pruebas no manden errores a Sentry, y sin la
       # llave del equipo: Gradle lo firma con la de pruebas. Produce
       # build/app/outputs/flutter-apk/app-prod-release.apk.
       - name: Compilar el candidato de liberación
         run: |
-          flutter build apk --release --flavor prod --dart-define=API_BASE_URL="$URL_ENTORNO_LIBERACION"
+          simbolos="$PWD/build/simbolos/candidato-apk"
+          mkdir -p "$simbolos"
+          flutter build apk --release --flavor prod --dart-define=API_BASE_URL="$URL_ENTORNO_LIBERACION" \
+            --obfuscate --split-debug-info="$simbolos" \
+            --extra-gen-snapshot-options=--save-obfuscation-map="$simbolos/obfuscation.map.json"
           candidato=build/app/outputs/flutter-apk/app-prod-release.apk
-          echo "### 📦 Candidato de liberación: APK de release ($(du -h "$candidato" | cut -f1)) contra $URL_ENTORNO_LIBERACION" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 📦 Candidato de liberación: APK de release ofuscado ($(du -h "$candidato" | cut -f1)) contra $URL_ENTORNO_LIBERACION" >> "$GITHUB_STEP_SUMMARY"
+
+      # El paquete que pide Google Play (#226), armado igual que el candidato
+      # para que el ensayo compruebe que compila: lleva el manifiesto y el
+      # código de la app para las tres arquitecturas. Se firma con la llave
+      # de pruebas y no se publica; el firmado con la llave del equipo sale
+      # en «APK firmado y Release». Ofuscado como el APK, con sus símbolos en
+      # build/simbolos/candidato-aab. Produce
+      # build/app/outputs/bundle/prodRelease/app-prod-release.aab.
+      - name: Comprobar que el AAB se arma
+        run: |
+          simbolos="$PWD/build/simbolos/candidato-aab"
+          mkdir -p "$simbolos"
+          flutter build appbundle --release --flavor prod --dart-define=API_BASE_URL="$URL_ENTORNO_LIBERACION" \
+            --obfuscate --split-debug-info="$simbolos" \
+            --extra-gen-snapshot-options=--save-obfuscation-map="$simbolos/obfuscation.map.json"
+          aab=build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          contenido=$(unzip -l "$aab")
+          faltan=""
+          for parte in base/manifest/AndroidManifest.xml base/lib/arm64-v8a/libapp.so \
+            base/lib/armeabi-v7a/libapp.so base/lib/x86_64/libapp.so; do
+            if ! grep -q " $parte$" <<< "$contenido"; then
+              faltan="$faltan $parte"
+            fi
+          done
+          if [ -n "$faltan" ]; then
+            echo "::error::Al AAB le falta:$faltan"
+            echo "### ❌ Al AAB le falta:$faltan" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "### 📦 AAB armado ($(du -h "$aab" | cut -f1)): manifiesto y código para arm64-v8a, armeabi-v7a y x86_64" >> "$GITHUB_STEP_SUMMARY"
 
       # El celular virtual, igual que en las pruebas de integración: KVM
       # para que el emulador use el procesador directamente y el AVD
@@ -202,6 +253,38 @@ jobs:
             build/resultados/entorno_logs.txt
           if-no-files-found: warn
           retention-days: 30
+
+      # Los símbolos y el mapa de nombres del candidato, 7 días en Artifacts:
+      # con ellos se lee un rastro ofuscado del smoke (flutter symbolize). El
+      # repositorio es público y el código también: no revelan nada nuevo.
+      - name: Guardar los símbolos del candidato
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: simbolos-candidato
+          path: build/simbolos/
+          if-no-files-found: warn
+          retention-days: 7
+
+      # Solo en el ensayo: sube a Sentry los símbolos del candidato con el
+      # mismo script que la publicación, para comprobar el token y la subida
+      # sin publicar nada. Corre aunque el smoke haya fallado.
+      - name: 'Ensayo: subir los símbolos del candidato a Sentry'
+        if: ${{ !cancelled() && inputs.ensayo }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: bash tool/subir_simbolos.sh build/simbolos/candidato-apk build/simbolos/candidato-aab
+
+      # Solo en el ensayo: el APK ofuscado del candidato, 7 días en Artifacts,
+      # para revisarlo (por ejemplo, el reporte de descompilación).
+      - name: 'Ensayo: guardar el APK del candidato'
+        if: ${{ !cancelled() && inputs.ensayo }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidato-ofuscado
+          path: build/app/outputs/flutter-apk/app-prod-release.apk
+          if-no-files-found: warn
+          retention-days: 7
 
   publicar:
     name: APK firmado y Release
@@ -288,6 +371,9 @@ jobs:
             echo "keyPassword=$ANDROID_KEY_PASSWORD"
           } > android/key.properties
 
+      # Ofuscado (#224), con los símbolos y el mapa de nombres en
+      # build/simbolos/apk: «Subir los símbolos a Sentry» los manda antes de
+      # publicar.
       - name: Compilar el APK de release
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -295,7 +381,11 @@ jobs:
           if [ -z "$SENTRY_DSN" ]; then
             echo "::warning::Sin SENTRY_DSN: esta versión no reportará errores a Sentry."
           fi
-          flutter build apk --release --flavor prod --dart-define=SENTRY_DSN="$SENTRY_DSN"
+          simbolos="$PWD/build/simbolos/apk"
+          mkdir -p "$simbolos"
+          flutter build apk --release --flavor prod --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --obfuscate --split-debug-info="$simbolos" \
+            --extra-gen-snapshot-options=--save-obfuscation-map="$simbolos/obfuscation.map.json"
 
       # Si la llave no se cargó, Gradle firma con la de pruebas sin avisar.
       # Se compara la huella del APK con la del equipo antes de publicarlo.
@@ -315,6 +405,56 @@ jobs:
           fi
           cp "$apk" "build/pier-reposteria-$VERSION.apk"
           echo "### 🔏 APK firmado con la llave del equipo ($(du -h "$apk" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      # El AAB para Google Play (#226), con la misma llave y Sentry: es el
+      # que se sube a Play Console (docs/PLAY_STORE.md). Con Play App Signing
+      # esta llave es la de subida y Google firma lo que llega a los
+      # celulares con la suya.
+      - name: Compilar el AAB de release
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          simbolos="$PWD/build/simbolos/aab"
+          mkdir -p "$simbolos"
+          flutter build appbundle --release --flavor prod --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --obfuscate --split-debug-info="$simbolos" \
+            --extra-gen-snapshot-options=--save-obfuscation-map="$simbolos/obfuscation.map.json"
+
+      # Igual que con el APK: si la llave no se cargó, el AAB saldría firmado
+      # con la de pruebas y Play Console lo rechazaría.
+      - name: Verificar que el AAB lleve la firma del equipo
+        env:
+          VERSION: ${{ steps.version.outputs.nombre }}
+        run: |
+          aab=build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          huella=$(keytool -printcert -jarfile "$aab" | grep -m1 'SHA1:' | awk '{print $NF}')
+          if [ "$huella" != "$HUELLA_RELEASE" ]; then
+            echo "::error::El AAB no está firmado con la llave del equipo (huella $huella)."
+            echo "### ❌ El AAB no está firmado con la llave del equipo" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          cp "$aab" "build/pier-reposteria-$VERSION.aab"
+          echo "### 🔏 AAB firmado con la llave del equipo ($(du -h "$aab" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      # Antes de publicar: sin sus símbolos en Sentry, los errores de una
+      # versión ofuscada llegan ilegibles. Si falta el token o la subida
+      # falla, no se publica nada (los símbolos quedan en Artifacts).
+      - name: Subir los símbolos a Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: bash tool/subir_simbolos.sh build/simbolos/apk build/simbolos/aab
+
+      # Los símbolos y el mapa de nombres de esta versión, 90 días en
+      # Artifacts, pase lo que pase: con ellos se vuelven a subir a Sentry o
+      # se lee un rastro a mano (flutter symbolize).
+      - name: Guardar los símbolos
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: simbolos-${{ steps.version.outputs.nombre }}
+          path: build/simbolos/
+          if-no-files-found: warn
+          retention-days: 90
 
       # Los commits desde el tag anterior (Conventional Commits), agrupados en
       # Nuevo, Correcciones y Mantenimiento. También quedan en el Summary.
@@ -340,16 +480,21 @@ jobs:
         with:
           name: Pier Repostería ${{ github.ref_name }}
           body_path: build/resultados/notas.md
-          files: build/pier-reposteria-${{ github.ref_name }}.apk
+          files: |
+            build/pier-reposteria-${{ github.ref_name }}.apk
+            build/pier-reposteria-${{ github.ref_name }}.aab
           fail_on_unmatched_files: true
 
-      # Corrida a mano: el APK firmado queda 7 días en Artifacts, sin Release.
+      # Corrida a mano: el APK y el AAB firmados quedan 7 días en Artifacts,
+      # sin Release.
       - name: Guardar el APK de prueba
         if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v7
         with:
           name: apk-release-${{ steps.version.outputs.nombre }}
-          path: build/pier-reposteria-*.apk
+          path: |
+            build/pier-reposteria-*.apk
+            build/pier-reposteria-*.aab
           if-no-files-found: error
           retention-days: 7
 
