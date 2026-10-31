@@ -5,9 +5,10 @@
 // lista vuelve arriba al empezar otra consulta, mientras llega la primera
 // página hay esqueletos y la hoja de orden ofrece «Mejor calificados». Con la
 // copia de la primera página guardada en el teléfono (#265) se ve al instante
-// en lugar de los esqueletos, la página nueva la reemplaza sin mover la lista
-// y, sin internet, se queda con su aviso. Servidor falso que pagina como el
-// real; sin red.
+// en lugar de los esqueletos (al bajar a su final, el indicador dice que viene
+// más), la página nueva la reemplaza sin mover la lista y, sin internet, se
+// queda con su aviso; al volver la conexión, «Reintentar» trae la página 1
+// antes que la 2. Servidor falso que pagina como el real; sin red.
 import 'dart:async';
 import 'dart:convert';
 
@@ -464,6 +465,37 @@ void main() {
       expect(find.text(_aviso), findsNothing);
     });
 
+    testWidgets('al bajar al final de la copia se ve el indicador mientras '
+        'llega la página nueva, y después pide la siguiente sola',
+        (tester) async {
+      // El servidor está despertando: la página 1 tarda.
+      final api = _backend()..demorar(_primera, _demora);
+      await _abrirConCopia(tester, api);
+      await tester.pump();
+      final indicador = find.descendant(
+        of: find.byType(PieCatalogo),
+        matching: find.byType(CircularProgressIndicator),
+      );
+
+      await _alFinal(tester);
+
+      // Abajo de la copia se ve que algo viene; la página 2 no se pide
+      // mientras no llegue la 1.
+      expect(find.text('Copia 20'), findsOneWidget);
+      expect(indicador, findsOneWidget);
+      expect(_pedidas(api), [_primera]);
+
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+
+      // La página nueva tomó el lugar de la copia y, como la lista está al
+      // final, la siguiente se pidió sola.
+      expect(find.text('Copia 20'), findsNothing);
+      expect(find.text('Producto 20'), findsOneWidget);
+      expect(_pedidas(api), [_primera, _segunda]);
+      expect(indicador, findsNothing);
+    });
+
     testWidgets('la página nueva reemplaza la copia sin mover la lista',
         (tester) async {
       final api = _backend()..demorar(_primera, _demora);
@@ -505,14 +537,53 @@ void main() {
 
       await _alFinal(tester);
 
-      // No hay más páginas guardadas: la segunda se pide y no llega.
+      // No hay más páginas guardadas y a la copia no se le pega la página 2:
+      // se vuelve a pedir la página 1, y no llega.
       Finder delPie(Finder finder) =>
           find.descendant(of: find.byType(PieCatalogo), matching: finder);
       expect(delPie(find.text('No se pudieron cargar más')), findsOneWidget);
       expect(delPie(find.text('Reintentar')), findsOneWidget);
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(_pedidas(api), [_primera, _primera]);
       expect(find.text('Copia 20'), findsOneWidget);
       expect(find.text(_aviso), findsOneWidget);
+    });
+
+    testWidgets('al volver la conexión, Reintentar pone la página 1 en lugar '
+        'de la copia, quita el aviso y sigue con la 2', (tester) async {
+      var falla = true;
+      final api = _backend(productos: _servidor(falla: (_) => falla));
+      await _abrirConCopia(tester, api);
+      await tester.pumpAndSettle();
+      await _alFinal(tester);
+      await tester.pumpAndSettle();
+      expect(find.text(_aviso), findsOneWidget);
+      expect(_pedidas(api), [_primera, _primera]);
+
+      // Vuelve la conexión; la página 1 tarda un poco en llegar.
+      falla = false;
+      api.demorar(_primera, _demora);
+      await tester.ensureVisible(find.text('Reintentar'));
+      await tester.pump();
+      await tester.tap(find.text('Reintentar'));
+      await tester.pump();
+
+      // Mientras llega, la copia se queda donde estaba.
+      expect(_pedidas(api), [_primera, _primera, _primera]);
+      expect(find.text('Copia 20'), findsOneWidget);
+
+      await tester.pump(_demora);
+      await tester.pump();
+
+      // La página nueva toma el lugar de la copia sin volver arriba.
+      expect(find.text('Copia 20'), findsNothing);
+      expect(find.text('Producto 20'), findsOneWidget);
+      expect(find.byType(ProductSkeletonCard), findsNothing);
+      expect(_bajado(tester), greaterThan(1000));
+
+      // El aviso se va y la página 2 se pide sola.
+      await tester.pumpAndSettle();
+      expect(find.text(_aviso), findsNothing);
+      expect(_pedidas(api), [_primera, _primera, _primera, _segunda]);
     });
 
     testWidgets('el aviso se va cuando llega la página nueva', (tester) async {

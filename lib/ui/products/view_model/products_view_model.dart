@@ -157,7 +157,8 @@ class ProductsViewModel extends ChangeNotifier {
 
   /// La página 1 de la consulta por omisión no pudo llegar y lo que se ve es
   /// la copia guardada en el teléfono (o la última página que llegó): la vista
-  /// avisa que puede no ser lo más reciente.
+  /// avisa que puede no ser lo más reciente. Se quita en cuanto el servidor
+  /// vuelve a contestar.
   bool get sinConexion => _sinConexion;
 
   /// 'Todos' y las categorías del backend, o las de respaldo si no hay.
@@ -232,9 +233,7 @@ class ProductsViewModel extends ChangeNotifier {
     _error = null;
     _errorMas = null;
     _avisar();
-    // La copia es solo de la consulta por omisión: con búsqueda o filtros
-    // siempre se le pregunta al servidor.
-    final catalogoGuardado = pedida.esPorOmision ? _catalogoGuardado : null;
+    final catalogoGuardado = _catalogoGuardadoDe(pedida);
     // Se lee en paralelo con la petición, que no la espera, y solo si aún no
     // hay nada en pantalla de esta consulta.
     final lecturaCopia = catalogoGuardado != null && !_iniciado
@@ -247,14 +246,7 @@ class ProductsViewModel extends ChangeNotifier {
         limite: pedida.pideTodo ? null : porPagina,
       );
       if (turno != _turno) return;
-      _vaciar();
-      if (pedida.pideTodo) _todo = respuesta;
-      final primera = pedida.pideTodo ? _siguientesDe(respuesta) : respuesta;
-      _agregar(primera);
-      _cantidadPrimeraPagina = primera.length;
-      _iniciado = true;
-      guardando = catalogoGuardado?.guardar(primera);
-      PierLog.info('✅ Catálogo: ${primera.length} en la primera página');
+      guardando = _ponerPrimera(pedida, respuesta);
     } on ApiException catch (e) {
       // Si la copia aún se está leyendo, se espera: de ella depende qué sale.
       if (lecturaCopia != null) await lecturaCopia;
@@ -290,10 +282,35 @@ class ProductsViewModel extends ChangeNotifier {
     _avisar();
   }
 
+  /// Pone la página 1 que llegó del servidor en lugar de lo que se veía, en
+  /// un solo paso: la lista no pasa por vacía ni salta, y el aviso de
+  /// [sinConexion] se quita. Si es de la consulta por omisión, empieza a
+  /// guardarla en el teléfono y devuelve esa escritura (nunca lanza).
+  Future<void>? _ponerPrimera(
+    ConsultaCatalogo pedida,
+    List<Product> respuesta,
+  ) {
+    _vaciar();
+    if (pedida.pideTodo) _todo = respuesta;
+    final primera = pedida.pideTodo ? _siguientesDe(respuesta) : respuesta;
+    _agregar(primera);
+    _cantidadPrimeraPagina = primera.length;
+    _iniciado = true;
+    PierLog.info('✅ Catálogo: ${primera.length} en la primera página');
+    return _catalogoGuardadoDe(pedida)?.guardar(primera);
+  }
+
   /// La siguiente página de lo que se ve: del servidor o, si la consulta se
   /// pidió completa, los siguientes [porPagina] sin red. Se llama al
   /// acercarse al final; no hace nada mientras carga, si ya no hay más o si
   /// la primera página no llegó.
+  ///
+  /// Con [sinConexion] y solo la primera página en pantalla (la copia
+  /// guardada, que puede ser de hace días, o la página 1 de antes de jalar
+  /// para refrescar) no se le pega la página 2: se pide otra vez la 1, que
+  /// toma su lugar como en [cargarProductos], y las siguientes vienen
+  /// después. Con más páginas en pantalla se sigue con la que toca: cambiarlas
+  /// por la página 1 movería a la persona de donde iba.
   Future<void> cargarMas() async {
     final pedida = _consultaPedida;
     if (pedida == null || !_iniciado || _cargando || _cargandoMas || _fin) {
@@ -306,17 +323,25 @@ class ProductsViewModel extends ChangeNotifier {
       return;
     }
     final turno = _turno;
+    final otraVezLaPrimera = _sinConexion && _offset <= porPagina;
     _cargandoMas = true;
     _errorMas = null;
     _avisar();
+    Future<void>? guardando;
     try {
       final pagina = await _productosRepo.buscarProductos(
         pedida,
         limite: porPagina,
-        offset: _offset,
+        offset: otraVezLaPrimera ? 0 : _offset,
       );
       if (turno != _turno) return;
-      _agregar(pagina);
+      if (otraVezLaPrimera) {
+        guardando = _ponerPrimera(pedida, pagina);
+      } else {
+        _agregar(pagina);
+        // El servidor volvió a contestar.
+        _sinConexion = false;
+      }
     } on ApiException catch (e) {
       if (turno != _turno) return;
       PierLog.error('Error al cargar más productos: ${e.message}');
@@ -324,6 +349,8 @@ class ProductsViewModel extends ChangeNotifier {
     }
     _cargandoMas = false;
     _avisar();
+    // Como en cargarProductos: al volver, la copia ya está guardada.
+    if (guardando != null) await guardando;
   }
 
   Future<void> cargarCategorias() async {
@@ -530,6 +557,11 @@ class ProductsViewModel extends ChangeNotifier {
       _demandaRepo.registrarClicAgotado(producto.id);
 
   // ── Páginas ──────────────────────────────────────────────────────────────
+
+  /// La copia en el teléfono es solo de la consulta por omisión: con
+  /// búsqueda o filtros siempre se le pregunta al servidor (#265).
+  CatalogoGuardadoService? _catalogoGuardadoDe(ConsultaCatalogo pedida) =>
+      pedida.esPorOmision ? _catalogoGuardado : null;
 
   /// Vuelve a la página 1 si lo que se pide ya no es lo que se pidió.
   void _reiniciarSiCambio() {

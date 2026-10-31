@@ -8,7 +8,8 @@
 // y espera a que se deje de teclear para buscar. Con la copia de la primera
 // página guardada en el teléfono (#265), la consulta por omisión la muestra al
 // instante mientras pide la nueva, la reemplaza al llegar y, sin internet, la
-// conserva. Sin red.
+// conserva; al volver la conexión, la página 1 nueva toma su lugar antes de
+// seguir con la 2. Sin red.
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -646,15 +647,98 @@ void main() {
 
       await vm.cargarMas();
 
-      // La copia son 20: puede haber más, se pide la página 2 y falla.
+      // La copia son 20: puede haber más. No se le pega la página 2 (la copia
+      // puede ser de hace días): se vuelve a pedir la página 1, y falla.
       expect(vm.errorMas, 'Sin conexión');
       expect(vm.cargandoMas, isFalse);
       expect(_idsDe(vm), _idsCopia(20));
       expect(vm.sinConexion, isTrue);
       expect(_pedidas(api), [
         '/productos?limite=20&offset=0',
-        '/productos?limite=20&offset=20',
+        '/productos?limite=20&offset=0',
       ]);
+    });
+
+    test('al volver la conexión, Reintentar trae la página 1 y quita el aviso',
+        () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+      await vm.cargarMas();
+      expect(vm.errorMas, 'Sin conexión');
+      expect(vm.sinConexion, isTrue);
+      final cuantosSeVen = <int>[];
+      vm.addListener(() => cuantosSeVen.add(vm.productos.length));
+
+      // «Reintentar» del pie, ya con internet.
+      caido = false;
+      await vm.cargarMas();
+
+      // La página 1 nueva toma el lugar de la copia (sin pasar por la lista
+      // vacía), se guarda y el aviso se va.
+      expect(_pedidas(api).last, '/productos?limite=20&offset=0');
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(cuantosSeVen, everyElement(20));
+      expect(vm.sinConexion, isFalse);
+      expect(vm.errorMas, isNull);
+      expect(vm.cargandoMas, isFalse);
+      expect(vm.cargando, isFalse);
+      expect(await _guardada(), _idsServidor(20));
+
+      // Después sí sigue la página 2.
+      await vm.cargarMas();
+      expect(_pedidas(api).last, '/productos?limite=20&offset=20');
+      expect(_idsDe(vm), _idsServidor(40));
+    });
+
+    test('una página 1 que Reintentar pidió y llega tarde no pisa la consulta '
+        'nueva', () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidor((l) {
+        if (_parametros(l)['sabor'] == 'Fresa') return _pagina(l, [100]);
+        return caido ? _caido : _pagina(l, _ids(45));
+      });
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+      expect(vm.sinConexion, isTrue);
+      caido = false;
+      api.demorar('/productos?limite=20&offset=0', _tarde);
+
+      // La página 1 del catálogo por omisión llega después de la de Fresa.
+      final vieja = vm.cargarMas();
+      vm.alternarSabor('Fresa');
+      await vieja;
+      await _esperarLoTardio();
+
+      expect(_idsDe(vm), ['100']);
+      expect(vm.cargandoMas, isFalse);
+      expect(await _guardada(), _idsCopia(20));
+    });
+
+    test('con varias páginas en pantalla, al volver la conexión sigue con la '
+        'siguiente y quita el aviso', () async {
+      var caido = false;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(65)));
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+      await vm.cargarMas();
+      // Jalar para refrescar sin internet: las 40 se quedan, con el aviso.
+      caido = true;
+      await vm.cargarProductos();
+      expect(vm.productos, hasLength(40));
+      expect(vm.sinConexion, isTrue);
+
+      // Vuelve la conexión y se baja al final.
+      caido = false;
+      await vm.cargarMas();
+
+      // Cambiar las 40 por la página 1 movería a la persona de donde iba.
+      expect(_pedidas(api).last, '/productos?limite=20&offset=40');
+      expect(_idsDe(vm), _idsServidor(60));
+      expect(vm.sinConexion, isFalse);
     });
 
     test('recargar sin internet deja la lista con el aviso', () async {
