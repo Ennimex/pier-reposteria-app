@@ -1,7 +1,8 @@
 // test/widget/comandas/nueva_comanda_screen_test.dart — «Nueva comanda»
 // (#130) sin red: quién la ve en la agenda, las secciones, agregar pastel y
 // producto del catálogo, lo que hay que corregir, la foto que falló con
-// reintento, el error del catálogo y guardar hasta abrir la comanda creada.
+// reintento, el error del catálogo, guardar hasta abrir la comanda creada y
+// que cerrar los selectores de fecha y hora no regresa el foco (#241).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
@@ -38,6 +39,11 @@ Future<NuevaComandaViewModel> _formulario(
   );
   return vm;
 }
+
+/// Si algún campo de texto tiene el foco (el teclado estaría abierto).
+bool _algunCampoConFoco(WidgetTester tester) => tester
+    .widgetList<EditableText>(find.byType(EditableText))
+    .any((campo) => campo.focusNode.hasFocus);
 
 void main() {
   group('NuevaComandaScreen', () {
@@ -262,5 +268,32 @@ void main() {
 
       expect(find.text('Cliente'), findsOneWidget);
     });
+
+    // #241: al cerrar el selector de fecha u hora (con un valor o cancelado)
+    // el foco no regresa al teléfono ni se abre el teclado.
+    for (final (selector, cierre) in [
+      ('Hora', 'OK'),
+      ('Hora', 'Cancel'),
+      ('Fecha', 'OK'),
+      ('Fecha', 'Cancel'),
+    ]) {
+      testWidgets(
+          'cerrar el selector de «$selector» con «$cierre» no regresa el foco '
+          'al teléfono', (tester) async {
+        await _formulario(tester, _backend());
+        await tester.tap(
+            find.widgetWithText(TextFormField, 'Teléfono (10 dígitos)'));
+        await tester.pump();
+        expect(_algunCampoConFoco(tester), isTrue);
+
+        await tester.tap(find.text(selector));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(cierre));
+        await tester.pumpAndSettle();
+
+        expect(_algunCampoConFoco(tester), isFalse);
+        expect(tester.testTextInput.isVisible, isFalse);
+      });
+    }
   });
 }

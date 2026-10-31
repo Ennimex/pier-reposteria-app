@@ -77,7 +77,14 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
     }
   }
 
+  /// Quita el foco del campo que lo tenga antes de abrir un selector: al
+  /// cerrarse, Flutter se lo devolvería y abriría el teclado (#241). Se
+  /// suelta desde el campo y no con `FocusScope.of(context).unfocus()`,
+  /// porque así la pantalla olvida cuál campo tenía el foco.
+  void _soltarFoco() => FocusManager.instance.primaryFocus?.unfocus();
+
   Future<void> _elegirFecha() async {
+    _soltarFoco();
     final hoy = _vm.hoy;
     final elegida = await showDatePicker(
       context: context,
@@ -90,6 +97,7 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
   }
 
   Future<void> _elegirHora() async {
+    _soltarFoco();
     final partes = _vm.hora?.split(':');
     final elegida = await showTimePicker(
       context: context,
