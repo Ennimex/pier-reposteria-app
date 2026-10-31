@@ -22,7 +22,9 @@ class RegisterViewModel extends AuthBaseViewModel with VisibilidadPasswords {
     notifyListeners();
   }
 
-  /// true si el backend creó la cuenta; si falló, el motivo queda en [error].
+  /// true si el backend creó la cuenta (y se guarda la aceptación del aviso,
+  /// #220); si falló, el motivo queda en [error]. Sin aceptar los términos no
+  /// llama al backend.
   Future<bool> registrar({
     required String nombre,
     required String apellido,
@@ -31,6 +33,10 @@ class RegisterViewModel extends AuthBaseViewModel with VisibilidadPasswords {
     required String password,
   }) async {
     if (_registrando) return false;
+    if (!_aceptaTerminos) {
+      fallar(faltanTerminos);
+      return false;
+    }
     final ok = await correr(() async {
       await _repo.registrar(
         nombre: nombre,
@@ -39,6 +45,7 @@ class RegisterViewModel extends AuthBaseViewModel with VisibilidadPasswords {
         telefono: telefono,
         password: password,
       );
+      await _repo.aceptarAvisoDePrivacidad(via: 'correo');
       return true;
     }, (v) => _registrando = v);
     return ok ?? false;

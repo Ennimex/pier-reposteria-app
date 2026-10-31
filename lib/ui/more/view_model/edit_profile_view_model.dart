@@ -76,19 +76,19 @@ class EditProfileViewModel extends ChangeNotifier {
   }
 
   /// Guarda en el backend. Devuelve el usuario actualizado (para refrescar la
-  /// sesión) o null si falló; el motivo queda en [error]. Teléfono vacío se
-  /// manda como null.
+  /// sesión) o null si falló; el motivo queda en [error]. El teléfono vacío
+  /// se manda como "" para que el backend lo borre (#221; null lo dejaba
+  /// igual).
   Future<Map<String, dynamic>?> guardar() async {
     if (_guardando) return null;
     _guardando = true;
     _error = null;
     notifyListeners();
     try {
-      final tel = _telefono.trim();
       final usuario = await _repo.actualizarPerfil(
         nombre: _nombre.trim(),
         apellido: _apellido.trim(),
-        telefono: tel.isEmpty ? null : tel,
+        telefono: _telefono.trim(),
       );
       if (_cerrado) return null;
       _nombreGuardado = _nombre;

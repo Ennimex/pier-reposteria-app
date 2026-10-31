@@ -258,7 +258,8 @@ void main() {
 
     // Escenario: inicio de sesión con Google
     //   Dado que estoy en el inicio de sesión
-    //   Cuando elijo continuar con Google y autorizo mi cuenta
+    //   Cuando acepto el aviso de privacidad (#220), elijo continuar con
+    //     Google y autorizo mi cuenta
     //   Entonces entro a la app con mi sesión iniciada.
     testWidgets('Escenario: inicio de sesión con Google', (tester) async {
       final api = _backend()
@@ -267,6 +268,10 @@ void main() {
           tester, api, FakeGoogleSignIn(idToken: 'id-token-google'));
       await tester.pumpAndSettle();
 
+      // Sin aceptar el aviso de privacidad, Google no se abre (#220).
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
       await tester.ensureVisible(find.text('Continuar con Google'));
       await tester.tap(find.text('Continuar con Google'));
       // Al abrirse la sesión, el router saca al usuario del login.

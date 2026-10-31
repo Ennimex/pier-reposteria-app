@@ -80,6 +80,27 @@ void main() {
     });
   });
 
+  group('Validators.telefonoOpcional (#221)', () {
+    test('vacío es válido: borra el teléfono', () {
+      expect(Validators.telefonoOpcional(null), isNull);
+      expect(Validators.telefonoOpcional(''), isNull);
+      expect(Validators.telefonoOpcional('   '), isNull);
+    });
+
+    test('10 dígitos, aunque traiga espacios, guiones o la lada 52', () {
+      expect(Validators.telefonoOpcional('7711234567'), isNull);
+      expect(Validators.telefonoOpcional('771 123 4567'), isNull);
+      expect(Validators.telefonoOpcional('771-123-4567'), isNull);
+      expect(Validators.telefonoOpcional('+52 771 123 4567'), isNull);
+    });
+
+    test('con otra cantidad de dígitos es inválido', () {
+      expect(Validators.telefonoOpcional('771123456'), 'Debe tener 10 dígitos');
+      expect(Validators.telefonoOpcional('77112345678'), 'Debe tener 10 dígitos');
+      expect(Validators.telefonoOpcional('abc'), 'Debe tener 10 dígitos');
+    });
+  });
+
   group('Validators.nombre', () {
     test('nulo o de menos de 2 caracteres es corto', () {
       expect(Validators.nombre(null), 'Mínimo 2 caracteres');

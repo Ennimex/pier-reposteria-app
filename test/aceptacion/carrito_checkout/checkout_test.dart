@@ -286,7 +286,7 @@ void main() {
       expect(api.ultima(ApiConstants.confirmarPago)!.body, {
         'payment_intent_id': 'pi_1',
         'notas': '',
-        'horario_entrega': '2026-10-13 11:00',
+        'horario_entrega': '2026-10-13T17:00:00.000Z',
       });
       expect(find.byType(OrderSuccessScreen), findsOneWidget);
       expect(find.text('Entrega a domicilio'), findsOneWidget);
@@ -322,7 +322,7 @@ void main() {
       await _elegirFechaYHora(tester, vm);
       await _pagar(tester, 690);
       expect(api.ultima(ApiConstants.crearPaymentIntent)!.body,
-          {'horario_recogida': '2026-10-13 11:00'});
+          {'horario_recogida': '2026-10-13T17:00:00.000Z'});
       expect(find.text('Sucursal'), findsOneWidget);
       expect(find.text('Fecha de recogida'), findsOneWidget);
     });

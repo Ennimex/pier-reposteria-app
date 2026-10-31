@@ -58,6 +58,8 @@ class Order {
   final double total;
   final String? notas;
   final String? horarioRecogida;
+  // A domicilio: cuándo se entrega (ISO en UTC, #39).
+  final String? horarioEntrega;
   final String? metodoPago;
   final String? tipoEntrega; // 'pickup' | 'domicilio'
   final OrderStatus status;
@@ -74,6 +76,7 @@ class Order {
     required this.total,
     this.notas,
     this.horarioRecogida,
+    this.horarioEntrega,
     this.metodoPago,
     this.tipoEntrega,
     this.status = OrderStatus.pending,
@@ -111,6 +114,7 @@ class Order {
       notas: json['notas'],
       // El backend devuelve horario_recogida
       horarioRecogida: json['horario_recogida'],
+      horarioEntrega: json['horario_entrega']?.toString(),
       metodoPago: json['metodo_pago'],
       tipoEntrega: json['tipo_entrega'],
       status: _parseStatus(json['estado'] ?? 'pendiente'),

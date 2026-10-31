@@ -8,13 +8,16 @@
 #      liberación en modo release apuntando a ese entorno, lo instala en un
 #      celular Android virtual (emulador) y corre el smoke: la app abre,
 #      carga el catálogo e inicia sesión (tool/smoke_liberacion.dart).
+#      También arma el AAB (el paquete que pide Google Play) para comprobar
+#      que compila; ese no se publica.
 #   2. APK firmado y Release: solo si las pruebas pasaron y alguien con
 #      permiso lo aprueba en el Environment «produccion» (Settings →
-#      Environments: aprobación requerida y solo tags v*). Arma el APK final
-#      (release), lo firma con la llave del equipo, con Sentry encendido, lo
-#      publica en GitHub Releases con la lista de cambios desde la versión
-#      anterior y revisa, sin escribir nada, que el servidor de producción
-#      responda.
+#      Environments: aprobación requerida y solo tags v*). Arma el APK y el
+#      AAB finales (release), los firma con la llave del equipo, con Sentry
+#      encendido, los publica en GitHub Releases con la lista de cambios desde
+#      la versión anterior y revisa, sin escribir nada, que el servidor de
+#      producción responda. El AAB es el que se sube a Play Console
+#      (docs/PLAY_STORE.md).
 # Para qué sirve: que ninguna versión llegue a los celulares de los dueños
 #   (grupo canary) sin haberse probado antes como versión de release y sin
 #   una aprobación explícita. La estrategia completa está en
@@ -40,8 +43,8 @@
 #   fue el smoke del candidato (con sus capturas en Artifacts), la versión,
 #   la llave, la firma o el servidor de producción.
 # Dónde ver el resultado: la Release en la página del repositorio (con el APK
-#   adjunto) y, en la corrida, el Summary con el smoke del candidato y las
-#   notas de la versión.
+#   y el AAB adjuntos) y, en la corrida, el Summary con el smoke del
+#   candidato y las notas de la versión.
 # Issues: #22 (este pipeline), #23 (Sentry), #24 (métricas para decidir el
 #   rollout), #203 (entorno de liberación y aprobación).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -122,6 +125,31 @@ jobs:
           flutter build apk --release --flavor prod --dart-define=API_BASE_URL="$URL_ENTORNO_LIBERACION"
           candidato=build/app/outputs/flutter-apk/app-prod-release.apk
           echo "### 📦 Candidato de liberación: APK de release ($(du -h "$candidato" | cut -f1)) contra $URL_ENTORNO_LIBERACION" >> "$GITHUB_STEP_SUMMARY"
+
+      # El paquete que pide Google Play (#226), armado igual que el candidato
+      # para que el ensayo compruebe que compila: lleva el manifiesto y el
+      # código de la app para las tres arquitecturas. Se firma con la llave
+      # de pruebas y no se publica; el firmado con la llave del equipo sale
+      # en «APK firmado y Release». Produce
+      # build/app/outputs/bundle/prodRelease/app-prod-release.aab.
+      - name: Comprobar que el AAB se arma
+        run: |
+          flutter build appbundle --release --flavor prod --dart-define=API_BASE_URL="$URL_ENTORNO_LIBERACION"
+          aab=build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          contenido=$(unzip -l "$aab")
+          faltan=""
+          for parte in base/manifest/AndroidManifest.xml base/lib/arm64-v8a/libapp.so \
+            base/lib/armeabi-v7a/libapp.so base/lib/x86_64/libapp.so; do
+            if ! grep -q " $parte$" <<< "$contenido"; then
+              faltan="$faltan $parte"
+            fi
+          done
+          if [ -n "$faltan" ]; then
+            echo "::error::Al AAB le falta:$faltan"
+            echo "### ❌ Al AAB le falta:$faltan" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "### 📦 AAB armado ($(du -h "$aab" | cut -f1)): manifiesto y código para arm64-v8a, armeabi-v7a y x86_64" >> "$GITHUB_STEP_SUMMARY"
 
       # El celular virtual, igual que en las pruebas de integración: KVM
       # para que el emulador use el procesador directamente y el AVD
@@ -316,6 +344,31 @@ jobs:
           cp "$apk" "build/pier-reposteria-$VERSION.apk"
           echo "### 🔏 APK firmado con la llave del equipo ($(du -h "$apk" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
 
+      # El AAB para Google Play (#226), con la misma llave y Sentry: es el
+      # que se sube a Play Console (docs/PLAY_STORE.md). Con Play App Signing
+      # esta llave es la de subida y Google firma lo que llega a los
+      # celulares con la suya.
+      - name: Compilar el AAB de release
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: flutter build appbundle --release --flavor prod --dart-define=SENTRY_DSN="$SENTRY_DSN"
+
+      # Igual que con el APK: si la llave no se cargó, el AAB saldría firmado
+      # con la de pruebas y Play Console lo rechazaría.
+      - name: Verificar que el AAB lleve la firma del equipo
+        env:
+          VERSION: ${{ steps.version.outputs.nombre }}
+        run: |
+          aab=build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          huella=$(keytool -printcert -jarfile "$aab" | grep -m1 'SHA1:' | awk '{print $NF}')
+          if [ "$huella" != "$HUELLA_RELEASE" ]; then
+            echo "::error::El AAB no está firmado con la llave del equipo (huella $huella)."
+            echo "### ❌ El AAB no está firmado con la llave del equipo" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          cp "$aab" "build/pier-reposteria-$VERSION.aab"
+          echo "### 🔏 AAB firmado con la llave del equipo ($(du -h "$aab" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
       # Los commits desde el tag anterior (Conventional Commits), agrupados en
       # Nuevo, Correcciones y Mantenimiento. También quedan en el Summary.
       - name: Notas de la versión
@@ -340,16 +393,21 @@ jobs:
         with:
           name: Pier Repostería ${{ github.ref_name }}
           body_path: build/resultados/notas.md
-          files: build/pier-reposteria-${{ github.ref_name }}.apk
+          files: |
+            build/pier-reposteria-${{ github.ref_name }}.apk
+            build/pier-reposteria-${{ github.ref_name }}.aab
           fail_on_unmatched_files: true
 
-      # Corrida a mano: el APK firmado queda 7 días en Artifacts, sin Release.
+      # Corrida a mano: el APK y el AAB firmados quedan 7 días en Artifacts,
+      # sin Release.
       - name: Guardar el APK de prueba
         if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v7
         with:
           name: apk-release-${{ steps.version.outputs.nombre }}
-          path: build/pier-reposteria-*.apk
+          path: |
+            build/pier-reposteria-*.apk
+            build/pier-reposteria-*.aab
           if-no-files-found: error
           retention-days: 7
 

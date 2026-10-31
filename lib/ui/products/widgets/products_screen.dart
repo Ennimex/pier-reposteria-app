@@ -198,7 +198,7 @@ class _ProductsScreenState extends State<ProductsScreen>
     // Agotado: el botón es "Avísame" (registra interés; sin sesión, como web)
     if (p.agotado) {
       _vm.avisarme(p);
-      _aviso('Anotamos tu interés en "${p.nombre}". Te avisaremos cuando vuelva.',
+      _aviso('Anotamos tu interés en "${p.nombre}".',
           icono: LucideIcons.bellRing, color: AppColors.pierDoradoOscuro, segundos: 3);
       return;
     }

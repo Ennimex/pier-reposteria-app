@@ -1,5 +1,4 @@
 // lib/ui/auth/widgets/register_screen.dart
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -10,7 +9,6 @@ import 'package:pier_reposteria/ui/auth/widgets/auth_partes.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
-import 'package:pier_reposteria/ui/public/widgets/legal_screen.dart';
 import 'package:pier_reposteria/utils/validators.dart';
 import 'package:provider/provider.dart';
 
@@ -36,16 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // El State es dueño del ViewModel, de los controladores y de los enlaces.
   late final RegisterViewModel _vm = widget.viewModel ??
       RegisterViewModel(repo: context.read<AuthRepository>());
-  late final TapGestureRecognizer _termsRecognizer = TapGestureRecognizer()
-    ..onTap = _abrirLegal;
-  late final TapGestureRecognizer _privacyRecognizer = TapGestureRecognizer()
-    ..onTap = _abrirLegal;
-
   // Registrarse sin aceptar los términos sacude ese renglón.
   int _faltanTerminos = 0;
-
-  void _abrirLegal() => Navigator.push(
-      context, MaterialPageRoute(builder: (_) => const LegalScreen()));
 
   @override
   void dispose() {
@@ -55,8 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _telefonoCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
-    _termsRecognizer.dispose();
-    _privacyRecognizer.dispose();
     _vm.dispose();
     super.dispose();
   }
@@ -234,51 +222,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     orden: 5,
                     retraso: retraso,
                     desplazamiento: Offset.zero,
-                    child: Sacudida(
+                    child: CasillaLegal(
+                      aceptada: _vm.aceptaTerminos,
+                      alCambiar: (acepta) => _vm.aceptaTerminos = acepta,
                       disparo: _faltanTerminos,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: _vm.aceptaTerminos,
-                              activeColor: AppColors.pierVerde,
-                              onChanged: (v) =>
-                                  _vm.aceptaTerminos = v ?? false,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 13),
-                                children: [
-                                  const TextSpan(text: 'Acepto los '),
-                                  TextSpan(
-                                    text: 'Términos y Condiciones',
-                                    style: TextStyle(
-                                        color: AppColors.pierVerde,
-                                        fontWeight: FontWeight.bold),
-                                    recognizer: _termsRecognizer,
-                                  ),
-                                  const TextSpan(text: ' y el '),
-                                  TextSpan(
-                                    text: 'Aviso de Privacidad',
-                                    style: TextStyle(
-                                        color: AppColors.pierVerde,
-                                        fontWeight: FontWeight.bold),
-                                    recognizer: _privacyRecognizer,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
