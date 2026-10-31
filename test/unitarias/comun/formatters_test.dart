@@ -1,6 +1,9 @@
 // test/unitarias/comun/formatters_test.dart — #216: las fechas del backend
 // llegan en UTC y se muestran en la hora de México (UTC−6), sin depender de
 // la zona del teléfono; el checkout manda el horario en UTC, como la web.
+@Tags(['regresion'])
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/utils/formatters.dart';
 
