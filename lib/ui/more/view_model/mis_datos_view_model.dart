@@ -2,8 +2,10 @@
 //
 // Estado de «Mis datos» (derecho de acceso, #221): lo que el servidor tiene
 // de la cuenta, leído de GET /auth/profile, no la copia que la app guardó al
-// iniciar sesión.
+// iniciar sesión. También arma el correo para pedir que se elimine la cuenta
+// (#222).
 import 'package:flutter/foundation.dart';
+import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/data/repositories/auth_repository.dart';
 import 'package:pier_reposteria/utils/formatters.dart';
 
@@ -20,6 +22,7 @@ class MisDatosViewModel extends ChangeNotifier {
   bool _cerrado = false;
   bool _cargando = true;
   String? _error;
+  Map<String, dynamic> _usuario = const {};
   List<DatoDeCuenta> _datos = const [];
 
   bool get cargando => _cargando;
@@ -34,7 +37,8 @@ class MisDatosViewModel extends ChangeNotifier {
     if (_cerrado) return;
     final usuario = resultado['user'];
     if (resultado['success'] == true && usuario is Map) {
-      _datos = datosDeCuenta(Map<String, dynamic>.from(usuario));
+      _usuario = Map<String, dynamic>.from(usuario);
+      _datos = datosDeCuenta(_usuario);
     } else {
       _error = resultado['message']?.toString() ?? sinConexion;
     }
@@ -70,6 +74,43 @@ class MisDatosViewModel extends ChangeNotifier {
       (etiqueta: 'Cuenta creada', valor: fecha('fechaRegistro')),
       (etiqueta: 'Último acceso', valor: fecha('ultimoAcceso')),
     ];
+  }
+
+  /// El correo para pedir que se elimine esta cuenta (#222).
+  Uri get correoParaEliminarCuenta => correoDeBaja(_usuario);
+
+  static const asuntoBaja = 'Eliminar mi cuenta';
+
+  static const peticionBaja =
+      'Quiero que eliminen mi cuenta de la app de Pier Repostería y que '
+      'borren mis datos (derecho de cancelación).';
+
+  /// Mientras el backend no tenga cómo borrar la cuenta, la baja se pide por
+  /// correo a Pier, como dice el aviso de privacidad. Lleva el correo y el
+  /// nombre de la cuenta para que Pier sepa cuál es.
+  static Uri correoDeBaja(Map<String, dynamic> usuario) {
+    String dato(String clave) => usuario[clave]?.toString().trim() ?? '';
+    final nombre = [dato('nombre'), dato('apellido')]
+        .where((parte) => parte.isNotEmpty)
+        .join(' ');
+    final cuerpo = [
+      'Hola, Pier:',
+      '',
+      peticionBaja,
+      '',
+      if (dato('email').isNotEmpty) 'Correo de la cuenta: ${dato('email')}',
+      if (nombre.isNotEmpty) 'Nombre: $nombre',
+    ].join('\n').trimRight();
+    // Con queryParameters los espacios saldrían como «+», que algunas apps
+    // de correo dejan tal cual; así salen como %20.
+    String consulta(Map<String, String> partes) => partes.entries
+        .map((parte) => '${parte.key}=${Uri.encodeComponent(parte.value)}')
+        .join('&');
+    return Uri(
+      scheme: 'mailto',
+      path: BusinessInfo.email,
+      query: consulta({'subject': asuntoBaja, 'body': cuerpo}),
+    );
   }
 
   static String _rolLegible(Object? rol) => switch (rol?.toString()) {
