@@ -251,7 +251,7 @@ class CatalogoOrdenSheet extends StatelessWidget {
     ('Precio: Menor a Mayor', SortOption.priceAsc,  LucideIcons.trendingUp),
     ('Precio: Mayor a Menor', SortOption.priceDesc, LucideIcons.trendingDown),
     ('Nombre: A–Z',           SortOption.nameAsc,   LucideIcons.arrowDownAZ),
-    ('Nombre: Z–A',           SortOption.nameDesc,  LucideIcons.arrowDownAZ),
+    ('Mejor calificados',     SortOption.rating,    LucideIcons.thumbsUp),
   ];
 
   @override

@@ -16,12 +16,14 @@ import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
 import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository.dart';
 import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/consulta_catalogo.dart';
 import 'package:pier_reposteria/domain/models/filtros_catalogo.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 
-/// Criterios de orden del catálogo.
-enum SortOption { popular, priceAsc, priceDesc, nameAsc, nameDesc }
+// SortOption vive en el dominio (ConsultaCatalogo); se reexporta para quienes
+// ya lo importaban desde aquí.
+export 'package:pier_reposteria/domain/models/consulta_catalogo.dart' show SortOption;
 
 class ProductsViewModel extends ChangeNotifier {
   ProductsViewModel({
@@ -38,7 +40,7 @@ class ProductsViewModel extends ChangeNotifier {
         _categoria = categoriaInicial;
 
   /// Categoría que muestra todo el catálogo.
-  static const String todas = 'Todos';
+  static const String todas = ConsultaCatalogo.todas;
 
   /// Chips de categoría mientras el backend no manda las suyas.
   static const List<String> categoriasDeRespaldo = [
@@ -345,8 +347,8 @@ class ProductsViewModel extends ChangeNotifier {
         lista.sort((a, b) => b.precio.compareTo(a.precio));
       case SortOption.nameAsc:
         lista.sort((a, b) => a.nombre.compareTo(b.nombre));
-      case SortOption.nameDesc:
-        lista.sort((a, b) => b.nombre.compareTo(a.nombre));
+      case SortOption.rating:
+        lista.sort((a, b) => b.rating.compareTo(a.rating));
       case SortOption.popular:
         lista.sort((a, b) {
           if (a.popular && !b.popular) return -1;

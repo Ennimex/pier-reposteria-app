@@ -22,6 +22,7 @@ Product _producto(
   bool popular = false,
   bool agotado = false,
   String descripcion = '',
+  double rating = 0,
 }) =>
     Product.fromJson({
       'id': id,
@@ -35,14 +36,16 @@ Product _producto(
       'popular': popular,
       'stock_online': agotado ? 0 : null,
       'activo': true,
+      'rating': rating,
     });
 
 final List<Product> _catalogo = [
-  _producto('1', 'Chocoflan', precio: 300, sabor: 'Chocolate', popular: true),
+  _producto('1', 'Chocoflan', precio: 300, sabor: 'Chocolate', popular: true,
+      rating: 4.5),
   _producto('2', 'Cheesecake fresa', precio: 450, categoria: 'Cheesecakes',
-      sabor: 'Fresa', tamano: 'Grande'),
+      sabor: 'Fresa', tamano: 'Grande', rating: 4.8),
   _producto('3', 'Pay de limón', precio: 200, categoria: 'Pays',
-      sabor: 'Limón', tipo: 'Frío', agotado: true),
+      sabor: 'Limón', tipo: 'Frío', agotado: true, rating: 5),
   _producto('4', 'Arcoíris', precio: 350, sabor: 'Vainilla',
       descripcion: 'Capas de colores'),
 ];
@@ -139,23 +142,23 @@ void main() {
       expect(vm.filtrar(_catalogo), hasLength(4));
     });
 
-    test('ordena por precio y por nombre', () {
+    test('ordena por precio, por nombre y por calificación', () {
       final vm = _vm(FakeApiClient())..ordenarPor(SortOption.priceAsc);
       expect(_nombres(vm.filtrar(_catalogo)).first, 'Chocoflan');
       vm.ordenarPor(SortOption.priceDesc);
       expect(_nombres(vm.filtrar(_catalogo)).first, 'Cheesecake fresa');
       vm.ordenarPor(SortOption.nameAsc);
       expect(_nombres(vm.filtrar(_catalogo)).first, 'Arcoíris');
-      vm.ordenarPor(SortOption.nameDesc);
-      expect(_nombres(vm.filtrar(_catalogo)).first, 'Chocoflan');
-      // Agotado al final aunque el orden lo pusiera antes.
-      expect(_nombres(vm.filtrar(_catalogo)).last, 'Pay de limón');
+      // El agotado es el mejor calificado y aun así va al final.
+      vm.ordenarPor(SortOption.rating);
+      expect(_nombres(vm.filtrar(_catalogo)),
+          ['Cheesecake fresa', 'Chocoflan', 'Arcoíris', 'Pay de limón']);
     });
 
     test('limpiarTodo regresa búsqueda, categoría, orden y filtros', () {
       final vm = _vm(FakeApiClient(), categoriaInicial: 'Pays')
         ..buscar('x')
-        ..ordenarPor(SortOption.nameDesc)
+        ..ordenarPor(SortOption.rating)
         ..alternarSabor('Fresa');
       expect(vm.hayFiltros, isTrue);
 

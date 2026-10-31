@@ -16,6 +16,7 @@ import 'package:pier_reposteria/data/repositories/notificaciones_repository_remo
 import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/consulta_catalogo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
@@ -26,6 +27,28 @@ const _ok = {'success': true};
 /// Fake que contesta `{success: true}` en todos los [endpoints].
 FakeApiClient _apiOk(List<String> endpoints) =>
     FakeApiClient(respuestas: {for (final e in endpoints) e: _ok});
+
+/// Fake con el catálogo de /productos: dos pays.
+FakeApiClient _apiCatalogo() => FakeApiClient(respuestas: {
+      ApiConstants.productos: {
+        'success': true,
+        'productos': [
+          {
+            'id': 7,
+            'nombre': 'Pay de limón',
+            'precio_chico': 180,
+            'categoria': 'Pays',
+          },
+          {
+            'id': 8,
+            'nombre': 'Pay de queso',
+            'precio_chico': 190,
+            'categoria': 'Pays',
+          },
+        ],
+        'total': 2,
+      },
+    });
 
 void main() {
   group('DemandaRepositoryRemote', () {
@@ -251,6 +274,68 @@ void main() {
       for (final e in endpoints) {
         expect(api.llamo(e, metodo: 'GET'), isTrue, reason: e);
       }
+    });
+
+    test('buscarProductos pide la página con sus parámetros', () async {
+      final api = _apiCatalogo();
+      final repo = ProductosRepositoryRemote(api: api);
+
+      final pagina = await repo.buscarProductos(
+        const ConsultaCatalogo(categoria: 'Pays'),
+        limite: 20,
+        offset: 40,
+      );
+
+      expect(api.llamadas.last.endpoint,
+          '/productos?categoria=Pays&limite=20&offset=40');
+      expect(api.llamadas.last.metodo, 'GET');
+      expect(pagina.map((p) => p.nombre), ['Pay de limón', 'Pay de queso']);
+      expect(pagina.first.id, '7');
+    });
+
+    test('buscarProductos sin límite pide todo', () async {
+      final api = _apiCatalogo();
+      final repo = ProductosRepositoryRemote(api: api);
+      const consulta = ConsultaCatalogo(orden: SortOption.rating);
+
+      final todos = await repo.buscarProductos(consulta);
+      expect(api.llamadas.last.endpoint, '/productos?ordenar=rating');
+      expect(todos, hasLength(2));
+
+      // Sin límite no hay páginas: el offset solo acompaña al límite.
+      await repo.buscarProductos(consulta, offset: 40);
+      expect(api.llamadas.last.endpoint, '/productos?ordenar=rating');
+    });
+
+    test('buscarProductos con la consulta por omisión pide /productos y '
+        'sin lista de productos devuelve vacío', () async {
+      final api = _apiOk([ApiConstants.productos]);
+      final repo = ProductosRepositoryRemote(api: api);
+
+      final productos = await repo.buscarProductos(const ConsultaCatalogo());
+
+      expect(api.llamadas.last.endpoint, ApiConstants.productos);
+      expect(productos, isEmpty);
+    });
+
+    test('buscarProductos lanza ApiException si el backend falla', () async {
+      final api = FakeApiClient()
+        ..fallar(ApiConstants.productos, 'Error al obtener productos');
+      final repo = ProductosRepositoryRemote(api: api);
+
+      await expectLater(
+        repo.buscarProductos(const ConsultaCatalogo(), limite: 20),
+        throwsA(isA<ApiException>().having(
+            (e) => e.message, 'message', 'Error al obtener productos')),
+      );
+
+      // Sin mensaje del backend, el genérico.
+      api.responder(ApiConstants.productos, {'success': false});
+      await expectLater(
+        repo.buscarProductos(const ConsultaCatalogo()),
+        throwsA(isA<ApiException>().having((e) => e.message, 'message',
+            'No se pudo cargar el catálogo')),
+      );
     });
   });
 
