@@ -4,10 +4,13 @@
 // llega al compilar, nunca en el código:
 //   flutter build apk --release --flavor prod --dart-define=SENTRY_DSN=https://...
 // Sin SENTRY_DSN (builds locales, pruebas y CI) Sentry no se inicia y la app
-// arranca igual, sin tráfico hacia sentry.io.
+// arranca igual, sin tráfico hacia sentry.io. Si el cliente se opuso al envío
+// de diagnósticos (Más → Privacidad, #223) tampoco se inicia; si lo apaga con
+// la app abierta, lo que quede por mandar se descarta.
 import 'package:flutter/widgets.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/config/app_version.dart';
+import 'package:pier_reposteria/data/services/preferencias_service.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Firma de SentryFlutter.init; las pruebas pasan una falsa.
@@ -21,15 +24,26 @@ class Monitoreo {
 
   static const String _dsn = String.fromEnvironment('SENTRY_DSN');
 
-  /// Corre [app] dentro de Sentry si hay DSN, para capturar los errores
-  /// desde el primer cuadro; si no, la corre directo.
+  /// ¿El cliente acepta que se manden diagnósticos? (#223). Lo carga
+  /// [arrancar] y lo cambia la pantalla de privacidad; con false, Sentry
+  /// descarta los eventos y las transacciones.
+  static bool diagnosticosPermitidos = true;
+
+  /// Corre [app] dentro de Sentry si hay DSN y el cliente no se opuso, para
+  /// capturar los errores desde el primer cuadro; si no, la corre directo.
   static Future<void> arrancar(
     AppRunner app, {
     String dsn = _dsn,
     Ambiente? ambiente,
     IniciarSentry iniciarSentry = SentryFlutter.init,
+    Future<bool> Function()? permitido,
   }) async {
     if (dsn.isEmpty) {
+      await app();
+      return;
+    }
+    diagnosticosPermitidos = await (permitido ?? _preferenciaGuardada)();
+    if (!diagnosticosPermitidos) {
       await app();
       return;
     }
@@ -38,6 +52,13 @@ class Monitoreo {
       (opciones) => configurar(opciones, dsn: dsn, ambiente: elegido),
       appRunner: app,
     );
+  }
+
+  /// Lo que el cliente eligió en Más → Privacidad. SharedPreferences
+  /// necesita el binding, que Sentry todavía no inició.
+  static Future<bool> _preferenciaGuardada() {
+    WidgetsFlutterBinding.ensureInitialized();
+    return PreferenciasService().enviaDiagnosticos();
   }
 
   /// environment = ambiente del build (flavor o AMBIENTE); las trazas se
@@ -52,8 +73,14 @@ class Monitoreo {
       ..environment = ambiente.name
       ..release = 'mx.com.pierreposteria@${AppVersion.full}'
       ..tracesSampleRate = tasaDeMuestreo('', ambiente)
-      ..tracesSampler = (contexto) =>
-          tasaDeMuestreo(contexto.transactionContext.operation, ambiente);
+      // Entre paréntesis: sin ellos, la cascada siguiente quedaría dentro
+      // del cuerpo de la función.
+      ..tracesSampler = ((contexto) =>
+          tasaDeMuestreo(contexto.transactionContext.operation, ambiente))
+      // El cliente puede oponerse con la app abierta (#223).
+      ..beforeSend = ((evento, _) => diagnosticosPermitidos ? evento : null)
+      ..beforeSendTransaction =
+          ((transaccion, _) => diagnosticosPermitidos ? transaccion : null);
   }
 
   /// Le dice a Sentry en qué pantalla está el usuario (#60): cada error lleva

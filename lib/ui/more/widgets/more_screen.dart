@@ -21,6 +21,7 @@ import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:pier_reposteria/ui/more/view_model/more_view_model.dart';
 import 'package:pier_reposteria/ui/more/widgets/mis_datos_screen.dart';
+import 'package:pier_reposteria/ui/more/widgets/privacidad_screen.dart';
 import 'package:pier_reposteria/ui/more/widgets/profile_screen.dart';
 import 'package:pier_reposteria/ui/more/widgets/quejas_screen.dart'; // ✅ NUEVO
 import 'package:pier_reposteria/ui/more/widgets/vincular_alexa_screen.dart';
@@ -389,6 +390,16 @@ class _MoreScreenState extends State<MoreScreen> {
                   onTap: () => Navigator.push(context,
                       MaterialPageRoute(
                           builder: (_) => const LegalScreen())),
+                ),
+                _buildDivider(),
+                // Derecho de oposición (#223): no pide sesión.
+                _buildTile(
+                  icon: LucideIcons.slidersHorizontal,
+                  iconColor: AppColors.pierVerde,
+                  title: 'Privacidad',
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const PrivacidadScreen())),
                   last: true,
                 ),
               ]),
