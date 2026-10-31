@@ -140,7 +140,8 @@ void main() {
       expect(find.text('Cámara'), findsOneWidget);
     });
 
-    testWidgets('el formulario ya trae el primer pedido completado',
+    testWidgets('el formulario ya trae el primer pedido que se puede '
+        'reembolsar, también uno entregado (#172)',
         (tester) async {
       final api = FakeApiClient(
         respuestas: {
@@ -162,8 +163,7 @@ void main() {
       await tester.tap(find.text('Nueva Solicitud').first);
       await tester.pumpAndSettle();
 
-      expect(find.text(r'#PIER-9 — $640.00'), findsOneWidget);
-      expect(find.textContaining('PIER-10'), findsNothing);
+      expect(find.text(r'#PIER-10 — $300.00'), findsOneWidget);
     });
   });
 }

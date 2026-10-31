@@ -634,7 +634,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Solo se pueden reembolsar pedidos completados. El monto corresponde al total del pedido.',
+                      'Puedes pedir el reembolso de un pedido recogido o entregado a domicilio, una solicitud por pedido. El monto corresponde al total del pedido.',
                       style: TextStyle(
                           fontSize: 13,
                           color: AppColors.pierDoradoOscuro,
@@ -667,7 +667,7 @@ class _RefundsScreenState extends State<RefundsScreen>
                         Icon(LucideIcons.info,
                             color: AppColors.textSecondary.withValues(alpha: 0.5), size: 18),
                         const SizedBox(width: 10),
-                        const Text('No tienes pedidos completados',
+                        const Text('No tienes pedidos para reembolsar',
                             style: TextStyle(
                                 color: AppColors.textSecondary, fontSize: 13)),
                       ]),
