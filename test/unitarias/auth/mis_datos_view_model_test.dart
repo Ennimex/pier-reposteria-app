@@ -52,13 +52,12 @@ void main() {
       expect(mapa['Correo verificado'], 'Sí');
     });
 
-    test('la fecha de registro se muestra en la hora del teléfono', () {
+    test('la fecha de registro se muestra en la hora de México', () {
       final mapa = _comoMapa(MisDatosViewModel.datosDeCuenta(_usuario));
-      final local = DateTime.parse('2026-10-27T11:03:00.000Z').toLocal();
-      final hora = '${local.hour.toString().padLeft(2, '0')}:'
-          '${local.minute.toString().padLeft(2, '0')} hrs';
 
-      expect(mapa['Cuenta creada'], endsWith(hora));
+      // 11:03 UTC son las 05:03 en México (UTC-6), sin importar la zona del
+      // teléfono ni la del runner de CI, como el resto de las fechas (#216).
+      expect(mapa['Cuenta creada'], '27 Oct 2026 · 05:03 hrs');
     });
 
     test('lo que falta dice «Sin dato»', () {
