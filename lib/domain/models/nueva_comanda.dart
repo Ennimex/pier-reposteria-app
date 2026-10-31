@@ -1,0 +1,165 @@
+// lib/domain/models/nueva_comanda.dart
+//
+// Captura de comandas desde el teléfono (#130), mismo contrato que el
+// formulario de la web (src/comandas/FormularioComanda.tsx):
+// - GET /comandas/catalogo -> {opciones{tamano, sabor, forma, decoracion:
+//   [{id, nombre, orden}]}, ajustes{anticipo_minimo_pct,
+//   dias_anticipacion_minima, …}, productos[{id, nombre, categoria,
+//   precio_chico, precio_grande, imagen_url}]} (los precios llegan como
+//   texto "450.00"; precio_grande puede ser null).
+// - POST /comandas/imagenes (multipart `imagen`) -> imagen{url, public_id}.
+// - POST /comandas -> comanda{id, folio}, advertencias[], message.
+// Los montos se llevan en centavos, como la web, para no perder centavos al
+// sumar.
+
+/// Las opciones activas de cada característica del pastel, por nombre.
+class OpcionesPastel {
+  const OpcionesPastel({
+    this.sabores = const [],
+    this.tamanos = const [],
+    this.formas = const [],
+    this.decoraciones = const [],
+  });
+
+  factory OpcionesPastel.fromJson(Object? json) {
+    final m = json is Map ? json : const {};
+    List<String> nombres(Object? lista) => [
+          if (lista is List)
+            for (final o in lista)
+              if (o is Map && (o['nombre']?.toString().trim() ?? '') != '')
+                o['nombre'].toString().trim(),
+        ];
+    return OpcionesPastel(
+      sabores: nombres(m['sabor']),
+      tamanos: nombres(m['tamano']),
+      formas: nombres(m['forma']),
+      decoraciones: nombres(m['decoracion']),
+    );
+  }
+
+  final List<String> sabores;
+  final List<String> tamanos;
+  final List<String> formas;
+  final List<String> decoraciones;
+}
+
+/// Un producto del catálogo que se puede agregar a la comanda.
+class ProductoCatalogo {
+  const ProductoCatalogo({
+    required this.id,
+    required this.nombre,
+    required this.precioChico,
+    this.precioGrande,
+    this.categoria,
+  });
+
+  /// null si falta el id, el nombre o el precio chico.
+  static ProductoCatalogo? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final id = (json['id'] as num?)?.toInt() ??
+        int.tryParse(json['id']?.toString() ?? '');
+    final nombre = json['nombre']?.toString().trim() ?? '';
+    final chico = centavosDe(json['precio_chico']);
+    if (id == null || nombre.isEmpty || chico == null) return null;
+    return ProductoCatalogo(
+      id: id,
+      nombre: nombre,
+      precioChico: chico,
+      precioGrande: centavosDe(json['precio_grande']),
+      categoria: json['categoria']?.toString(),
+    );
+  }
+
+  final int id;
+  final String nombre;
+
+  /// En centavos.
+  final int precioChico;
+
+  /// En centavos; null si no se vende en tamaño grande.
+  final int? precioGrande;
+  final String? categoria;
+}
+
+/// Reglas de cobro de Dirección.
+class AjustesComanda {
+  const AjustesComanda({
+    this.anticipoMinimoPct = 0,
+    this.diasAnticipacion = 0,
+  });
+
+  factory AjustesComanda.fromJson(Object? json) {
+    final m = json is Map ? json : const {};
+    int entero(Object? v) =>
+        (v is num ? v.toInt() : int.tryParse(v?.toString() ?? '')) ?? 0;
+    return AjustesComanda(
+      anticipoMinimoPct: entero(m['anticipo_minimo_pct']),
+      diasAnticipacion: entero(m['dias_anticipacion_minima']),
+    );
+  }
+
+  /// Porcentaje del total que se cobra como mínimo de anticipo (0-100).
+  final int anticipoMinimoPct;
+
+  /// Días de anticipación que pide producción (si son menos, solo se avisa).
+  final int diasAnticipacion;
+}
+
+/// Lo que necesita el formulario para capturar una comanda.
+class CatalogoComanda {
+  const CatalogoComanda({
+    required this.opciones,
+    required this.ajustes,
+    this.productos = const [],
+  });
+
+  factory CatalogoComanda.fromJson(Map<String, dynamic> json) =>
+      CatalogoComanda(
+        opciones: OpcionesPastel.fromJson(json['opciones']),
+        ajustes: AjustesComanda.fromJson(json['ajustes']),
+        productos: [
+          if (json['productos'] case final List lista)
+            for (final p in lista) ?ProductoCatalogo.fromJson(p),
+        ],
+      );
+
+  final OpcionesPastel opciones;
+  final AjustesComanda ajustes;
+  final List<ProductoCatalogo> productos;
+}
+
+/// Una foto de referencia ya subida (lo que se manda en `imagenes`).
+class FotoComanda {
+  const FotoComanda({required this.url, required this.publicId});
+
+  Map<String, dynamic> toJson() => {'url': url, 'public_id': publicId};
+
+  final String url;
+  final String publicId;
+}
+
+/// Respuesta de POST /comandas.
+class ComandaCreada {
+  const ComandaCreada({
+    required this.id,
+    required this.folio,
+    required this.mensaje,
+    this.advertencias = const [],
+  });
+
+  final int id;
+  final int folio;
+  final String mensaje;
+
+  /// P. ej. «La entrega es en menos de 3 días: confirma con producción que
+  /// alcanza.»
+  final List<String> advertencias;
+}
+
+/// Pesos de la API ("450.00", 450, 450.5) a centavos; null si no es un
+/// número válido.
+int? centavosDe(Object? valor) {
+  final n = valor is num ? valor : num.tryParse(valor?.toString() ?? '');
+  if (n == null || n.isNaN || n.isInfinite) return null;
+  return (n * 100).round();
+}

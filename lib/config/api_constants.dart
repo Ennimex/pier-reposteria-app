@@ -177,6 +177,10 @@ class ApiConstants {
       '$comandas?vista=$vista'
       '${busqueda.isEmpty ? '' : '&busqueda=${Uri.encodeQueryComponent(busqueda)}'}';
   static String comandaDetalle(int id)   => '$comandas/$id';
+  // Captura (#130): opciones, reglas y productos; fotos de referencia
+  // (multipart `imagen`) que se mandan después en POST /comandas
+  static const String comandasCatalogo = '$comandas/catalogo';
+  static const String comandasImagenes = '$comandas/imagenes';
   // «Enterado» de producción: {version} que se leyó (409 si cambió)
   static String comandaConfirmar(int id) => '$comandas/$id/confirmar';
   static String comandaEntregar(int id)  => '$comandas/$id/entregar';  // PUT {saldo_cobrado}

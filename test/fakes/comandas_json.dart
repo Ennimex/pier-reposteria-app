@@ -229,3 +229,49 @@ Map<String, dynamic> detalleJson({
     'confirmar': confirmar,
   },
 };
+
+/// Respuesta de GET /comandas/catalogo (#130): dos sabores, opciones de una
+/// sola, [pct] % de anticipo mínimo y [dias] de anticipación; productos con y
+/// sin tamaño grande, y uno sin precio (se omite).
+Map<String, dynamic> catalogoJson({int pct = 50, int dias = 3}) => {
+      'success': true,
+      'opciones': {
+        'sabor': [
+          {'id': 1, 'nombre': 'Chocolate', 'orden': 1},
+          {'id': 2, 'nombre': 'Vainilla', 'orden': 2},
+        ],
+        'tamano': [
+          {'id': 3, 'nombre': '20 personas', 'orden': 1},
+        ],
+        'forma': [
+          {'id': 4, 'nombre': 'Redondo', 'orden': 1},
+        ],
+        'decoracion': [
+          {'id': 5, 'nombre': 'Flores', 'orden': 1},
+          {'id': 6, 'nombre': '  ', 'orden': 2},
+        ],
+      },
+      'ajustes': {
+        'anticipo_minimo_pct': pct,
+        'dias_anticipacion_minima': dias,
+        'semaforo_rojo_dias': 1,
+      },
+      'productos': [
+        {
+          'id': 10,
+          'nombre': 'Gelatina',
+          'categoria': 'Postres',
+          'precio_chico': '45.50',
+          'precio_grande': '120.00',
+          'imagen_url': null,
+        },
+        {
+          'id': 11,
+          'nombre': 'Galleta',
+          'categoria': 'Mesa de postres',
+          'precio_chico': '12.00',
+          'precio_grande': null,
+        },
+        {'id': 12, 'nombre': 'Sin precio'},
+      ],
+    };
