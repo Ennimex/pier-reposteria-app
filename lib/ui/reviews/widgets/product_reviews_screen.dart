@@ -70,8 +70,12 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
   void initState() {
     super.initState();
     PierLog.nav('→ ProductReviewsScreen: ${widget.product.nombre}');
-    unawaited(_vm.cargar());
+    unawaited(_cargar());
   }
+
+  /// Con sesión también trae los votos «útil» del cliente (#42).
+  Future<void> _cargar() => _vm.cargar(
+      conSesion: context.read<AuthProvider>().isAuthenticated);
 
   /// La opinión que no estaba la vez anterior. Solo una: una llegada se
   /// resalta; un cambio en bloque (la primera carga, recuperarse de un error)
@@ -107,7 +111,15 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
       return;
     }
     _marcadaConToque = _vm.esUtil(resena.id) ? null : resena.id;
-    unawaited(_vm.alternarUtil(resena.id));
+    unawaited(_vm.alternarUtil(resena.id).then((error) {
+      // Si el backend lo rechaza (p. ej. la propia opinión), se dice (#42).
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(error),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }));
   }
 
   String _formatFecha(DateTime? dt) {
@@ -206,7 +218,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                             MaterialPageRoute<void>(
                                 builder: (_) => CreateReviewScreen(
                                     product: widget.product)),
-                          ).then((_) => _vm.cargar()));
+                          ).then((_) => _cargar()));
                         } else {
                           _irALogin();
                         }

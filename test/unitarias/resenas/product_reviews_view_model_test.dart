@@ -157,4 +157,78 @@ void main() {
       expect(vm.cargando, isFalse);
     });
   });
+
+  group('votos «útil» que se conservan (#42)', () {
+    final misUtiles = ApiConstants.misUtiles('36');
+
+    test('con sesión marca las que el cliente ya votó', () async {
+      final api = FakeApiClient(respuestas: {
+        ..._conDatos(),
+        misUtiles: {
+          'success': true,
+          'ids': [1, 3],
+        },
+      });
+      final vm = _vm(api);
+
+      await vm.cargar(conSesion: true);
+
+      expect(vm.esUtil('1'), isTrue);
+      expect(vm.esUtil('2'), isFalse);
+      expect(vm.esUtil('3'), isTrue);
+      expect(api.llamo(misUtiles, metodo: 'GET-Auth'), isTrue);
+    });
+
+    test('sin sesión no los pide', () async {
+      final api = FakeApiClient(respuestas: _conDatos());
+
+      await _vm(api).cargar();
+
+      expect(api.llamo(misUtiles), isFalse);
+    });
+
+    test('si fallan los votos, las reseñas se muestran igual', () async {
+      final api = FakeApiClient(respuestas: _conDatos())
+        ..fallar(misUtiles, 'Caído');
+      final vm = _vm(api);
+
+      await vm.cargar(conSesion: true);
+
+      expect(vm.resenas, hasLength(3));
+      expect(vm.esUtil('1'), isFalse);
+      expect(vm.cargando, isFalse);
+    });
+
+    test('votar la propia opinión devuelve el motivo y se revierte', () async {
+      final api = FakeApiClient(respuestas: _conDatos())
+        ..fallar(_like1, 'No puedes marcar como útil tu propia opinión');
+      final vm = _vm(api);
+      await vm.cargar();
+
+      final error = await vm.alternarUtil('1');
+
+      expect(error, 'No puedes marcar como útil tu propia opinión');
+      expect(vm.esUtil('1'), isFalse);
+    });
+
+    test('un voto que pasa no devuelve error', () async {
+      final api = FakeApiClient(respuestas: _conDatos());
+      final vm = _vm(api);
+      await vm.cargar();
+
+      expect(await vm.alternarUtil('1'), isNull);
+      expect(await vm.alternarUtil('no-existe'), isNull);
+    });
+
+    test('misUtiles lanza ApiException si la respuesta no trae ids', () async {
+      final api = FakeApiClient(respuestas: {
+        misUtiles: {'success': true},
+      });
+
+      await expectLater(
+        ResenasRepositoryRemote(api: api).misUtiles('36'),
+        throwsA(isA<ApiException>()),
+      );
+    });
+  });
 }

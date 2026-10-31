@@ -58,6 +58,10 @@ abstract class ResenasRepository {
   /// lo quita); devuelve cómo quedó: true = marcada. Lanza ApiException.
   Future<bool> alternarUtil(String id);
 
+  /// GET /resenas/mis-utiles?producto_id=… (con sesión): ids de las reseñas
+  /// del producto que el cliente ya marcó «útil» (#42).
+  Future<Set<String>> misUtiles(String productoId);
+
   /// GET /resenas/destacadas tipado a la lista (cada reseña como la manda
   /// el backend: autor, producto, rating, comentario). Lanza ApiException si
   /// falla.
