@@ -8,11 +8,13 @@
 // final (con su pie y los esqueletos de la primera), llevar la lista arriba
 // al empezar otra consulta, el rebote del botón de carrito, el vuelo de la
 // miniatura al carrito, la entrada en cascada de las tarjetas, mandar a
-// iniciar sesión y los avisos (SnackBar).
+// iniciar sesión y los avisos (SnackBar). Cuando la primera página no llega y
+// se ve la copia guardada en el teléfono, un aviso lo dice (#265).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/data/services/catalogo_guardado_service.dart';
 import 'package:pier_reposteria/domain/models/consulta_catalogo.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
@@ -53,6 +55,7 @@ class _ProductsScreenState extends State<ProductsScreen>
         productosRepo: context.read(),
         favoritosRepo: context.read(),
         demandaRepo: context.read(),
+        catalogoGuardado: context.read<CatalogoGuardadoService>(),
         categoriaInicial: widget.initialCategory ?? ProductsViewModel.todas,
       );
   final TextEditingController _searchController = TextEditingController();
@@ -346,6 +349,11 @@ class _ProductsScreenState extends State<ProductsScreen>
                 cantidadCarrito: cartCount,
               ),
               CatalogoCategorias(viewModel: _vm),
+              // Se abre y se cierra con suavidad: la lista no salta.
+              Aparicion(
+                visible: _vm.sinConexion,
+                child: _avisoSinConexion(),
+              ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _recargar,
@@ -521,6 +529,37 @@ class _ProductsScreenState extends State<ProductsScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// La página 1 no llegó y lo que se ve es el catálogo guardado en el
+  /// teléfono (#265): se dice, para que no se tome por lo más reciente.
+  Widget _avisoSinConexion() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.pierDorado.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(LucideIcons.wifiOff, size: 16, color: AppColors.aviso),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Sin conexión: es el último catálogo que viste',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

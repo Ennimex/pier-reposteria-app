@@ -3,12 +3,19 @@
 // siguiente y la agrega, abajo se ve «cargando» o el aviso para reintentar,
 // una primera página que no llena la pantalla pide la siguiente sola, la
 // lista vuelve arriba al empezar otra consulta, mientras llega la primera
-// página hay esqueletos y la hoja de orden ofrece «Mejor calificados».
-// Servidor falso que pagina como el real; sin red.
+// página hay esqueletos y la hoja de orden ofrece «Mejor calificados». Con la
+// copia de la primera página guardada en el teléfono (#265) se ve al instante
+// en lugar de los esqueletos, la página nueva la reemplaza sin mover la lista
+// y, sin internet, se queda con su aviso. Servidor falso que pagina como el
+// real; sin red.
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
 import 'package:pier_reposteria/ui/products/widgets/pie_catalogo.dart';
 import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
@@ -139,6 +146,44 @@ Future<void> _alFinal(WidgetTester tester) async {
 Future<void> _desmontar(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox());
   await tester.pump(const Duration(seconds: 2));
+}
+
+/// El aviso de que se ve el catálogo guardado en el teléfono (#265).
+const _aviso = 'Sin conexión: es el último catálogo que viste';
+
+/// Lo que hay guardado en el teléfono al abrir el catálogo: una copia de
+/// [cuantos] productos, «Copia 1» a «Copia N» (la llave y el formato son los
+/// del servicio que la guarda).
+Map<String, Object> _conCopia(int cuantos) => {
+      'pierreposteria_catalogo_v1': jsonEncode({
+        'guardado': '2026-10-30T18:00:00.000Z',
+        'productos': [
+          for (var i = 1; i <= cuantos; i++)
+            Product(
+              id: 'c$i',
+              nombre: 'Copia $i',
+              descripcion: '',
+              precio: 90,
+              categoria: 'Pasteles',
+              imagenUrl: '',
+            ).toJson(),
+        ],
+      }),
+    };
+
+/// Abre el catálogo con [cuantos] productos ya guardados en el teléfono, sin
+/// esperar a que llegue nada.
+Future<void> _abrirConCopia(
+  WidgetTester tester,
+  FakeApiClient api, {
+  int cuantos = 20,
+}) async {
+  _pantalla(tester);
+  await tester.pumpApp(
+    const ProductsScreen(),
+    api: api,
+    preferencias: _conCopia(cuantos),
+  );
 }
 
 void main() {
@@ -394,6 +439,110 @@ void main() {
       expect(_bajado(tester), 0);
       expect(find.text('Pay 1'), findsOneWidget);
       await _desmontar(tester);
+    });
+  });
+
+  group('Catálogo guardado en el teléfono en pantalla (#265)', () {
+    testWidgets('con copia se ve al instante, sin esqueletos, y la reemplaza '
+        'la página nueva', (tester) async {
+      final api = _backend()..demorar(_primera, _demora);
+      await _abrirConCopia(tester, api);
+      await tester.pump();
+
+      // La copia ya se ve mientras la página nueva llega: ni un esqueleto.
+      expect(find.text('Copia 1'), findsOneWidget);
+      expect(find.byType(ProductSkeletonCard), findsNothing);
+      expect(find.text(_aviso), findsNothing);
+      expect(_pedidas(api), [_primera]);
+
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Copia 1'), findsNothing);
+      expect(find.text('Producto 1'), findsOneWidget);
+      expect(find.byType(ProductSkeletonCard), findsNothing);
+      expect(find.text(_aviso), findsNothing);
+    });
+
+    testWidgets('la página nueva reemplaza la copia sin mover la lista',
+        (tester) async {
+      final api = _backend()..demorar(_primera, _demora);
+      await _abrirConCopia(tester, api);
+      await tester.pump();
+      await tester.drag(_lista, const Offset(0, -300));
+      await tester.pump();
+      final bajado = _bajado(tester);
+      expect(bajado, greaterThan(0));
+      expect(find.textContaining('Copia'), findsWidgets);
+
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Copia'), findsNothing);
+      expect(find.textContaining('Producto'), findsWidgets);
+      expect(_bajado(tester), bajado);
+    });
+
+    testWidgets('sin conexión con copia muestra el aviso', (tester) async {
+      final api = _backend(productos: _servidor(falla: (_) => true));
+      await _abrirConCopia(tester, api);
+      await tester.pumpAndSettle();
+
+      expect(find.text(_aviso), findsOneWidget);
+      expect(find.byIcon(LucideIcons.wifiOff), findsOneWidget);
+      // Se ve lo guardado, no el estado de «no se pudo cargar».
+      expect(find.text('Copia 1'), findsOneWidget);
+      expect(find.text('No pudimos cargar el catálogo'), findsNothing);
+      expect(find.byType(ProductSkeletonCard), findsNothing);
+    });
+
+    testWidgets('sin conexión con copia, al bajar al final aparece «No se '
+        'pudieron cargar más»', (tester) async {
+      final api = _backend(productos: _servidor(falla: (_) => true));
+      await _abrirConCopia(tester, api);
+      await tester.pumpAndSettle();
+      expect(_pedidas(api), [_primera]);
+
+      await _alFinal(tester);
+
+      // No hay más páginas guardadas: la segunda se pide y no llega.
+      Finder delPie(Finder finder) =>
+          find.descendant(of: find.byType(PieCatalogo), matching: finder);
+      expect(delPie(find.text('No se pudieron cargar más')), findsOneWidget);
+      expect(delPie(find.text('Reintentar')), findsOneWidget);
+      expect(_pedidas(api), [_primera, _segunda]);
+      expect(find.text('Copia 20'), findsOneWidget);
+      expect(find.text(_aviso), findsOneWidget);
+    });
+
+    testWidgets('el aviso se va cuando llega la página nueva', (tester) async {
+      var falla = true;
+      final api = _backend(productos: _servidor(falla: (_) => falla));
+      await _abrirConCopia(tester, api);
+      await tester.pumpAndSettle();
+      expect(find.text(_aviso), findsOneWidget);
+
+      // Jalar para recargar, ya con internet.
+      falla = false;
+      unawaited(tester
+          .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+          .show());
+      await tester.pumpAndSettle();
+
+      expect(find.text(_aviso), findsNothing);
+      expect(find.text('Copia 1'), findsNothing);
+      expect(find.text('Producto 1'), findsOneWidget);
+    });
+
+    testWidgets('sin copia y sin conexión sale el error de siempre, sin aviso',
+        (tester) async {
+      _pantalla(tester);
+      final api = _backend(productos: _servidor(falla: (_) => true));
+      await tester.pumpApp(const ProductsScreen(), api: api);
+      await tester.pumpAndSettle();
+
+      expect(find.text('No pudimos cargar el catálogo'), findsOneWidget);
+      expect(find.text(_aviso), findsNothing);
     });
   });
 }

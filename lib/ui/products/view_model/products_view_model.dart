@@ -6,7 +6,9 @@
 // (búsquedas y "Avísame"). Los productos se piden al servidor de 20 en 20
 // con la consulta actual (#37), con el patrón del feed: un turno descarta lo
 // que llega de una consulta anterior, una sola petición a la vez, sin
-// repetir productos y con los agotados al final cuando ya no hay más.
+// repetir productos y con los agotados al final cuando ya no hay más. La
+// primera página de la consulta por omisión se guarda en el teléfono y se
+// muestra al instante la próxima vez, mientras llega la nueva (#265).
 //
 // La sesión, el carrito y la navegación no se tocan desde aquí: la vista
 // decide si manda a iniciar sesión y avisa cuando cambia la sesión.
@@ -17,6 +19,7 @@ import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
 import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository.dart';
+import 'package:pier_reposteria/data/services/catalogo_guardado_service.dart';
 import 'package:pier_reposteria/domain/models/category_model.dart';
 import 'package:pier_reposteria/domain/models/consulta_catalogo.dart';
 import 'package:pier_reposteria/domain/models/filtros_catalogo.dart';
@@ -32,12 +35,14 @@ class ProductsViewModel extends ChangeNotifier {
     required ProductosRepository productosRepo,
     required FavoritosRepository favoritosRepo,
     required DemandaRepository demandaRepo,
+    CatalogoGuardadoService? catalogoGuardado,
     String categoriaInicial = todas,
     this.esperaBusqueda = const Duration(milliseconds: 400),
     this.esperaRegistroBusqueda = const Duration(milliseconds: 1200),
   })  : _productosRepo = productosRepo,
         _favoritosRepo = favoritosRepo,
         _demandaRepo = demandaRepo,
+        _catalogoGuardado = catalogoGuardado,
         _categoria = categoriaInicial;
 
   /// Categoría que muestra todo el catálogo.
@@ -66,6 +71,8 @@ class ProductsViewModel extends ChangeNotifier {
   final ProductosRepository _productosRepo;
   final FavoritosRepository _favoritosRepo;
   final DemandaRepository _demandaRepo;
+  // La copia de la primera página en el teléfono; null = sin copia (pruebas).
+  final CatalogoGuardadoService? _catalogoGuardado;
   bool _cerrado = false;
   Timer? _esperaDeBusqueda;
   Timer? _registroBusqueda;
@@ -102,6 +109,7 @@ class ProductsViewModel extends ChangeNotifier {
   int _cantidadPrimeraPagina = 0;
   bool _iniciado = false;
   bool _fin = false;
+  bool _sinConexion = false;
   bool _cargando = false;
   bool _cargandoMas = false;
   String? _error;
@@ -146,6 +154,11 @@ class ProductsViewModel extends ChangeNotifier {
 
   /// Ya llegó la última página: una con menos de [porPagina] o vacía.
   bool get fin => _fin;
+
+  /// La página 1 de la consulta por omisión no pudo llegar y lo que se ve es
+  /// la copia guardada en el teléfono (o la última página que llegó): la vista
+  /// avisa que puede no ser lo más reciente.
+  bool get sinConexion => _sinConexion;
 
   /// 'Todos' y las categorías del backend, o las de respaldo si no hay.
   List<String> get nombresCategorias => _categorias.isEmpty
@@ -200,6 +213,14 @@ class ProductsViewModel extends ChangeNotifier {
   /// de una consulta anterior se descarta. Los órdenes sin páginas del
   /// servidor se piden completos una vez y se muestran de [porPagina] en
   /// [porPagina].
+  ///
+  /// La consulta por omisión usa además la copia de su página 1 guardada en el
+  /// teléfono (#265): se pone en pantalla en cuanto se lee, sin esperar al
+  /// servidor (que al despertar tarda hasta ~20 s), y la página nueva la
+  /// reemplaza al llegar. Cada página 1 que llega se guarda. Si la nueva no
+  /// llega, se queda lo que se veía (la copia, o la página anterior al jalar
+  /// para refrescar) y [sinConexion] avisa; sin nada que mostrar sale el
+  /// [error] de siempre.
   Future<void> cargarProductos() async {
     _esperaDeBusqueda?.cancel();
     final turno = ++_turno;
@@ -211,6 +232,15 @@ class ProductsViewModel extends ChangeNotifier {
     _error = null;
     _errorMas = null;
     _avisar();
+    // La copia es solo de la consulta por omisión: con búsqueda o filtros
+    // siempre se le pregunta al servidor.
+    final catalogoGuardado = pedida.esPorOmision ? _catalogoGuardado : null;
+    // Se lee en paralelo con la petición, que no la espera, y solo si aún no
+    // hay nada en pantalla de esta consulta.
+    final lecturaCopia = catalogoGuardado != null && !_iniciado
+        ? _ponerCopia(catalogoGuardado, turno)
+        : null;
+    Future<void>? guardando;
     try {
       final respuesta = await _productosRepo.buscarProductos(
         pedida,
@@ -223,16 +253,41 @@ class ProductsViewModel extends ChangeNotifier {
       _agregar(primera);
       _cantidadPrimeraPagina = primera.length;
       _iniciado = true;
+      guardando = catalogoGuardado?.guardar(primera);
       PierLog.info('✅ Catálogo: ${primera.length} en la primera página');
     } on ApiException catch (e) {
+      // Si la copia aún se está leyendo, se espera: de ella depende qué sale.
+      if (lecturaCopia != null) await lecturaCopia;
       if (turno != _turno) return;
       PierLog.error('Error al cargar el catálogo: ${e.message}');
-      _vaciar();
-      _error = e.message;
+      if (catalogoGuardado != null && _iniciado) {
+        _sinConexion = true;
+      } else {
+        _vaciar();
+        _error = e.message;
+      }
     }
     _cargando = false;
     _avisar();
     _registrarBusquedaPendiente();
+    // La copia se guarda a la vez que se pinta la página; aquí solo se espera
+    // a que termine (nunca lanza), para que al volver ya esté guardada.
+    if (guardando != null) await guardando;
+  }
+
+  /// Pone en pantalla, como si fuera la página 1 (mismas reglas de agotados y
+  /// repetidos), la copia guardada. Sobra si ya llegó la del servidor o se
+  /// pidió otra consulta mientras se leía.
+  Future<void> _ponerCopia(
+    CatalogoGuardadoService catalogoGuardado,
+    int turno,
+  ) async {
+    final copia = await catalogoGuardado.leer();
+    if (copia == null || turno != _turno || _iniciado) return;
+    _agregar(copia);
+    _iniciado = true;
+    PierLog.info('📦 Catálogo guardado: ${copia.length} en pantalla');
+    _avisar();
   }
 
   /// La siguiente página de lo que se ve: del servidor o, si la consulta se
@@ -508,6 +563,7 @@ class ProductsViewModel extends ChangeNotifier {
     _offset = 0;
     _iniciado = false;
     _fin = false;
+    _sinConexion = false;
   }
 
   /// Registra el término que se dejó de teclear con cuántos productos trajo

@@ -23,8 +23,14 @@ import '../fakes/fake_api_client.dart';
 
 extension PumpApp on WidgetTester {
   /// Monta [widget] dentro de un MaterialApp con los providers globales.
-  Future<void> pumpApp(Widget widget, {FakeApiClient? api}) async {
-    SharedPreferences.setMockInitialValues({});
+  /// [preferencias] es lo que ya hay guardado en el teléfono (por omisión,
+  /// nada).
+  Future<void> pumpApp(
+    Widget widget, {
+    FakeApiClient? api,
+    Map<String, Object> preferencias = const {},
+  }) async {
+    SharedPreferences.setMockInitialValues(preferencias);
     await pumpWidget(
       MultiProvider(
         providers: dependencias(api ?? FakeApiClient()),
