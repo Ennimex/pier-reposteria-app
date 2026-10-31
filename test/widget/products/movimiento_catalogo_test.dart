@@ -482,7 +482,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(opacidadEn(tester, _entradaDe('Rosca')), 1);
 
-      // Al llegar lo buscado, lo que sigue (o vuelve) no se repite.
+      // Si lo buscado llega en el mismo cuadro, lo que sigue (o vuelve) no se
+      // repite.
       await tester.enterText(find.byType(TextField), 'Ch');
       await tester.pump(_esperaBusqueda);
       expect(find.text('Rosca'), findsNothing);

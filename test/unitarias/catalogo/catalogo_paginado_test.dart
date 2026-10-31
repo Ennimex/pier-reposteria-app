@@ -1,7 +1,8 @@
 // test/unitarias/catalogo/catalogo_paginado_test.dart — el catálogo por
 // páginas (#37): ProductsViewModel pide los productos de 20 en 20 con la
 // consulta actual, termina con una página corta o vacía, hace una sola
-// petición a la vez, descarta lo que llega de una consulta anterior, no
+// petición a la vez, descarta lo que llega tarde de una consulta anterior,
+// vacía la lista al cambiar de consulta (al recargar la misma, no), no
 // repite productos, deja los agotados para cuando ya no hay más, trae
 // completos los órdenes que el servidor no desempata (precio y calificación)
 // y espera a que se deje de teclear para buscar. Sin red.
@@ -54,6 +55,13 @@ const Map<String, dynamic> _caido = {
 
 FakeApiClient _servidor(RespuestaDinamica responder) =>
     FakeApiClient(respuestas: {ApiConstants.productos: responder});
+
+/// Lo que tarda una respuesta que llega tarde; las demás llegan al instante
+/// (en microtareas).
+const _tarde = Duration(milliseconds: 10);
+
+/// Deja que lleguen también las respuestas que llegan tarde.
+Future<void> _esperarLoTardio() => Future<void>.delayed(_tarde * 3);
 
 ProductsViewModel _vm(
   FakeApiClient api, {
@@ -157,15 +165,14 @@ void main() {
           l,
           _parametros(l)['sabor'] == 'Fresa' ? [100] : _ids(45),
         ),
-      );
+      )..demorar('/productos?limite=20&offset=20', _tarde);
       final vm = _vm(api);
       await vm.cargarProductos();
 
-      // La segunda página de «todo» sigue en camino cuando se elige Fresa.
+      // La segunda página de «todo» llega después de la página 1 de Fresa.
       final vieja = vm.cargarMas();
       vm.alternarSabor('Fresa');
       await vieja;
-      await _esperar();
 
       expect(_idsDe(vm), ['100']);
       expect(vm.fin, isTrue);
@@ -180,16 +187,95 @@ void main() {
           l,
           _parametros(l)['sabor'] == 'Fresa' ? [100] : _ids(45),
         ),
-      );
+      )..demorar('/productos?limite=20&offset=0', _tarde);
+      final vm = _vm(api);
+
+      // La página 1 de «todo» llega después de la de Fresa.
+      final vieja = vm.cargarProductos();
+      vm.alternarSabor('Fresa');
+      await vieja;
+
+      expect(_idsDe(vm), ['100']);
+      expect(vm.cargando, isFalse);
+    });
+
+    test('un error que llega tarde de la consulta anterior no la borra',
+        () async {
+      final api = _servidor(
+        (l) => _parametros(l)['sabor'] == 'Fresa' ? _pagina(l, [100]) : _caido,
+      )..demorar('/productos?limite=20&offset=0', _tarde);
       final vm = _vm(api);
 
       final vieja = vm.cargarProductos();
       vm.alternarSabor('Fresa');
       await vieja;
-      await _esperar();
 
       expect(_idsDe(vm), ['100']);
+      expect(vm.error, isNull);
+    });
+
+    test('un error de la página siguiente que llega tarde no se muestra',
+        () async {
+      final api = _servidor((l) {
+        final q = _parametros(l);
+        if (q['sabor'] == 'Fresa') return _pagina(l, [100]);
+        return q['offset'] == '20' ? _caido : _pagina(l, _ids(45));
+      })..demorar('/productos?limite=20&offset=20', _tarde);
+      final vm = _vm(api);
+      await vm.cargarProductos();
+
+      final vieja = vm.cargarMas();
+      vm.alternarSabor('Fresa');
+      await vieja;
+
+      expect(_idsDe(vm), ['100']);
+      expect(vm.errorMas, isNull);
+    });
+
+    test('al cambiar la consulta la lista se vacía mientras llega su página 1',
+        () async {
+      final api = _servidor(
+        (l) => _pagina(
+          l,
+          _parametros(l)['categoria'] == 'Pays' ? [100, 101] : _ids(45),
+        ),
+      )
+        ..demorar('/productos?categoria=Pays&limite=20&offset=0', _tarde)
+        ..demorar('/productos?categoria=Pays&ordenar=precio-asc', _tarde);
+      final vm = _vm(api);
+      await vm.cargarProductos();
+      expect(vm.productos, hasLength(20));
+
+      await vm.seleccionarCategoria('Pays');
+
+      expect(vm.productos, isEmpty, reason: 'su página 1 aún no llega');
+      expect(vm.cargando, isTrue);
+      await _esperarLoTardio();
+      expect(_idsDe(vm), ['100', '101']);
       expect(vm.cargando, isFalse);
+
+      // Igual con un orden que se pide completo.
+      vm.ordenarPor(SortOption.priceAsc);
+
+      expect(vm.productos, isEmpty);
+      expect(vm.cargando, isTrue);
+      await _esperarLoTardio();
+      expect(_idsDe(vm), ['100', '101']);
+    });
+
+    test('recargar la misma consulta deja la lista mientras llega', () async {
+      final api = _servidor((l) => _pagina(l, _ids(45)));
+      final vm = _vm(api);
+      await vm.cargarProductos();
+      api.demorar('/productos?limite=20&offset=0', _tarde);
+
+      final recarga = vm.recargar();
+
+      expect(vm.cargando, isTrue);
+      expect(vm.productos, hasLength(20));
+      await recarga;
+      expect(vm.cargando, isFalse);
+      expect(vm.productos, hasLength(20));
     });
 
     test('sin duplicados entre páginas', () async {

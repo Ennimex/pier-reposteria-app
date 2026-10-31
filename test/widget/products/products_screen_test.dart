@@ -11,6 +11,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
+import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
+import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
 import 'package:provider/provider.dart';
@@ -190,6 +192,25 @@ void main() {
       await tester.tap(find.text('Quitar filtros'));
       await tester.pumpAndSettle();
       expect(find.text('Chocoflan'), findsOneWidget);
+    });
+
+    testWidgets('mientras llega otra categoría se ven esqueletos y no lo de '
+        'antes', (tester) async {
+      final api = await _montar(tester);
+      api.demorar('/productos?categoria=Pays&limite=20&offset=0',
+          const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('Pays').first);
+      await tester.pump();
+
+      expect(find.byType(ProductSkeletonCard), findsWidgets);
+      expect(find.byType(ProductoCatalogoCard), findsNothing);
+      expect(find.text('Chocoflan'), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductSkeletonCard), findsNothing);
+      expect(find.text('Cheesecake'), findsOneWidget);
     });
 
     testWidgets('la hoja de filtros aplica y limpia el sabor', (tester) async {

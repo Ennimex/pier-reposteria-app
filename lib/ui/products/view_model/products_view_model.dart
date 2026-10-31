@@ -86,8 +86,9 @@ class ProductsViewModel extends ChangeNotifier {
   String? _filtroTipo;
   final Set<String> _favoritos = {};
 
-  // Páginas de la consulta que se ve. Los agotados esperan aparte hasta que
-  // ya no hay más páginas.
+  // Páginas de la consulta que se ve (la última pedida; con la lista vacía,
+  // la que está por llegar). Los agotados esperan aparte hasta que ya no hay
+  // más páginas.
   ConsultaCatalogo? _consultaPedida;
   final List<Product> _disponibles = [];
   final List<Product> _agotados = [];
@@ -130,8 +131,8 @@ class ProductsViewModel extends ChangeNotifier {
   /// ya no hay más, los agotados al final (como la web).
   List<Product> get productos => _productos;
 
-  /// Se espera la primera página de la consulta; mientras, se queda lo que
-  /// ya se veía.
+  /// Se espera la primera página. Si es de otra consulta, la lista está
+  /// vacía mientras tanto; al recargar la misma, se queda lo que se veía.
   bool get cargando => _cargando;
 
   /// Se espera la siguiente página.
@@ -193,14 +194,17 @@ class ProductsViewModel extends ChangeNotifier {
         cargarFiltros(),
       ]);
 
-  /// Primera página de la consulta actual. Lo que se ve se queda hasta que
-  /// llega y entonces se reemplaza; lo que llegue de una consulta anterior
-  /// se descarta. Los órdenes sin páginas del servidor se piden completos una
-  /// vez y se muestran de [porPagina] en [porPagina].
+  /// Primera página de la consulta actual. Si la consulta cambió, lo que se
+  /// veía se vacía al pedirla (mientras llega, esqueletos); si es la misma
+  /// (jalar para refrescar), se queda hasta que llega la nueva. Lo que llegue
+  /// de una consulta anterior se descarta. Los órdenes sin páginas del
+  /// servidor se piden completos una vez y se muestran de [porPagina] en
+  /// [porPagina].
   Future<void> cargarProductos() async {
     _esperaDeBusqueda?.cancel();
     final turno = ++_turno;
     final pedida = consulta;
+    if (pedida != _consultaPedida) _vaciar();
     _consultaPedida = pedida;
     _cargando = true;
     _cargandoMas = false;
