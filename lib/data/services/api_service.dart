@@ -34,6 +34,24 @@ class ApiService implements ApiClient {
   @override
   Stream<void> get sesionExpirada => _sesionExpirada.stream;
 
+  /// Cliente para todas las peticiones. En producción, main.dart pone el que
+  /// fija el certificado del API (#219, cliente_seguro.dart). Sin uno fijo
+  /// (pruebas, entorno aislado por http) cada petición usa un http.Client()
+  /// nuevo, como antes.
+  http.Client? cliente;
+
+  Future<T> _conCliente<T>(
+      Future<T> Function(http.Client cliente) peticion) async {
+    final fijo = cliente;
+    if (fijo != null) return peticion(fijo);
+    final nuevo = http.Client();
+    try {
+      return await peticion(nuevo);
+    } finally {
+      nuevo.close();
+    }
+  }
+
   /// Lo que ve el cliente cuando la petición no llega al backend (sin red,
   /// DNS, servidor caído). El detalle técnico queda solo en el log de debug.
   static const mensajeSinConexion =
@@ -73,10 +91,10 @@ class ApiService implements ApiClient {
   Future<Map<String, dynamic>> get(String endpoint) async {
     PierLog.api('GET $endpoint');
     try {
-      final response = await http.get(
-        Uri.parse(_url(endpoint)),
-        headers: _baseHeaders,
-      );
+      final response = await _conCliente((cliente) => cliente.get(
+            Uri.parse(_url(endpoint)),
+            headers: _baseHeaders,
+          ));
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error GET $endpoint: $e');
@@ -90,10 +108,10 @@ class ApiService implements ApiClient {
     PierLog.api('GET-Auth $endpoint');
     try {
       final headers = await _authHeaders;
-      final response = await http.get(
-        Uri.parse(_url(endpoint)),
-        headers: headers,
-      );
+      final response = await _conCliente((cliente) => cliente.get(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+          ));
       await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
@@ -108,11 +126,11 @@ class ApiService implements ApiClient {
       String endpoint, Map<String, dynamic> body) async {
     PierLog.api('POST $endpoint');
     try {
-      final response = await http.post(
-        Uri.parse(_url(endpoint)),
-        headers: _baseHeaders,
-        body: jsonEncode(body),
-      );
+      final response = await _conCliente((cliente) => cliente.post(
+            Uri.parse(_url(endpoint)),
+            headers: _baseHeaders,
+            body: jsonEncode(body),
+          ));
       return _handleResponse(response, endpoint);
     } catch (e) {
       PierLog.error('Error POST $endpoint: $e');
@@ -127,11 +145,11 @@ class ApiService implements ApiClient {
     PierLog.api('POST-Auth $endpoint');
     try {
       final headers = await _authHeaders;
-      final response = await http.post(
-        Uri.parse(_url(endpoint)),
-        headers: headers,
-        body: jsonEncode(body),
-      );
+      final response = await _conCliente((cliente) => cliente.post(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+            body: jsonEncode(body),
+          ));
       await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
@@ -147,11 +165,11 @@ class ApiService implements ApiClient {
     PierLog.api('PUT-Auth $endpoint');
     try {
       final headers = await _authHeaders;
-      final response = await http.put(
-        Uri.parse(_url(endpoint)),
-        headers: headers,
-        body: jsonEncode(body),
-      );
+      final response = await _conCliente((cliente) => cliente.put(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+            body: jsonEncode(body),
+          ));
       await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
@@ -166,10 +184,10 @@ class ApiService implements ApiClient {
     PierLog.api('DELETE-Auth $endpoint');
     try {
       final headers = await _authHeaders;
-      final response = await http.delete(
-        Uri.parse(_url(endpoint)),
-        headers: headers,
-      );
+      final response = await _conCliente((cliente) => cliente.delete(
+            Uri.parse(_url(endpoint)),
+            headers: headers,
+          ));
       await _revisarSesion(response, endpoint, headers);
       return _handleResponse(response, endpoint);
     } catch (e) {
@@ -246,8 +264,8 @@ class ApiService implements ApiClient {
         contentType: MediaType('image', ext == 'jpg' ? 'jpeg' : ext),
       ));
       
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      final response = await _conCliente((cliente) async =>
+          http.Response.fromStream(await cliente.send(request)));
       await _revisarSesion(response, endpoint, request.headers);
       return _handleResponse(response, endpoint);
     } catch (e) {

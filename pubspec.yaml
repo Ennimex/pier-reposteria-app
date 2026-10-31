@@ -17,6 +17,8 @@ dependencies:
 
   # HTTP y API
   http: ^1.2.1
+  # Huella SHA-256 de los certificados fijados del API (#219)
+  crypto: ^3.0.6
 
   # Almacenamiento local (JWT)
   shared_preferences: ^2.2.3
