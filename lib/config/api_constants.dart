@@ -233,6 +233,34 @@ class ApiConstants {
   static const String busquedas     = '/busquedas';      // {texto, num_resultados}
   static const String clicsAgotados = '/clics-agotados'; // {producto_id}
 
+  // ── REPORTES (gerencia y dirección; el rol sale del JWT) ──────────
+  // Actividad del equipo (#139): equipo, últimos movimientos, zonas con
+  // más entregas y cifras de los últimos 30 días
+  static const String actividadEquipo = '/reportes/actividad-equipo';
+  // Bitácora (#139) por páginas de [limite], de la más reciente a la más
+  // antigua, con filtros opcionales (desde y hasta AAAA-MM-DD: días de
+  // México, inclusivos); la página siguiente lleva antes_de_id =
+  // siguiente_antes_de_id de la anterior
+  static const String auditoria = '/reportes/auditoria';
+  static String auditoriaFiltrada({
+    required int limite,
+    String? entidad,
+    int? usuarioId,
+    String? desde,
+    String? hasta,
+    int? antesDeId,
+  }) {
+    final query = [
+      'limite=$limite',
+      if (entidad != null) 'entidad=${Uri.encodeQueryComponent(entidad)}',
+      if (usuarioId != null) 'usuario_id=$usuarioId',
+      if (desde != null) 'desde=$desde',
+      if (hasta != null) 'hasta=$hasta',
+      if (antesDeId != null) 'antes_de_id=$antesDeId',
+    ];
+    return '$auditoria?${query.join('&')}';
+  }
+
   // ── UPLOAD ────────────────────────────────────────────────────────
   static const String uploadImagen        = '/upload/imagen';
   static const String updateProfileData   = '/usuarios/perfil/actualizar'; // PUT
