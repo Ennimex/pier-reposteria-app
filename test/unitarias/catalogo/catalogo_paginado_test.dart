@@ -5,13 +5,22 @@
 // vacía la lista al cambiar de consulta (al recargar la misma, no), no
 // repite productos, deja los agotados para cuando ya no hay más, trae
 // completos los órdenes que el servidor no desempata (precio y calificación)
-// y espera a que se deje de teclear para buscar. Sin red.
+// y espera a que se deje de teclear para buscar. Con la copia de la primera
+// página guardada en el teléfono (#265), la consulta por omisión la muestra al
+// instante mientras pide la nueva, la reemplaza al llegar y, sin internet, la
+// conserva; al volver la conexión, la página 1 nueva toma su lugar antes de
+// seguir con la 2 y llegan las categorías y los filtros que fallaron. Sin red.
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/repositories/demanda_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
+import 'package:pier_reposteria/data/services/catalogo_guardado_service.dart';
+import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
 
@@ -56,6 +65,40 @@ const Map<String, dynamic> _caido = {
 FakeApiClient _servidor(RespuestaDinamica responder) =>
     FakeApiClient(respuestas: {ApiConstants.productos: responder});
 
+/// Productos (45), categorías y filtros; cada uno contesta [_caido] mientras
+/// [caido] (o [productosCaidos], solo para los productos) dé true.
+FakeApiClient _servidorCompleto(
+  bool Function() caido, {
+  bool Function()? productosCaidos,
+}) {
+  final productosFallan = productosCaidos ?? caido;
+  Map<String, dynamic> categorias(LlamadaApi _) => caido()
+      ? _caido
+      : {
+          'success': true,
+          'categorias': [
+            {'id': 1, 'nombre': 'Pasteles'},
+            {'id': 2, 'nombre': 'Pays'},
+          ],
+        };
+  Map<String, dynamic> filtros(LlamadaApi _) => caido()
+      ? _caido
+      : {
+          'success': true,
+          'filtros': {
+            'sabores': ['Chocolate', 'Fresa'],
+            'tamanos': ['Chico'],
+            'tipos': ['Frío'],
+          },
+        };
+  return FakeApiClient(respuestas: {
+    ApiConstants.productos: (LlamadaApi l) =>
+        productosFallan() ? _caido : _pagina(l, _ids(45)),
+    ApiConstants.categorias: categorias,
+    ApiConstants.filtros: filtros,
+  });
+}
+
 /// Lo que tarda una respuesta que llega tarde; las demás llegan al instante
 /// (en microtareas).
 const _tarde = Duration(milliseconds: 10);
@@ -66,11 +109,13 @@ Future<void> _esperarLoTardio() => Future<void>.delayed(_tarde * 3);
 ProductsViewModel _vm(
   FakeApiClient api, {
   Duration esperaBusqueda = Duration.zero,
+  CatalogoGuardadoService? guardado,
 }) {
   final vm = ProductsViewModel(
     productosRepo: ProductosRepositoryRemote(api: api),
     favoritosRepo: FavoritosRepositoryRemote(api: api),
     demandaRepo: DemandaRepositoryRemote(api: api),
+    catalogoGuardado: guardado,
     esperaBusqueda: esperaBusqueda,
   );
   addTearDown(vm.dispose);
@@ -89,6 +134,48 @@ List<String> _idsDe(ProductsViewModel vm) => [
 
 /// Deja llegar las respuestas (el servidor falso contesta en microtareas).
 Future<void> _esperar() => Future<void>.delayed(Duration.zero);
+
+/// Un producto de la copia guardada: «Copia N», con id cN para no confundirlo
+/// con los que manda el servidor (1, 2, 3…).
+Product _copia(int numero, {bool agotado = false}) => Product(
+      id: 'c$numero',
+      nombre: 'Copia $numero',
+      descripcion: '',
+      precio: 90,
+      categoria: 'Pasteles',
+      imagenUrl: '',
+      stockOnline: agotado ? 0 : null,
+    );
+
+/// Deja en el teléfono una copia de [cuantos] productos: c1 a c[cuantos].
+Future<void> _guardarCopia(int cuantos) => CatalogoGuardadoService().guardar([
+      for (var i = 1; i <= cuantos; i++) _copia(i),
+    ]);
+
+/// Los ids de la copia que deja [_guardarCopia].
+List<String> _idsCopia(int cuantos) =>
+    [for (var i = 1; i <= cuantos; i++) 'c$i'];
+
+/// Los ids que manda el servidor falso en su primera página (1 a [cuantos]).
+List<String> _idsServidor(int cuantos) =>
+    [for (var i = 1; i <= cuantos; i++) '$i'];
+
+/// Lo que hay guardado en el teléfono ahora.
+Future<List<String>> _guardada() async => [
+      for (final p in await CatalogoGuardadoService().leer() ?? <Product>[])
+        p.id,
+    ];
+
+/// Un teléfono ocupado: la copia que había al pedirla llega más tarde que una
+/// respuesta del servidor falso (aunque entre tanto se guarde otra).
+class _ServicioLento extends CatalogoGuardadoService {
+  @override
+  Future<List<Product>?> leer() async {
+    final copia = await super.leer();
+    await Future<void>.delayed(_tarde);
+    return copia;
+  }
+}
 
 void main() {
   group('Catálogo por páginas', () {
@@ -391,6 +478,398 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 400));
       expect(_pedidas(api), ['/productos?busqueda=pay&limite=20&offset=0']);
       expect(vm.productos, hasLength(3));
+    });
+  });
+
+  group('Catálogo guardado en el teléfono (#265)', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('con copia la muestra al instante y la reemplaza al llegar', () async {
+      await _guardarCopia(20);
+      final api = _servidor((l) => _pagina(l, _ids(45)))
+        ..demorar('/productos?limite=20&offset=0', _tarde);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+
+      final carga = vm.cargarProductos();
+      await _esperar();
+
+      // La copia ya se ve (sin esqueletos) mientras llega la página nueva,
+      // que se pidió al mismo tiempo.
+      expect(_idsDe(vm), _idsCopia(20));
+      expect(vm.cargando, isTrue);
+      expect(vm.sinConexion, isFalse);
+      expect(vm.error, isNull);
+      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+
+      await carga;
+
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.cargando, isFalse);
+      expect(vm.sinConexion, isFalse);
+      expect(vm.error, isNull);
+    });
+
+    test('pide la página 1 sin esperar a que se lea la copia', () async {
+      await _guardarCopia(20);
+      final api = _servidor((l) => _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: _ServicioLento());
+
+      final carga = vm.cargarProductos();
+
+      // La petición ya salió, antes de que la copia termine de leerse.
+      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+      await carga;
+      expect(_idsDe(vm), _idsServidor(20));
+    });
+
+    test('una copia que se lee después de la página nueva no la pisa',
+        () async {
+      await _guardarCopia(20);
+      final api = _servidor((l) => _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: _ServicioLento());
+
+      await vm.cargarProductos();
+      expect(_idsDe(vm), _idsServidor(20));
+
+      // Termina de leerse la copia, ya sin lugar en pantalla.
+      await _esperarLoTardio();
+      expect(_idsDe(vm), _idsServidor(20));
+    });
+
+    test('si se filtra mientras se lee la copia, la copia no se muestra',
+        () async {
+      await _guardarCopia(20);
+      final api = _servidor(
+        (l) => _pagina(
+          l,
+          _parametros(l)['sabor'] == 'Fresa' ? [100] : _ids(45),
+        ),
+      )..demorar('/productos?sabor=Fresa&limite=20&offset=0', _tarde * 3);
+      final vm = _vm(api, guardado: _ServicioLento());
+      final vistos = <String>{};
+      vm.addListener(() => vistos.addAll(_idsDe(vm)));
+
+      // La copia de la consulta por omisión llega cuando ya se pidió otra
+      // y su página aún no llega.
+      unawaited(vm.cargarProductos());
+      vm.alternarSabor('Fresa');
+      await Future<void>.delayed(_tarde * 5);
+
+      expect(_idsDe(vm), ['100']);
+      expect(vistos, isNot(contains('c1')));
+    });
+
+    test('la página 1 por omisión se guarda', () async {
+      final api = _servidor((l) => _pagina(l, _ids(45), agotados: {3}));
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+
+      await vm.cargarProductos();
+
+      // Al terminar la carga ya está guardada, tal como llegó: también con el
+      // agotado que la lista deja para el final.
+      expect(await _guardada(), _idsServidor(20));
+      expect(_idsDe(vm), isNot(contains('3')));
+
+      // Las páginas siguientes no se guardan.
+      await vm.cargarMas();
+      await _esperar();
+      expect(await _guardada(), _idsServidor(20));
+    });
+
+    test('con filtros no usa la copia ni la guarda', () async {
+      final cambios = <String, void Function(ProductsViewModel)>{
+        'sabor': (vm) => vm.alternarSabor('Fresa'),
+        'tamaño': (vm) => vm.alternarTamano('Grande'),
+        'tipo': (vm) => vm.alternarTipo('Frío'),
+        'orden del servidor': (vm) => vm.ordenarPor(SortOption.nameAsc),
+        'orden completo': (vm) => vm.ordenarPor(SortOption.priceAsc),
+        'búsqueda': (vm) => vm.buscar('pay'),
+        'categoría': (vm) => unawaited(vm.seleccionarCategoria('Pays')),
+      };
+      for (final MapEntry(key: nombre, value: cambiar) in cambios.entries) {
+        await _guardarCopia(20);
+        final vm = _vm(
+          _servidor((l) => _pagina(l, [100, 101])),
+          guardado: CatalogoGuardadoService(),
+        );
+        // Los ids que se vieron en algún momento.
+        final vistos = <String>{};
+        vm.addListener(() => vistos.addAll(_idsDe(vm)));
+
+        cambiar(vm);
+        await _esperar();
+
+        expect(_idsDe(vm), ['100', '101'], reason: nombre);
+        expect(vistos, isNot(contains('c1')), reason: nombre);
+        // La copia sigue como estaba.
+        expect(await _guardada(), _idsCopia(20), reason: nombre);
+      }
+    });
+
+    test('al quitar los filtros vuelve a verse la copia mientras llega',
+        () async {
+      await _guardarCopia(20);
+      final api = _servidor(
+        (l) => _pagina(
+          l,
+          _parametros(l)['sabor'] == 'Fresa' ? [100] : _ids(45),
+        ),
+      );
+      final vm = _vm(api, guardado: CatalogoGuardadoService())
+        ..alternarSabor('Fresa');
+      await _esperar();
+      expect(_idsDe(vm), ['100']);
+      api.demorar('/productos?limite=20&offset=0', _tarde);
+
+      vm.alternarSabor('Fresa');
+      await _esperar();
+
+      expect(_idsDe(vm), _idsCopia(20));
+      await _esperarLoTardio();
+      expect(_idsDe(vm), _idsServidor(20));
+    });
+
+    test('sin internet se queda la copia y sinConexion es true', () async {
+      await _guardarCopia(20);
+      final vm = _vm(
+        _servidor((_) => _caido),
+        guardado: CatalogoGuardadoService(),
+      );
+
+      await vm.cargarProductos();
+
+      expect(_idsDe(vm), _idsCopia(20));
+      expect(vm.sinConexion, isTrue);
+      expect(vm.error, isNull);
+      expect(vm.cargando, isFalse);
+    });
+
+    test('la copia se ve antes de saber que no hay internet', () async {
+      await _guardarCopia(20);
+      final api = _servidor((_) => _caido)
+        ..demorar('/productos?limite=20&offset=0', _tarde);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+
+      final carga = vm.cargarProductos();
+      await _esperar();
+
+      expect(_idsDe(vm), _idsCopia(20));
+      expect(vm.sinConexion, isFalse, reason: 'todavía no responde');
+
+      await carga;
+      expect(_idsDe(vm), _idsCopia(20));
+      expect(vm.sinConexion, isTrue);
+    });
+
+    test('si el error llega antes de leer la copia, igual se queda la copia',
+        () async {
+      await _guardarCopia(20);
+      final vm = _vm(_servidor((_) => _caido), guardado: _ServicioLento());
+
+      await vm.cargarProductos();
+
+      expect(_idsDe(vm), _idsCopia(20));
+      expect(vm.sinConexion, isTrue);
+      expect(vm.error, isNull);
+    });
+
+    test('sin internet, bajar al final da errorMas', () async {
+      await _guardarCopia(20);
+      final api = _servidor((_) => _caido);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+
+      await vm.cargarMas();
+
+      // La copia son 20: puede haber más. No se le pega la página 2 (la copia
+      // puede ser de hace días): se vuelve a pedir la página 1, y falla.
+      expect(vm.errorMas, 'Sin conexión');
+      expect(vm.cargandoMas, isFalse);
+      expect(_idsDe(vm), _idsCopia(20));
+      expect(vm.sinConexion, isTrue);
+      expect(_pedidas(api), [
+        '/productos?limite=20&offset=0',
+        '/productos?limite=20&offset=0',
+      ]);
+    });
+
+    test('al volver la conexión, Reintentar trae la página 1 y quita el aviso',
+        () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+      await vm.cargarMas();
+      expect(vm.errorMas, 'Sin conexión');
+      expect(vm.sinConexion, isTrue);
+      final cuantosSeVen = <int>[];
+      vm.addListener(() => cuantosSeVen.add(vm.productos.length));
+
+      // «Reintentar» del pie, ya con internet.
+      caido = false;
+      await vm.cargarMas();
+
+      // La página 1 nueva toma el lugar de la copia (sin pasar por la lista
+      // vacía), se guarda y el aviso se va.
+      expect(_pedidas(api).last, '/productos?limite=20&offset=0');
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(cuantosSeVen, everyElement(20));
+      expect(vm.sinConexion, isFalse);
+      expect(vm.errorMas, isNull);
+      expect(vm.cargandoMas, isFalse);
+      expect(vm.cargando, isFalse);
+      expect(await _guardada(), _idsServidor(20));
+
+      // Después sí sigue la página 2.
+      await vm.cargarMas();
+      expect(_pedidas(api).last, '/productos?limite=20&offset=20');
+      expect(_idsDe(vm), _idsServidor(40));
+    });
+
+    test('al volver la conexión, Reintentar también trae las categorías y los '
+        'filtros que fallaron', () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidorCompleto(() => caido);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      // Se abre la app sin internet: la copia, chips de respaldo, sin filtros.
+      await vm.cargar(autenticado: false);
+      await vm.cargarMas();
+      expect(vm.nombresCategorias, ProductsViewModel.categoriasDeRespaldo);
+      expect(vm.filtrosCargados, isFalse);
+
+      // «Reintentar» del pie, ya con internet.
+      caido = false;
+      await vm.cargarMas();
+
+      expect(vm.sinConexion, isFalse);
+      expect(vm.nombresCategorias, ['Todos', 'Pasteles', 'Pays']);
+      expect(vm.filtrosCargados, isTrue);
+      expect(vm.sabores, ['Chocolate', 'Fresa']);
+    });
+
+    test('si las categorías y los filtros ya llegaron, Reintentar no los '
+        'vuelve a pedir', () async {
+      await _guardarCopia(20);
+      var caido = true;
+      // Solo fallan los productos.
+      final api = _servidorCompleto(() => false, productosCaidos: () => caido);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargar(autenticado: false);
+      await vm.cargarMas();
+      expect(vm.sinConexion, isTrue);
+
+      caido = false;
+      await vm.cargarMas();
+
+      expect(vm.sinConexion, isFalse);
+      expect(api.llamadas.where((l) => l.endpoint == ApiConstants.categorias),
+          hasLength(1));
+      expect(api.llamadas.where((l) => l.endpoint == ApiConstants.filtros),
+          hasLength(1));
+    });
+
+    test('una página 1 que Reintentar pidió y llega tarde no pisa la consulta '
+        'nueva', () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidor((l) {
+        if (_parametros(l)['sabor'] == 'Fresa') return _pagina(l, [100]);
+        return caido ? _caido : _pagina(l, _ids(45));
+      });
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+      expect(vm.sinConexion, isTrue);
+      caido = false;
+      api.demorar('/productos?limite=20&offset=0', _tarde);
+
+      // La página 1 del catálogo por omisión llega después de la de Fresa.
+      final vieja = vm.cargarMas();
+      vm.alternarSabor('Fresa');
+      await vieja;
+      await _esperarLoTardio();
+
+      expect(_idsDe(vm), ['100']);
+      expect(vm.cargandoMas, isFalse);
+      expect(await _guardada(), _idsCopia(20));
+    });
+
+    test('con varias páginas en pantalla, al volver la conexión sigue con la '
+        'siguiente y quita el aviso', () async {
+      var caido = false;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(65)));
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+      await vm.cargarMas();
+      // Jalar para refrescar sin internet: las 40 se quedan, con el aviso.
+      caido = true;
+      await vm.cargarProductos();
+      expect(vm.productos, hasLength(40));
+      expect(vm.sinConexion, isTrue);
+
+      // Vuelve la conexión y se baja al final.
+      caido = false;
+      await vm.cargarMas();
+
+      // Cambiar las 40 por la página 1 movería a la persona de donde iba.
+      expect(_pedidas(api).last, '/productos?limite=20&offset=40');
+      expect(_idsDe(vm), _idsServidor(60));
+      expect(vm.sinConexion, isFalse);
+    });
+
+    test('recargar sin internet deja la lista con el aviso', () async {
+      var caido = false;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargarProductos();
+      caido = true;
+
+      await vm.cargarProductos();
+
+      // Antes se vaciaba y salía el error; ahora se queda lo que se veía.
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.sinConexion, isTrue);
+      expect(vm.error, isNull);
+
+      // Al volver el internet la página nueva quita el aviso.
+      caido = false;
+      await vm.cargarProductos();
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.sinConexion, isFalse);
+    });
+
+    test('sin copia y sin internet sale el error de siempre', () async {
+      final vm = _vm(
+        _servidor((_) => _caido),
+        guardado: CatalogoGuardadoService(),
+      );
+
+      await vm.cargarProductos();
+
+      expect(vm.error, 'Sin conexión');
+      expect(vm.productos, isEmpty);
+      expect(vm.sinConexion, isFalse);
+    });
+
+    test('la copia sigue las reglas de la página 1: agotados al final y sin '
+        'repetidos', () async {
+      await CatalogoGuardadoService().guardar([
+        _copia(1),
+        _copia(2, agotado: true),
+        _copia(3),
+        _copia(3),
+        _copia(4),
+      ]);
+      final vm = _vm(
+        _servidor((_) => _caido),
+        guardado: CatalogoGuardadoService(),
+      );
+
+      await vm.cargarProductos();
+
+      expect(_idsDe(vm), ['c1', 'c3', 'c4', 'c2']);
+      expect(vm.fin, isTrue, reason: 'menos de 20: no hay más páginas');
     });
   });
 }

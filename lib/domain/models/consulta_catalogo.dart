@@ -25,10 +25,11 @@ class ConsultaCatalogo {
   /// Categoría que muestra todo el catálogo (no se manda al servidor).
   static const String todas = 'Todos';
 
-  /// Órdenes cuyas páginas del servidor no repiten ni saltan productos porque
-  /// su ORDER BY termina en el nombre. Precio y calificación empatan seguido y
-  /// el servidor no desempata, así que se piden completos. Es el único lugar
-  /// a cambiar el día que el servidor desempate también esos órdenes.
+  /// Órdenes cuyas páginas del servidor casi nunca repiten ni saltan productos
+  /// porque su ORDER BY termina en el nombre (que rara vez se repite; la app
+  /// quita los repetidos). Precio y calificación empatan seguido y el
+  /// servidor no desempata, así que se piden completos. Es el único lugar a
+  /// cambiar el día que el servidor desempate también esos órdenes.
   static const Set<SortOption> ordenesConPaginasDelServidor = {
     SortOption.popular,
     SortOption.nameAsc,
