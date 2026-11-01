@@ -9,7 +9,7 @@
 // página guardada en el teléfono (#265), la consulta por omisión la muestra al
 // instante mientras pide la nueva, la reemplaza al llegar y, sin internet, la
 // conserva; al volver la conexión, la página 1 nueva toma su lugar antes de
-// seguir con la 2. Sin red.
+// seguir con la 2 y llegan las categorías y los filtros que fallaron. Sin red.
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -64,6 +64,40 @@ const Map<String, dynamic> _caido = {
 
 FakeApiClient _servidor(RespuestaDinamica responder) =>
     FakeApiClient(respuestas: {ApiConstants.productos: responder});
+
+/// Productos (45), categorías y filtros; cada uno contesta [_caido] mientras
+/// [caido] (o [productosCaidos], solo para los productos) dé true.
+FakeApiClient _servidorCompleto(
+  bool Function() caido, {
+  bool Function()? productosCaidos,
+}) {
+  final productosFallan = productosCaidos ?? caido;
+  Map<String, dynamic> categorias(LlamadaApi _) => caido()
+      ? _caido
+      : {
+          'success': true,
+          'categorias': [
+            {'id': 1, 'nombre': 'Pasteles'},
+            {'id': 2, 'nombre': 'Pays'},
+          ],
+        };
+  Map<String, dynamic> filtros(LlamadaApi _) => caido()
+      ? _caido
+      : {
+          'success': true,
+          'filtros': {
+            'sabores': ['Chocolate', 'Fresa'],
+            'tamanos': ['Chico'],
+            'tipos': ['Frío'],
+          },
+        };
+  return FakeApiClient(respuestas: {
+    ApiConstants.productos: (LlamadaApi l) =>
+        productosFallan() ? _caido : _pagina(l, _ids(45)),
+    ApiConstants.categorias: categorias,
+    ApiConstants.filtros: filtros,
+  });
+}
 
 /// Lo que tarda una respuesta que llega tarde; las demás llegan al instante
 /// (en microtareas).
@@ -691,6 +725,49 @@ void main() {
       await vm.cargarMas();
       expect(_pedidas(api).last, '/productos?limite=20&offset=20');
       expect(_idsDe(vm), _idsServidor(40));
+    });
+
+    test('al volver la conexión, Reintentar también trae las categorías y los '
+        'filtros que fallaron', () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidorCompleto(() => caido);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      // Se abre la app sin internet: la copia, chips de respaldo, sin filtros.
+      await vm.cargar(autenticado: false);
+      await vm.cargarMas();
+      expect(vm.nombresCategorias, ProductsViewModel.categoriasDeRespaldo);
+      expect(vm.filtrosCargados, isFalse);
+
+      // «Reintentar» del pie, ya con internet.
+      caido = false;
+      await vm.cargarMas();
+
+      expect(vm.sinConexion, isFalse);
+      expect(vm.nombresCategorias, ['Todos', 'Pasteles', 'Pays']);
+      expect(vm.filtrosCargados, isTrue);
+      expect(vm.sabores, ['Chocolate', 'Fresa']);
+    });
+
+    test('si las categorías y los filtros ya llegaron, Reintentar no los '
+        'vuelve a pedir', () async {
+      await _guardarCopia(20);
+      var caido = true;
+      // Solo fallan los productos.
+      final api = _servidorCompleto(() => false, productosCaidos: () => caido);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      await vm.cargar(autenticado: false);
+      await vm.cargarMas();
+      expect(vm.sinConexion, isTrue);
+
+      caido = false;
+      await vm.cargarMas();
+
+      expect(vm.sinConexion, isFalse);
+      expect(api.llamadas.where((l) => l.endpoint == ApiConstants.categorias),
+          hasLength(1));
+      expect(api.llamadas.where((l) => l.endpoint == ApiConstants.filtros),
+          hasLength(1));
     });
 
     test('una página 1 que Reintentar pidió y llega tarde no pisa la consulta '

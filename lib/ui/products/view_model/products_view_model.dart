@@ -328,6 +328,7 @@ class ProductsViewModel extends ChangeNotifier {
     _errorMas = null;
     _avisar();
     Future<void>? guardando;
+    var volvio = false;
     try {
       final pagina = await _productosRepo.buscarProductos(
         pedida,
@@ -335,6 +336,7 @@ class ProductsViewModel extends ChangeNotifier {
         offset: otraVezLaPrimera ? 0 : _offset,
       );
       if (turno != _turno) return;
+      volvio = _sinConexion;
       if (otraVezLaPrimera) {
         guardando = _ponerPrimera(pedida, pagina);
       } else {
@@ -351,7 +353,16 @@ class ProductsViewModel extends ChangeNotifier {
     _avisar();
     // Como en cargarProductos: al volver, la copia ya está guardada.
     if (guardando != null) await guardando;
+    if (volvio) await _pedirLoQueFalloSinConexion();
   }
+
+  /// Al abrir sin internet fallan también las categorías (quedan las de
+  /// respaldo) y los filtros. «Reintentar» del pie solo pide productos: cuando
+  /// el servidor vuelve a contestar, se piden otra vez los que no llegaron.
+  Future<void> _pedirLoQueFalloSinConexion() => Future.wait([
+        if (_categorias.isEmpty) cargarCategorias(),
+        if (!_filtrosCargados) cargarFiltros(),
+      ]);
 
   Future<void> cargarCategorias() async {
     try {
