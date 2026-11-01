@@ -12,6 +12,7 @@ import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
+import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
@@ -378,6 +379,32 @@ void main() {
           l.endpoint == ApiConstants.carrito && l.metodo == 'POST-Auth');
       expect(alta.body, {'producto_id': 1, 'cantidad': 1, 'tamano': 'chico'});
     }, tags: 'regresion');
+
+    // #275: sin red, GET /favoritos/ids falla y el detalle de un favorito
+    // salía con el corazón vacío.
+    testWidgets('sin red, el detalle de un favorito conserva el corazón lleno',
+        (tester) async {
+      final api = _backend()
+        ..responder(ApiConstants.favoritosIds, {
+          'success': true,
+          'ids': [4],
+        });
+      await _montar(tester, api: api);
+      await tester.iniciarSesion(find.byType(ProductsScreen));
+      await tester.pumpAndSettle();
+      api.fallar(ApiConstants.favoritosIds, _sinRed);
+
+      await tester.tap(find.text('Rosca'));
+      await tester.pumpAndSettle();
+
+      final delDetalle = find.descendant(
+        of: find.byType(ProductDetailScreen),
+        matching: find.byIcon(Icons.favorite_rounded),
+      );
+      expect(delDetalle, findsOneWidget);
+      expect(api.llamadas.where((l) => l.endpoint == ApiConstants.favoritosIds),
+          hasLength(2));
+    });
 
     testWidgets('sin sesión, el corazón manda a iniciar sesión', (tester) async {
       await _montar(tester);

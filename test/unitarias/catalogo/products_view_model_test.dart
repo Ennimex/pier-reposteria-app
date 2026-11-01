@@ -355,6 +355,22 @@ void main() {
           isTrue);
     });
 
+    // #275: sin red, los corazones conservan lo último que se supo.
+    test('si la carga de favoritos falla se quedan los corazones que había',
+        () async {
+      final api = _backend();
+      final vm = _vm(api);
+      await vm.cargarFavoritos(autenticado: true);
+      expect(vm.esFavorito('2'), isTrue);
+
+      api.fallar(ApiConstants.favoritosIds, 'Sin conexión');
+      await vm.cargarFavoritos(autenticado: true);
+
+      expect(vm.esFavorito('2'), isTrue);
+      expect(vm.esFavorito('4'), isTrue);
+      expect(vm.esFavorito('1'), isFalse);
+    });
+
     test('si el backend falla se revierte y devuelve su mensaje', () async {
       final api = FakeApiClient()
         ..fallar(ApiConstants.favoritoById('9'), 'Sin sesión');

@@ -432,7 +432,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       child: GestureDetector(
         onTap: () => unawaited(Navigator.push(
           context,
-          MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: p)),
+          MaterialPageRoute<void>(
+            builder: (_) => ProductDetailScreen(product: p, esFavorito: true),
+          ),
         ).then((_) => _vm.cargarFavoritos())),
         child: Container(
           decoration: BoxDecoration(

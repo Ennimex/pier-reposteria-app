@@ -895,4 +895,113 @@ void main() {
       expect(vm.fin, isTrue, reason: 'menos de 20: no hay más páginas');
     });
   });
+
+  // Antes, con búsqueda, filtros, categoría u orden, jalar para refrescar sin
+  // internet vaciaba la lista y salía «No pudimos cargar el catálogo»; solo
+  // la consulta por omisión se quedaba con lo que se veía.
+  group('Jalar para refrescar sin internet (#275)', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    /// Lo que cambia la consulta que se ve, como lo hace la persona.
+    final consultas = <String, void Function(ProductsViewModel)>{
+      'sabor': (vm) => vm.alternarSabor('Fresa'),
+      'búsqueda': (vm) => vm.buscar('pay'),
+      'categoría': (vm) => unawaited(vm.seleccionarCategoria('Pays')),
+      'orden del servidor': (vm) => vm.ordenarPor(SortOption.nameAsc),
+    };
+
+    test('con búsqueda, filtros o categoría, un refresco que falla deja la '
+        'lista y pone el aviso', () async {
+      for (final MapEntry(key: nombre, value: cambiar) in consultas.entries) {
+        var caido = false;
+        final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+        final vm = _vm(api, guardado: CatalogoGuardadoService());
+        cambiar(vm);
+        await _esperar();
+        expect(_idsDe(vm), _idsServidor(20), reason: nombre);
+
+        caido = true;
+        await vm.recargar();
+
+        expect(_idsDe(vm), _idsServidor(20), reason: nombre);
+        expect(vm.sinConexion, isTrue, reason: nombre);
+        expect(vm.error, isNull, reason: nombre);
+        expect(vm.cargando, isFalse, reason: nombre);
+
+        // Al volver el internet, la página nueva quita el aviso.
+        caido = false;
+        await vm.recargar();
+
+        expect(_idsDe(vm), _idsServidor(20), reason: nombre);
+        expect(vm.sinConexion, isFalse, reason: nombre);
+      }
+    });
+
+    test('en un orden que se pide completo, lo que se veía se queda y lo que '
+        'falta se sigue mostrando sin red', () async {
+      for (final orden in [
+        SortOption.priceAsc,
+        SortOption.priceDesc,
+        SortOption.rating,
+      ]) {
+        var caido = false;
+        final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+        final vm = _vm(api, guardado: CatalogoGuardadoService())
+          ..ordenarPor(orden);
+        await _esperar();
+        await vm.cargarMas();
+        expect(vm.productos, hasLength(40), reason: '$orden');
+
+        caido = true;
+        await vm.recargar();
+
+        expect(vm.productos, hasLength(40), reason: '$orden');
+        expect(vm.sinConexion, isTrue, reason: '$orden');
+        expect(vm.error, isNull, reason: '$orden');
+
+        // El resto ya está en el teléfono.
+        await vm.cargarMas();
+
+        expect(vm.productos, hasLength(45), reason: '$orden');
+        expect(vm.fin, isTrue, reason: '$orden');
+        expect(vm.errorMas, isNull, reason: '$orden');
+        expect(_pedidas(api), hasLength(2), reason: '$orden');
+      }
+    });
+
+    test('con filtros, al volver la conexión bajar al final pone la página 1 '
+        'nueva y no la guarda como copia', () async {
+      await _guardarCopia(20);
+      var caido = false;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: CatalogoGuardadoService())
+        ..alternarSabor('Fresa');
+      await _esperar();
+      caido = true;
+      await vm.recargar();
+      expect(vm.sinConexion, isTrue);
+
+      caido = false;
+      await vm.cargarMas();
+
+      expect(_pedidas(api).last, '/productos?sabor=Fresa&limite=20&offset=0');
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.sinConexion, isFalse);
+      await _esperar();
+      expect(await _guardada(), _idsCopia(20));
+    });
+
+    test('con filtros y nada en pantalla sale el error de siempre', () async {
+      final vm = _vm(
+        _servidor((_) => _caido),
+        guardado: CatalogoGuardadoService(),
+      )..alternarSabor('Fresa');
+
+      await _esperar();
+
+      expect(vm.error, 'Sin conexión');
+      expect(vm.productos, isEmpty);
+      expect(vm.sinConexion, isFalse);
+    });
+  });
 }

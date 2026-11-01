@@ -156,10 +156,11 @@ class ProductsViewModel extends ChangeNotifier {
   /// menos, vacía o, si el servidor no respetara el límite, con más).
   bool get fin => _fin;
 
-  /// La página 1 de la consulta por omisión no pudo llegar y lo que se ve es
-  /// la copia guardada en el teléfono (o la última página que llegó): la vista
-  /// avisa que puede no ser lo más reciente. Se quita en cuanto el servidor
-  /// vuelve a contestar.
+  /// La página 1 no pudo llegar y lo que se ve es la copia guardada en el
+  /// teléfono (consulta por omisión) o lo que ya se veía antes de jalar para
+  /// refrescar (cualquier consulta, #275): la vista avisa que puede no ser lo
+  /// más reciente y ofrece reintentar. Se quita en cuanto el servidor vuelve
+  /// a contestar.
   bool get sinConexion => _sinConexion;
 
   /// 'Todos' y las categorías del backend, o las de respaldo si no hay.
@@ -220,9 +221,9 @@ class ProductsViewModel extends ChangeNotifier {
   /// teléfono (#265): se pone en pantalla en cuanto se lee, sin esperar al
   /// servidor (que al despertar tarda hasta ~20 s), y la página nueva la
   /// reemplaza al llegar. Cada página 1 que llega se guarda. Si la nueva no
-  /// llega, se queda lo que se veía (la copia, o la página anterior al jalar
-  /// para refrescar) y [sinConexion] avisa; sin nada que mostrar sale el
-  /// [error] de siempre.
+  /// llega, se queda lo que se veía (la copia o, al jalar para refrescar
+  /// cualquier consulta, lo que ya había llegado, #275) y [sinConexion]
+  /// avisa; sin nada que mostrar sale el [error] de siempre.
   Future<void> cargarProductos() async {
     _esperaDeBusqueda?.cancel();
     final turno = ++_turno;
@@ -253,7 +254,10 @@ class ProductsViewModel extends ChangeNotifier {
       if (lecturaCopia != null) await lecturaCopia;
       if (turno != _turno) return;
       PierLog.error('Error al cargar el catálogo: ${e.message}');
-      if (catalogoGuardado != null && _iniciado) {
+      // Ya se ve algo de esta consulta (la copia guardada o, al jalar para
+      // refrescar, lo que llegó antes, con cualquier búsqueda, filtro u
+      // orden): se queda, con el aviso (#275).
+      if (_iniciado) {
         _sinConexion = true;
       } else {
         _vaciar();

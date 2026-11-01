@@ -9,7 +9,8 @@
 // al empezar otra consulta, el rebote del botón de carrito, el vuelo de la
 // miniatura al carrito, la entrada en cascada de las tarjetas, mandar a
 // iniciar sesión y los avisos (SnackBar). Cuando la primera página no llega y
-// se ve la copia guardada en el teléfono, un aviso lo dice (#265).
+// se ve la copia guardada en el teléfono (#265) o lo que ya se veía al jalar
+// para refrescar (#275), un aviso lo dice y ofrece «Reintentar».
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -60,6 +61,9 @@ class _ProductsScreenState extends State<ProductsScreen>
       );
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _control = ScrollController();
+  // «Reintentar» del aviso sin conexión hace lo mismo que jalar para
+  // refrescar, con su mismo indicador.
+  final GlobalKey<RefreshIndicatorState> _refresco = GlobalKey();
   bool _isGridView = true;
 
   /// Margen (px) antes del final en el que se pide la siguiente página.
@@ -201,7 +205,10 @@ class _ProductsScreenState extends State<ProductsScreen>
     PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
     await Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: p)),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            ProductDetailScreen(product: p, esFavorito: _vm.esFavorito(p.id)),
+      ),
     );
     if (mounted) await _vm.cargarFavoritos(autenticado: _autenticado);
   }
@@ -356,6 +363,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               ),
               Expanded(
                 child: RefreshIndicator(
+                  key: _refresco,
                   onRefresh: _recargar,
                   color: AppColors.pierVerde,
                   child: NotificationListener<ScrollNotification>(
@@ -549,12 +557,15 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   /// La página 1 no llegó y lo que se ve es el catálogo guardado en el
-  /// teléfono (#265): se dice, para que no se tome por lo más reciente.
+  /// teléfono (#265) o lo que ya se veía al jalar para refrescar (#275): se
+  /// dice, para que no se tome por lo más reciente, y se ofrece reintentar
+  /// (como jalar para refrescar, con su indicador).
   Widget _avisoSinConexion() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // El botón ya trae su espacio de toque (48) arriba y abajo.
+        padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
         decoration: BoxDecoration(
           color: AppColors.pierDorado.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(12),
@@ -572,6 +583,15 @@ class _ProductsScreenState extends State<ProductsScreen>
                   color: AppColors.textPrimary,
                 ),
               ),
+            ),
+            TextButton(
+              onPressed: () => unawaited(
+                _refresco.currentState?.show() ?? _recargar(),
+              ),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('Reintentar'),
             ),
           ],
         ),
