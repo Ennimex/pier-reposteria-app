@@ -219,7 +219,9 @@ análisis estático ─┘                └─ regresión ───┘     └
 | Volumen de datos | Carrito de 100 artículos con `FakeApiClient` (#70; el catálogo de 1,000 productos llega con el catálogo por páginas) | `test/esfuerzo/` (etiqueta `esfuerzo`) | Etapa de esfuerzo del pipeline (`esfuerzo.yml`, trabajo «Volumen de datos») |
 
 Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarCloud,
-`reactivecircus/android-emulator-runner` y GitHub Actions. Las pruebas unitarias
+`reactivecircus/android-emulator-runner` y GitHub Actions. Los trabajos que
+compilan el APK liberan disco antes (`.github/actions/liberar-disco`: quita .NET,
+Haskell, CodeQL y Boost de la imagen, nunca el SDK de Android). Las pruebas unitarias
 viven en `test/unitarias/`, con una carpeta por épica (`auth`, `catalogo`,
 `carrito_checkout`, `pedidos`, `resenas`, `reembolsos_quejas`, `repartidor`,
 `alexa`, `comun` para lo transversal y `ci` para el script de resultados de
