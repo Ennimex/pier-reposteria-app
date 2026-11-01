@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/publicaciones_repository.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/utils/logger.dart';
 
 /// Una promoción después de cada tantas publicaciones.
 const publicacionesPorPromocion = 5;
@@ -176,8 +177,9 @@ class FeedViewModel extends ChangeNotifier {
   List<Publicacion> get recientes =>
       _estado.publicaciones.take(publicacionesEnInicio).toList();
 
-  /// Promociones y la primera página. Si fallan las promociones, el feed
-  /// sigue igual (no amerita un error en pantalla).
+  /// Promociones y la primera página. Si fallan las promociones, por lo que
+  /// sea (también una que no se pudo leer), el feed sigue igual (no amerita
+  /// un error en pantalla).
   Future<void> cargar() async {
     final turno = ++_turno;
     _cargando = true;
@@ -186,7 +188,10 @@ class FeedViewModel extends ChangeNotifier {
     final promociones = _repo
         .promociones()
         .then<List<PromocionFeed>?>((p) => p)
-        .catchError((Object _) => null, test: (e) => e is ApiException);
+        .catchError((Object e) {
+          PierLog.error('Promociones del feed: $e');
+          return null;
+        });
     try {
       final pagina = await _repo.feed();
       final promos = await promociones;

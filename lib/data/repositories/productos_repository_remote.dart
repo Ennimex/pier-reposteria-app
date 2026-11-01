@@ -8,6 +8,7 @@ import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
 import 'package:pier_reposteria/domain/models/category_model.dart';
+import 'package:pier_reposteria/domain/models/consulta_catalogo.dart';
 import 'package:pier_reposteria/domain/models/detalle_producto.dart';
 import 'package:pier_reposteria/domain/models/filtros_catalogo.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
@@ -21,6 +22,31 @@ class ProductosRepositoryRemote implements ProductosRepository {
 
   @override
   Future<Map<String, dynamic>> listar() => _api.get(ApiConstants.productos);
+
+  @override
+  Future<List<Product>> buscarProductos(
+    ConsultaCatalogo consulta, {
+    int? limite,
+    int offset = 0,
+  }) async {
+    final r = await _api.get(
+      ApiConstants.consultaProductos({
+        ...consulta.parametros,
+        if (limite != null) ...{'limite': '$limite', 'offset': '$offset'},
+      }),
+    );
+    if (r['success'] != true) {
+      throw ApiException(
+        r['message']?.toString() ?? 'No se pudo cargar el catálogo',
+      );
+    }
+    final data = r['productos'];
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+  }
 
   @override
   Future<Map<String, dynamic>> detalle(String id) => _api.get(ApiConstants.productoById(id));

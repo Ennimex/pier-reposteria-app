@@ -17,3 +17,9 @@ tags:
   #   flutter test --tags api --run-skipped --dart-define=API_BASE_URL=http://localhost:3000/api
   api:
     skip: "necesitan el entorno aislado: bash tool/entorno_pruebas.sh levantar"
+
+  # Pruebas de volumen de datos (#70, test/esfuerzo/). Las corre la etapa
+  # de esfuerzo (esfuerzo.yml, trabajo «Volumen de datos»):
+  #   flutter test test/esfuerzo --tags esfuerzo
+  # La cobertura de SonarCloud las deja fuera con --exclude-tags.
+  esfuerzo: {}

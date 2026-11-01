@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 
 class VueloAlCarrito extends StatefulWidget {
   const VueloAlCarrito({required this.child, super.key});
@@ -454,15 +455,17 @@ class _Miniatura extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(2),
-          // Sin cacheWidth: es la misma entrada de ImageCache que la foto que
-          // ya pintan la tarjeta y la galería, así que sale con la foto desde
-          // el primer cuadro (sin descargarla otra vez). Si aún no está, el
-          // disco dorado ocupa su lugar mientras llega.
+          // Es la foto de la tarjeta (fotoDeTarjeta: la reducida, sin
+          // cacheWidth), la misma entrada de ImageCache que ya pintan la
+          // tarjeta, el vuelo al detalle y la foto de abajo de la galería, así
+          // que sale con la foto desde el primer cuadro (sin descargarla otra
+          // vez). Si aún no está, el disco dorado ocupa su lugar mientras
+          // llega.
           child: ClipOval(
             child: imagenUrl.isEmpty
                 ? relleno
-                : Image.network(
-                    imagenUrl,
+                : Image(
+                    image: fotoDeTarjeta(imagenUrl),
                     fit: BoxFit.cover,
                     frameBuilder: (_, foto, cuadro, sincrona) =>
                         sincrona || cuadro != null ? foto : relleno,

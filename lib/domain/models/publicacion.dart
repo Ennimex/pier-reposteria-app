@@ -3,12 +3,17 @@
 // Publicaciones del inicio del cliente (módulo del backend del 11-oct,
 // migración 011). Fuente: /api/publicaciones (routes/publicacionesRoutes.js):
 // el feed por páginas con cursor, las promociones vigentes para intercalar y
-// los productos sugeridos. Los precios llegan como texto (NUMERIC).
+// los productos sugeridos. Los precios y el descuento llegan como texto
+// (NUMERIC).
 import 'package:pier_reposteria/domain/models/product_model.dart';
 
-double _precio(Object? valor) => double.tryParse(valor?.toString() ?? '') ?? 0;
+/// Un número que puede llegar como texto (NUMERIC: "10.00") o como número.
+double? _numero(Object? valor) =>
+    valor is num ? valor.toDouble() : double.tryParse(valor?.toString() ?? '');
 
-int _entero(Object? valor) => (valor as num?)?.toInt() ?? 0;
+double _precio(Object? valor) => _numero(valor) ?? 0;
+
+int _entero(Object? valor) => _numero(valor)?.toInt() ?? 0;
 
 String? _opcional(Object? valor) {
   final t = valor?.toString().trim() ?? '';
@@ -28,7 +33,7 @@ class MedioPublicacion {
     : esVideo = json['tipo'] == 'video',
       url = json['url']?.toString() ?? '',
       portada = _opcional(json['poster_url']),
-      duracion = (json['duracion'] as num?)?.toDouble(),
+      duracion = _numero(json['duracion']),
       proporcion = _proporcion(json['ancho'], json['alto']);
 
   final bool esVideo;
@@ -229,7 +234,7 @@ class PromocionFeed {
       titulo = json['titulo']?.toString() ?? '',
       subtitulo = _opcional(json['subtitulo']),
       etiqueta = _opcional(json['etiqueta']),
-      descuentoPorcentaje = (json['descuento_porcentaje'] as num?)?.toInt(),
+      descuentoPorcentaje = _numero(json['descuento_porcentaje'])?.round(),
       precioNormal = _precio(json['precio_normal']),
       precioPromocion = _precio(json['precio_promocion']),
       productoId = _entero(p['id']),

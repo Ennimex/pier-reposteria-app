@@ -80,6 +80,13 @@ class ApiConstants {
   static const String productosDestacados = '/productos-destacados';
   static const String filtros             = '/filtros';
   static String productoById(String id)         => '/productos/$id';
+  // Catálogo con criterios (#37): categoria, busqueda, sabor, tamano, tipo,
+  // ordenar (precio-asc | precio-desc | nombre | rating) y, por páginas,
+  // limite y offset. Los valores se codifican; sin parámetros es /productos.
+  static String consultaProductos(Map<String, String> parametros) =>
+      parametros.isEmpty
+          ? productos
+          : '$productos?${Uri(queryParameters: parametros).query}';
   static String categoriaOpciones(String catId) => '/categoria-opciones/$catId';
   // Recomendaciones (público): top 3 afines por co-compra; si hay poco
   // historial el backend cae a más vendidos de otras categorías (afinidad null)

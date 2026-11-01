@@ -12,6 +12,7 @@ import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
 import 'package:provider/provider.dart';
@@ -250,13 +251,16 @@ class ProductoCatalogoCard extends StatelessWidget {
   /// La foto vuela al detalle (misma etiqueta de siempre,
   /// `producto-img-<id>`) con las esquinas de esta tarjeta ([radio])
   /// enderezándose en el camino; si llega de internet aparece con un fundido
-  /// corto.
+  /// corto. Es la foto reducida y guardada en el teléfono (fotoDeTarjeta), la
+  /// misma que pinta el vuelo.
   Widget _imagen({required double tamanoIcono, required BorderRadius radio}) =>
       FotoProductoHero(
         productoId: producto.id,
         imagenUrl: producto.imagenUrl,
         radio: radio,
-        child: Image.network(producto.imagenUrl, fit: BoxFit.cover,
+        child: Image(
+            image: fotoDeTarjeta(producto.imagenUrl),
+            fit: BoxFit.cover,
             frameBuilder: (_, foto, cuadro, sincrona) =>
                 AparicionFoto(foto: foto, cuadro: cuadro, sincrona: sincrona),
             errorBuilder: (_, _, _) => ColoredBox(
