@@ -152,7 +152,8 @@ class ProductsViewModel extends ChangeNotifier {
   /// Por qué no llegó la siguiente página (lo que se ve se queda).
   String? get errorMas => _errorMas;
 
-  /// Ya llegó la última página: una con menos de [porPagina] o vacía.
+  /// Ya llegó la última página: una que no trae justo [porPagina] (con
+  /// menos, vacía o, si el servidor no respetara el límite, con más).
   bool get fin => _fin;
 
   /// La página 1 de la consulta por omisión no pudo llegar y lo que se ve es
@@ -588,7 +589,10 @@ class ProductsViewModel extends ChangeNotifier {
       (p.agotado ? _agotados : _disponibles).add(p);
     }
     final todo = _todo;
-    _fin = todo == null ? pagina.length < porPagina : _offset >= todo.length;
+    // Una página que no trae justo lo pedido es la última: con menos ya no
+    // hay más y, si el servidor ignorara el límite y mandara de más, pedir
+    // otra traería los mismos sin fin (#272).
+    _fin = todo == null ? pagina.length != porPagina : _offset >= todo.length;
     _productos = List.unmodifiable([..._disponibles, if (_fin) ..._agotados]);
   }
 

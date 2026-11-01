@@ -1,8 +1,9 @@
 // test/unitarias/catalogo/catalogo_paginado_test.dart — el catálogo por
 // páginas (#37): ProductsViewModel pide los productos de 20 en 20 con la
-// consulta actual, termina con una página corta o vacía, hace una sola
-// petición a la vez, descarta lo que llega tarde de una consulta anterior,
-// vacía la lista al cambiar de consulta (al recargar la misma, no), no
+// consulta actual, termina con una página corta, vacía o con más de lo
+// pedido (#272), hace una sola petición a la vez, descarta lo que llega tarde
+// de una consulta anterior, vacía la lista al cambiar de consulta (al
+// recargar la misma, no), no
 // repite productos, deja los agotados para cuando ya no hay más, trae
 // completos los órdenes que el servidor no desempata (precio y calificación)
 // y espera a que se deje de teclear para buscar. Con la copia de la primera
@@ -226,6 +227,28 @@ void main() {
       // Al terminar ya no pide más.
       await vm.cargarMas();
       expect(_pedidas(api), hasLength(2));
+    });
+
+    // #272: si el servidor ignorara `limite` y mandara todo, cada «cargar
+    // más» traería los mismos (sin repetirse en pantalla) y, con la persona
+    // al final, se seguiría preguntando sin fin.
+    test('una página con más de 20 es la última: no se pide otra', () async {
+      // El servidor manda los 25 aunque se le pidan 20: contesta como a una
+      // petición sin `limite`.
+      const sinLimite = LlamadaApi('GET', ApiConstants.productos);
+      final api = _servidor((_) => _pagina(sinLimite, _ids(25)));
+      final vm = _vm(api);
+      await vm.cargarProductos();
+
+      expect(vm.fin, isTrue);
+      expect(vm.productos, hasLength(25));
+
+      await vm.cargarMas();
+      await vm.cargarMas();
+
+      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+      expect(vm.cargandoMas, isFalse);
+      expect(vm.errorMas, isNull);
     });
 
     test('dos cargarMas seguidos hacen una sola petición', () async {
