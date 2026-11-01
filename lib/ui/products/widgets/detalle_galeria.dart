@@ -10,9 +10,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/products/widgets/detalle_badges.dart';
 import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
+import 'package:pier_reposteria/utils/fotos.dart';
 
 class DetalleGaleria extends StatefulWidget {
   const DetalleGaleria({
@@ -192,34 +194,57 @@ class _DetalleGaleriaState extends State<DetalleGaleria> {
 
   /// La foto [i] del carrusel; si llega de internet aparece con un fundido.
   Widget _foto(List<String> imagenes, int i) {
+    final url = imagenes[i];
+    final deLaTarjeta = widget.producto.imagenUrl;
+    final conLaDeLaTarjeta = i == 0 && deLaTarjeta.isNotEmpty;
+    // Una foto que no es de Cloudinary la tarjeta la pidió tal cual: si es la
+    // misma, la galería usa su entrada de caché (no se baja dos veces y, ya
+    // guardada en el teléfono, se ve sin red).
+    if (conLaDeLaTarjeta && url == deLaTarjeta && fotoReducida(url) == url) {
+      return Image(
+        image: fotoDeTarjeta(url),
+        fit: BoxFit.cover,
+        frameBuilder: (_, imagen, cuadro, sincrona) =>
+            AparicionFoto(foto: imagen, cuadro: cuadro, sincrona: sincrona),
+        errorBuilder: _sinFoto,
+      );
+    }
     final foto = Image.network(
-      imagenes[i],
+      url,
       fit: BoxFit.cover,
       frameBuilder: (_, imagen, cuadro, sincrona) =>
           AparicionFoto(foto: imagen, cuadro: cuadro, sincrona: sincrona),
-      errorBuilder: (context, error, _) => ColoredBox(
-        color: AppColors.pierArena,
-        child: const Icon(LucideIcons.image,
-            size: 60, color: AppColors.textSecondary),
-      ),
+      // Si no llega (sin red), se queda viendo la de la tarjeta de abajo.
+      errorBuilder:
+          conLaDeLaTarjeta ? (_, _, _) => const SizedBox.shrink() : _sinFoto,
     );
-    // La primera foto del carrusel puede ser otra URL todavía sin bajar:
-    // debajo queda la de la tarjeta (ya en caché), así al aterrizar el Hero
-    // no queda un hueco y la de la galería aparece encima con un fundido.
-    final deLaTarjeta = widget.producto.imagenUrl;
-    if (i != 0 || deLaTarjeta.isEmpty || deLaTarjeta == imagenes[i]) {
-      return foto;
-    }
+    if (!conLaDeLaTarjeta) return foto;
+    // La primera foto del carrusel es la completa, todavía sin bajar (aunque
+    // sea la misma dirección que la de la tarjeta, que se pidió reducida):
+    // debajo queda la de la tarjeta (fotoDeTarjeta, ya en caché), así al
+    // aterrizar el Hero no queda un hueco y la de la galería aparece encima
+    // con un fundido. El ícono de foto rota sale solo si tampoco está la de
+    // la tarjeta.
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.network(deLaTarjeta,
+        Image(
+            image: fotoDeTarjeta(deLaTarjeta),
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const SizedBox.shrink()),
+            errorBuilder: _sinFoto),
         foto,
       ],
     );
   }
+
+  /// En lugar de una foto que no se pudo cargar: el ícono de foto sobre el
+  /// fondo arena.
+  static Widget _sinFoto(BuildContext _, Object _, StackTrace? _) =>
+      ColoredBox(
+        color: AppColors.pierArena,
+        child: const Icon(LucideIcons.image,
+            size: 60, color: AppColors.textSecondary),
+      );
 }
 
 /// Botón blanco circular sobre la foto: se hunde al presionarlo y, si cambia
