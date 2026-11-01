@@ -73,6 +73,9 @@ Map<String, dynamic> _catalogo(LlamadaApi llamada) {
   if (q['ordenar'] == 'precio-desc') {
     productos.sort((a, b) =>
         (b['precio_chico'] as num).compareTo(a['precio_chico'] as num));
+  } else if (q['ordenar'] == 'precio-asc') {
+    productos.sort((a, b) =>
+        (a['precio_chico'] as num).compareTo(b['precio_chico'] as num));
   }
   return {'success': true, 'productos': productos};
 }
@@ -304,6 +307,47 @@ void main() {
       final chocoflan = tester.getTopLeft(find.text('Chocoflan'));
       expect(cheesecake.dy <= chocoflan.dy, isTrue);
       expect(find.text('Ordenar por'), findsNothing);
+    });
+
+    // #281: el servidor ordena por el precio base, sin las promociones.
+    testWidgets('por precio, las tarjetas siguen el precio con descuento',
+        (tester) async {
+      await _montar(tester);
+      List<String> nombres() => [
+            for (final tarjeta in tester.widgetList<ProductoCatalogoCard>(
+                find.byType(ProductoCatalogoCard)))
+              tarjeta.producto.nombre,
+          ];
+
+      await tester.tap(find.byTooltip('Ordenar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Precio: Menor a Mayor'));
+      await tester.pumpAndSettle();
+
+      // Flan $143, Tres leches $272 (base 320), Chocoflan $300, Rosca $342,
+      // Cheesecake $360 y, agotado, el pay.
+      expect(nombres(), [
+        'Flan napolitano',
+        'Tres leches',
+        'Chocoflan',
+        'Rosca',
+        'Cheesecake',
+        'Pay de limón',
+      ]);
+
+      await tester.tap(find.byTooltip('Ordenar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Precio: Mayor a Menor'));
+      await tester.pumpAndSettle();
+
+      expect(nombres(), [
+        'Cheesecake',
+        'Rosca',
+        'Chocoflan',
+        'Tres leches',
+        'Flan napolitano',
+        'Pay de limón',
+      ]);
     });
 
     testWidgets('una búsqueda sin resultados ofrece limpiar los filtros',

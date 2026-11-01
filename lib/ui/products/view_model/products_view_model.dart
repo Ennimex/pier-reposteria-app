@@ -39,10 +39,12 @@ class ProductsViewModel extends ChangeNotifier {
     String categoriaInicial = todas,
     this.esperaBusqueda = const Duration(milliseconds: 400),
     this.esperaRegistroBusqueda = const Duration(milliseconds: 1200),
+    double Function(Product producto)? precioFinal,
   })  : _productosRepo = productosRepo,
         _favoritosRepo = favoritosRepo,
         _demandaRepo = demandaRepo,
         _catalogoGuardado = catalogoGuardado,
+        _precioFinal = precioFinal ?? _precioBase,
         _categoria = categoriaInicial;
 
   /// Categoría que muestra todo el catálogo.
@@ -73,6 +75,10 @@ class ProductsViewModel extends ChangeNotifier {
   final DemandaRepository _demandaRepo;
   // La copia de la primera página en el teléfono; null = sin copia (pruebas).
   final CatalogoGuardadoService? _catalogoGuardado;
+  // El precio que se ve en la tarjeta, con la promoción (lo da la vista con
+  // ProductProvider); sin él, el precio base. Con él se ordena por precio
+  // (#281).
+  final double Function(Product producto) _precioFinal;
   bool _cerrado = false;
   Timer? _esperaDeBusqueda;
   Timer? _registroBusqueda;
@@ -215,7 +221,7 @@ class ProductsViewModel extends ChangeNotifier {
   /// (jalar para refrescar), se queda hasta que llega la nueva. Lo que llegue
   /// de una consulta anterior se descarta. Los órdenes sin páginas del
   /// servidor se piden completos una vez y se muestran de [porPagina] en
-  /// [porPagina].
+  /// [porPagina]; los de precio, por el precio con la promoción (#281).
   ///
   /// La consulta por omisión usa además la copia de su página 1 guardada en el
   /// teléfono (#265): se pone en pantalla en cuanto se lee, sin esperar al
@@ -296,8 +302,11 @@ class ProductsViewModel extends ChangeNotifier {
     List<Product> respuesta,
   ) {
     _vaciar();
-    if (pedida.pideTodo) _todo = respuesta;
-    final primera = pedida.pideTodo ? _siguientesDe(respuesta) : respuesta;
+    final todo = pedida.pideTodo
+        ? _ordenarPorPrecioFinal(pedida.orden, respuesta)
+        : null;
+    _todo = todo;
+    final primera = todo == null ? respuesta : _siguientesDe(todo);
     _agregar(primera);
     _cantidadPrimeraPagina = primera.length;
     _iniciado = true;
@@ -359,6 +368,27 @@ class ProductsViewModel extends ChangeNotifier {
     // Como en cargarProductos: al volver, la copia ya está guardada.
     if (guardando != null) await guardando;
     if (volvio) await _pedirLoQueFalloSinConexion();
+  }
+
+  /// Las promociones cambiaron (llegaron después de la lista o se
+  /// recargaron). En los órdenes por precio se vuelve a ordenar con el precio
+  /// final solo lo que aún no se muestra: lo que ya se ve se queda donde
+  /// está, para no mover a la persona de donde iba, y lo que se revele
+  /// después ya sigue las promociones nuevas. La lista completa se acomoda
+  /// en la siguiente carga (#281).
+  void reordenarPorPromociones() {
+    final todo = _todo;
+    final pedida = _consultaPedida;
+    if (todo == null ||
+        pedida == null ||
+        !_esPorPrecio(pedida.orden) ||
+        _offset >= todo.length) {
+      return;
+    }
+    _todo = [
+      ...todo.take(_offset),
+      ..._ordenarPorPrecioFinal(pedida.orden, todo.skip(_offset).toList()),
+    ];
   }
 
   /// Al abrir sin internet fallan también las categorías (quedan las de
@@ -603,6 +633,30 @@ class ProductsViewModel extends ChangeNotifier {
   /// Los siguientes [porPagina] de [todo] que aún no se muestran.
   List<Product> _siguientesDe(List<Product> todo) =>
       todo.skip(_offset).take(porPagina).toList();
+
+  static double _precioBase(Product producto) => producto.precio;
+
+  static bool _esPorPrecio(SortOption orden) =>
+      orden == SortOption.priceAsc || orden == SortOption.priceDesc;
+
+  /// En los órdenes por precio, [lista] por el precio que se ve en la
+  /// tarjeta (con la promoción) y no por el base con el que ordena el
+  /// servidor (#281); en los empates se queda el orden del servidor. Los
+  /// demás órdenes llegan como el servidor los mandó. Los agotados siguen al
+  /// final porque [_agregar] los aparta.
+  List<Product> _ordenarPorPrecioFinal(SortOption orden, List<Product> lista) {
+    if (!_esPorPrecio(orden)) return lista;
+    final signo = orden == SortOption.priceDesc ? -1 : 1;
+    // Con su lugar en la lista: el desempate que hace estable el orden.
+    final conPrecio = [
+      for (final (lugar, producto) in lista.indexed)
+        (lugar: lugar, precio: _precioFinal(producto), producto: producto),
+    ]..sort((a, b) {
+        final porPrecio = signo * a.precio.compareTo(b.precio);
+        return porPrecio != 0 ? porPrecio : a.lugar.compareTo(b.lugar);
+      });
+    return [for (final p in conPrecio) p.producto];
+  }
 
   /// Olvida las páginas de la consulta anterior.
   void _vaciar() {

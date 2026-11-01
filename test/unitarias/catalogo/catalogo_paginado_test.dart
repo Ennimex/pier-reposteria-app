@@ -32,11 +32,13 @@ Map<String, String> _parametros(LlamadaApi llamada) =>
     Uri.parse(llamada.endpoint).queryParameters;
 
 /// GET /productos con lo que toca de [ids] según `limite` y `offset` (sin
-/// `limite`, todos), como el servidor.
+/// `limite`, todos), como el servidor. Cada uno cuesta 100 salvo que
+/// [precios] diga otra cosa.
 Map<String, dynamic> _pagina(
   LlamadaApi llamada,
   List<int> ids, {
   Set<int> agotados = const {},
+  Map<int, num> precios = const {},
 }) {
   final q = _parametros(llamada);
   final limite = int.tryParse(q['limite'] ?? '');
@@ -49,13 +51,29 @@ Map<String, dynamic> _pagina(
         {
           'id': id,
           'nombre': 'Producto $id',
-          'precio_chico': 100,
+          'precio_chico': precios[id] ?? 100,
           'categoria': 'Pasteles',
           'stock_online': agotados.contains(id) ? 0 : null,
           'activo': true,
         },
     ],
   };
+}
+
+/// GET /productos en un orden por precio, como el servidor: todos, por el
+/// precio base (`precio_chico`, sin promociones) y, en los empates, por id.
+Map<String, dynamic> _porPrecioBase(
+  LlamadaApi llamada,
+  Map<int, num> precios, {
+  Set<int> agotados = const {},
+}) {
+  final signo = _parametros(llamada)['ordenar'] == 'precio-desc' ? -1 : 1;
+  final ids = precios.keys.toList()
+    ..sort((a, b) {
+      final porPrecio = signo * precios[a]!.compareTo(precios[b]!);
+      return porPrecio != 0 ? porPrecio : a.compareTo(b);
+    });
+  return _pagina(llamada, ids, agotados: agotados, precios: precios);
 }
 
 const Map<String, dynamic> _caido = {
@@ -111,6 +129,7 @@ ProductsViewModel _vm(
   FakeApiClient api, {
   Duration esperaBusqueda = Duration.zero,
   CatalogoGuardadoService? guardado,
+  double Function(Product)? precioFinal,
 }) {
   final vm = ProductsViewModel(
     productosRepo: ProductosRepositoryRemote(api: api),
@@ -118,6 +137,7 @@ ProductsViewModel _vm(
     demandaRepo: DemandaRepositoryRemote(api: api),
     catalogoGuardado: guardado,
     esperaBusqueda: esperaBusqueda,
+    precioFinal: precioFinal,
   );
   addTearDown(vm.dispose);
   return vm;
@@ -1002,6 +1022,120 @@ void main() {
       expect(vm.error, 'Sin conexión');
       expect(vm.productos, isEmpty);
       expect(vm.sinConexion, isFalse);
+    });
+  });
+
+  // El servidor ordena por el precio base: un producto con promoción quedaba
+  // en el lugar de su precio sin descuento (en el Samsung, uno de $430 con
+  // -10 % salió entre los de $430 y no junto a los de $387).
+  group('Orden por precio con las promociones (#281)', () {
+    // Precios base; el 6 está agotado y el 3 y el 7 empatan.
+    const precios = <int, num>{1: 380, 2: 430, 3: 400, 4: 430, 5: 450, 6: 100,
+        7: 400};
+    const agotados = {6};
+    // El 2 tiene -10 %: se ve en $387.
+    double conPromocion(Product p) => p.id == '2' ? 387 : p.precio;
+
+    FakeApiClient servidor() => _servidor(
+        (l) => _porPrecioBase(l, precios, agotados: agotados));
+
+    test('cada producto queda en el lugar del precio que se ve, con los '
+        'empates en el orden del servidor y los agotados al final', () async {
+      for (final (orden, esperados) in [
+        (SortOption.priceAsc, ['1', '2', '3', '7', '4', '5', '6']),
+        (SortOption.priceDesc, ['5', '4', '3', '7', '2', '1', '6']),
+      ]) {
+        final vm = _vm(servidor(), precioFinal: conPromocion)
+          ..ordenarPor(orden);
+        await _esperar();
+
+        expect(_idsDe(vm), esperados, reason: '$orden');
+        expect(vm.fin, isTrue);
+      }
+    });
+
+    test('sin promociones se respeta el orden del servidor', () async {
+      for (final (orden, esperados) in [
+        (SortOption.priceAsc, ['1', '3', '7', '2', '4', '5', '6']),
+        (SortOption.priceDesc, ['5', '2', '4', '3', '7', '1', '6']),
+      ]) {
+        // Sin decir cómo se calcula el precio final: el base.
+        final vm = _vm(servidor())..ordenarPor(orden);
+        await _esperar();
+
+        expect(_idsDe(vm), esperados, reason: '$orden');
+      }
+    });
+
+    test('los otros órdenes no se tocan', () async {
+      // El servidor manda «Mejor calificados» en su orden.
+      final api = _servidor(
+          (l) => _pagina(l, [5, 2, 1], precios: {1: 380, 2: 430, 5: 450}));
+      final vm = _vm(api, precioFinal: (p) => p.id == '5' ? 1 : p.precio)
+        ..ordenarPor(SortOption.rating);
+      await _esperar();
+
+      expect(_idsDe(vm), ['5', '2', '1']);
+    });
+
+    test('si las promociones llegan después, lo que ya se ve se queda y lo '
+        'que falta sale en el orden del precio final', () async {
+      // 45 productos de $10 a $450, en orden.
+      final api = _servidor((l) => _porPrecioBase(l, {
+            for (final id in _ids(45)) id: id * 10,
+          }));
+      final promociones = <String, double>{};
+      final vm = _vm(
+        api,
+        precioFinal: (p) => promociones[p.id] ?? p.precio,
+      )..ordenarPor(SortOption.priceAsc);
+      await _esperar();
+      expect(_idsDe(vm), _idsServidor(20));
+      var avisos = 0;
+      vm.addListener(() => avisos++);
+
+      // Llegan: el 40 queda en $105 y el 30 en $215.
+      promociones.addAll({'40': 105, '30': 215});
+      vm.reordenarPorPromociones();
+
+      // Lo que se ve no se mueve.
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(avisos, 0);
+
+      await vm.cargarMas();
+
+      expect(_idsDe(vm).take(20), _idsServidor(20));
+      expect(_idsDe(vm).sublist(20, 24), ['40', '21', '30', '22']);
+      expect(vm.productos, hasLength(40));
+      await vm.cargarMas();
+      expect(vm.productos, hasLength(45));
+      expect(vm.productos.map((p) => p.id).toSet(), hasLength(45));
+      expect(_pedidas(api), ['/productos?ordenar=precio-asc']);
+
+      // Con todo a la vista ya no hay nada que reordenar.
+      final todos = _idsDe(vm);
+      promociones['1'] = 999;
+      vm.reordenarPorPromociones();
+      expect(_idsDe(vm), todos);
+    });
+
+    test('reordenar sin un orden por precio o sin nada pendiente no hace nada',
+        () async {
+      final api = _servidor((l) => _pagina(l, _ids(45)));
+      final vm = _vm(api, precioFinal: (p) => -double.parse(p.id))
+        ..reordenarPorPromociones();
+      expect(vm.productos, isEmpty, reason: 'aún no hay lista');
+
+      await vm.cargarProductos();
+      vm.reordenarPorPromociones();
+      await vm.cargarMas();
+      expect(_idsDe(vm), _idsServidor(40), reason: 'por páginas del servidor');
+
+      vm.ordenarPor(SortOption.rating);
+      await _esperar();
+      vm.reordenarPorPromociones();
+      await vm.cargarMas();
+      expect(_idsDe(vm), _idsServidor(40), reason: 'por calificación');
     });
   });
 }

@@ -3,7 +3,8 @@
 // Catálogo (MVVM, Fase 4): la vista pinta lo que expone ProductsViewModel
 // (categoría, búsqueda, filtros, orden, favoritos y los productos que pide
 // por páginas, #37); de ProductProvider solo toma las promociones de las
-// tarjetas. Aquí solo queda lo que es de la interfaz: el texto
+// tarjetas, que también le pasa al VM para ordenar por el precio con
+// descuento (#281). Aquí solo queda lo que es de la interfaz: el texto
 // del buscador, cuadrícula/lista, pedir la siguiente página al acercarse al
 // final (con su pie y los esqueletos de la primera), llevar la lista arriba
 // al empezar otra consulta, el rebote del botón de carrito, el vuelo de la
@@ -50,6 +51,9 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen>
     with TickerProviderStateMixin {
+  // Las promociones de las tarjetas; con ellas el catálogo también ordena
+  // por el precio que se ve (#281).
+  late final ProductProvider _promociones = context.read<ProductProvider>();
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ProductsViewModel _vm = widget.viewModel ??
       ProductsViewModel(
@@ -58,6 +62,7 @@ class _ProductsScreenState extends State<ProductsScreen>
         demandaRepo: context.read(),
         catalogoGuardado: context.read<CatalogoGuardadoService>(),
         categoriaInicial: widget.initialCategory ?? ProductsViewModel.todas,
+        precioFinal: (p) => _promociones.precioConDescuento(p.id, p.precio),
       );
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _control = ScrollController();
@@ -96,6 +101,9 @@ class _ProductsScreenState extends State<ProductsScreen>
     PierLog.nav('ProductsScreen abierto — categoría inicial: ${_vm.categoria}');
     _consultaVista = _vm.consulta;
     _vm.addListener(_alCambiar);
+    // Si las promociones llegan (o cambian) con un orden por precio ya en
+    // pantalla, el VM acomoda lo que falta por mostrar.
+    _promociones.addListener(_vm.reordenarPorPromociones);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(context.read<ProductProvider>().cargarProductos());
@@ -192,6 +200,7 @@ class _ProductsScreenState extends State<ProductsScreen>
     _authRef?.removeListener(_onAuthChanged);
     _navRef?.removeListener(_onNavChanged);
     _vm.removeListener(_alCambiar);
+    _promociones.removeListener(_vm.reordenarPorPromociones);
     _control.dispose();
     _searchController.dispose();
     for (final c in _cartControllers.values) {
