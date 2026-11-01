@@ -179,11 +179,15 @@ class FeedViewModel extends ChangeNotifier {
 
   /// Promociones y la primera página. Si fallan las promociones, por lo que
   /// sea (también una que no se pudo leer), el feed sigue igual (no amerita
-  /// un error en pantalla).
+  /// un error en pantalla). Lo que se estuviera trayendo de más es de la
+  /// lista anterior: su respuesta se descarta por el turno, así que aquí se
+  /// sueltan sus marcas para poder volver a pedir (#273), como el catálogo.
   Future<void> cargar() async {
     final turno = ++_turno;
     _cargando = true;
+    _cargandoMas = false;
     _error = null;
+    _errorMas = null;
     _avisar();
     final promociones = _repo
         .promociones()
