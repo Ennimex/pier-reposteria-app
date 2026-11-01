@@ -26,6 +26,7 @@ import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foco.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
 import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
@@ -210,8 +211,11 @@ class _ProductsScreenState extends State<ProductsScreen>
     super.dispose();
   }
 
+  // Las pantallas que se abren desde aquí le quitan antes el foco al
+  // buscador: al volver, el teclado no se abre solo (#280).
   Future<void> _goToDetail(Product p) async {
     PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
+    soltarFoco();
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -222,8 +226,12 @@ class _ProductsScreenState extends State<ProductsScreen>
     if (mounted) await _vm.cargarFavoritos(autenticado: _autenticado);
   }
 
-  void _irALogin() => Navigator.push(
-      context, MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
+  void _irALogin() {
+    soltarFoco();
+    Navigator.push(
+            context, MaterialPageRoute<void>(builder: (_) => const LoginScreen()))
+        .ignore();
+  }
 
   AnimationController _getCartController(String id) {
     return _cartControllers.putIfAbsent(id, () {

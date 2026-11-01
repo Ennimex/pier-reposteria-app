@@ -1,13 +1,16 @@
 // test/widget/comandas/agenda_comandas_screen_test.dart — agenda de comandas
 // de producción (#127) sin red: agrupada por día y sin montos, pendientes
 // del área, vistas, búsqueda, estados vacío y de error, actualización al
-// volver a la app y cierre de sesión (manual o porque la cuenta cambió).
+// volver a la app, cierre de sesión (manual o porque la cuenta cambió) y que
+// regresar de lo que se abre desde la agenda no le devuelve el foco al
+// buscador (#280).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_screen.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/foco.dart';
 import '../../helpers/montar_comandas.dart';
 
 const _proximas = '/comandas?vista=proximas';
@@ -252,5 +255,33 @@ void main() {
       expect(find.text('Comandas · Decoración'), findsOneWidget);
       expect(find.text('Pendientes de tu confirmación (5)'), findsOneWidget);
     });
+
+    // Regresión de #280: como en el catálogo, con el buscador enfocado el
+    // teclado se volvía a abrir solo al regresar de lo que se abre desde la
+    // agenda (gerencia ve todos los botones).
+    for (final (accion, boton) in [
+      ('regresar del detalle', find.text('Juan Ruiz')),
+      ('regresar de «Nueva comanda»', find.text('Nueva comanda')),
+      ('regresar de las notificaciones', find.byTooltip('Notificaciones')),
+      ('regresar de los pedidos del día', find.byTooltip('Pedidos del día')),
+      (
+        'regresar de la atención a clientes',
+        find.byTooltip('Atención a clientes'),
+      ),
+      (
+        'regresar de la actividad del equipo',
+        find.byTooltip('Actividad del equipo'),
+      ),
+      ('cerrar el menú', find.byTooltip('Más opciones')),
+    ]) {
+      testWidgets('$accion no le devuelve el foco al buscador', (
+        tester,
+      ) async {
+        await _montar(tester, _backend(), rol: 'gerencia');
+        await tester.enfocarSinTeclado(find.byType(TextField));
+
+        await tester.abrirYCerrarSinTeclado(boton);
+      }, tags: 'regresion');
+    }
   });
 }

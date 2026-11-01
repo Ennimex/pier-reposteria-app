@@ -21,6 +21,7 @@ import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart'
 import 'package:pier_reposteria/ui/comandas/widgets/nueva_comanda_partes.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foco.dart';
 import 'package:pier_reposteria/utils/moneda.dart';
 import 'package:provider/provider.dart';
 
@@ -77,14 +78,10 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
     }
   }
 
-  /// Quita el foco del campo que lo tenga antes de abrir un selector: al
-  /// cerrarse, Flutter se lo devolvería y abriría el teclado (#241). Se
-  /// suelta desde el campo y no con `FocusScope.of(context).unfocus()`,
-  /// porque así la pantalla olvida cuál campo tenía el foco.
-  void _soltarFoco() => FocusManager.instance.primaryFocus?.unfocus();
-
+  // Los selectores y la hoja de productos le quitan antes el foco al campo
+  // que lo tenga: al cerrarlos, el teclado no se abre solo (#241, #280).
   Future<void> _elegirFecha() async {
-    _soltarFoco();
+    soltarFoco();
     final hoy = _vm.hoy;
     final elegida = await showDatePicker(
       context: context,
@@ -97,7 +94,7 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
   }
 
   Future<void> _elegirHora() async {
-    _soltarFoco();
+    soltarFoco();
     final partes = _vm.hora?.split(':');
     final elegida = await showTimePicker(
       context: context,
@@ -112,6 +109,7 @@ class _NuevaComandaScreenState extends State<NuevaComandaScreen> {
   }
 
   Future<void> _elegirProducto() async {
+    soltarFoco();
     final productos = _vm.catalogo?.productos ?? const <ProductoCatalogo>[];
     final elegido = await showModalBottomSheet<ProductoCatalogo>(
       context: context,
