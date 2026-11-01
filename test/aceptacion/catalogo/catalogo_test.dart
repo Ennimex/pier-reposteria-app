@@ -1,6 +1,7 @@
 // test/aceptacion/catalogo/catalogo_test.dart — escenarios Gherkin del
 // catálogo (historia #37: buscar y filtrar los productos por categoría,
-// sabor, tamaño y tipo, y verlos de 20 en 20 al bajar), sin red: la pantalla
+// sabor, tamaño y tipo, y verlos de 20 en 20 al bajar) y el caso de error
+// «sin resultados» de las pruebas de aceptación (#64), sin red: la pantalla
 // real del catálogo, su ViewModel y el repositorio de productos sobre
 // FakeApiClient, que responde GET /productos como el backend: deja los
 // productos que cumplen la consulta (categoría, búsqueda, sabor, tamaño y
@@ -301,6 +302,34 @@ void main() {
       // Entonces la lista muestra los productos que coinciden
       expect(_nombres(tester), ['Chocoflan', 'Pay de chocolate']);
       expect(_peticiones(api).last, _pedida(0, {'busqueda': 'choco'}));
+      await _desmontar(tester);
+    });
+
+    // Escenario: sin resultados (caso de error del #64)
+    //   Dado que estoy en el catálogo
+    //   Cuando busco algo que ningún producto tiene
+    //   Entonces veo «Sin resultados» y ninguna tarjeta
+    //   Y al tocar «Limpiar filtros» vuelvo a ver todo el menú
+    testWidgets('Escenario: sin resultados', (tester) async {
+      // Dado que estoy en el catálogo
+      final api = _backend(_menu);
+      await _abrirCatalogo(tester, api);
+      expect(_nombres(tester), _nombresDelMenu);
+
+      // Cuando busco algo que ningún producto tiene
+      await _buscar(tester, 'zzz');
+
+      // Entonces veo «Sin resultados» y ninguna tarjeta
+      expect(find.text('Sin resultados'), findsOneWidget);
+      expect(_nombres(tester), isEmpty);
+      expect(_peticiones(api).last, _pedida(0, {'busqueda': 'zzz'}));
+
+      // Y al tocar «Limpiar filtros» vuelvo a ver todo el menú
+      await tester.tap(find.text('Limpiar filtros'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sin resultados'), findsNothing);
+      expect(_nombres(tester), _nombresDelMenu);
+      expect(_peticiones(api).last, _pedida(0));
       await _desmontar(tester);
     });
 
