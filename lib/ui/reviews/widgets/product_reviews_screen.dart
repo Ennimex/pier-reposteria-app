@@ -366,6 +366,10 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           // ── LISTA ──────────────────────────────
           if (resenas.isEmpty)
             SliverFillRemaining(
+                // Ocupa lo que queda de pantalla si cabe y, si no (letra
+                // grande, teclado, pantalla chica), mide lo que necesita y se
+                // desplaza en vez de cortarse (#285).
+                hasScrollBody: false,
                 child: _buildEmptyState(esperaLista))
           else if (filtradas.isEmpty)
             SliverToBoxAdapter(

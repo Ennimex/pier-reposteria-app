@@ -9,6 +9,7 @@ import 'package:pier_reposteria/ui/reviews/widgets/product_reviews_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/pantalla_apretada.dart';
 import '../../helpers/pump_app.dart';
 
 final _producto = Product(
@@ -34,20 +35,22 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pump();
 }
 
+/// El producto todavía no tiene reseñas.
+FakeApiClient _sinResenas() => FakeApiClient(
+      respuestas: {
+        ApiConstants.resenasPorProducto('36'): {
+          'success': true,
+          'resenas': <Object>[],
+        },
+      },
+    );
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('ProductReviewsScreen', () {
     testWidgets('sin reseñas muestra el estado vacío', (tester) async {
-      final api = FakeApiClient(
-        respuestas: {
-          ApiConstants.resenasPorProducto('36'): {
-            'success': true,
-            'resenas': <Object>[],
-          },
-        },
-      );
-      await _montar(tester, api);
+      await _montar(tester, _sinResenas());
 
       expect(find.text('Aún no hay calificaciones'), findsOneWidget);
       expect(find.text('Sin opiniones aún'), findsOneWidget);
@@ -99,5 +102,22 @@ void main() {
 
       expect(find.text('No hay opiniones de 1 estrella'), findsOneWidget);
     });
+  });
+
+  // Regresión de #285: el estado vacío medía justo lo que quedaba de
+  // pantalla; si no cabía se desbordaba y el texto quedaba cortado.
+  group('El estado vacío de Opiniones cabe en una pantalla apretada (#285)',
+      () {
+    for (final apreton in Apreton.values) {
+      testWidgets(
+          'sin reseñas, la invitación a calificar se alcanza '
+          '${apreton.descripcion}', (tester) async {
+        await _montar(tester, _sinResenas());
+        await tester.apretar(apreton);
+
+        await tester.alcanzar(
+            find.text('Sé el primero en calificar\neste producto.'));
+      }, tags: 'regresion');
+    }
   });
 }
