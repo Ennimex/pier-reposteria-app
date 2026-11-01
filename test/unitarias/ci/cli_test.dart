@@ -457,6 +457,196 @@ void main() {
       expect(_ejecutar(['arranque']), 0);
       expect(_salida.toString(), contains('No se generó la medición'));
     });
+
+    test('con develop: las rondas, las dos medianas, las descartadas y de '
+        'dónde salió el APK de develop', () {
+      escribirLineasBase();
+      _escribir(
+        'build/resultados/arranque_en_frio.txt',
+        aperturas([3100, 3300, 3200]),
+      );
+      _escribir(
+        'build/resultados/arranque_develop.txt',
+        aperturas([3000, 2900, 3100]),
+      );
+      _escribir(
+        'build/resultados/arranque_descartadas.txt',
+        'Descartada: develop, ronda 1\n'
+            '${aperturas([5000, 5100, 5200, 5300, 5400, 5500])}',
+      );
+      _escribir(
+        'build/resultados/arranque_develop_origen.txt',
+        'APK de develop: corrida 41182773384, commit 623a76f.\n',
+      );
+
+      final codigo = _ejecutar([
+        'arranque',
+        'build/resultados/arranque_en_frio.txt',
+        '--escenario',
+        'app_arranque_emulador',
+        '--develop',
+        'build/resultados/arranque_develop.txt',
+        '--descartadas',
+        'build/resultados/arranque_descartadas.txt',
+        '--origen',
+        'build/resultados/arranque_develop_origen.txt',
+      ]);
+
+      expect(codigo, 0);
+      final texto = _salida.toString();
+      expect(texto, contains('| 1 | ✅ 3,100.00 ms | ✅ 3,000.00 ms |'));
+      expect(texto, contains('· diferencia: +6.7 %.**'));
+      expect(texto, contains('Aperturas de calentamiento sin contar: 6'));
+      expect(
+        texto,
+        contains('✅ mediana 3,200.00 ms contra la mediana de develop, '
+            '3,000.00 ms'),
+      );
+      expect(
+        texto,
+        contains('porque decide develop: ✅ mediana 3,200.00 ms contra la '
+            'línea base de 3,000.00 ms'),
+      );
+      expect(
+        texto,
+        contains('APK de develop: corrida 41182773384, commit 623a76f.\n'),
+      );
+    });
+
+    test('sin el archivo de develop resume solo este cambio', () {
+      escribirLineasBase();
+      _escribir('build/resultados/arranque_en_frio.txt', aperturas([3000]));
+
+      _ejecutar([
+        'arranque',
+        'build/resultados/arranque_en_frio.txt',
+        '--develop',
+        'build/resultados/arranque_develop.txt',
+        '--descartadas',
+        'build/resultados/arranque_descartadas.txt',
+      ]);
+
+      final texto = _salida.toString();
+      expect(texto, contains('| Apertura | Ventana | Arranque |'));
+      expect(texto, isNot(contains('develop')));
+      expect(texto, isNot(contains('calentamiento')));
+    });
+  });
+
+  // Este cambio contra develop, medidos en el mismo emulador
+  // (tool/arranque_alternado.sh en rendimiento.yml). La línea base de
+  // escribirLineasBase: 3,000 ms, +20 % y +25 ms.
+  group('comparar-arranque', () {
+    const cambio = 'build/resultados/arranque_en_frio.txt';
+    const develop = 'build/resultados/arranque_develop.txt';
+
+    int comparar() => _ejecutar([
+          'comparar-arranque',
+          cambio,
+          'app_arranque_emulador',
+          '--develop',
+          develop,
+        ]);
+
+    setUp(escribirLineasBase);
+
+    test('con develop decide develop, aunque la línea base fija no pasaría',
+        () {
+      // develop 4,000 ms → máximo 4,800; la línea base solo permite 3,600.
+      _escribir(cambio, aperturas([4700, 4800, 4600]));
+      _escribir(develop, aperturas([4000, 3900, 4100]));
+
+      expect(comparar(), 0);
+      expect(
+        _salida.toString(),
+        '### ⏱️ Arranque en frío contra develop\n\n✅ La mediana del arranque '
+        'de este cambio es 4,700.00 ms: dentro del máximo; la de develop, '
+        'medida en el mismo emulador, es 4,000.00 ms y el máximo permitido '
+        '4,800.00 ms (falla solo si sube más de 20 % y más de 25 ms).\n',
+      );
+      expect(_resumen.readAsStringSync(), contains('contra develop'));
+    });
+
+    test('falla si sube más de 20 % y más de 25 ms sobre develop, aunque '
+        'pase la línea base', () {
+      // develop 2,000 ms → máximo 2,400; 2,500 pasaría la línea base fija.
+      _escribir(cambio, aperturas([2500, 2500, 2500]));
+      _escribir(develop, aperturas([2000, 2000, 2000]));
+
+      expect(comparar(), 1);
+      expect(
+        _salida.toString(),
+        contains('> ❌ La mediana del arranque de este cambio subió a '
+            '2,500.00 ms: la de develop, medida en el mismo emulador, es '
+            '2,000.00 ms'),
+      );
+    });
+
+    test('igual a develop o justo en el máximo pasa; un ms más falla', () {
+      _escribir(develop, aperturas([4000]));
+
+      _escribir(cambio, aperturas([4000]));
+      expect(comparar(), 0);
+      _escribir(cambio, aperturas([4800]));
+      expect(comparar(), 0);
+      _escribir(cambio, aperturas([4801]));
+      expect(comparar(), 1);
+    });
+
+    test('con un develop de pocos ms manda el piso de 25 ms', () {
+      _escribir(develop, aperturas([100]));
+
+      // +25 %, pero solo 25 ms más.
+      _escribir(cambio, aperturas([125]));
+      expect(comparar(), 0);
+      _escribir(cambio, aperturas([126]));
+      expect(comparar(), 1);
+    });
+
+    test('sin el archivo de develop decide la línea base y lo dice', () {
+      _escribir(cambio, aperturas([3590, 3500, 9000]));
+
+      expect(comparar(), 0);
+      final texto = _salida.toString();
+      expect(texto, startsWith('### ⏱️ Rendimiento contra la línea base'));
+      expect(
+        texto,
+        contains('La mediana del arranque de «app_arranque_emulador» es '
+            '3,590.00 ms'),
+      );
+      expect(texto, contains('No hubo aperturas de develop'));
+
+      _escribir(cambio, aperturas([3601]));
+      expect(comparar(), 1);
+    });
+
+    test('develop sin tiempos o sin --develop: decide la línea base', () {
+      _escribir(cambio, aperturas([3700]));
+      _escribir(develop, 'error: no devices/emulators found\n');
+
+      expect(comparar(), 1);
+      expect(
+        _salida.toString(),
+        contains('subió a 3,700.00 ms: la línea base es 3,000.00 ms'),
+      );
+      expect(_ejecutar(['comparar-arranque', cambio, 'app_arranque_emulador']),
+          1);
+    });
+
+    test('falla sin la medición o sin línea base; sin la clave explica el uso',
+        () {
+      _escribir(develop, aperturas([4000]));
+
+      expect(comparar(), 1);
+      expect(_salida.toString(), contains('No se generó la medición'));
+
+      _escribir(cambio, aperturas([4000]));
+      File('${_raiz.path}/tool/linea_base_rendimiento.json').deleteSync();
+      expect(comparar(), 1);
+      expect(_salida.toString(), contains('no trae la línea base'));
+
+      expect(_ejecutar(['comparar-arranque', cambio]), 64);
+    });
   });
 
   // k6 contra el entorno aislado (rendimiento.yml y esfuerzo.yml).
@@ -689,6 +879,10 @@ void main() {
         'build/evidencias/resultados-arranque/arranque_en_frio.txt',
         aperturas([3100, 2900, 3000]),
       );
+      _escribir(
+        'build/evidencias/resultados-arranque/arranque_develop.txt',
+        aperturas([2800, 2900, 3000]),
+      );
       // El entorno aislado: pruebas de la API y las dos corridas de k6.
       _escribir(
         'build/evidencias/resultados-api/build/resultados/api.json',
@@ -752,8 +946,8 @@ void main() {
         texto,
         contains(
           '| Rendimiento | ✅ Pasó | APK de release: 2.0 KB · Arranque en '
-          'frío: mediana 3,000.00 ms (3 aperturas) · k6: 820 peticiones · '
-          'p95 64.40 ms · 0.0 % errores |',
+          'frío: mediana 3,000.00 ms (3 aperturas) · develop 2,900.00 ms '
+          '(+3.4 %) · k6: 820 peticiones · p95 64.40 ms · 0.0 % errores |',
         ),
       );
       expect(

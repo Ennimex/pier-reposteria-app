@@ -1,7 +1,9 @@
 // test/unitarias/auth/mis_datos_view_model_test.dart — «Mis datos» (#221):
-// lo que el servidor tiene de la cuenta, leído de GET /auth/profile.
+// lo que el servidor tiene de la cuenta, leído de GET /auth/profile, y el
+// correo para pedir que se elimine la cuenta (#222).
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
 import 'package:pier_reposteria/ui/more/view_model/mis_datos_view_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,6 +140,51 @@ void main() {
       await carga;
 
       expect(avisos, 1, reason: 'solo el aviso de que empezó a cargar');
+    });
+  });
+
+  group('correoDeBaja (#222)', () {
+    test('escribe a Pier con el asunto, la petición y los datos de la cuenta',
+        () {
+      final correo = MisDatosViewModel.correoDeBaja(_usuario);
+
+      expect(correo.scheme, 'mailto');
+      expect(correo.path, BusinessInfo.email);
+      expect(correo.queryParameters['subject'], 'Eliminar mi cuenta');
+      final cuerpo = correo.queryParameters['body']!;
+      expect(cuerpo, startsWith('Hola, Pier:'));
+      expect(cuerpo, contains(MisDatosViewModel.peticionBaja));
+      expect(cuerpo, contains('Correo de la cuenta: ana@pier.mx'));
+      expect(cuerpo, contains('Nombre: Ana López'));
+    });
+
+    test('los espacios van como %20, no como «+»', () {
+      final texto = MisDatosViewModel.correoDeBaja(_usuario).toString();
+
+      expect(texto, contains('subject=Eliminar%20mi%20cuenta'));
+      expect(texto, isNot(contains('+')));
+    });
+
+    test('sin datos de la cuenta solo lleva la petición', () {
+      final cuerpo = MisDatosViewModel.correoDeBaja(const {})
+          .queryParameters['body']!;
+
+      expect(cuerpo, endsWith(MisDatosViewModel.peticionBaja));
+      expect(cuerpo, isNot(contains('Correo de la cuenta')));
+      expect(cuerpo, isNot(contains('Nombre:')));
+    });
+
+    test('después de cargar usa los datos del servidor', () async {
+      final api = FakeApiClient()
+        ..responder(ApiConstants.profile, {'success': true, 'user': _usuario});
+      final vm = MisDatosViewModel(repo: AuthRepositoryRemote(api: api));
+      expect(vm.correoParaEliminarCuenta.queryParameters['body'],
+          isNot(contains('ana@pier.mx')));
+
+      await vm.cargar();
+
+      expect(vm.correoParaEliminarCuenta.queryParameters['body'],
+          contains('Correo de la cuenta: ana@pier.mx'));
     });
   });
 }

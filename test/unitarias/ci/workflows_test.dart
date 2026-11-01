@@ -7,7 +7,11 @@
 //   · release.yml solo publica un candidato que pasó las pruebas en el
 //     entorno de liberación y que se aprobó en el Environment «produccion»;
 //   · pipeline.yml corre en los Pull Requests y pushes de main y de develop
-//     (estrategia de ramas del README).
+//     (estrategia de ramas del README);
+//   · los trabajos que compilan el APK en una computadora de GitHub liberan
+//     disco antes, sin tocar el SDK de Android;
+//   · el arranque en frío se mide contra el APK de develop, que solo guarda
+//     un push a develop, con permiso de leer artefactos solo donde hace falta.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -128,6 +132,89 @@ void main() {
       contains(r'build/pier-reposteria-${{ github.ref_name }}.aab'),
     );
     expect(publicar, contains('build/pier-reposteria-*.aab'));
+  });
+
+  test('los trabajos que compilan el APK liberan disco antes, sin tocar el SDK '
+      'de Android', () {
+    // Compila el APK quien lo arma, lo maneja con flutter drive o corre
+    // pruebas de integration_test en el emulador.
+    final compila = RegExp(
+        'flutter build apk|flutter drive|flutter test integration_test');
+    final revisados = <String>[];
+
+    for (final MapEntry(key: workflow, value: contenido)
+        in _workflows().entries) {
+      final texto = contenido.replaceAll('\r\n', '\n');
+      final inicioTrabajos = texto.indexOf('\njobs:\n');
+      if (inicioTrabajos < 0) continue;
+      final trabajos = texto
+          .substring(inicioTrabajos)
+          .split(RegExp(r'\n(?=  [a-zA-Z0-9_-]+:\n)'))
+          .skip(1);
+      for (final trabajo in trabajos) {
+        if (!trabajo.contains('runs-on: ubuntu-24.04') ||
+            !compila.hasMatch(trabajo)) {
+          continue;
+        }
+        final nombre = '$workflow: ${trabajo.split(':').first.trim()}';
+        revisados.add(nombre);
+        final libera = trabajo.indexOf('uses: ./.github/actions/liberar-disco');
+        expect(libera, isNot(-1), reason: '$nombre no libera disco');
+        // Antes de compilar: si no, el disco ya se llenó.
+        expect(libera, lessThan(compila.firstMatch(trabajo)!.start),
+            reason: '$nombre libera disco después de compilar');
+      }
+    }
+
+    // Los 10 de hoy: aceptación, monkey, smoke, flujo de compra aislado,
+    // peso, arranque, flujo de compra, regresión completa y los dos de
+    // release. Si la prueba no encontrara ninguno, no revisaría nada.
+    expect(revisados, hasLength(greaterThanOrEqualTo(10)));
+    final accion =
+        File('.github/actions/liberar-disco/action.yml').readAsStringSync();
+    final borra = RegExp(r'rm -rf[^\n]*(\\\r?\n[^\n]*)*').stringMatch(accion)!;
+    expect(borra, isNot(contains('android')));
+    expect(borra, isNot(contains('ndk')));
+  });
+
+  test('el arranque se mide contra el APK de develop, que solo guarda un push '
+      'a develop', () {
+    final workflows = _workflows();
+    final rendimiento =
+        workflows['rendimiento.yml']!.replaceAll('\r\n', '\n');
+    final arranque =
+        rendimiento.substring(rendimiento.indexOf('\n  arranque-en-frio:'));
+    final guardar = arranque.substring(
+      arranque.indexOf('- name: Guardar el APK de develop'),
+      arranque.indexOf('- name: Descargar el APK de develop'),
+    );
+
+    // Solo un push a develop guarda la referencia, 14 días; un Pull Request
+    // nunca la reemplaza.
+    expect(
+      guardar,
+      contains("if: github.event_name == 'push' && "
+          "github.ref == 'refs/heads/develop'"),
+    );
+    expect(guardar, contains('name: apk-arranque-develop'));
+    expect(guardar, contains('retention-days: 14'));
+    // Se descarga sin tomar el de esta misma corrida y el emulador lo recibe.
+    expect(arranque, contains(r'CORRIDA: ${{ github.run_id }}'));
+    expect(arranque, contains('bash tool/arranque_alternado.sh'));
+    expect(arranque, contains(r'${{ steps.apk-develop.outputs.apk }}'));
+    // Leer artefactos: solo el trabajo del arranque y, en pipeline.yml, solo
+    // la etapa de rendimiento que lo llama.
+    expect(RegExp('actions: read').allMatches(rendimiento), hasLength(1));
+    expect(arranque, contains('actions: read'));
+    final pipeline = workflows['pipeline.yml']!.replaceAll('\r\n', '\n');
+    expect(RegExp('actions: read').allMatches(pipeline), hasLength(1));
+    expect(
+      pipeline.substring(
+        pipeline.indexOf('\n  rendimiento:'),
+        pipeline.indexOf('\n  esfuerzo:'),
+      ),
+      contains('actions: read'),
+    );
   });
 
   test('pipeline.yml corre en los Pull Requests y pushes de main y develop', () {

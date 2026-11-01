@@ -60,6 +60,16 @@ class LineaBase {
 
   bool rebasa(double medido) => medido > permitido;
 
+  /// La misma regla (porcentaje y piso) con otro valor de referencia: con la
+  /// mediana de develop medida en el mismo trabajo, el arranque se compara
+  /// con develop y no con el valor fijo del JSON.
+  LineaBase conValor(double referencia) => LineaBase(
+        medida: medida,
+        valor: referencia,
+        toleranciaPorcentaje: toleranciaPorcentaje,
+        toleranciaMinima: toleranciaMinima,
+      );
+
   /// [cantidad] en las unidades de la medida: «8.56 ms» o «39.3 MB».
   String formato(double cantidad) => medida == Medida.peso
       ? tamano(cantidad.round())
@@ -101,14 +111,16 @@ LineaBase? leerLineaBaseDeRendimiento(
 
 /// Renglón con el veredicto: «✅ p95 8.56 ms contra la línea base de 7.22 ms
 /// (máximo permitido 32.22 ms: falla solo si sube más de 20 % y más de
-/// 25 ms).».
+/// 25 ms).». [referencia] nombra contra qué se compara: la línea base fija
+/// o la mediana de develop.
 String comparacionConLineaBase(
   String que,
   double medido,
-  LineaBase base,
-) {
+  LineaBase base, {
+  String referencia = 'la línea base de',
+}) {
   final veredicto = base.rebasa(medido) ? '❌' : '✅';
-  return '$veredicto $que ${base.formato(medido)} contra la línea base de '
+  return '$veredicto $que ${base.formato(medido)} contra $referencia '
       '${base.formato(base.valor)} (máximo permitido '
       '${base.formato(base.permitido)}: ${base.regla}).';
 }

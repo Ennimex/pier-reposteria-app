@@ -9,7 +9,8 @@
 // tocarlo; al marcarlo, el pulgar da el pop con destello verde del detalle
 // del producto y cambia de color junto con la píldora, y la cuenta rueda.
 // Recargar no repite las entradas, y la opinión que el cliente acaba de
-// publicar llega con un aro dorado.
+// publicar llega con un aro dorado. Bajo cada opinión va la respuesta de
+// Pier Repostería, si la hay (#138).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:pier_reposteria/ui/reviews/view_model/product_reviews_view_model.dart';
 import 'package:pier_reposteria/ui/reviews/widgets/create_review_screen.dart';
+import 'package:pier_reposteria/ui/reviews/widgets/respuesta_de_pier.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 import 'package:provider/provider.dart';
 
@@ -364,6 +366,10 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           // ── LISTA ──────────────────────────────
           if (resenas.isEmpty)
             SliverFillRemaining(
+                // Ocupa lo que queda de pantalla si cabe y, si no (letra
+                // grande, teclado, pantalla chica), mide lo que necesita y se
+                // desplaza en vez de cortarse (#285).
+                hasScrollBody: false,
                 child: _buildEmptyState(esperaLista))
           else if (filtradas.isEmpty)
             SliverToBoxAdapter(
@@ -848,6 +854,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
                   fontSize: 13,
                   color: AppColors.textSecondary,
                   height: 1.5)),
+
+          if (r.respuestaNegocio case final respuesta?)
+            RespuestaDePier(respuesta),
 
           const SizedBox(height: 12),
 

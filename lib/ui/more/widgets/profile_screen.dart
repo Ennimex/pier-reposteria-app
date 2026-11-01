@@ -12,6 +12,7 @@ import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:pier_reposteria/ui/more/view_model/profile_view_model.dart';
@@ -475,8 +476,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ambito: _ambitoFavoritos,
                             radio: BorderRadius.circular(12),
                             // ✅ FIX: (_, e, __) en lugar de (_, _, _)
-                            child: Image.network(
-                              p.imagenUrl,
+                            child: Image(
+                              image: fotoDeTarjeta(p.imagenUrl),
                               width: 120,
                               height: 100,
                               fit: BoxFit.cover,

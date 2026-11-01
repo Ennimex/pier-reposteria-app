@@ -76,6 +76,35 @@ void main() {
         startsWith('❌ p95 40.00 ms'),
       );
     });
+
+    test('conValor usa la misma regla con otra referencia: la mediana de '
+        'develop', () {
+      const arranque = LineaBase(
+        medida: Medida.medianaDeArranque,
+        valor: 4717,
+        toleranciaPorcentaje: 20,
+        toleranciaMinima: 25,
+        corrida: '40214359737',
+      );
+
+      final develop = arranque.conValor(100);
+
+      expect(develop.valor, 100);
+      expect(develop.medida, Medida.medianaDeArranque);
+      expect(develop.regla, arranque.regla);
+      // Con 100 ms manda el piso: hasta 125 ms.
+      expect(develop.permitido, 125);
+      expect(
+        comparacionConLineaBase(
+          'mediana',
+          120,
+          develop,
+          referencia: 'la mediana de develop,',
+        ),
+        '✅ mediana 120.00 ms contra la mediana de develop, 100.00 ms (máximo '
+        'permitido 125.00 ms: falla solo si sube más de 20 % y más de 25 ms).',
+      );
+    });
   });
 
   group('leerLineaBaseDeRendimiento', () {

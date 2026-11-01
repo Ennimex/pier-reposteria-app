@@ -5,26 +5,36 @@
 #   · Cuánto pesa la app al descargarla (el APK). Ejemplo: si alguien agrega
 #     imágenes sin comprimir, el peso sube y aquí se ve cuánto y dónde. No
 #     puede crecer más de 10 % sobre la línea base.
-#   · Cuánto tarda en abrir: la app se abre en frío 5 veces en un celular
-#     virtual (emulador) con tool/arranque_en_frio.sh (am start -W, hasta el
-#     primer cuadro) y se toma la mediana. La app habla con la API del
-#     entorno aislado (contenedores, nunca producción), así que el tiempo no
-#     depende de la red.
+#   · Cuánto tarda en abrir en frío en un celular virtual (emulador), hasta
+#     el primer cuadro (am start -W). Para medir el cambio y no la velocidad
+#     de la computadora que tocó, se compara con develop en el mismo
+#     emulador: tool/arranque_alternado.sh instala y abre una y otra app en
+#     7 rondas (las impares empiezan por develop y las pares por este cambio)
+#     y cada vez tira la primera apertura después de instalar, que es más
+#     lenta. Falla si la mediana de este cambio sube más de 20 % y además más
+#     de 25 ms sobre la de develop. El APK de develop no se compila aquí: lo
+#     guarda cada push a develop (14 días) y aquí se descarga. Si no hay uno
+#     vigente, la app se abre 1 vez sin contar y 7 contadas, y decide la
+#     línea base fija. La app habla con la API del entorno aislado
+#     (contenedores, nunca producción), así que el tiempo no depende de la
+#     red.
 #   · Cuánto tarda la API en contestar con carga normal: k6
 #     (pruebas/k6/rendimiento.js) manda 10 clientes a la vez contra la API
 #     del entorno aislado. El 95 % de las respuestas (p95) debe llegar en
 #     menos de 800 ms, con menos del 1 % de errores.
-#   Las tres mediciones se comparan con su línea base en
-#   tool/linea_base_rendimiento.json (tool/comparar_rendimiento.sh): un
-#   tiempo falla solo si sube más de 20 % y además más de 25 ms (el piso
-#   evita fallar por el ruido de las computadoras de GitHub); el APK, si
-#   crece más de 10 %.
+#   El peso, la API y, sin APK de develop, el arranque se comparan con su
+#   línea base en tool/linea_base_rendimiento.json: un tiempo falla solo si
+#   sube más de 20 % y además más de 25 ms (el piso evita fallar por el
+#   ruido de las computadoras de GitHub); el APK, si crece más de 10 %. Con
+#   el APK de develop, el arranque usa esa misma regla contra develop y la
+#   línea base solo se muestra en el resumen.
 # Para qué sirve: comparar cada versión con la medición de referencia y
 #   descubrir si la app se volvió más lenta o más pesada ANTES de
 #   publicarla.
 # Cuándo corre: es la cuarta etapa de pipeline.yml, junto con las pruebas de
 #   esfuerzo, después de la integración y la regresión: en cada Pull Request
-#   y cada vez que algo se une a main. También sola con cada versión nueva
+#   y cada vez que algo se une a develop (de ahí sale el APK de develop) o a
+#   main. También sola con cada versión nueva
 #   (tag vX.Y.Z) y a mano (Actions → Pruebas de rendimiento → Run workflow).
 #   k6 dura 30 s en los Pull Requests y 1 min con la casilla «completo».
 # Dónde corre: todo en las computadoras que presta GitHub. La fluidez por
@@ -34,16 +44,20 @@
 # Si falla: el pipeline falla y GitHub no deja unir el Pull Request; en una
 #   versión, no se publica hasta revisar el resultado.
 # Dónde ver el resultado: Actions → la corrida → Summary: el peso total y qué
-#   ocupa más espacio dentro del APK, cada apertura con su tiempo y la
-#   mediana, la tabla de k6 y cada medición contra su línea base. El APK, las
-#   aperturas y el resumen de k6 se descargan desde Artifacts.
+#   ocupa más espacio dentro del APK; cada ronda del arranque con el tiempo
+#   de este cambio y el de develop, las dos medianas y su diferencia; la
+#   tabla de k6, y cada medición contra develop o su línea base. El APK, las
+#   aperturas (las contadas de este cambio y de develop, las descartadas y de
+#   qué corrida salió el APK de develop) y el resumen de k6 se descargan
+#   desde Artifacts.
 # Issues: #61 (Sprint 3, medición de referencia) y #71 (Sprint 5, versión
 #   candidata).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de rendimiento
 
 on:
-  # pipeline.yml la llama en cada Pull Request y en cada push a main.
+  # pipeline.yml la llama en cada Pull Request y en cada push a develop o a
+  # main.
   workflow_call:
     inputs:
       completo:
@@ -83,6 +97,12 @@ jobs:
     steps:
       - name: Descargar el código
         uses: actions/checkout@v7
+
+      # Quita de la imagen lo que no se usa (.NET, Haskell, CodeQL y Boost)
+      # para que compilar el APK no se quede sin disco; no toca el SDK de
+      # Android (.github/actions/liberar-disco).
+      - name: Liberar disco
+        uses: ./.github/actions/liberar-disco
 
       # Java hace falta para armar el APK.
       - name: Instalar Java
@@ -224,10 +244,22 @@ jobs:
   arranque-en-frio:
     name: Arranque en frío en el emulador
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # 7 rondas con dos instalaciones y cuatro aperturas cada una.
+    timeout-minutes: 50
+    # Además de leer el código, busca y descarga el APK de develop que guardó
+    # otra corrida (los artefactos de Actions).
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Descargar el código
         uses: actions/checkout@v7
+
+      # Quita de la imagen lo que no se usa (.NET, Haskell, CodeQL y Boost)
+      # para que compilar el APK no se quede sin disco; no toca el SDK de
+      # Android (.github/actions/liberar-disco).
+      - name: Liberar disco
+        uses: ./.github/actions/liberar-disco
 
       # Java hace falta para armar el APK y para el emulador.
       - name: Instalar Java
@@ -260,6 +292,59 @@ jobs:
       - name: Compilar el APK de depuración
         run: flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
 
+      # En cada push a develop guarda su APK 14 días: así los Pull Requests y
+      # los pushes siguientes se miden contra develop sin compilarlo otra vez
+      # (paso siguiente). Solo en develop: el APK de un Pull Request no es
+      # referencia de nada.
+      - name: Guardar el APK de develop
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk-arranque-develop
+          path: build/app/outputs/flutter-apk/app-prod-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      # Descarga el APK de develop más reciente que siga vigente: el último
+      # que guardó un push a develop de este repositorio (no de un fork), sin
+      # contar esta corrida. De qué corrida y commit salió queda en
+      # build/resultados/arranque_develop_origen.txt. Si no hay ninguno
+      # (expiró o develop todavía no lo guarda) o no se pudo descargar, no
+      # falla: avisa y el arranque se compara con la línea base fija.
+      - name: Descargar el APK de develop
+        id: apk-develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CORRIDA: ${{ github.run_id }}
+        run: |
+          mkdir -p build/develop build/resultados
+          if ! encontrado="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=apk-arranque-develop&per_page=100" --jq '
+            [.artifacts[]
+              | select(.expired | not)
+              | select(.workflow_run.head_branch == "develop")
+              | select(.workflow_run.head_repository_id == .workflow_run.repository_id)
+              | select(.workflow_run.id != ($ENV.CORRIDA | tonumber))]
+            | sort_by(.created_at) | last
+            | if . == null then "" else "\(.id) \(.workflow_run.id) \(.workflow_run.head_sha)" end')"; then
+            echo "::notice::No se pudo consultar los artefactos de Actions: el arranque se compara con la línea base fija."
+            exit 0
+          fi
+          if [ -z "$encontrado" ]; then
+            echo "::notice::No hay un APK de develop vigente: el arranque se compara con la línea base fija."
+            exit 0
+          fi
+          read -r artefacto corrida commit <<< "$encontrado"
+          if ! gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artefacto/zip" > build/develop/apk.zip \
+            || ! unzip -o -q build/develop/apk.zip -d build/develop \
+            || [ ! -f build/develop/app-prod-debug.apk ]; then
+            echo "::notice::No se pudo descargar el APK de develop (artefacto $artefacto): el arranque se compara con la línea base fija."
+            exit 0
+          fi
+          rm build/develop/apk.zip
+          echo "APK de develop: corrida $corrida, commit $commit ($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$corrida)." \
+            | tee build/resultados/arranque_develop_origen.txt
+          echo "apk=build/develop/app-prod-debug.apk" >> "$GITHUB_OUTPUT"
+
       # El celular virtual (más detalle en integracion.yml).
       - name: Habilitar KVM
         run: |
@@ -288,12 +373,16 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
-      # Instala la app y la abre en frío 5 veces (tool/arranque_en_frio.sh:
-      # la cierra por completo antes de cada apertura y falla si alguna no
-      # muestra su ventana). Lo que reporta Android de cada apertura queda en
-      # build/resultados/arranque_en_frio.txt; al final se guardan las
-      # bitácoras de los contenedores.
-      - name: Abrir la app en frío 5 veces
+      # Con el APK de develop, 7 rondas en las que este cambio y develop se
+      # turnan (tool/arranque_alternado.sh): cada vez desinstala, instala,
+      # tira la primera apertura y cuenta la segunda; las rondas impares
+      # empiezan por develop. Sin él, 1 apertura descartada y 7 contadas de
+      # este cambio. Cada apertura la hace tool/arranque_en_frio.sh, que
+      # cierra la app por completo antes y falla si no muestra su ventana. Lo
+      # que reporta Android queda en build/resultados/ (arranque_en_frio.txt,
+      # arranque_develop.txt y arranque_descartadas.txt); al final se guardan
+      # las bitácoras de los contenedores.
+      - name: Abrir en frío este cambio y develop, alternados
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ env.API_LEVEL }}
@@ -303,27 +392,38 @@ jobs:
           emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
           script: |
-            adb install -r build/app/outputs/flutter-apk/app-prod-debug.apk
-            bash tool/arranque_en_frio.sh ${{ env.PAQUETE }} 5 build/resultados/arranque_en_frio.txt
+            bash tool/arranque_alternado.sh ${{ env.PAQUETE }} 7 build/app/outputs/flutter-apk/app-prod-debug.apk build/resultados ${{ steps.apk-develop.outputs.apk }}
             bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt
 
-      # Falla si la mediana subió más de 20 % y además más de 25 ms sobre la
-      # línea base (tool/linea_base_rendimiento.json, escenario
-      # app_arranque_emulador).
-      - name: Comparar la mediana con la línea base
-        run: bash tool/comparar_rendimiento.sh build/resultados/arranque_en_frio.txt app_arranque_emulador
-
-      # Escribe el resumen: cada apertura con su tiempo, la mediana y la
-      # comparación con la línea base.
+      # Escribe el resumen: cada ronda con el tiempo de este cambio y el de
+      # develop, las dos medianas y su diferencia, cuántas aperturas se
+      # descartaron, el veredicto contra develop y la línea base, que
+      # entonces solo informa. Sin develop: cada apertura, la mediana y la
+      # línea base. Va antes de la comparación para que el resumen salga
+      # también cuando la comparación falla.
       - name: Mostrar el resultado en el resumen
         run: >
           dart run tool/resumen_pruebas.dart arranque
           build/resultados/arranque_en_frio.txt
           --escenario app_arranque_emulador
+          --develop build/resultados/arranque_develop.txt
+          --descartadas build/resultados/arranque_descartadas.txt
+          --origen build/resultados/arranque_develop_origen.txt
 
-      # Guarda las aperturas y las bitácoras 30 días en Artifacts. Corre
-      # siempre (if: always()): si falló, ahí está por qué, y el job sigue
-      # fallando por el paso que falló.
+      # Falla si la mediana de este cambio sube más de 20 % y además más de
+      # 25 ms sobre la de develop (la regla del escenario
+      # app_arranque_emulador de tool/linea_base_rendimiento.json). Sin
+      # aperturas de develop, sobre la línea base fija de ese escenario.
+      - name: Comparar el arranque con develop
+        run: >
+          dart run tool/resumen_pruebas.dart comparar-arranque
+          build/resultados/arranque_en_frio.txt app_arranque_emulador
+          --develop build/resultados/arranque_develop.txt
+
+      # Guarda todas las aperturas (las contadas de este cambio y de develop,
+      # las descartadas y de dónde salió el APK de develop) y las bitácoras
+      # 30 días en Artifacts. Corre siempre (if: always()): si falló, ahí
+      # está por qué, y el job sigue fallando por el paso que falló.
       - name: Guardar las aperturas y las bitácoras
         if: always()
         uses: actions/upload-artifact@v7
@@ -331,6 +431,9 @@ jobs:
           name: resultados-arranque
           path: |
             build/resultados/arranque_en_frio.txt
+            build/resultados/arranque_develop.txt
+            build/resultados/arranque_descartadas.txt
+            build/resultados/arranque_develop_origen.txt
             build/resultados/entorno_logs.txt
           if-no-files-found: warn
           retention-days: 30

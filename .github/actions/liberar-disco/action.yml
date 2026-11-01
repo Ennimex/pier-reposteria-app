@@ -1,0 +1,34 @@
+# .github/actions/liberar-disco — deja más espacio libre en la computadora
+# que presta GitHub antes de compilar el APK.
+#
+# Por qué: los trabajos que compilan el APK (instalan el NDK y CMake al vuelo),
+# levantan el emulador y, algunos, los contenedores del entorno aislado andan
+# cerca del límite de disco. Con una imagen que trae menos espacio libre fallan
+# con «No space left on device» sin que el código tenga que ver: pasó en #254,
+# #264 y #279 (31-oct-2026).
+#
+# Qué quita: herramientas de la imagen ubuntu-24.04 que ningún workflow usa:
+# .NET (/usr/share/dotnet), Haskell (/opt/ghc y /usr/local/.ghcup), CodeQL
+# (/opt/hostedtoolcache/CodeQL) y Boost (/usr/local/share/boost).
+# Qué NO toca: el SDK de Android con su NDK y CMake (/usr/local/lib/android),
+# Java, Node, Docker ni el caché de Flutter.
+#
+# Uso, después de descargar el código de la app:
+#   - name: Liberar disco
+#     uses: ./.github/actions/liberar-disco
+name: Liberar disco
+description: Quita .NET, Haskell, CodeQL y Boost de la imagen; no toca el SDK de Android.
+
+runs:
+  using: composite
+  steps:
+    # df antes y después: en el log queda cuánto espacio se ganó.
+    - name: Quitar herramientas que no se usan
+      shell: bash
+      run: |
+        echo "Disco antes:"
+        df -h /
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+          /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        echo "Disco después:"
+        df -h /

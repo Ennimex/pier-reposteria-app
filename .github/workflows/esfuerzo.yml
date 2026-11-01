@@ -2,7 +2,7 @@
 # PIPELINE: PRUEBAS DE ESFUERZO
 #
 # Qué revisa: cómo se portan la app y la API cuando se les exige más de lo
-#   normal. Tiene dos trabajos que corren al mismo tiempo:
+#   normal. Tiene tres trabajos que corren al mismo tiempo:
 #   · Uso aleatorio: monkey, una herramienta de Android, toca, desliza y
 #     escribe al azar miles de veces sobre la app instalada en un celular
 #     virtual (emulador): más rápido y con menos orden que cualquier persona.
@@ -16,6 +16,12 @@
 #     aislado (contenedores, nunca producción). Después del pico, un
 #     escenario de recuperación con 2 clientes revisa que la API volvió a
 #     contestar rápido (p95 < 500 ms, < 1 % de errores).
+#   · Volumen de datos (#70): las pruebas de test/esfuerzo/ (etiqueta
+#     esfuerzo) llenan el carrito con 100 artículos con el servidor de
+#     mentira (FakeApiClient) y revisan que la pantalla siga respondiendo.
+#     El catálogo de 1,000 productos llega con el catálogo por páginas
+#     (#37). Corren solo aquí: la etapa de unitarias y la cobertura de
+#     SonarCloud las dejan fuera.
 # Para qué sirve: comprobar que la app no se cierra sola ni se congela (el
 #   aviso «La app no responde» de Android, llamado ANR) antes de publicarla
 #   en Google Play, y que la API aguanta un pico y se recupera.
@@ -26,10 +32,6 @@
 #   (Actions → Pruebas de esfuerzo → Run workflow), eligiendo cuántos toques
 #   dar (5,000 si no se cambia). k6 corre las fases a la mitad de su duración
 #   en los Pull Requests y completas con la casilla «completo».
-# Volumen de datos (#70: catálogo de 1,000 productos y carrito de 100
-#   artículos) no está aquí: sus pruebas todavía no existen, así que vive en
-#   esfuerzo-volumen.yml, que se lanza a mano, para no dejar un trabajo
-#   omitido en cada Pull Request.
 # Ojo: monkey usa la app normal, armada para hablar con la API del
 #   contenedor (http://10.0.2.2:3000/api), así que lo que toque llega al
 #   entorno aislado y nunca al servidor real. Como la app recién instalada no
@@ -87,6 +89,12 @@ jobs:
     steps:
       - name: Descargar el código
         uses: actions/checkout@v7
+
+      # Quita de la imagen lo que no se usa (.NET, Haskell, CodeQL y Boost)
+      # para que compilar el APK no se quede sin disco; no toca el SDK de
+      # Android (.github/actions/liberar-disco).
+      - name: Liberar disco
+        uses: ./.github/actions/liberar-disco
 
       - name: Instalar Java
         uses: actions/setup-java@v6
@@ -325,5 +333,50 @@ jobs:
           path: |
             build/resultados/k6_esfuerzo.json
             build/resultados/entorno_logs.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  volumen:
+    name: Volumen de datos
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # Las pruebas de test/esfuerzo/ (etiqueta esfuerzo) llenan la app con
+      # el servidor de mentira y revisan que las pantallas sigan respondiendo.
+      - name: Correr las pruebas de volumen
+        run: >
+          flutter test test/esfuerzo --tags esfuerzo --reporter expanded
+          --file-reporter json:build/resultados/esfuerzo.json
+
+      # Escribe el resumen: cada prueba de volumen con ✅.
+      - name: Mostrar el resultado en el resumen
+        run: >
+          dart run tool/resumen_pruebas.dart pruebas
+          build/resultados/esfuerzo.json
+          --titulo "Volumen de datos"
+          --detalle
+
+      # Guarda el reporte 30 días en Artifacts. Corre siempre (if: always()):
+      # si falló una prueba es la evidencia, y el job sigue fallando por el
+      # paso que falló.
+      - name: Guardar el reporte
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: resultados-volumen
+          path: build/resultados/esfuerzo.json
           if-no-files-found: warn
           retention-days: 30

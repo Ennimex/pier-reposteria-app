@@ -81,7 +81,8 @@ Map<String, dynamic> promocionFeedJson({
   String titulo = 'Chocoflan',
   String? subtitulo = 'Solo esta semana',
   String? etiqueta,
-  int? descuento = 20,
+  // Como lo manda el servidor: NUMERIC(5,2) llega como texto (#277).
+  Object? descuento = '20.00',
   String normal = '250.00',
   String promocion = '200.00',
 }) => {

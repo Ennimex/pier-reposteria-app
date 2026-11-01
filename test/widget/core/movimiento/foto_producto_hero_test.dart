@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
 import '../../../helpers/movimiento.dart';
@@ -125,15 +126,17 @@ void main() {
   });
 
   testWidgets('con una URL vuela la imagen de la tarjeta', (tester) async {
-    await tester.pumpWidget(_app(imagenUrl: 'https://pier.mx/a.png'));
+    const url = 'https://res.cloudinary.com/pier/image/upload/v1/a.png';
+    await tester.pumpWidget(_app(imagenUrl: url));
     await tester.tap(find.byType(GestureDetector));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
 
-    expect(
-      find.descendant(of: _vuelo, matching: find.byType(Image)),
-      findsOneWidget,
-    );
+    final foto = find.descendant(of: _vuelo, matching: find.byType(Image));
+    expect(foto, findsOneWidget);
+    // La foto reducida de la tarjeta (fotoDeTarjeta), no la completa: es la
+    // misma entrada de caché que ya pintó la tarjeta.
+    expect(tester.widget<Image>(foto).image, fotoDeTarjeta(url));
     await tester.pumpAndSettle();
   });
 

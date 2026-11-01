@@ -3,7 +3,8 @@
 // «Mis datos» (derechos ARCO, #221): muestra lo que el servidor tiene de la
 // cuenta (GET /auth/profile) y lleva a corregirlo en «Editar perfil». Para
 // borrar la cuenta u oponerse al uso de los datos, el aviso de privacidad
-// pide escribir al correo de Pier.
+// pide escribir al correo de Pier: «Eliminar mi cuenta» (#222) abre ese
+// correo ya escrito, mientras el backend no tenga cómo borrarla.
 // MVVM: el estado vive en MisDatosViewModel; esta vista solo lo pinta.
 import 'dart:async';
 
@@ -17,6 +18,7 @@ import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/more/view_model/mis_datos_view_model.dart';
 import 'package:pier_reposteria/ui/more/widgets/edit_profile_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MisDatosScreen extends StatefulWidget {
   /// [viewModel] solo se pasa en pruebas; en la app la pantalla crea el suyo.
@@ -31,6 +33,15 @@ class MisDatosScreen extends StatefulWidget {
   static const otrosDerechos =
       'Para pedir que se borren tus datos o para oponerte a su uso, escribe a '
       '${BusinessInfo.email}.';
+
+  static const confirmarBaja =
+      'Por ahora la baja se pide por correo: se abrirá tu app de correo con '
+      'la solicitud para Pier ya escrita. Pier te responde por ese medio, '
+      'como dice el aviso de privacidad.';
+
+  static const sinAppDeCorreo =
+      'No encontramos una app de correo. Escribe a ${BusinessInfo.email} '
+      'para pedir que se elimine tu cuenta.';
 
   @override
   State<MisDatosScreen> createState() => _MisDatosScreenState();
@@ -57,6 +68,49 @@ class _MisDatosScreenState extends State<MisDatosScreen> {
     await Navigator.push(context,
         MaterialPageRoute(builder: (_) => const EditProfileScreen()));
     if (mounted) await _vm.cargar();
+  }
+
+  /// «Eliminar mi cuenta» (#222): pide confirmar y abre el correo a Pier ya
+  /// escrito; si el teléfono no tiene app de correo, dice a dónde escribir.
+  Future<void> _eliminarCuenta() async {
+    final escribir = await showDialog<bool>(
+      context: context,
+      animationStyle: AppMovimiento.estiloDialogo(context),
+      builder: (dialogContext) => EntradaDialogo(
+        child: AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('¿Eliminar tu cuenta?',
+              style: TextStyle(
+                  fontFamily: 'Playfair Display', fontWeight: FontWeight.bold)),
+          content: const Text(MisDatosScreen.confirmarBaja),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Escribir el correo',
+                  style: TextStyle(
+                      color: AppColors.error, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (escribir != true || !mounted) return;
+    bool abierto;
+    try {
+      abierto = await launchUrl(_vm.correoParaEliminarCuenta);
+    } on Exception {
+      abierto = false;
+    }
+    if (!abierto && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(MisDatosScreen.sinAppDeCorreo)));
+    }
   }
 
   @override
@@ -152,6 +206,16 @@ class _MisDatosScreenState extends State<MisDatosScreen> {
         const SizedBox(height: 16),
         const Text(MisDatosScreen.otrosDerechos,
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _eliminarCuenta,
+          style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: const BorderSide(color: AppColors.error),
+              minimumSize: const Size.fromHeight(48)),
+          icon: const Icon(LucideIcons.trash2, size: 18),
+          label: const Text('Eliminar mi cuenta'),
+        ),
       ],
     );
   }
