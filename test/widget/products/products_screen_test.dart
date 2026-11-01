@@ -165,6 +165,57 @@ void main() {
       expect(y, greaterThan(tester.getTopLeft(find.text('Chocoflan')).dy));
     });
 
+    // #271: al jalar para recargar, las promociones se vaciaban antes de
+    // pedirlas otra vez y, mientras llegaban, las tarjetas salían sin
+    // descuento.
+    group('al jalar para recargar (#271)', () {
+      /// Jala para recargar y deja que la recarga empiece (sin terminar).
+      Future<void> jalar(WidgetTester tester) async {
+        unawaited(tester
+            .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+            .show());
+        // El indicador baja (150 ms) y entonces empieza la recarga.
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump();
+      }
+
+      int pedidasDePromociones(FakeApiClient api) => api.llamadas
+          .where((l) => l.endpoint == ApiConstants.promocionesActivas)
+          .length;
+
+      testWidgets('mientras llegan las promociones, la tarjeta sigue con su '
+          'precio con descuento', (tester) async {
+        final api = await _montar(tester);
+        api.demorar(
+            ApiConstants.promocionesActivas, const Duration(seconds: 1));
+
+        await jalar(tester);
+
+        expect(pedidasDePromociones(api), 2, reason: 'ya se recargan');
+        expect(find.text(r'$342'), findsOneWidget); // 380 - 10 %
+        expect(find.text('-10%'), findsOneWidget);
+        expect(find.text('Flash'), findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+        expect(find.text(r'$342'), findsOneWidget);
+      });
+
+      testWidgets('si las promociones no llegan, se quedan las de antes',
+          (tester) async {
+        final api = await _montar(tester);
+        api.fallar(ApiConstants.promocionesActivas, _sinRed);
+
+        await jalar(tester);
+        await tester.pumpAndSettle();
+
+        expect(pedidasDePromociones(api), 2);
+        expect(find.text(r'$342'), findsOneWidget);
+        expect(find.text('-10%'), findsOneWidget);
+      });
+    });
+
     testWidgets('cambia a lista y de regreso', (tester) async {
       await _montar(tester);
 
