@@ -1,12 +1,14 @@
 // lib/config/dependencies.dart
 //
 // Inyección de dependencias (MVVM, Fase 3.5). Registra una sola vez el
-// ApiClient, los 19 repositorios (contrato abstracto → implementación Remote)
+// ApiClient, los 20 repositorios (contrato abstracto → implementación Remote)
 // y los providers globales. Vistas y ViewModels piden su repositorio con
 // `context.read<XRepository>()` en vez de instanciarlo.
 //
 // main.dart lo usa con el ApiService real; test/helpers/pump_app.dart con
 // FakeApiClient, así las pruebas montan exactamente el mismo árbol.
+import 'package:pier_reposteria/data/repositories/actividad_repository.dart';
+import 'package:pier_reposteria/data/repositories/actividad_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/atencion_clientes_repository.dart';
 import 'package:pier_reposteria/data/repositories/atencion_clientes_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/auth_repository.dart';
@@ -46,6 +48,7 @@ import 'package:pier_reposteria/data/repositories/reembolsos_repository_remote.d
 import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/data/services/catalogo_guardado_service.dart';
 import 'package:pier_reposteria/data/services/pasarela_pago.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
@@ -61,6 +64,9 @@ import 'package:provider/single_child_widget.dart';
 List<SingleChildWidget> dependencias(ApiClient api) => [
       Provider<ApiClient>.value(value: api),
       // ── Repositorios
+      Provider<ActividadRepository>(
+        create: (context) => ActividadRepositoryRemote(api: context.read()),
+      ),
       Provider<AtencionClientesRepository>(
         create: (context) =>
             AtencionClientesRepositoryRemote(api: context.read()),
@@ -123,6 +129,9 @@ List<SingleChildWidget> dependencias(ApiClient api) => [
       ),
       // ── Servicios (la fábrica PasarelaPago() elige la implementación)
       Provider<PasarelaPago>(create: (_) => PasarelaPago()),
+      Provider<CatalogoGuardadoService>(
+        create: (_) => CatalogoGuardadoService(),
+      ),
       // ── Providers globales (estado compartido entre pantallas)
       ChangeNotifierProvider(
         create: (context) => AuthProvider(auth: context.read()),

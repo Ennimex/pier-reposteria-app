@@ -98,6 +98,30 @@ class Product {
     );
   }
 
+  /// El producto con las mismas llaves que lee [Product.fromJson] (las del
+  /// backend), para guardarlo en el teléfono (#265):
+  /// `Product.fromJson(p.toJson())` reproduce todos sus campos.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'nombre': nombre,
+        'descripcion': descripcion,
+        'precio_chico': precio,
+        'precio_grande': precioGrande,
+        'categoria': categoria,
+        'imagen_url': imagenUrl,
+        'imagenes': imagenes,
+        'ingredientes': ingredientes,
+        'sabor': sabor,
+        'tamano': tamano,
+        'tipo': tipo,
+        'popular': popular,
+        'es_nuevo': esNuevo,
+        'stock_online': stockOnline,
+        'activo': disponible,
+        'rating': rating,
+        'reviews': totalResenas,
+      };
+
   /// stock_online = 0 significa agotado (el backend rechaza agregarlo al
   /// carrito). null = desconocido, se trata como disponible.
   bool get agotado => stockOnline == 0;

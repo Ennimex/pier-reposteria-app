@@ -2,8 +2,11 @@
 //
 // Pie del catálogo (#37), abajo de la última tarjeta: un indicador mientras
 // llega la siguiente página o, si no pudo llegar, el aviso con «Reintentar».
-// Con el mismo aspecto que el pie del feed (feed_sliver.dart). Se repinta
-// solo cuando cambia el ViewModel.
+// El indicador también sale mientras llega la página 1 con algo ya en
+// pantalla (la copia guardada en el teléfono, #265, o al jalar para
+// refrescar): quien baja al final ve que viene más. Con el mismo aspecto que
+// el pie del feed (feed_sliver.dart). Se repinta solo cuando cambia el
+// ViewModel.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -20,7 +23,8 @@ class PieCatalogo extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: viewModel,
         builder: (context, _) {
-          if (viewModel.cargandoMas) {
+          if (viewModel.cargandoMas ||
+              (viewModel.cargando && viewModel.productos.isNotEmpty)) {
             return Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
