@@ -24,6 +24,16 @@ List<Map<String, dynamic>> _sugeridos(int desde, int cuantos) => [
     sugeridoJson(id: i, nombre: 'Producto $i'),
 ];
 
+/// Promociones que fallan con algo que no es ApiException (un dato que no se
+/// pudo leer).
+class _PromocionesQueTruenan extends PublicacionesRepositoryRemote {
+  _PromocionesQueTruenan({required super.api});
+
+  @override
+  Future<List<PromocionFeed>> promociones() async =>
+      throw StateError('promoción que no se pudo leer');
+}
+
 /// Claves de lo que se pinta, para comparar el orden del feed.
 List<String> _claves(List<ElementoFeed> elementos) => [
   for (final e in elementos)
@@ -138,6 +148,28 @@ void main() {
       expect(producto.precio, 250);
       expect(producto.precioGrande, 400);
       expect(producto.categoria, 'Postres');
+    });
+
+    test('el descuento se lee como texto o como número (#277)', () {
+      int? descuento(Object? valor) => PromocionFeed.fromJson(
+        promocionFeedJson(descuento: valor),
+      ).descuentoPorcentaje;
+
+      expect(descuento('10.00'), 10);
+      expect(descuento('12.50'), 13);
+      expect(descuento(15), 15);
+      expect(descuento(null), isNull);
+      expect(descuento('raro'), isNull);
+    });
+
+    test('ids, precios y duración que llegan como texto no truenan', () {
+      final p = Publicacion.fromJson(publicacionJson()..['id'] = '7');
+      final medio = MedioPublicacion.fromJson(
+        medioJson(tipo: 'video')..['duracion'] = '8.5',
+      );
+
+      expect(p.id, 7);
+      expect(medio.duracion, 8.5);
     });
 
     test('producto sugerido con su motivo', () {
@@ -395,6 +427,33 @@ void main() {
       expect(vm.error, isNull);
       expect(_claves(vm.elementos), ['pub1']);
     });
+
+    test('si las promociones truenan por otra cosa, el feed carga igual y no '
+        'se queda cargando (#277)', () async {
+      final otro = FeedViewModel(repo: _PromocionesQueTruenan(api: api));
+      api.responder(_feed, feedJson(_publicaciones(1, 1)));
+      await otro.cargar();
+
+      expect(otro.cargando, isFalse);
+      expect(otro.error, isNull);
+      expect(_claves(otro.elementos), ['pub1']);
+    });
+
+    test(
+      'promoción con el descuento como texto: sale intercalada (#277)',
+      () async {
+        api
+          ..responder(
+            _promociones,
+            promocionesFeedJson([promocionFeedJson(id: 9, descuento: '10.00')]),
+          )
+          ..responder(_feed, feedJson(_publicaciones(1, 5)));
+        await vm.cargar();
+
+        expect(vm.cargando, isFalse);
+        expect(_claves(vm.elementos).last, 'promo9');
+      },
+    );
 
     test('error en la primera carga y reintento', () async {
       api.fallar(_feed, 'Error al cargar el inicio');
