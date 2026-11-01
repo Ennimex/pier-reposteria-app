@@ -199,16 +199,17 @@ void main() {
       expect(find.text(r'$580 MXN'), findsOneWidget); // total del día
     });
 
-    // Caso de error (#68): la entrega ya estaba confirmada
+    // Caso de error (#68, #270): la entrega ya estaba confirmada
     //   Dado que la entrega ya se confirmó por fuera de esta pantalla
     //   Cuando intento confirmarla otra vez
-    //   Entonces la app muestra el motivo del backend, no la registra de
-    //   nuevo y, al recargar, el panel ya no la muestra en curso
+    //   Entonces la app me avisa que ya estaba confirmada, no la registra
+    //   de nuevo y el panel, sin recargarlo a mano, la pasa al historial
     testWidgets('Caso de error: la entrega ya estaba confirmada', (
       tester,
     ) async {
-      // Dado que la entrega ya se confirmó por fuera (desde la web del
-      // repartidor) y el panel la cargó antes, todavía en camino
+      // Dado que la entrega ya se confirmó por fuera (desde otro teléfono o
+      // en un envío cuya respuesta no llegó) y el panel la cargó antes,
+      // todavía en camino
       final backend = BackendEntregas(
         entregas: [entregaJson(7, 41, estado: 'en_camino')],
       );
@@ -222,23 +223,33 @@ void main() {
       await tester.enterText(find.byType(TextField), 'María López');
       await _tocar(tester, _boton('Confirmar entrega'));
 
-      // Entonces la app muestra el motivo del backend, se queda en la
-      // confirmación y no la registra de nuevo
+      // Entonces la app me avisa que ya estaba confirmada, sin el texto
+      // crudo del backend, y no la registra de nuevo
+      expect(find.text('Esta entrega ya estaba confirmada'), findsOneWidget);
       expect(
         find.text('No se puede pasar de "entregada" a "entregada"'),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.text('Entrega confirmada'), findsNothing);
-      expect(find.byType(ConfirmarEntregaScreen), findsOneWidget);
       expect(backend.entregas.single['recibio_nombre'], 'Rosa Martínez');
+      expect(
+        backend.api.llamadas.where(
+          (l) => l.endpoint == ApiConstants.entregaEstado('7'),
+        ),
+        hasLength(1),
+      );
 
-      // Al volver y jalar para recargar, el panel ya no la muestra en curso.
-      await _tocar(tester, find.text('Regresar'));
-      await tester.pageBack();
-      await tester.pumpAndSettle();
-      await recargarEntregas(tester);
+      // y el panel, sin jalar para recargar, ya no la muestra en curso
+      expect(find.byType(ConfirmarEntregaScreen), findsNothing);
+      expect(find.byType(EntregaDetailScreen), findsNothing);
       expect(tarjetaEnCurso('PIER-41'), findsNothing);
       expect(find.text('Sin entregas por ahora'), findsOneWidget);
+
+      // sino en «Historial», como entregada.
+      await irAPestana(tester, 'Historial');
+      expect(find.text('PIER-41'), findsOneWidget);
+      expect(find.text('1 entrega'), findsOneWidget);
+      expect(find.text('0 fallos'), findsOneWidget);
     });
   });
 }

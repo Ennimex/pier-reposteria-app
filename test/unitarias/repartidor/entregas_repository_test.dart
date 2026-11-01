@@ -165,6 +165,31 @@ void main() {
           'Indica quién recibió el pedido');
     });
 
+    test('#270: confirmar una entrega ya entregada lanza un mensaje claro',
+        () async {
+      final ruta = ApiConstants.entregaEstado('9');
+      api.fallar(ruta, 'No se puede pasar de "entregada" a "entregada"');
+
+      await _esperaError(
+          repo.cambiarEstado('9', EstadoEntrega.entregada, recibioNombre: 'A'),
+          'Esta entrega ya estaba confirmada');
+      await expectLater(
+          repo.cambiarEstado('9', EstadoEntrega.entregada, recibioNombre: 'A'),
+          throwsA(isA<EntregaYaConfirmadaException>()));
+
+      // Los demás rechazos de la transición siguen con el texto del backend.
+      api.fallar(ruta, 'No se puede pasar de "fallida" a "entregada"');
+      await _esperaError(
+          repo.cambiarEstado('9', EstadoEntrega.entregada, recibioNombre: 'A'),
+          'No se puede pasar de "fallida" a "entregada"');
+      await expectLater(
+          repo.cambiarEstado('9', EstadoEntrega.entregada, recibioNombre: 'A'),
+          throwsA(isNot(isA<EntregaYaConfirmadaException>())));
+      api.fallar(ruta, 'No se puede pasar de "entregada" a "en_camino"');
+      await _esperaError(repo.cambiarEstado('9', EstadoEntrega.enCamino),
+          'No se puede pasar de "entregada" a "en_camino"');
+    });
+
     test('avisarLlegada devuelve el mensaje del backend o uno por defecto',
         () async {
       final ruta = ApiConstants.entregaLlegue('9');

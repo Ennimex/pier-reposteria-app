@@ -38,3 +38,10 @@ class ConflictoComandaException extends ApiException {
 class PublicacionNoDisponibleException extends ApiException {
   const PublicacionNoDisponibleException(super.message);
 }
+
+/// La entrega ya estaba entregada al confirmarla (desde otro teléfono, o un
+/// reintento cuyo primer envío sí llegó): el backend rechaza el paso
+/// repetido con «No se puede pasar de "entregada" a "entregada"» (#270).
+class EntregaYaConfirmadaException extends ApiException {
+  const EntregaYaConfirmadaException(super.message);
+}

@@ -27,7 +27,8 @@ abstract class EntregasRepository {
   Future<String> aceptar(String pedidoId);
 
   /// PUT /entregas/:id/estado. El backend exige [recibioNombre] al entregar
-  /// y [motivoFallo] al reportar un fallo.
+  /// y [motivoFallo] al reportar un fallo. Entregar la que ya estaba
+  /// entregada lanza EntregaYaConfirmadaException.
   Future<void> cambiarEstado(
     String entregaId,
     EstadoEntrega nuevo, {

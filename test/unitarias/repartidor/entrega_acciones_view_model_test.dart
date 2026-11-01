@@ -219,6 +219,33 @@ void main() {
       expect(vm.enviando, isFalse);
       expect(avisos, 0);
     });
+
+    test('#270: si ya estaba confirmada lo dice claro y avisa al panel',
+        () async {
+      api.fallar(_estado, 'No se puede pasar de "entregada" a "entregada"');
+      final vm = armar();
+      final enviando = <bool>[];
+      vm.addListener(() => enviando.add(vm.enviando));
+
+      final r = await vm.confirmar('María');
+
+      // La entrega quedó entregada (lo que buscaba el repartidor): la
+      // pantalla se cierra como al confirmar y el panel se pone al día.
+      expect(r, (ok: true, mensaje: 'Esta entrega ya estaba confirmada'));
+      expect(enviando, [true, false]);
+      expect(avisos, 1);
+    });
+
+    test('#270: otra transición rechazada conserva el mensaje y no avisa',
+        () async {
+      api.fallar(_estado, 'No se puede pasar de "fallida" a "entregada"');
+
+      final r = await armar().confirmar('María');
+
+      expect(
+          r, (ok: false, mensaje: 'No se puede pasar de "fallida" a "entregada"'));
+      expect(avisos, 0);
+    });
   });
 
   group('ReportarFalloViewModel', () {

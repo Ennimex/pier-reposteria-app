@@ -75,7 +75,7 @@ class EntregasRepositoryRemote implements EntregasRepository {
           'evidencia_url': ?evidenciaUrl,
           'recibio_nombre': ?recibioNombre,
           'motivo_fallo': ?motivoFallo,
-        }),
+        }).then(_revisarYaEntregada),
         nuevo == EstadoEntrega.entregada
             ? 'No se pudo confirmar la entrega'
             : nuevo == EstadoEntrega.fallida
@@ -108,6 +108,25 @@ class EntregasRepositoryRemote implements EntregasRepository {
         .map((j) => desdeJson(Map<String, dynamic>.from(j)))
         .toList();
   }
+
+  /// Confirmar una entrega que ya estaba entregada (otro teléfono, o un
+  /// reintento con mala señal cuyo primer envío sí llegó) se vuelve
+  /// EntregaYaConfirmadaException con un mensaje claro (#270); [r] sigue
+  /// igual en cualquier otro caso. Es la única señal del backend: responde
+  /// 400 (el mismo código que sus validaciones), sin un `codigo`, con el
+  /// estado actual dentro del texto, y ApiClient no expone el código HTTP.
+  static Map<String, dynamic> _revisarYaEntregada(Map<String, dynamic> r) {
+    if (r['success'] != true && r['message'] == _yaEntregada) {
+      throw const EntregaYaConfirmadaException(
+        'Esta entrega ya estaba confirmada',
+      );
+    }
+    return r;
+  }
+
+  /// Rechazo de PUT /entregas/:id/estado (routes/entregasRoutes.js) cuando
+  /// la entrega ya está entregada y se pide pasarla a entregada otra vez.
+  static const _yaEntregada = 'No se puede pasar de "entregada" a "entregada"';
 
   /// La respuesta si trae success: true; si no, ApiException con su mensaje
   /// (o [porDefecto]).
