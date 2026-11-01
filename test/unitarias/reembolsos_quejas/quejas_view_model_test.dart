@@ -1,6 +1,7 @@
 // test/unitarias/reembolsos_quejas/quejas_view_model_test.dart — «Mis Quejas» (MVVM, Fase 3) sin
 // red: el repositorio tipa la lista y el envío, y el ViewModel lleva la
 // lista, la tarjeta abierta, los pedidos y el formulario.
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
@@ -194,6 +195,22 @@ void main() {
         'pedido_id': 9,
       });
       expect(api.llamadas.where((l) => l.endpoint == _mis).length, antes + 1);
+    });
+
+    test('el registro del envío nombra el tipo y el ticket (#269)', () async {
+      final api = FakeApiClient(respuestas: _conDatos);
+      final vm = _vm(api)..seleccionarTipo(TipoQueja.comentario);
+      final registro = <String>[];
+      final original = debugPrint;
+      debugPrint = (m, {wrapWidth}) => registro.add(m ?? '');
+      try {
+        await vm.enviar(asunto: 'A', descripcion: 'B');
+      } finally {
+        debugPrint = original;
+      }
+
+      expect(registro, contains(contains('Comentario enviado — ticket: QJ-0010')));
+      expect(registro, isNot(contains(contains('Queja enviada'))));
     });
 
     test('si el backend rechaza devuelve su mensaje', () async {

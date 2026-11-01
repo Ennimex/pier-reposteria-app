@@ -196,7 +196,8 @@ void main() {
         'descripcion': 'Me gustaría que el catálogo tuviera pasteles sin azúcar.',
       });
       expect(find.text('Nueva queja o sugerencia'), findsNothing);
-      expect(find.text('Queja enviada — ticket QJ-0008'), findsOneWidget);
+      // El aviso nombra lo que se envió (#269): aquí, una sugerencia.
+      expect(find.text('Sugerencia enviada — ticket QJ-0008'), findsOneWidget);
       expect(find.text('Sin quejas registradas'), findsNothing);
       expect(find.text('1 registro'), findsOneWidget);
       expect(find.text('QJ-0008'), findsOneWidget);

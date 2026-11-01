@@ -9,13 +9,17 @@ import 'package:pier_reposteria/utils/texto_sanitizado.dart';
 
 /// Qué registra el cliente. [name] es el valor que guarda el backend.
 enum TipoQueja {
-  queja('Queja'),
-  sugerencia('Sugerencia'),
-  comentario('Comentario');
+  queja('Queja', 'Queja enviada'),
+  sugerencia('Sugerencia', 'Sugerencia enviada'),
+  comentario('Comentario', 'Comentario enviado');
 
-  const TipoQueja(this.etiqueta);
+  const TipoQueja(this.etiqueta, this.avisoEnviado);
 
   final String etiqueta;
+
+  /// Aviso de que se envió, con el género de cada tipo («Comentario
+  /// enviado»).
+  final String avisoEnviado;
 }
 
 /// De qué trata. [name] es el valor que guarda el backend.

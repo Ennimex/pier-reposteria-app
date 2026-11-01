@@ -126,18 +126,19 @@ class QuejasViewModel extends ChangeNotifier {
     }
     if (_enviando) return (ticket: null, error: null);
 
+    final tipo = _tipo;
     _enviando = true;
     notifyListeners();
     EnvioQueja resultado;
     try {
       final ticket = await _quejasRepo.crearQueja(
-        tipo: _tipo,
+        tipo: tipo,
         categoria: _categoria,
         asunto: a,
         descripcion: d,
         pedidoId: _pedidoId,
       );
-      PierLog.info('✅ Queja enviada — ticket: $ticket');
+      PierLog.info('✅ ${tipo.avisoEnviado} — ticket: $ticket');
       resultado = (ticket: ticket, error: null);
     } on ApiException catch (e) {
       PierLog.error('Error al enviar queja: ${e.message}');

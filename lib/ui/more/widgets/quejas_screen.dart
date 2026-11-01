@@ -601,6 +601,8 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
   }
 
   Future<void> _enviar() async {
+    // El tipo que se envía, aunque el selector cambie mientras tanto.
+    final tipo = _vm.tipo;
     final r = await _vm.enviar(
       asunto: _asuntoCtrl.text,
       descripcion: _descripcionCtrl.text,
@@ -612,7 +614,7 @@ class _FormularioQuejaState extends State<_FormularioQueja> {
       _showSnack(error);
     } else if (ticket != null) {
       widget.onEnviado();
-      _showSnackSuccess('Queja enviada — ticket $ticket');
+      _showSnackSuccess('${tipo.avisoEnviado} — ticket $ticket');
     }
   }
 
