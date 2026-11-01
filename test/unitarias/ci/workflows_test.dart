@@ -7,7 +7,9 @@
 //   · release.yml solo publica un candidato que pasó las pruebas en el
 //     entorno de liberación y que se aprobó en el Environment «produccion»;
 //   · pipeline.yml corre en los Pull Requests y pushes de main y de develop
-//     (estrategia de ramas del README).
+//     (estrategia de ramas del README);
+//   · los trabajos que compilan el APK en una computadora de GitHub liberan
+//     disco antes, sin tocar el SDK de Android.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -128,6 +130,49 @@ void main() {
       contains(r'build/pier-reposteria-${{ github.ref_name }}.aab'),
     );
     expect(publicar, contains('build/pier-reposteria-*.aab'));
+  });
+
+  test('los trabajos que compilan el APK liberan disco antes, sin tocar el SDK '
+      'de Android', () {
+    // Compila el APK quien lo arma, lo maneja con flutter drive o corre
+    // pruebas de integration_test en el emulador.
+    final compila = RegExp(
+        'flutter build apk|flutter drive|flutter test integration_test');
+    final revisados = <String>[];
+
+    for (final MapEntry(key: workflow, value: contenido)
+        in _workflows().entries) {
+      final texto = contenido.replaceAll('\r\n', '\n');
+      final inicioTrabajos = texto.indexOf('\njobs:\n');
+      if (inicioTrabajos < 0) continue;
+      final trabajos = texto
+          .substring(inicioTrabajos)
+          .split(RegExp(r'\n(?=  [a-zA-Z0-9_-]+:\n)'))
+          .skip(1);
+      for (final trabajo in trabajos) {
+        if (!trabajo.contains('runs-on: ubuntu-24.04') ||
+            !compila.hasMatch(trabajo)) {
+          continue;
+        }
+        final nombre = '$workflow: ${trabajo.split(':').first.trim()}';
+        revisados.add(nombre);
+        final libera = trabajo.indexOf('uses: ./.github/actions/liberar-disco');
+        expect(libera, isNot(-1), reason: '$nombre no libera disco');
+        // Antes de compilar: si no, el disco ya se llenó.
+        expect(libera, lessThan(compila.firstMatch(trabajo)!.start),
+            reason: '$nombre libera disco después de compilar');
+      }
+    }
+
+    // Los 10 de hoy: aceptación, monkey, smoke, flujo de compra aislado,
+    // peso, arranque, flujo de compra, regresión completa y los dos de
+    // release. Si la prueba no encontrara ninguno, no revisaría nada.
+    expect(revisados, hasLength(greaterThanOrEqualTo(10)));
+    final accion =
+        File('.github/actions/liberar-disco/action.yml').readAsStringSync();
+    final borra = RegExp(r'rm -rf[^\n]*(\\\r?\n[^\n]*)*').stringMatch(accion)!;
+    expect(borra, isNot(contains('android')));
+    expect(borra, isNot(contains('ndk')));
   });
 
   test('pipeline.yml corre en los Pull Requests y pushes de main y develop', () {

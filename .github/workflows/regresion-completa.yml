@@ -60,6 +60,12 @@ jobs:
       - name: Descargar el código
         uses: actions/checkout@v7
 
+      # Quita de la imagen lo que no se usa (.NET, Haskell, CodeQL y Boost)
+      # para que compilar el APK no se quede sin disco; no toca el SDK de
+      # Android (.github/actions/liberar-disco).
+      - name: Liberar disco
+        uses: ./.github/actions/liberar-disco
+
       - name: Instalar Java
         uses: actions/setup-java@v6
         with:
