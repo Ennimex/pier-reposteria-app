@@ -198,6 +198,12 @@ class _ServicioLento extends CatalogoGuardadoService {
   }
 }
 
+/// Un teléfono que se atora al guardar: la escritura nunca termina.
+class _ServicioAtorado extends CatalogoGuardadoService {
+  @override
+  Future<void> guardar(List<Product> productos) => Completer<void>().future;
+}
+
 void main() {
   group('Catálogo por páginas', () {
     test('pide la primera página con 20', () async {
@@ -607,9 +613,11 @@ void main() {
       final vm = _vm(api, guardado: CatalogoGuardadoService());
 
       await vm.cargarProductos();
+      // La carga no espera a que se escriba (#283): se deja terminar.
+      await _esperar();
 
-      // Al terminar la carga ya está guardada, tal como llegó: también con el
-      // agotado que la lista deja para el final.
+      // Se guarda tal como llegó: también con el agotado que la lista deja
+      // para el final.
       expect(await _guardada(), _idsServidor(20));
       expect(_idsDe(vm), isNot(contains('3')));
 
@@ -617,6 +625,35 @@ void main() {
       await vm.cargarMas();
       await _esperar();
       expect(await _guardada(), _idsServidor(20));
+    });
+
+    // #283: la carga esperaba a que se guardara la copia; si SharedPreferences
+    // se atoraba, también se quedaba girando el «jalar para recargar».
+    test('si guardar la copia se atora, la carga termina igual', () async {
+      final api = _servidor((l) => _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: _ServicioAtorado());
+
+      await vm.cargarProductos().timeout(const Duration(seconds: 1));
+
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.cargando, isFalse);
+    });
+
+    test('si guardar la copia se atora, «Reintentar» del pie termina igual',
+        () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: _ServicioAtorado());
+      await vm.cargarProductos();
+      expect(vm.sinConexion, isTrue);
+
+      caido = false;
+      await vm.cargarMas().timeout(const Duration(seconds: 1));
+
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.cargandoMas, isFalse);
+      expect(vm.sinConexion, isFalse);
     });
 
     test('con filtros no usa la copia ni la guarda', () async {
@@ -762,6 +799,7 @@ void main() {
       expect(vm.errorMas, isNull);
       expect(vm.cargandoMas, isFalse);
       expect(vm.cargando, isFalse);
+      await _esperar(); // la copia se escribe sin que se la espere (#283)
       expect(await _guardada(), _idsServidor(20));
 
       // Después sí sigue la página 2.

@@ -55,13 +55,14 @@ Map<String, dynamic> _productosQueCoinciden(LlamadaApi llamada) {
 ProductsViewModel _vm(
   FakeApiClient api, {
   String categoriaInicial = ProductsViewModel.todas,
+  Duration esperaBusqueda = Duration.zero,
 }) =>
     ProductsViewModel(
       productosRepo: ProductosRepositoryRemote(api: api),
       favoritosRepo: FavoritosRepositoryRemote(api: api),
       demandaRepo: DemandaRepositoryRemote(api: api),
       categoriaInicial: categoriaInicial,
-      esperaBusqueda: Duration.zero,
+      esperaBusqueda: esperaBusqueda,
       esperaRegistroBusqueda: Duration.zero,
     );
 
@@ -309,6 +310,28 @@ void main() {
       expect(vm.filtroSabor, isNull);
       // Y la página 1 se vuelve a pedir sin el sabor que se quitó.
       expect(_pedidas(api).last, '/productos?categoria=Pays&limite=20&offset=0');
+    });
+
+    // #283: al llegar las opciones se volvía a preguntar aunque no se
+    // hubiera quitado ningún filtro; con la búsqueda a medio escribir salía
+    // una petición de más.
+    test('si sus opciones no quitan ningún filtro, no vuelve a preguntar',
+        () async {
+      final api = _backend()
+        ..demorar(ApiConstants.categoriaOpciones('2'),
+            const Duration(milliseconds: 10));
+      final vm = _vm(api, esperaBusqueda: const Duration(milliseconds: 400));
+      addTearDown(vm.dispose);
+      await vm.cargar(autenticado: false);
+      api.llamadas.clear();
+
+      // Elige Pays y, mientras llegan sus opciones, empieza a teclear.
+      final opciones = vm.seleccionarCategoria('Pays');
+      vm.buscar('pa');
+      await opciones;
+
+      expect(vm.sabores, ['Limón', 'Maracuyá'], reason: 'ya llegaron');
+      expect(_pedidas(api), ['/productos?categoria=Pays&limite=20&offset=0']);
     });
 
     test('entrar con categoría preseleccionada carga sus opciones', () async {

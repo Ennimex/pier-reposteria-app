@@ -247,14 +247,13 @@ class ProductsViewModel extends ChangeNotifier {
     final lecturaCopia = catalogoGuardado != null && !_iniciado
         ? _ponerCopia(catalogoGuardado, turno)
         : null;
-    Future<void>? guardando;
     try {
       final respuesta = await _productosRepo.buscarProductos(
         pedida,
         limite: pedida.pideTodo ? null : porPagina,
       );
       if (turno != _turno) return;
-      guardando = _ponerPrimera(pedida, respuesta);
+      _ponerPrimera(pedida, respuesta);
     } on ApiException catch (e) {
       // Si la copia aún se está leyendo, se espera: de ella depende qué sale.
       if (lecturaCopia != null) await lecturaCopia;
@@ -273,9 +272,6 @@ class ProductsViewModel extends ChangeNotifier {
     _cargando = false;
     _avisar();
     _registrarBusquedaPendiente();
-    // La copia se guarda a la vez que se pinta la página; aquí solo se espera
-    // a que termine (nunca lanza), para que al volver ya esté guardada.
-    if (guardando != null) await guardando;
   }
 
   /// Pone en pantalla, como si fuera la página 1 (mismas reglas de agotados y
@@ -295,12 +291,10 @@ class ProductsViewModel extends ChangeNotifier {
 
   /// Pone la página 1 que llegó del servidor en lugar de lo que se veía, en
   /// un solo paso: la lista no pasa por vacía ni salta, y el aviso de
-  /// [sinConexion] se quita. Si es de la consulta por omisión, empieza a
-  /// guardarla en el teléfono y devuelve esa escritura (nunca lanza).
-  Future<void>? _ponerPrimera(
-    ConsultaCatalogo pedida,
-    List<Product> respuesta,
-  ) {
+  /// [sinConexion] se quita. Si es de la consulta por omisión, la guarda en
+  /// el teléfono sin esperar a que termine (nunca lanza): si el teléfono se
+  /// atora, la carga y el «jalar para refrescar» terminan igual (#283).
+  void _ponerPrimera(ConsultaCatalogo pedida, List<Product> respuesta) {
     _vaciar();
     final todo = pedida.pideTodo
         ? _ordenarPorPrecioFinal(pedida.orden, respuesta)
@@ -311,7 +305,8 @@ class ProductsViewModel extends ChangeNotifier {
     _cantidadPrimeraPagina = primera.length;
     _iniciado = true;
     PierLog.info('✅ Catálogo: ${primera.length} en la primera página');
-    return _catalogoGuardadoDe(pedida)?.guardar(primera);
+    final catalogoGuardado = _catalogoGuardadoDe(pedida);
+    if (catalogoGuardado != null) unawaited(catalogoGuardado.guardar(primera));
   }
 
   /// La siguiente página de lo que se ve: del servidor o, si la consulta se
@@ -341,7 +336,6 @@ class ProductsViewModel extends ChangeNotifier {
     _cargandoMas = true;
     _errorMas = null;
     _avisar();
-    Future<void>? guardando;
     var volvio = false;
     try {
       final pagina = await _productosRepo.buscarProductos(
@@ -352,7 +346,7 @@ class ProductsViewModel extends ChangeNotifier {
       if (turno != _turno) return;
       volvio = _sinConexion;
       if (otraVezLaPrimera) {
-        guardando = _ponerPrimera(pedida, pagina);
+        _ponerPrimera(pedida, pagina);
       } else {
         _agregar(pagina);
         // El servidor volvió a contestar.
@@ -365,8 +359,6 @@ class ProductsViewModel extends ChangeNotifier {
     }
     _cargandoMas = false;
     _avisar();
-    // Como en cargarProductos: al volver, la copia ya está guardada.
-    if (guardando != null) await guardando;
     if (volvio) await _pedirLoQueFalloSinConexion();
   }
 
@@ -471,15 +463,19 @@ class ProductsViewModel extends ChangeNotifier {
       if (_cerrado || _categoria != solicitada) return;
       _opcionesCategoria = opciones;
       // Filtros puestos que ya no existen en esta categoría se limpian.
+      var limpio = false;
       if (_filtroSabor != null && !sabores.contains(_filtroSabor)) {
         _filtroSabor = null;
+        limpio = true;
       }
       if (_filtroTipo != null && !tipos.contains(_filtroTipo)) {
         _filtroTipo = null;
+        limpio = true;
       }
       notifyListeners();
-      // Si se limpió alguno, la página 1 otra vez sin él.
-      _reiniciarSiCambio();
+      // Si se limpió alguno, la página 1 otra vez sin él. Si no, nada: una
+      // búsqueda a medio escribir espera a su última tecla (#283).
+      if (limpio) _reiniciarSiCambio();
       PierLog.info('✅ Opciones de "$solicitada" — '
           'sabores:${opciones.sabores.length} tipos:${opciones.tipos.length}');
     } on ApiException {

@@ -5,6 +5,7 @@
 // productos no hay copia que mostrar, y guardar nunca lanza. Sin red.
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/data/services/catalogo_guardado_service.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
@@ -97,6 +98,28 @@ class _ProductoQueFalla extends Product {
   Map<String, dynamic> toJson() => throw StateError('no se puede convertir');
 }
 
+/// Un teléfono que no acepta lo que se le guarda: setString devuelve false.
+class _PreferenciasQueNoGuardan implements SharedPreferences {
+  @override
+  Future<bool> setString(String key, String value) async => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Lo que se registra con PierLog mientras corre [accion].
+Future<List<String>> _registrado(Future<void> Function() accion) async {
+  final registro = <String>[];
+  final original = debugPrint;
+  debugPrint = (mensaje, {wrapWidth}) => registro.add(mensaje ?? '');
+  try {
+    await accion();
+  } finally {
+    debugPrint = original;
+  }
+  return registro;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -182,6 +205,24 @@ void main() {
 
       final copia = await servicio.leer();
       expect([for (final p in copia!) p.id], ['42']);
+    });
+
+    // #283: el resultado de setString se ignoraba.
+    test('si el teléfono no acepta la copia, lo registra', () async {
+      final registro = await _registrado(
+        () => CatalogoGuardadoService(
+          preferencias: () async => _PreferenciasQueNoGuardan(),
+        ).guardar([_minimo()]),
+      );
+
+      expect(registro, [contains('No se pudo guardar el catálogo')]);
+    });
+
+    test('si el teléfono acepta la copia, no registra ningún error', () async {
+      final registro =
+          await _registrado(() => CatalogoGuardadoService().guardar([_minimo()]));
+
+      expect(registro, isEmpty);
     });
 
     test('guardar no lanza aunque un producto no se pueda convertir', () async {
