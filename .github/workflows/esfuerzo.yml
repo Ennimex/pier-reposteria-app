@@ -17,11 +17,11 @@
 #     escenario de recuperación con 2 clientes revisa que la API volvió a
 #     contestar rápido (p95 < 500 ms, < 1 % de errores).
 #   · Volumen de datos (#70): las pruebas de test/esfuerzo/ (etiqueta
-#     esfuerzo) llenan el carrito con 100 artículos con el servidor de
-#     mentira (FakeApiClient) y revisan que la pantalla siga respondiendo.
-#     El catálogo de 1,000 productos llega con el catálogo por páginas
-#     (#37). Corren solo aquí: la etapa de unitarias y la cobertura de
-#     SonarCloud las dejan fuera.
+#     esfuerzo) llenan el carrito con 100 artículos y el catálogo con 1,000
+#     productos (de 20 en 20 al bajar, #37) con el servidor de mentira
+#     (FakeApiClient) y revisan que las pantallas sigan respondiendo. Corren
+#     solo aquí: la etapa de unitarias y la cobertura de SonarCloud las
+#     dejan fuera.
 # Para qué sirve: comprobar que la app no se cierra sola ni se congela (el
 #   aviso «La app no responde» de Android, llamado ANR) antes de publicarla
 #   en Google Play, y que la API aguanta un pico y se recupera.
