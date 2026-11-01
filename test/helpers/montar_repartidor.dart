@@ -32,16 +32,6 @@ Future<void> irAPestana(WidgetTester tester, String pestana) async {
   await tester.pumpAndSettle();
 }
 
-/// Jala «Mis entregas» hacia abajo para volver a pedir las entregas.
-Future<void> recargarEntregas(WidgetTester tester) async {
-  await tester.fling(
-    find.text('Disponible para entregas'),
-    const Offset(0, 400),
-    1000,
-  );
-  await tester.pumpAndSettle();
-}
-
 /// La tarjeta del pool (la de «Tomar entrega») del pedido [numero].
 Finder tarjetaDelPool(String numero) => find.ancestor(
   of: find.text(numero),

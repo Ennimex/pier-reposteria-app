@@ -64,6 +64,12 @@ abstract class AccionEntregaViewModel extends ChangeNotifier {
       recibioNombre: recibioNombre,
       motivoFallo: motivoFallo,
     );
+    await avisarCambio();
+  }
+
+  /// Avisa al panel que la entrega cambió y espera a que se ponga al día.
+  @protected
+  Future<void> avisarCambio() async {
     await _alCambiar?.call();
   }
 
