@@ -7,7 +7,9 @@
 // (cuenta desactivada o cambiada), la cierra y vuelve al login. La campana
 // cuenta las notificaciones sin leer (se consultan cada 2 minutos, #136).
 // Empleado, gerencia y dirección capturan comandas nuevas (#130) y desde
-// aquí abren los pedidos del día (#137) y la atención a clientes (#138).
+// aquí abren los pedidos del día (#137) y la atención a clientes (#138);
+// gerencia y dirección, además, la actividad del equipo y la bitácora
+// (#139).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/domain/models/comanda.dart';
 import 'package:pier_reposteria/domain/models/nueva_comanda.dart';
+import 'package:pier_reposteria/ui/actividad/widgets/actividad_equipo_screen.dart';
 import 'package:pier_reposteria/ui/atencion/widgets/atencion_clientes_screen.dart';
 import 'package:pier_reposteria/ui/comandas/view_model/agenda_comandas_view_model.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
@@ -144,6 +147,13 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
         ),
       );
 
+  Future<void> _abrirActividad() => Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => const ActividadEquipoScreen(),
+        ),
+      );
+
   Future<void> _abrirSitio() async {
     final ok = await launchUrl(
       Uri.parse(BusinessInfo.sitioWeb),
@@ -157,6 +167,9 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
     final area = _vm.area;
+    // Gerencia y dirección también supervisan al equipo (#139).
+    final auth = context.read<AuthProvider>();
+    final supervisa = auth.isGerencia || auth.isDireccion;
     return Scaffold(
       backgroundColor: AppColors.pierArena,
       // Producción (hornos y decoración) solo confirma: no captura.
@@ -185,6 +198,12 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
               icon: const Icon(LucideIcons.messagesSquare),
               onPressed: () => unawaited(_abrirAtencion()),
             ),
+            if (supervisa)
+              IconButton(
+                tooltip: 'Actividad del equipo',
+                icon: const Icon(LucideIcons.activity),
+                onPressed: () => unawaited(_abrirActividad()),
+              ),
           ],
           Tooltip(
             message: 'Notificaciones',

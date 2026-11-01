@@ -1,12 +1,14 @@
 // lib/config/dependencies.dart
 //
 // Inyección de dependencias (MVVM, Fase 3.5). Registra una sola vez el
-// ApiClient, los 19 repositorios (contrato abstracto → implementación Remote)
+// ApiClient, los 20 repositorios (contrato abstracto → implementación Remote)
 // y los providers globales. Vistas y ViewModels piden su repositorio con
 // `context.read<XRepository>()` en vez de instanciarlo.
 //
 // main.dart lo usa con el ApiService real; test/helpers/pump_app.dart con
 // FakeApiClient, así las pruebas montan exactamente el mismo árbol.
+import 'package:pier_reposteria/data/repositories/actividad_repository.dart';
+import 'package:pier_reposteria/data/repositories/actividad_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/atencion_clientes_repository.dart';
 import 'package:pier_reposteria/data/repositories/atencion_clientes_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/auth_repository.dart';
@@ -61,6 +63,9 @@ import 'package:provider/single_child_widget.dart';
 List<SingleChildWidget> dependencias(ApiClient api) => [
       Provider<ApiClient>.value(value: api),
       // ── Repositorios
+      Provider<ActividadRepository>(
+        create: (context) => ActividadRepositoryRemote(api: context.read()),
+      ),
       Provider<AtencionClientesRepository>(
         create: (context) =>
             AtencionClientesRepositoryRemote(api: context.read()),
