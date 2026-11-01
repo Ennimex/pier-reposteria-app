@@ -113,14 +113,20 @@ jobs:
     needs: aceptacion
     uses: ./.github/workflows/regresion.yml
 
-  # Etapa 4, al mismo tiempo: rendimiento (peso del APK, arranque en frío
-  # en el emulador y carga normal de la API, cada uno contra su línea base) y
-  # esfuerzo (monkey sobre la app y el pico de k6 sobre la API). En los Pull
-  # Requests corren la versión reducida; con «completo», toda.
+  # Etapa 4, al mismo tiempo: rendimiento (peso del APK y carga normal de la
+  # API contra su línea base; arranque en frío en el emulador contra develop,
+  # medido en el mismo trabajo) y esfuerzo (monkey sobre la app y el pico de
+  # k6 sobre la API). En los Pull Requests corren la versión reducida; con
+  # «completo», toda.
   rendimiento:
     name: Rendimiento
     needs: [integracion, regresion]
     uses: ./.github/workflows/rendimiento.yml
+    # El arranque en frío descarga el APK de develop que guardó otra corrida:
+    # además de leer el código, lee los artefactos de Actions.
+    permissions:
+      contents: read
+      actions: read
     with:
       completo: ${{ inputs.completo == true }}
 

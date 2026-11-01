@@ -6,7 +6,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'analisis.dart';
+// analisis.dart también tiene su LineaBase (la de flutter analyze); aquí
+// LineaBase es la de rendimiento (linea_base.dart).
+import 'analisis.dart' hide LineaBase;
 import 'arranque.dart';
 import 'cobertura.dart';
 import 'esfuerzo.dart';
@@ -63,8 +65,14 @@ Comandos:
       logcat y la reapertura de la app después de monkey (am start -W y
       /api/health). Termina con 1 si la app se cerró o se congeló.
   arranque <arranque_en_frio.txt> [--escenario <clave>]
-      Aperturas en frío de tool/arranque_en_frio.sh (am start -W) y su
-      mediana; con --escenario la compara con su línea base.
+      [--develop <arranque_develop.txt>] [--descartadas <descartadas.txt>]
+      [--origen <arranque_develop_origen.txt>]
+      Aperturas en frío de tool/arranque_en_frio.sh o
+      tool/arranque_alternado.sh (am start -W) y su mediana; con --escenario la compara con su línea base. Con las
+      aperturas de develop, una fila por ronda con las dos medianas y su
+      diferencia, y la línea base solo informa; --descartadas cuenta las
+      aperturas que no se contaron y --origen dice de dónde salió el APK de
+      develop.
   flujo [reporte.json]
       Reporte del flujo principal en el emulador que deja
       test_driver/aceptacion_driver.dart (por omisión $_rutaFlujo).
@@ -76,6 +84,12 @@ Comandos:
       $_rutaLineaBaseDeRendimiento: el resumen de k6 (p95_ms), la salida de
       tool/arranque_en_frio.sh (mediana_ms) o el APK (bytes). Falla si la
       rebasa según su tolerancia o si no hay línea base.
+  comparar-arranque <arranque_en_frio.txt> <clave> [--develop <arranque_develop.txt>]
+      Con aperturas de develop medidas en el mismo trabajo
+      (tool/arranque_alternado.sh), compara la mediana de este cambio con la
+      de develop usando la regla de la línea base <clave>; sin ellas, la
+      compara con la línea base, como comparar-rendimiento. Falla si la
+      rebasa o si no hay línea base.
   evidencias <carpeta> --unitarias <r> --analisis <r> --aceptacion <r>
       --integracion <r> --regresion <r> --rendimiento <r> --esfuerzo <r>
       Tabla final de pipeline.yml con las métricas de los artefactos de cada
@@ -113,6 +127,7 @@ int ejecutar(
     'arranque' => _arranque(opciones, archivos),
     'k6' => _k6(opciones, archivos),
     'comparar-rendimiento' => _compararRendimiento(opciones, archivos),
+    'comparar-arranque' => _compararArranque(opciones, archivos),
     'evidencias' => _evidencias(opciones, archivos, entorno),
     'regresion' => _regresion(opciones, archivos, entorno),
     'version' => _version(opciones, archivos),
@@ -310,11 +325,39 @@ int? _saludDeLaApi(String recuperacion) => int.tryParse(
     );
   }
   final escenario = opciones.valores['escenario'];
-  final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
-  final base = escenario == null || lineasBase == null
-      ? null
-      : leerLineaBaseDeRendimiento(lineasBase, escenario);
-  return (resumenArranque(leerAperturas(salida), base: base), 0);
+  final base =
+      escenario == null ? null : archivos.lineaBaseDeRendimiento(escenario);
+  final aperturas = leerAperturas(salida);
+  final descartadas =
+      leerAperturas(archivos.leerOpcion(opciones, 'descartadas') ?? '')
+          .length;
+  final develop = _aperturasDeDevelop(opciones, archivos);
+  if (develop == null) {
+    return (
+      resumenArranque(aperturas, base: base, descartadas: descartadas),
+      0,
+    );
+  }
+  return (
+    resumenArranqueContraDevelop(
+      aperturas,
+      develop,
+      base: base,
+      descartadas: descartadas,
+      origen: archivos.leerOpcion(opciones, 'origen')?.trim() ?? '',
+    ),
+    0,
+  );
+}
+
+/// Las aperturas de develop del archivo de --develop, o null si no se pasó,
+/// no existe (no hubo APK de develop) o ninguna trae su tiempo: entonces
+/// decide la línea base.
+List<Apertura>? _aperturasDeDevelop(_Argumentos opciones, _Archivos archivos) {
+  final salida = archivos.leerOpcion(opciones, 'develop');
+  final aperturas = salida == null ? null : leerAperturas(salida);
+  if (aperturas == null || medianaDeArranque(aperturas) == null) return null;
+  return aperturas;
 }
 
 (String, int) _flujo(_Argumentos opciones, _Archivos archivos) {
@@ -345,10 +388,8 @@ int? _saludDeLaApi(String recuperacion) => int.tryParse(
     );
   }
   final escenario = opciones.valores['escenario'];
-  final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
-  final base = escenario == null || lineasBase == null
-      ? null
-      : leerLineaBaseDeRendimiento(lineasBase, escenario);
+  final base =
+      escenario == null ? null : archivos.lineaBaseDeRendimiento(escenario);
   return (resumenK6(leerK6(datos), titulo: titulo, base: base), 0);
 }
 
@@ -361,12 +402,49 @@ int? _saludDeLaApi(String recuperacion) => int.tryParse(
   final ruta = opciones.posicional(1);
   final escenario = opciones.posicional(2);
   if (ruta == null || escenario == null) return null;
-  const titulo = '### ⏱️ Rendimiento contra la línea base\n\n';
-  final lineasBase = archivos.leerJson(_rutaLineaBaseDeRendimiento);
-  final base = lineasBase == null
-      ? null
-      : leerLineaBaseDeRendimiento(lineasBase, escenario);
-  if (base == null) {
+  return _compararConLineaBase(ruta, escenario, archivos);
+}
+
+/// Termina con 1 si la mediana del arranque de este cambio rebasa la de
+/// develop, medida en el mismo trabajo por tool/arranque_alternado.sh, con
+/// la regla de su línea base (más de 20 % y además más de 25 ms).
+/// Así lo que se compara es el cambio y no la velocidad de la computadora de
+/// GitHub. Sin aperturas de develop decide la línea base fija, como en
+/// comparar-rendimiento.
+(String, int)? _compararArranque(_Argumentos opciones, _Archivos archivos) {
+  final ruta = opciones.posicional(1);
+  final escenario = opciones.posicional(2);
+  if (ruta == null || escenario == null) return null;
+  final develop = _aperturasDeDevelop(opciones, archivos);
+  if (develop == null) {
+    final (texto, codigo) = _compararConLineaBase(ruta, escenario, archivos);
+    return (
+      '$texto\nℹ️ No hubo aperturas de develop con tiempos con las que '
+          'comparar: decidió la línea base.\n',
+      codigo,
+    );
+  }
+  return _compararConLineaBase(
+    ruta,
+    escenario,
+    archivos,
+    contraDevelop: medianaDeArranque(develop),
+  );
+}
+
+/// Compara la medición de [ruta] con la línea base [escenario] o, con
+/// [contraDevelop], con esa mediana de develop y la regla de la línea base.
+(String, int) _compararConLineaBase(
+  String ruta,
+  String escenario,
+  _Archivos archivos, {
+  double? contraDevelop,
+}) {
+  final titulo = contraDevelop == null
+      ? '### ⏱️ Rendimiento contra la línea base\n\n'
+      : '### ⏱️ Arranque en frío contra develop\n\n';
+  final lineaBase = archivos.lineaBaseDeRendimiento(escenario);
+  if (lineaBase == null) {
     return (
       '$titulo> ❌ $_rutaLineaBaseDeRendimiento no trae la línea base '
           '«$escenario» (p95_ms, mediana_ms o bytes, con '
@@ -374,21 +452,28 @@ int? _saludDeLaApi(String recuperacion) => int.tryParse(
       1,
     );
   }
-  final medido = _medir(base.medida, ruta, archivos);
+  final medido = _medir(lineaBase.medida, ruta, archivos);
   if (medido == null) {
     return ('$titulo> ❌ No se generó la medición (`$ruta`).\n', 1);
   }
-  final valores = 'la línea base es ${base.formato(base.valor)} y el máximo '
+  final base = contraDevelop == null
+      ? lineaBase
+      : lineaBase.conValor(contraDevelop);
+  final que = contraDevelop == null ? '«$escenario»' : 'este cambio';
+  final referencia = contraDevelop == null
+      ? 'la línea base'
+      : 'la de develop, medida en el mismo emulador,';
+  final valores = '$referencia es ${base.formato(base.valor)} y el máximo '
       'permitido ${base.formato(base.permitido)} (${base.regla})';
   if (base.rebasa(medido)) {
     return (
-      '$titulo> ❌ ${base.medida.nombre} de «$escenario» subió a '
+      '$titulo> ❌ ${base.medida.nombre} de $que subió a '
           '${base.formato(medido)}: $valores.\n',
       1,
     );
   }
   return (
-    '$titulo✅ ${base.medida.nombre} de «$escenario» es '
+    '$titulo✅ ${base.medida.nombre} de $que es '
         '${base.formato(medido)}: dentro del máximo; $valores.\n',
     0,
   );
@@ -453,6 +538,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
   final regresion = corrida('regresion.json');
   final apk = buscar((nombre) => nombre.endsWith('-release.apk'));
   final arranque = leer('arranque_en_frio.txt');
+  final arranqueDevelop = leer('arranque_develop.txt') ?? '';
   final monkey = leer('monkey.txt');
   final logcat = leer('logcat.txt') ?? '';
   final recuperacion = leer('recuperacion.txt');
@@ -490,7 +576,11 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
     'regresion': [if (regresion != null) lineaPruebas(regresion)],
     'rendimiento': [
       if (apk != null) 'APK de release: ${tamano(apk.lengthSync())}',
-      if (arranque != null) lineaArranque(leerAperturas(arranque)),
+      if (arranque != null)
+        lineaArranque(
+          leerAperturas(arranque),
+          develop: leerAperturas(arranqueDevelop),
+        ),
       if (cargaNormal != null) lineaK6(cargaNormal),
     ],
     'esfuerzo': [
@@ -697,6 +787,20 @@ class _Archivos {
     } on FormatException {
       return null;
     }
+  }
+
+  /// Contenido del archivo de la opción --[opcion], o null si no se pasó o
+  /// no existe.
+  String? leerOpcion(_Argumentos opciones, String opcion) {
+    final ruta = opciones.valores[opcion];
+    return ruta == null ? null : leer(ruta);
+  }
+
+  /// La línea base [escenario] de tool/linea_base_rendimiento.json, o null si
+  /// el archivo no la trae.
+  LineaBase? lineaBaseDeRendimiento(String escenario) {
+    final datos = leerJson(_rutaLineaBaseDeRendimiento);
+    return datos == null ? null : leerLineaBaseDeRendimiento(datos, escenario);
   }
 
   Corrida? corrida(String ruta) {
