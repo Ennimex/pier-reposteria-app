@@ -12,12 +12,18 @@
 #     que la API contesta lo que la app espera: el estado del servidor, el
 #     catálogo (cada producto pasa por Product.fromJson, el mismo código de
 #     la app), las categorías y el inicio de sesión, bueno y malo.
-#   · Flujo de compra en el entorno aislado: la app instalada en el emulador
-#     habla con esa misma API en contenedores (desde el emulador,
-#     http://10.0.2.2:3000/api): inicia sesión con la cuenta ficticia de la
-#     semilla, abre un producto con existencias, lo añade al carrito y llega
-#     a «Finalizar Pedido». El pago queda fuera: la llave de Stripe del
-#     entorno aislado es ficticia.
+#   · Flujos de compra y reseña en el entorno aislado: la app instalada en
+#     el emulador habla con esa misma API en contenedores (desde el
+#     emulador, http://10.0.2.2:3000/api) e inicia sesión con la cuenta
+#     ficticia de la semilla. Dos flujos, uno tras otro:
+#       - Compra: abre un producto con existencias, lo añade al carrito y
+#         llega a «Finalizar Pedido». El pago queda fuera: la llave de
+#         Stripe del entorno aislado es ficticia.
+#       - Del catálogo a la reseña: busca en el catálogo el producto del
+#         pedido completado que trae la semilla y lo abre, ve el pedido en
+#         «Pedidos» → «Historial» y su detalle, y califica el producto con
+#         5 estrellas y un comentario: la reseña sale publicada como
+#         «Compra verificada».
 # Para qué sirve: encuentra fallos que las pruebas por pieza no ven; por
 #   ejemplo, una pantalla que no lleva a la siguiente, algo que solo falla
 #   en un celular Android o un cambio del backend que la app ya no entiende.
@@ -36,9 +42,10 @@
 #   si alguna falla, la tabla de evidencias del pipeline dice cuál. Los
 #   reportes quedan en Artifacts («resultados-integracion»,
 #   «resultados-api» y «resultados-flujo-entorno-aislado», estos dos con las
-#   bitácoras de los contenedores).
-# Dónde están las pruebas: integration_test/app_smoke_test.dart, test/api/ e
-#   integration_test/flujos/compra_test.dart.
+#   bitácoras de los contenedores; el último trae los dos flujos).
+# Dónde están las pruebas: integration_test/app_smoke_test.dart, test/api/,
+#   integration_test/flujos/compra_test.dart e
+#   integration_test/flujos/catalogo_resena_test.dart.
 # Issues: #21 (Sprint 1), #58 (Sprint 2), #65 (Sprint 4) y #69 (Sprint 5).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Pruebas de integración
@@ -231,7 +238,7 @@ jobs:
           retention-days: 30
 
   flujo-compra-aislado:
-    name: Flujo de compra en el entorno aislado
+    name: Flujos de compra y reseña en el entorno aislado
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     # Los primeros pasos preparan la computadora (más detalle en el trabajo
@@ -297,23 +304,29 @@ jobs:
           disable-animations: false
           script: echo "AVD generado para la caché."
 
-      # Corre en el emulador el flujo de compra contra la API del contenedor:
+      # Corre en el emulador, uno tras otro, los dos flujos contra la API del
+      # contenedor:
+      #   · compra_test.dart, solo el escenario «del inicio de sesión al
+      #     checkout». El otro escenario del archivo, el del pago, queda fuera
+      #     a propósito: la llave de Stripe del entorno aislado es ficticia y
+      #     el servidor no puede crear el intento de pago. Esa prueba corre
+      #     contra producción en flujo-compra.yml.
+      #   · catalogo_resena_test.dart (#65): del catálogo a la reseña, con el
+      #     pedido completado de la semilla. Deja una reseña en la base del
+      #     contenedor, que se desecha con la computadora del job.
+      #   · --name elige esos dos escenarios por su nombre (es una expresión
+      #     regular: «|» separa uno del otro).
       #   · --dart-define=API_BASE_URL apunta la app a 10.0.2.2:3000, el
       #     entorno aislado (el APK de pruebas permite http sin cifrar:
       #     android/app/src/debug/AndroidManifest.xml).
       #   · USUARIO_PRUEBA y CLAVE_PRUEBA son los de la semilla
       #     (docker/semilla/semilla_pruebas.sql): ficticios, solo existen en
       #     el contenedor y no son secretos.
-      #   · --plain-name corre solo el escenario «del inicio de sesión al
-      #     checkout». El otro escenario del archivo, el del pago, queda fuera
-      #     a propósito: la llave de Stripe del entorno aislado es ficticia y
-      #     el servidor no puede crear el intento de pago. Esa prueba corre
-      #     contra producción en flujo-compra.yml.
-      # Pase o falle, guarda después las bitácoras de los contenedores, y el
-      # renglón termina con el código de la prueba: si falla, el job falla. Va
-      # en un solo renglón (>) porque el emulador corre cada renglón por
-      # separado.
-      - name: Correr el flujo de compra en el emulador
+      # Los dos dejan su resultado en el mismo reporte. Pase o falle, guarda
+      # después las bitácoras de los contenedores, y el renglón termina con el
+      # código de las pruebas: si una falla, el job falla. Va en un solo
+      # renglón (>) porque el emulador corre cada renglón por separado.
+      - name: Correr los flujos en el emulador
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ env.API_LEVEL }}
@@ -324,8 +337,9 @@ jobs:
           disable-animations: true
           script: >
             mkdir -p build/resultados;
-            if flutter test integration_test/flujos/compra_test.dart --no-pub
-            --plain-name "Escenario: del inicio de sesión al checkout"
+            if flutter test integration_test/flujos/compra_test.dart
+            integration_test/flujos/catalogo_resena_test.dart --no-pub
+            --name "Escenario: del inicio de sesión al checkout|Escenario: calificar un producto de un pedido completado"
             --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
             --dart-define=USUARIO_PRUEBA=cliente@pier.test
             --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026
@@ -334,14 +348,14 @@ jobs:
             bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt;
             exit "$codigo_de_la_prueba"
 
-      # Escribe el resumen: el escenario con ✅. Si falló, el paso anterior ya
-      # detuvo el job y la tabla de evidencias del pipeline lo dice, con el
-      # reporte que se sube abajo.
+      # Escribe el resumen: cada escenario con ✅, agrupado por historia (#58
+      # y #65). Si alguno falló, el paso anterior ya detuvo el job y la tabla
+      # de evidencias del pipeline lo dice, con el reporte que se sube abajo.
       - name: Mostrar el resultado en el resumen
         run: >
           dart run tool/resumen_pruebas.dart pruebas
           build/resultados/flujo_entorno_aislado.json
-          --titulo "Flujo de compra en el entorno aislado"
+          --titulo "Flujos de compra y reseña en el entorno aislado"
           --detalle
 
       # Guarda el reporte y las bitácoras de los contenedores 30 días en

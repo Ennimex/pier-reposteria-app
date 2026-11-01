@@ -8,7 +8,8 @@
 // o en un Pull Request sin acceso a los secretos) las pruebas se omiten. El
 // flujo de compra también corre contra el entorno aislado (integracion.yml):
 // ahí el servidor es el del contenedor (API_BASE_URL) y la cuenta, la
-// ficticia de la semilla.
+// ficticia de la semilla. Del catálogo a la reseña (#65,
+// flujos/catalogo_resena_test.dart) corre solo ahí.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/app.dart';
@@ -36,6 +37,22 @@ const esperaDelServidor = Duration(seconds: 90);
 bool faltanCredenciales() {
   if (_usuario.isNotEmpty && _clave.isNotEmpty) return false;
   markTestSkipped('faltan USUARIO_PRUEBA y CLAVE_PRUEBA (--dart-define)');
+  return true;
+}
+
+/// La cuenta ficticia de docker/semilla/semilla_pruebas.sql: solo existe en
+/// el contenedor del entorno aislado.
+const cuentaDeLaSemilla = 'cliente@pier.test';
+
+/// Omite la prueba (y lo dice) si no inicia sesión con la cuenta de la
+/// semilla, es decir, si no corre contra el entorno aislado: para lo que
+/// deja datos que no se pueden borrar o necesita los datos de la semilla.
+bool faltaLaCuentaDeLaSemilla() {
+  if (_usuario == cuentaDeLaSemilla) return false;
+  markTestSkipped(
+    'solo corre en el entorno aislado, con la cuenta de la semilla '
+    '($cuentaDeLaSemilla)',
+  );
   return true;
 }
 
@@ -94,14 +111,21 @@ Future<void> iniciarSesion(WidgetTester tester) async {
   expect(error, isNull, reason: 'no se pudo vaciar el carrito: $error');
 }
 
+/// Los productos del catálogo del servidor (GET /productos).
+Future<List<Product>> catalogoDelServidor(ApiService api) async {
+  final respuesta = await ProductosRepositoryRemote(api: api).listar();
+  return (respuesta['productos'] as List<dynamic>? ?? const [])
+      .whereType<Map<String, dynamic>>()
+      .map(Product.fromJson)
+      .toList();
+}
+
 /// Toma del catálogo real un producto activo con existencias, para no
 /// depender de uno en particular.
 Future<Product> productoConExistencias(ApiService api) async {
-  final respuesta = await ProductosRepositoryRemote(api: api).listar();
-  final productos = (respuesta['productos'] as List<dynamic>? ?? const [])
-      .whereType<Map<String, dynamic>>()
-      .map(Product.fromJson)
-      .where((producto) => producto.disponible && !producto.agotado);
+  final productos = (await catalogoDelServidor(
+    api,
+  )).where((producto) => producto.disponible && !producto.agotado);
   if (productos.isEmpty) {
     fail('el catálogo no tiene productos activos con existencias');
   }

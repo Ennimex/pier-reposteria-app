@@ -22,7 +22,10 @@
 # Cuenta de prueba: su correo y contraseña son los secretos USUARIO_PRUEBA y
 #   CLAVE_PRUEBA (Settings → Secrets and variables → Actions); nunca se
 #   escriben en el código. Sin ellos, el flujo de compra se omite.
-# Dónde está la prueba: integration_test/flujos/compra_test.dart.
+# Dónde está la prueba: integration_test/flujos/compra_test.dart. La carpeta
+#   también trae catalogo_resena_test.dart (#65), que solo corre en el
+#   entorno aislado (integracion.yml): aquí sale omitida (⏭️), porque deja
+#   una reseña que no se puede borrar.
 # Issue: #58 (Sprint 2).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Flujo de compra contra el servidor real
