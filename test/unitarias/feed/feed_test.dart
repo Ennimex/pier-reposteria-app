@@ -15,6 +15,10 @@ const _promociones = '/publicaciones/promociones';
 
 String _sugerencias(int pagina) => '/publicaciones/sugerencias?pagina=$pagina';
 
+/// La página que sigue a la del cursor `cursorJson(antesId: antesId)`.
+String _feedDespues(int antesId) =>
+    '$_feed&antes=2026-10-10T12%3A00%3A00.123456Z&antes_id=$antesId';
+
 List<Map<String, dynamic>> _publicaciones(int desde, int cuantas) => [
   for (var i = desde; i < desde + cuantas; i++) publicacionJson(id: i),
 ];
@@ -510,6 +514,66 @@ void main() {
       vm.limpiar();
       expect(vm.iniciado, isFalse);
       expect(vm.elementos, isEmpty);
+    });
+
+    test('recargar con un «cargar más» en vuelo deja volver a pedir la '
+        'siguiente página (#273)', () async {
+      api
+        ..responder(
+          _feed,
+          feedJson(_publicaciones(1, 2), siguiente: cursorJson()),
+        )
+        ..responder(_feedDespues(5), feedJson(_publicaciones(3, 2)))
+        ..demorar(_feedDespues(5), const Duration(milliseconds: 20));
+      await vm.cargar();
+      final enVuelo = vm.cargarMas();
+      expect(vm.cargandoMas, isTrue);
+
+      api.responder(
+        _feed,
+        feedJson(_publicaciones(7, 2), siguiente: cursorJson(antesId: 8)),
+      );
+      await vm.cargar();
+      expect(vm.cargandoMas, isFalse);
+
+      api.responder(_feedDespues(8), feedJson(_publicaciones(9, 1)));
+      await vm.cargarMas();
+      expect(api.llamo(_feedDespues(8)), isTrue);
+      expect(_claves(vm.elementos), ['pub7', 'pub8', 'pub9']);
+
+      await enVuelo;
+      expect(
+        _claves(vm.elementos),
+        ['pub7', 'pub8', 'pub9'],
+        reason: 'la página de antes de recargar no se suma',
+      );
+      expect(vm.cargandoMas, isFalse);
+      expect(vm.errorMas, isNull);
+    });
+
+    test('recargar borra el error de cargar más y un error que llega tarde '
+        'no lo vuelve a poner (#273)', () async {
+      api
+        ..responder(
+          _feed,
+          feedJson(_publicaciones(1, 1), siguiente: cursorJson()),
+        )
+        ..fallar(_feedDespues(5), 'No se pudo cargar más');
+      await vm.cargar();
+      await vm.cargarMas();
+      expect(vm.errorMas, 'No se pudo cargar más');
+
+      await vm.cargar();
+      expect(vm.errorMas, isNull);
+
+      api.demorar(_feedDespues(5), const Duration(milliseconds: 20));
+      final enVuelo = vm.cargarMas();
+      await vm.cargar();
+      await enVuelo;
+
+      expect(vm.errorMas, isNull);
+      expect(vm.cargandoMas, isFalse);
+      expect(_claves(vm.elementos), ['pub1']);
     });
 
     test('tras dispose no avisa', () async {
