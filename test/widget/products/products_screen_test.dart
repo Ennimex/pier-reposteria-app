@@ -18,6 +18,7 @@ import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/pantalla_apretada.dart';
 import '../../helpers/pump_app.dart';
 
 Map<String, dynamic> _p(
@@ -386,5 +387,38 @@ void main() {
 
       expect(find.byType(LoginScreen), findsOneWidget);
     });
+  });
+
+  // Regresión de #285: el estado vacío medía justo lo que quedaba de
+  // pantalla; si no cabía se desbordaba y su botón quedaba cortado.
+  group('El estado vacío del catálogo cabe en una pantalla apretada (#285)',
+      () {
+    for (final apreton in Apreton.values) {
+      testWidgets(
+          'sin conexión, «Reintentar» se alcanza ${apreton.descripcion}',
+          (tester) async {
+        await _montar(
+          tester,
+          api: _backend()..fallar(ApiConstants.productos, _sinRed),
+        );
+        await tester.apretar(apreton);
+
+        await tester.alcanzar(find.text('Reintentar'));
+      }, tags: 'regresion');
+
+      testWidgets(
+          'sin resultados, «Limpiar filtros» se alcanza '
+          '${apreton.descripcion}', (tester) async {
+        await _montar(
+          tester,
+          api: _backend()
+            ..responder(ApiConstants.productos,
+                {'success': true, 'productos': <Object>[]}),
+        );
+        await tester.apretar(apreton);
+
+        await tester.alcanzar(find.text('Limpiar filtros'));
+      }, tags: 'regresion');
+    }
   });
 }

@@ -333,9 +333,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
                         // ── GRID ────────────────────────────────────────
                         if (favoritos.isEmpty)
-                          SliverFillRemaining(child: _buildEmptyState(espera))
+                          SliverFillRemaining(
+                              // Ocupa lo que queda de pantalla si cabe y, si no
+                              // (letra grande, teclado, pantalla chica), mide
+                              // lo que necesita y se desplaza en vez de
+                              // cortarse (#285).
+                              hasScrollBody: false,
+                              child: _buildEmptyState(espera))
                         else if (filtered.isEmpty)
                           SliverFillRemaining(
+                            hasScrollBody: false,
                             child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,

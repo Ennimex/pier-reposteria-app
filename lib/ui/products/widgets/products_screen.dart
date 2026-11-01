@@ -393,6 +393,11 @@ class _ProductsScreenState extends State<ProductsScreen>
                         // (#160).
                         else if (error != null && products.isEmpty)
                           SliverFillRemaining(
+                            // Ocupa lo que queda de pantalla si cabe y, si no
+                            // (letra grande, teclado, pantalla chica), mide lo
+                            // que necesita y se desplaza en vez de cortarse
+                            // (#285).
+                            hasScrollBody: false,
                             child: CatalogoVacio.sinConexion(
                               mensaje: error,
                               onReintentar: _recargar,
@@ -401,6 +406,7 @@ class _ProductsScreenState extends State<ProductsScreen>
                         // La primera página llegó vacía.
                         else if (_vm.fin && products.isEmpty)
                           SliverFillRemaining(
+                              hasScrollBody: false,
                               child: CatalogoVacio(onLimpiar: _limpiarTodo))
                         else ...[
                           // Entrada en cascada: cada tarjeta sube y aparece

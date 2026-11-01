@@ -11,6 +11,7 @@ import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/pantalla_apretada.dart';
 import '../../helpers/pump_app.dart';
 
 Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
@@ -34,25 +35,27 @@ Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
   await tester.pumpAndSettle();
 }
 
+/// Sin favoritos guardados; las categorías sugeridas llegan del backend.
+FakeApiClient _sinFavoritos() => FakeApiClient(
+      respuestas: {
+        ApiConstants.favoritos: {'success': true, 'favoritos': <Object>[]},
+        ApiConstants.categorias: {
+          'success': true,
+          'categorias': [
+            {'nombre': 'Postres'},
+            {'nombre': 'Panes'},
+          ],
+        },
+      },
+    );
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('FavoritesScreen', () {
     testWidgets('sin favoritos muestra el estado vacío con las categorías',
         (tester) async {
-      final api = FakeApiClient(
-        respuestas: {
-          ApiConstants.favoritos: {'success': true, 'favoritos': <Object>[]},
-          ApiConstants.categorias: {
-            'success': true,
-            'categorias': [
-              {'nombre': 'Postres'},
-              {'nombre': 'Panes'},
-            ],
-          },
-        },
-      );
-      await _montar(tester, api);
+      await _montar(tester, _sinFavoritos());
 
       expect(find.text('Sin favoritos aún'), findsOneWidget);
       expect(find.text('Postres'), findsOneWidget);
@@ -121,6 +124,47 @@ void main() {
       await tester.tap(find.byIcon(LucideIcons.plus));
       await tester.pumpAndSettle();
       expect(find.text('Fresa Matcha Bliss agregado al carrito'), findsOneWidget);
+    }, tags: 'regresion');
+  });
+
+  // Regresión de #285: los estados vacíos medían justo lo que quedaba de
+  // pantalla; si no cabían se desbordaban y lo de abajo quedaba cortado.
+  group('Los estados vacíos de Favoritos caben en una pantalla apretada '
+      '(#285)', () {
+    for (final apreton in Apreton.values) {
+      testWidgets(
+          'sin favoritos, «Ver Menú» y las categorías se alcanzan '
+          '${apreton.descripcion}', (tester) async {
+        await _montar(tester, _sinFavoritos());
+        await tester.apretar(apreton);
+
+        await tester.alcanzar(find.text('Ver Menú'));
+        await tester.alcanzar(find.text('Explora por categoría'));
+      }, tags: 'regresion');
+    }
+
+    // Sin coincidencias solo hay un ícono y un renglón: deja de caber con el
+    // teclado abierto, que es cuando se está buscando.
+    testWidgets(
+        'una búsqueda sin coincidencias se alcanza con el teclado abierto',
+        (tester) async {
+      await _montar(
+        tester,
+        FakeApiClient(
+          respuestas: {
+            ApiConstants.favoritos: {
+              'success': true,
+              'favoritos': [
+                {'id': 40, 'nombre': 'Pay de queso', 'categoria': 'Pays'},
+              ],
+            },
+          },
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'brownie');
+      await tester.apretar(Apreton.tecladoAbierto);
+
+      await tester.alcanzar(find.text('Sin resultados para "brownie"'));
     }, tags: 'regresion');
   });
 }
