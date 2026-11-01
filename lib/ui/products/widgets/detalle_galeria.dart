@@ -201,9 +201,8 @@ class _DetalleGaleriaState extends State<DetalleGaleria> {
     // misma, la galería usa su entrada de caché (no se baja dos veces y, ya
     // guardada en el teléfono, se ve sin red).
     if (conLaDeLaTarjeta && url == deLaTarjeta && fotoReducida(url) == url) {
-      return Image(
-        image: fotoDeTarjeta(url),
-        fit: BoxFit.cover,
+      return FotoDeTarjeta(
+        url,
         frameBuilder: (_, imagen, cuadro, sincrona) =>
             AparicionFoto(foto: imagen, cuadro: cuadro, sincrona: sincrona),
         errorBuilder: _sinFoto,
@@ -221,17 +220,14 @@ class _DetalleGaleriaState extends State<DetalleGaleria> {
     if (!conLaDeLaTarjeta) return foto;
     // La primera foto del carrusel es la completa, todavía sin bajar (aunque
     // sea la misma dirección que la de la tarjeta, que se pidió reducida):
-    // debajo queda la de la tarjeta (fotoDeTarjeta, ya en caché), así al
+    // debajo queda la de la tarjeta (FotoDeTarjeta, ya en caché), así al
     // aterrizar el Hero no queda un hueco y la de la galería aparece encima
     // con un fundido. El ícono de foto rota sale solo si tampoco está la de
     // la tarjeta.
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image(
-            image: fotoDeTarjeta(deLaTarjeta),
-            fit: BoxFit.cover,
-            errorBuilder: _sinFoto),
+        FotoDeTarjeta(deLaTarjeta, errorBuilder: _sinFoto),
         foto,
       ],
     );
