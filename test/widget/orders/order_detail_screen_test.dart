@@ -191,7 +191,7 @@ void main() {
 
       await tester.scrollUntilVisible(find.text('Horario de entrega'), 200);
       expect(find.text('28 Oct 2026 · 09:00 hrs'), findsOneWidget);
-    });
+    }, tags: 'regresion');
 
     testWidgets('un pedido cancelado avisa en lugar de la línea de tiempo',
         (tester) async {
