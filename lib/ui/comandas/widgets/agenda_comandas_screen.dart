@@ -7,7 +7,7 @@
 // (cuenta desactivada o cambiada), la cierra y vuelve al login. La campana
 // cuenta las notificaciones sin leer (se consultan cada 2 minutos, #136).
 // Empleado, gerencia y dirección capturan comandas nuevas (#130) y desde
-// aquí abren los pedidos del día (#137).
+// aquí abren los pedidos del día (#137) y la atención a clientes (#138).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -15,6 +15,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/domain/models/comanda.dart';
 import 'package:pier_reposteria/domain/models/nueva_comanda.dart';
+import 'package:pier_reposteria/ui/atencion/widgets/atencion_clientes_screen.dart';
 import 'package:pier_reposteria/ui/comandas/view_model/agenda_comandas_view_model.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/detalle_comanda_screen.dart';
@@ -136,6 +137,13 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
         MaterialPageRoute<void>(builder: (_) => const PedidosDelDiaScreen()),
       );
 
+  Future<void> _abrirAtencion() => Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => const AtencionClientesScreen(),
+        ),
+      );
+
   Future<void> _abrirSitio() async {
     final ok = await launchUrl(
       Uri.parse(BusinessInfo.sitioWeb),
@@ -166,12 +174,18 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
         foregroundColor: Colors.white,
         title: Text(area == null ? 'Comandas' : 'Comandas · ${area.etiqueta}'),
         actions: [
-          if (area == null)
+          if (area == null) ...[
             IconButton(
               tooltip: 'Pedidos del día',
               icon: const Icon(LucideIcons.shoppingBag),
               onPressed: () => unawaited(_abrirPedidos()),
             ),
+            IconButton(
+              tooltip: 'Atención a clientes',
+              icon: const Icon(LucideIcons.messagesSquare),
+              onPressed: () => unawaited(_abrirAtencion()),
+            ),
+          ],
           Tooltip(
             message: 'Notificaciones',
             child: GestureDetector(

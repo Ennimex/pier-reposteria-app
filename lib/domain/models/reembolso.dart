@@ -2,8 +2,11 @@
 //
 // Una solicitud de reembolso del propio cliente («Reembolsos»). Fuente: GET
 // /reembolsos/mis-reembolsos -> reembolsos[{id, pedido_id, pedido_numero,
-// monto, motivo, descripcion, estado, respuesta_admin, fotos_evidencia,
-// created_at}].
+// monto, motivo, descripcion, estado, respuesta_admin,
+// justificacion_rechazo, fotos_evidencia, created_at}]. Lo que escribe el
+// personal (el mensaje y la justificación de un rechazo, #138) llega
+// escapado por el backend: se guarda como se escribió.
+import 'package:pier_reposteria/utils/texto_sanitizado.dart';
 
 /// Estado de la solicitud en el backend.
 enum EstadoReembolso { pendiente, enRevision, aprobado, procesado, rechazado }
@@ -16,6 +19,7 @@ class Reembolso {
     required this.monto,
     this.motivo,
     this.respuestaAdmin,
+    this.justificacionRechazo,
     this.creadoEn,
     this.fotos = const [],
   });
@@ -36,6 +40,7 @@ class Reembolso {
         monto: double.tryParse(j['monto']?.toString() ?? '') ?? 0,
         motivo: j['motivo']?.toString(),
         respuestaAdmin: _textoOpcional(j['respuesta_admin']),
+        justificacionRechazo: _textoOpcional(j['justificacion_rechazo']),
         creadoEn:
             DateTime.tryParse(j['created_at']?.toString() ?? '')?.toLocal(),
         fotos: [
@@ -59,6 +64,9 @@ class Reembolso {
 
   /// null si Pier no ha respondido.
   final String? respuestaAdmin;
+
+  /// Por qué gerencia la rechazó; null si no la ha rechazado.
+  final String? justificacionRechazo;
   final DateTime? creadoEn;
 
   /// URLs de las fotos de evidencia (#117); vacía si no adjuntó.
@@ -78,6 +86,6 @@ class Reembolso {
 
   static String? _textoOpcional(Object? v) {
     final s = v?.toString() ?? '';
-    return s.isEmpty ? null : s;
+    return s.isEmpty ? null : decodificarSanitizado(s);
   }
 }
