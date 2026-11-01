@@ -120,10 +120,13 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Jalar para recargar: los productos y las promociones otra vez. Las
+  /// promociones de antes siguen en las tarjetas hasta que llegan las nuevas
+  /// y, si la recarga falla, se quedan: el precio con descuento no parpadea
+  /// (#271).
   Future<void> refrescar() async {
     PierLog.info('🔄 Refrescando productos y promociones...');
     _productos = [];
-    _promociones = {};
     await cargarProductos();
   }
 }

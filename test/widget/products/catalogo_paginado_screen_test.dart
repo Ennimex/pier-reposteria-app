@@ -623,12 +623,17 @@ void main() {
       expect(find.text(_aviso), findsOneWidget);
       expect(_pedidas(api), [_primera, _primera]);
 
-      // Vuelve la conexión; la página 1 tarda un poco en llegar.
+      // Vuelve la conexión; la página 1 tarda un poco en llegar. «Reintentar»
+      // del pie (el aviso de arriba también lo ofrece, #275).
       falla = false;
       api.demorar(_primera, _demora);
-      await tester.ensureVisible(find.text('Reintentar'));
+      final reintentarDelPie = find.descendant(
+        of: find.byType(PieCatalogo),
+        matching: find.text('Reintentar'),
+      );
+      await tester.ensureVisible(reintentarDelPie);
       await tester.pump();
-      await tester.tap(find.text('Reintentar'));
+      await tester.tap(reintentarDelPie);
       await tester.pump();
 
       // Mientras llega, la copia se queda donde estaba.
@@ -678,6 +683,71 @@ void main() {
 
       expect(find.text('No pudimos cargar el catálogo'), findsOneWidget);
       expect(find.text(_aviso), findsNothing);
+    });
+  });
+
+  // Antes, con una categoría (o búsqueda, filtros u orden), jalar para
+  // refrescar sin internet cambiaba la lista por «No pudimos cargar el
+  // catálogo».
+  group('Jalar para refrescar sin internet (#275)', () {
+    /// El aviso de arriba, con su «Reintentar».
+    final reintentarDelAviso = find.descendant(
+      of: find.ancestor(of: find.text(_aviso), matching: find.byType(Row)),
+      matching: find.text('Reintentar'),
+    );
+
+    testWidgets('con una categoría, la lista se queda con el aviso y su '
+        '«Reintentar» la trae al volver la conexión', (tester) async {
+      var falla = false;
+      final api = _backend(productos: _servidor(falla: (_) => falla));
+      await _montar(tester, api: api);
+      await tester.tap(find.text('Pays').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Pay 1'), findsOneWidget);
+
+      // Jalar para refrescar, sin internet.
+      falla = true;
+      await tester.fling(_lista, const Offset(0, 400), 1000);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pay 1'), findsOneWidget);
+      expect(find.text('No pudimos cargar el catálogo'), findsNothing);
+      expect(find.text(_aviso), findsOneWidget);
+      expect(reintentarDelAviso, findsOneWidget);
+      expect(_pedidas(api).where((e) => e.contains('categoria=Pays')),
+          hasLength(2));
+
+      // Vuelve la conexión.
+      falla = false;
+      await tester.tap(reintentarDelAviso);
+      await tester.pumpAndSettle();
+
+      expect(_pedidas(api).where((e) => e.contains('categoria=Pays')),
+          hasLength(3));
+      expect(find.text(_aviso), findsNothing);
+      expect(find.text('Reintentar'), findsNothing);
+      expect(find.text('Pay 1'), findsOneWidget);
+    });
+
+    testWidgets('si «Reintentar» tampoco llega, la lista y el aviso se quedan',
+        (tester) async {
+      var falla = false;
+      final api = _backend(productos: _servidor(falla: (_) => falla));
+      await _montar(tester, api: api);
+      await tester.tap(find.text('Pays').first);
+      await tester.pumpAndSettle();
+      falla = true;
+      await tester.fling(_lista, const Offset(0, 400), 1000);
+      await tester.pumpAndSettle();
+
+      await tester.tap(reintentarDelAviso);
+      await tester.pumpAndSettle();
+
+      expect(_pedidas(api).where((e) => e.contains('categoria=Pays')),
+          hasLength(3));
+      expect(find.text('Pay 1'), findsOneWidget);
+      expect(find.text(_aviso), findsOneWidget);
+      expect(find.text('No pudimos cargar el catálogo'), findsNothing);
     });
   });
 }

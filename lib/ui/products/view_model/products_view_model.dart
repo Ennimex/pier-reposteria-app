@@ -39,10 +39,12 @@ class ProductsViewModel extends ChangeNotifier {
     String categoriaInicial = todas,
     this.esperaBusqueda = const Duration(milliseconds: 400),
     this.esperaRegistroBusqueda = const Duration(milliseconds: 1200),
+    double Function(Product producto)? precioFinal,
   })  : _productosRepo = productosRepo,
         _favoritosRepo = favoritosRepo,
         _demandaRepo = demandaRepo,
         _catalogoGuardado = catalogoGuardado,
+        _precioFinal = precioFinal ?? _precioBase,
         _categoria = categoriaInicial;
 
   /// Categoría que muestra todo el catálogo.
@@ -73,6 +75,10 @@ class ProductsViewModel extends ChangeNotifier {
   final DemandaRepository _demandaRepo;
   // La copia de la primera página en el teléfono; null = sin copia (pruebas).
   final CatalogoGuardadoService? _catalogoGuardado;
+  // El precio que se ve en la tarjeta, con la promoción (lo da la vista con
+  // ProductProvider); sin él, el precio base. Con él se ordena por precio
+  // (#281).
+  final double Function(Product producto) _precioFinal;
   bool _cerrado = false;
   Timer? _esperaDeBusqueda;
   Timer? _registroBusqueda;
@@ -152,13 +158,15 @@ class ProductsViewModel extends ChangeNotifier {
   /// Por qué no llegó la siguiente página (lo que se ve se queda).
   String? get errorMas => _errorMas;
 
-  /// Ya llegó la última página: una con menos de [porPagina] o vacía.
+  /// Ya llegó la última página: una que no trae justo [porPagina] (con
+  /// menos, vacía o, si el servidor no respetara el límite, con más).
   bool get fin => _fin;
 
-  /// La página 1 de la consulta por omisión no pudo llegar y lo que se ve es
-  /// la copia guardada en el teléfono (o la última página que llegó): la vista
-  /// avisa que puede no ser lo más reciente. Se quita en cuanto el servidor
-  /// vuelve a contestar.
+  /// La página 1 no pudo llegar y lo que se ve es la copia guardada en el
+  /// teléfono (consulta por omisión) o lo que ya se veía antes de jalar para
+  /// refrescar (cualquier consulta, #275): la vista avisa que puede no ser lo
+  /// más reciente y ofrece reintentar. Se quita en cuanto el servidor vuelve
+  /// a contestar.
   bool get sinConexion => _sinConexion;
 
   /// 'Todos' y las categorías del backend, o las de respaldo si no hay.
@@ -213,15 +221,15 @@ class ProductsViewModel extends ChangeNotifier {
   /// (jalar para refrescar), se queda hasta que llega la nueva. Lo que llegue
   /// de una consulta anterior se descarta. Los órdenes sin páginas del
   /// servidor se piden completos una vez y se muestran de [porPagina] en
-  /// [porPagina].
+  /// [porPagina]; los de precio, por el precio con la promoción (#281).
   ///
   /// La consulta por omisión usa además la copia de su página 1 guardada en el
   /// teléfono (#265): se pone en pantalla en cuanto se lee, sin esperar al
   /// servidor (que al despertar tarda hasta ~20 s), y la página nueva la
   /// reemplaza al llegar. Cada página 1 que llega se guarda. Si la nueva no
-  /// llega, se queda lo que se veía (la copia, o la página anterior al jalar
-  /// para refrescar) y [sinConexion] avisa; sin nada que mostrar sale el
-  /// [error] de siempre.
+  /// llega, se queda lo que se veía (la copia o, al jalar para refrescar
+  /// cualquier consulta, lo que ya había llegado, #275) y [sinConexion]
+  /// avisa; sin nada que mostrar sale el [error] de siempre.
   Future<void> cargarProductos() async {
     _esperaDeBusqueda?.cancel();
     final turno = ++_turno;
@@ -239,20 +247,22 @@ class ProductsViewModel extends ChangeNotifier {
     final lecturaCopia = catalogoGuardado != null && !_iniciado
         ? _ponerCopia(catalogoGuardado, turno)
         : null;
-    Future<void>? guardando;
     try {
       final respuesta = await _productosRepo.buscarProductos(
         pedida,
         limite: pedida.pideTodo ? null : porPagina,
       );
       if (turno != _turno) return;
-      guardando = _ponerPrimera(pedida, respuesta);
+      _ponerPrimera(pedida, respuesta);
     } on ApiException catch (e) {
       // Si la copia aún se está leyendo, se espera: de ella depende qué sale.
       if (lecturaCopia != null) await lecturaCopia;
       if (turno != _turno) return;
       PierLog.error('Error al cargar el catálogo: ${e.message}');
-      if (catalogoGuardado != null && _iniciado) {
+      // Ya se ve algo de esta consulta (la copia guardada o, al jalar para
+      // refrescar, lo que llegó antes, con cualquier búsqueda, filtro u
+      // orden): se queda, con el aviso (#275).
+      if (_iniciado) {
         _sinConexion = true;
       } else {
         _vaciar();
@@ -262,9 +272,6 @@ class ProductsViewModel extends ChangeNotifier {
     _cargando = false;
     _avisar();
     _registrarBusquedaPendiente();
-    // La copia se guarda a la vez que se pinta la página; aquí solo se espera
-    // a que termine (nunca lanza), para que al volver ya esté guardada.
-    if (guardando != null) await guardando;
   }
 
   /// Pone en pantalla, como si fuera la página 1 (mismas reglas de agotados y
@@ -284,20 +291,22 @@ class ProductsViewModel extends ChangeNotifier {
 
   /// Pone la página 1 que llegó del servidor en lugar de lo que se veía, en
   /// un solo paso: la lista no pasa por vacía ni salta, y el aviso de
-  /// [sinConexion] se quita. Si es de la consulta por omisión, empieza a
-  /// guardarla en el teléfono y devuelve esa escritura (nunca lanza).
-  Future<void>? _ponerPrimera(
-    ConsultaCatalogo pedida,
-    List<Product> respuesta,
-  ) {
+  /// [sinConexion] se quita. Si es de la consulta por omisión, la guarda en
+  /// el teléfono sin esperar a que termine (nunca lanza): si el teléfono se
+  /// atora, la carga y el «jalar para refrescar» terminan igual (#283).
+  void _ponerPrimera(ConsultaCatalogo pedida, List<Product> respuesta) {
     _vaciar();
-    if (pedida.pideTodo) _todo = respuesta;
-    final primera = pedida.pideTodo ? _siguientesDe(respuesta) : respuesta;
+    final todo = pedida.pideTodo
+        ? _ordenarPorPrecioFinal(pedida.orden, respuesta)
+        : null;
+    _todo = todo;
+    final primera = todo == null ? respuesta : _siguientesDe(todo);
     _agregar(primera);
     _cantidadPrimeraPagina = primera.length;
     _iniciado = true;
     PierLog.info('✅ Catálogo: ${primera.length} en la primera página');
-    return _catalogoGuardadoDe(pedida)?.guardar(primera);
+    final catalogoGuardado = _catalogoGuardadoDe(pedida);
+    if (catalogoGuardado != null) unawaited(catalogoGuardado.guardar(primera));
   }
 
   /// La siguiente página de lo que se ve: del servidor o, si la consulta se
@@ -327,7 +336,6 @@ class ProductsViewModel extends ChangeNotifier {
     _cargandoMas = true;
     _errorMas = null;
     _avisar();
-    Future<void>? guardando;
     var volvio = false;
     try {
       final pagina = await _productosRepo.buscarProductos(
@@ -338,7 +346,7 @@ class ProductsViewModel extends ChangeNotifier {
       if (turno != _turno) return;
       volvio = _sinConexion;
       if (otraVezLaPrimera) {
-        guardando = _ponerPrimera(pedida, pagina);
+        _ponerPrimera(pedida, pagina);
       } else {
         _agregar(pagina);
         // El servidor volvió a contestar.
@@ -351,9 +359,28 @@ class ProductsViewModel extends ChangeNotifier {
     }
     _cargandoMas = false;
     _avisar();
-    // Como en cargarProductos: al volver, la copia ya está guardada.
-    if (guardando != null) await guardando;
     if (volvio) await _pedirLoQueFalloSinConexion();
+  }
+
+  /// Las promociones cambiaron (llegaron después de la lista o se
+  /// recargaron). En los órdenes por precio se vuelve a ordenar con el precio
+  /// final solo lo que aún no se muestra: lo que ya se ve se queda donde
+  /// está, para no mover a la persona de donde iba, y lo que se revele
+  /// después ya sigue las promociones nuevas. La lista completa se acomoda
+  /// en la siguiente carga (#281).
+  void reordenarPorPromociones() {
+    final todo = _todo;
+    final pedida = _consultaPedida;
+    if (todo == null ||
+        pedida == null ||
+        !_esPorPrecio(pedida.orden) ||
+        _offset >= todo.length) {
+      return;
+    }
+    _todo = [
+      ...todo.take(_offset),
+      ..._ordenarPorPrecioFinal(pedida.orden, todo.skip(_offset).toList()),
+    ];
   }
 
   /// Al abrir sin internet fallan también las categorías (quedan las de
@@ -436,15 +463,19 @@ class ProductsViewModel extends ChangeNotifier {
       if (_cerrado || _categoria != solicitada) return;
       _opcionesCategoria = opciones;
       // Filtros puestos que ya no existen en esta categoría se limpian.
+      var limpio = false;
       if (_filtroSabor != null && !sabores.contains(_filtroSabor)) {
         _filtroSabor = null;
+        limpio = true;
       }
       if (_filtroTipo != null && !tipos.contains(_filtroTipo)) {
         _filtroTipo = null;
+        limpio = true;
       }
       notifyListeners();
-      // Si se limpió alguno, la página 1 otra vez sin él.
-      _reiniciarSiCambio();
+      // Si se limpió alguno, la página 1 otra vez sin él. Si no, nada: una
+      // búsqueda a medio escribir espera a su última tecla (#283).
+      if (limpio) _reiniciarSiCambio();
       PierLog.info('✅ Opciones de "$solicitada" — '
           'sabores:${opciones.sabores.length} tipos:${opciones.tipos.length}');
     } on ApiException {
@@ -588,13 +619,40 @@ class ProductsViewModel extends ChangeNotifier {
       (p.agotado ? _agotados : _disponibles).add(p);
     }
     final todo = _todo;
-    _fin = todo == null ? pagina.length < porPagina : _offset >= todo.length;
+    // Una página que no trae justo lo pedido es la última: con menos ya no
+    // hay más y, si el servidor ignorara el límite y mandara de más, pedir
+    // otra traería los mismos sin fin (#272).
+    _fin = todo == null ? pagina.length != porPagina : _offset >= todo.length;
     _productos = List.unmodifiable([..._disponibles, if (_fin) ..._agotados]);
   }
 
   /// Los siguientes [porPagina] de [todo] que aún no se muestran.
   List<Product> _siguientesDe(List<Product> todo) =>
       todo.skip(_offset).take(porPagina).toList();
+
+  static double _precioBase(Product producto) => producto.precio;
+
+  static bool _esPorPrecio(SortOption orden) =>
+      orden == SortOption.priceAsc || orden == SortOption.priceDesc;
+
+  /// En los órdenes por precio, [lista] por el precio que se ve en la
+  /// tarjeta (con la promoción) y no por el base con el que ordena el
+  /// servidor (#281); en los empates se queda el orden del servidor. Los
+  /// demás órdenes llegan como el servidor los mandó. Los agotados siguen al
+  /// final porque [_agregar] los aparta.
+  List<Product> _ordenarPorPrecioFinal(SortOption orden, List<Product> lista) {
+    if (!_esPorPrecio(orden)) return lista;
+    final signo = orden == SortOption.priceDesc ? -1 : 1;
+    // Con su lugar en la lista: el desempate que hace estable el orden.
+    final conPrecio = [
+      for (final (lugar, producto) in lista.indexed)
+        (lugar: lugar, precio: _precioFinal(producto), producto: producto),
+    ]..sort((a, b) {
+        final porPrecio = signo * a.precio.compareTo(b.precio);
+        return porPrecio != 0 ? porPrecio : a.lugar.compareTo(b.lugar);
+      });
+    return [for (final p in conPrecio) p.producto];
+  }
 
   /// Olvida las páginas de la consulta anterior.
   void _vaciar() {

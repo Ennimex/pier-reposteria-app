@@ -13,6 +13,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/pie_de_lista.dart';
 import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
 import 'package:pier_reposteria/ui/feed/widgets/comentarios_sheet.dart';
 import 'package:pier_reposteria/ui/feed/widgets/tarjeta_publicacion.dart';
@@ -142,21 +143,12 @@ class _Pie extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (vm.cargando || vm.cargandoMas) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: CircularProgressIndicator(color: AppColors.pierVerde),
-        ),
-      );
-    }
+    if (vm.cargando || vm.cargandoMas) return const CargandoMas();
     if (!vm.iniciado && vm.error != null) return AvisoFeed.errorAlCargar(vm);
     if (vm.errorMas != null) {
-      return AvisoFeed(
-        icono: LucideIcons.wifiOff,
-        titulo: 'No se pudieron cargar más',
+      return AvisoDeLista.noCargaronMas(
         detalle: vm.errorMas,
-        accion: () => unawaited(vm.cargarMas()),
+        alReintentar: () => unawaited(vm.cargarMas()),
       );
     }
     if (vm.iniciado && vm.fase == FaseFeed.fin) {
@@ -174,61 +166,28 @@ class _Pie extends StatelessWidget {
   }
 }
 
-/// Aviso del feed: ícono, título, detalle y, si hay [accion], «Reintentar».
-class AvisoFeed extends StatelessWidget {
-  const AvisoFeed({
-    required this.icono,
-    required this.titulo,
-    this.detalle,
-    this.accion,
-    super.key,
-  });
-
+/// Avisos del feed, con el aspecto de los de cualquier lista
+/// ([AvisoDeLista], #283).
+class AvisoFeed extends AvisoDeLista {
   /// La repostería aún no ha publicado nada.
   const AvisoFeed.sinPublicaciones({super.key})
-    : icono = LucideIcons.cakeSlice,
-      titulo = 'Aún no hay publicaciones',
-      detalle =
-          'Muy pronto verás aquí lo nuevo de Pier: '
-          'pasteles recién salidos del horno, novedades y '
-          'promociones.',
-      accion = null;
+    : super(
+        icono: LucideIcons.cakeSlice,
+        titulo: 'Aún no hay publicaciones',
+        detalle:
+            'Muy pronto verás aquí lo nuevo de Pier: '
+            'pasteles recién salidos del horno, novedades y '
+            'promociones.',
+      );
 
   /// No llegó la primera página de [vm]: el motivo y «Reintentar».
   AvisoFeed.errorAlCargar(FeedViewModel vm, {super.key})
-    : icono = LucideIcons.circleAlert,
-      titulo = 'No pudimos cargar las publicaciones',
-      detalle = vm.error,
-      accion = (() => unawaited(vm.cargar()));
-
-  final IconData icono;
-  final String titulo;
-  final String? detalle;
-  final VoidCallback? accion;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-    child: Column(
-      children: [
-        Icon(icono, size: 36, color: AppColors.textSecondary),
-        const SizedBox(height: 8),
-        Text(
-          titulo,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        if (detalle != null)
-          Text(
-            detalle!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-        if (accion != null)
-          TextButton(onPressed: accion, child: const Text('Reintentar')),
-      ],
-    ),
-  );
+    : super(
+        icono: LucideIcons.circleAlert,
+        titulo: 'No pudimos cargar las publicaciones',
+        detalle: vm.error,
+        accion: () => unawaited(vm.cargar()),
+      );
 }
 
 /// Promoción intercalada: foto, título, precio con descuento y «Agregar».

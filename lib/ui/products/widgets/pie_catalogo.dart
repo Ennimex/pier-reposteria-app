@@ -4,14 +4,13 @@
 // llega la siguiente página o, si no pudo llegar, el aviso con «Reintentar».
 // El indicador también sale mientras llega la página 1 con algo ya en
 // pantalla (la copia guardada en el teléfono, #265, o al jalar para
-// refrescar): quien baja al final ve que viene más. Con el mismo aspecto que
-// el pie del feed (feed_sliver.dart). Se repinta solo cuando cambia el
-// ViewModel.
+// refrescar): quien baja al final ve que viene más. Las piezas son las del
+// pie del feed (CargandoMas y AvisoDeLista, #283). Se repinta solo cuando
+// cambia el ViewModel.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/pie_de_lista.dart';
 import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
 
 class PieCatalogo extends StatelessWidget {
@@ -25,41 +24,13 @@ class PieCatalogo extends StatelessWidget {
         builder: (context, _) {
           if (viewModel.cargandoMas ||
               (viewModel.cargando && viewModel.productos.isNotEmpty)) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.pierVerde,
-                  semanticsLabel: 'Cargando más productos',
-                ),
-              ),
-            );
+            return const CargandoMas(etiqueta: 'Cargando más productos');
           }
           final error = viewModel.errorMas;
           if (error != null) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              child: Column(
-                children: [
-                  const Icon(LucideIcons.wifiOff,
-                      size: 36, color: AppColors.textSecondary),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No se pudieron cargar más',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    error,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                  TextButton(
-                    onPressed: () => unawaited(viewModel.cargarMas()),
-                    child: const Text('Reintentar'),
-                  ),
-                ],
-              ),
+            return AvisoDeLista.noCargaronMas(
+              detalle: error,
+              alReintentar: () => unawaited(viewModel.cargarMas()),
             );
           }
           return const SizedBox(height: 24);

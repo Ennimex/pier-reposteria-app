@@ -55,13 +55,14 @@ Map<String, dynamic> _productosQueCoinciden(LlamadaApi llamada) {
 ProductsViewModel _vm(
   FakeApiClient api, {
   String categoriaInicial = ProductsViewModel.todas,
+  Duration esperaBusqueda = Duration.zero,
 }) =>
     ProductsViewModel(
       productosRepo: ProductosRepositoryRemote(api: api),
       favoritosRepo: FavoritosRepositoryRemote(api: api),
       demandaRepo: DemandaRepositoryRemote(api: api),
       categoriaInicial: categoriaInicial,
-      esperaBusqueda: Duration.zero,
+      esperaBusqueda: esperaBusqueda,
       esperaRegistroBusqueda: Duration.zero,
     );
 
@@ -311,6 +312,28 @@ void main() {
       expect(_pedidas(api).last, '/productos?categoria=Pays&limite=20&offset=0');
     });
 
+    // #283: al llegar las opciones se volvía a preguntar aunque no se
+    // hubiera quitado ningún filtro; con la búsqueda a medio escribir salía
+    // una petición de más.
+    test('si sus opciones no quitan ningún filtro, no vuelve a preguntar',
+        () async {
+      final api = _backend()
+        ..demorar(ApiConstants.categoriaOpciones('2'),
+            const Duration(milliseconds: 10));
+      final vm = _vm(api, esperaBusqueda: const Duration(milliseconds: 400));
+      addTearDown(vm.dispose);
+      await vm.cargar(autenticado: false);
+      api.llamadas.clear();
+
+      // Elige Pays y, mientras llegan sus opciones, empieza a teclear.
+      final opciones = vm.seleccionarCategoria('Pays');
+      vm.buscar('pa');
+      await opciones;
+
+      expect(vm.sabores, ['Limón', 'Maracuyá'], reason: 'ya llegaron');
+      expect(_pedidas(api), ['/productos?categoria=Pays&limite=20&offset=0']);
+    });
+
     test('entrar con categoría preseleccionada carga sus opciones', () async {
       final vm = _vm(_backend(), categoriaInicial: 'Pays');
       await vm.cargarCategorias();
@@ -353,6 +376,22 @@ void main() {
       expect(vm.esFavorito('1'), isFalse);
       expect(api.llamo(ApiConstants.favoritoById('1'), metodo: 'DELETE-Auth'),
           isTrue);
+    });
+
+    // #275: sin red, los corazones conservan lo último que se supo.
+    test('si la carga de favoritos falla se quedan los corazones que había',
+        () async {
+      final api = _backend();
+      final vm = _vm(api);
+      await vm.cargarFavoritos(autenticado: true);
+      expect(vm.esFavorito('2'), isTrue);
+
+      api.fallar(ApiConstants.favoritosIds, 'Sin conexión');
+      await vm.cargarFavoritos(autenticado: true);
+
+      expect(vm.esFavorito('2'), isTrue);
+      expect(vm.esFavorito('4'), isTrue);
+      expect(vm.esFavorito('1'), isFalse);
     });
 
     test('si el backend falla se revierte y devuelve su mensaje', () async {

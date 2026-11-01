@@ -460,7 +460,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       MaterialPageRoute(
                           builder: (_) => ProductDetailScreen(
-                              product: p, ambitoFoto: _ambitoFavoritos)),
+                              product: p,
+                              ambitoFoto: _ambitoFavoritos,
+                              esFavorito: true)),
                     );
                   },
                   child: SizedBox(

@@ -22,6 +22,7 @@ class ProductDetailViewModel extends ChangeNotifier {
     required FavoritosRepository favoritosRepo,
     required ResenasRepository resenasRepo,
     required DemandaRepository demandaRepo,
+    bool esFavorito = false,
   })  : _productosRepo = productosRepo,
         _favoritosRepo = favoritosRepo,
         _resenasRepo = resenasRepo,
@@ -30,7 +31,8 @@ class ProductDetailViewModel extends ChangeNotifier {
             ? producto.imagenes
             : [producto.imagenUrl],
         _totalResenas = producto.totalResenas,
-        _rating = producto.rating;
+        _rating = producto.rating,
+        _esFavorito = esFavorito;
 
   /// Etiquetas del selector (el backend no tiene porciones por tamaño).
   static const List<String> tamanos = ['Chico', 'Grande'];
@@ -50,7 +52,9 @@ class ProductDetailViewModel extends ChangeNotifier {
   bool _cargandoResenas = true;
   int _totalResenas;
   double _rating;
-  bool _esFavorito = false;
+  // Lo que sabía quien abrió el detalle (el catálogo, favoritos) hasta que
+  // conteste el servidor; si no contesta (sin red), se queda (#275).
+  bool _esFavorito;
   List<Product> _recomendaciones = const [];
   int _cantidad = 1;
   int _tamano = 0;
@@ -110,6 +114,8 @@ class ProductDetailViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Pregunta si el producto es favorito. Si falla (sin red), el corazón
+  /// conserva lo último que se supo (#275).
   Future<void> cargarFavorito({required bool autenticado}) async {
     if (!autenticado) return;
     try {

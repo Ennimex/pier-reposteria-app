@@ -3,13 +3,15 @@
 // Catálogo (MVVM, Fase 4): la vista pinta lo que expone ProductsViewModel
 // (categoría, búsqueda, filtros, orden, favoritos y los productos que pide
 // por páginas, #37); de ProductProvider solo toma las promociones de las
-// tarjetas. Aquí solo queda lo que es de la interfaz: el texto
+// tarjetas, que también le pasa al VM para ordenar por el precio con
+// descuento (#281). Aquí solo queda lo que es de la interfaz: el texto
 // del buscador, cuadrícula/lista, pedir la siguiente página al acercarse al
 // final (con su pie y los esqueletos de la primera), llevar la lista arriba
 // al empezar otra consulta, el rebote del botón de carrito, el vuelo de la
 // miniatura al carrito, la entrada en cascada de las tarjetas, mandar a
 // iniciar sesión y los avisos (SnackBar). Cuando la primera página no llega y
-// se ve la copia guardada en el teléfono, un aviso lo dice (#265).
+// se ve la copia guardada en el teléfono (#265) o lo que ya se veía al jalar
+// para refrescar (#275), un aviso lo dice y ofrece «Reintentar».
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -49,6 +51,9 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen>
     with TickerProviderStateMixin {
+  // Las promociones de las tarjetas; con ellas el catálogo también ordena
+  // por el precio que se ve (#281).
+  late final ProductProvider _promociones = context.read<ProductProvider>();
   // El State es dueño del ViewModel (lo crea, lo carga y lo libera).
   late final ProductsViewModel _vm = widget.viewModel ??
       ProductsViewModel(
@@ -57,9 +62,13 @@ class _ProductsScreenState extends State<ProductsScreen>
         demandaRepo: context.read(),
         catalogoGuardado: context.read<CatalogoGuardadoService>(),
         categoriaInicial: widget.initialCategory ?? ProductsViewModel.todas,
+        precioFinal: (p) => _promociones.precioConDescuento(p.id, p.precio),
       );
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _control = ScrollController();
+  // «Reintentar» del aviso sin conexión hace lo mismo que jalar para
+  // refrescar, con su mismo indicador.
+  final GlobalKey<RefreshIndicatorState> _refresco = GlobalKey();
   bool _isGridView = true;
 
   /// Margen (px) antes del final en el que se pide la siguiente página.
@@ -92,6 +101,9 @@ class _ProductsScreenState extends State<ProductsScreen>
     PierLog.nav('ProductsScreen abierto — categoría inicial: ${_vm.categoria}');
     _consultaVista = _vm.consulta;
     _vm.addListener(_alCambiar);
+    // Si las promociones llegan (o cambian) con un orden por precio ya en
+    // pantalla, el VM acomoda lo que falta por mostrar.
+    _promociones.addListener(_vm.reordenarPorPromociones);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(context.read<ProductProvider>().cargarProductos());
@@ -188,6 +200,7 @@ class _ProductsScreenState extends State<ProductsScreen>
     _authRef?.removeListener(_onAuthChanged);
     _navRef?.removeListener(_onNavChanged);
     _vm.removeListener(_alCambiar);
+    _promociones.removeListener(_vm.reordenarPorPromociones);
     _control.dispose();
     _searchController.dispose();
     for (final c in _cartControllers.values) {
@@ -201,7 +214,10 @@ class _ProductsScreenState extends State<ProductsScreen>
     PierLog.nav('→ ProductDetailScreen: ${p.nombre}');
     await Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: p)),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            ProductDetailScreen(product: p, esFavorito: _vm.esFavorito(p.id)),
+      ),
     );
     if (mounted) await _vm.cargarFavoritos(autenticado: _autenticado);
   }
@@ -356,6 +372,7 @@ class _ProductsScreenState extends State<ProductsScreen>
               ),
               Expanded(
                 child: RefreshIndicator(
+                  key: _refresco,
                   onRefresh: _recargar,
                   color: AppColors.pierVerde,
                   child: NotificationListener<ScrollNotification>(
@@ -549,12 +566,15 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   /// La página 1 no llegó y lo que se ve es el catálogo guardado en el
-  /// teléfono (#265): se dice, para que no se tome por lo más reciente.
+  /// teléfono (#265) o lo que ya se veía al jalar para refrescar (#275): se
+  /// dice, para que no se tome por lo más reciente, y se ofrece reintentar
+  /// (como jalar para refrescar, con su indicador).
   Widget _avisoSinConexion() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // El botón ya trae su espacio de toque (48) arriba y abajo.
+        padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
         decoration: BoxDecoration(
           color: AppColors.pierDorado.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(12),
@@ -572,6 +592,15 @@ class _ProductsScreenState extends State<ProductsScreen>
                   color: AppColors.textPrimary,
                 ),
               ),
+            ),
+            TextButton(
+              onPressed: () => unawaited(
+                _refresco.currentState?.show() ?? _recargar(),
+              ),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('Reintentar'),
             ),
           ],
         ),

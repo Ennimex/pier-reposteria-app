@@ -1,8 +1,9 @@
 // test/unitarias/catalogo/catalogo_paginado_test.dart — el catálogo por
 // páginas (#37): ProductsViewModel pide los productos de 20 en 20 con la
-// consulta actual, termina con una página corta o vacía, hace una sola
-// petición a la vez, descarta lo que llega tarde de una consulta anterior,
-// vacía la lista al cambiar de consulta (al recargar la misma, no), no
+// consulta actual, termina con una página corta, vacía o con más de lo
+// pedido (#272), hace una sola petición a la vez, descarta lo que llega tarde
+// de una consulta anterior, vacía la lista al cambiar de consulta (al
+// recargar la misma, no), no
 // repite productos, deja los agotados para cuando ya no hay más, trae
 // completos los órdenes que el servidor no desempata (precio y calificación)
 // y espera a que se deje de teclear para buscar. Con la copia de la primera
@@ -31,11 +32,13 @@ Map<String, String> _parametros(LlamadaApi llamada) =>
     Uri.parse(llamada.endpoint).queryParameters;
 
 /// GET /productos con lo que toca de [ids] según `limite` y `offset` (sin
-/// `limite`, todos), como el servidor.
+/// `limite`, todos), como el servidor. Cada uno cuesta 100 salvo que
+/// [precios] diga otra cosa.
 Map<String, dynamic> _pagina(
   LlamadaApi llamada,
   List<int> ids, {
   Set<int> agotados = const {},
+  Map<int, num> precios = const {},
 }) {
   final q = _parametros(llamada);
   final limite = int.tryParse(q['limite'] ?? '');
@@ -48,13 +51,29 @@ Map<String, dynamic> _pagina(
         {
           'id': id,
           'nombre': 'Producto $id',
-          'precio_chico': 100,
+          'precio_chico': precios[id] ?? 100,
           'categoria': 'Pasteles',
           'stock_online': agotados.contains(id) ? 0 : null,
           'activo': true,
         },
     ],
   };
+}
+
+/// GET /productos en un orden por precio, como el servidor: todos, por el
+/// precio base (`precio_chico`, sin promociones) y, en los empates, por id.
+Map<String, dynamic> _porPrecioBase(
+  LlamadaApi llamada,
+  Map<int, num> precios, {
+  Set<int> agotados = const {},
+}) {
+  final signo = _parametros(llamada)['ordenar'] == 'precio-desc' ? -1 : 1;
+  final ids = precios.keys.toList()
+    ..sort((a, b) {
+      final porPrecio = signo * precios[a]!.compareTo(precios[b]!);
+      return porPrecio != 0 ? porPrecio : a.compareTo(b);
+    });
+  return _pagina(llamada, ids, agotados: agotados, precios: precios);
 }
 
 const Map<String, dynamic> _caido = {
@@ -110,6 +129,7 @@ ProductsViewModel _vm(
   FakeApiClient api, {
   Duration esperaBusqueda = Duration.zero,
   CatalogoGuardadoService? guardado,
+  double Function(Product)? precioFinal,
 }) {
   final vm = ProductsViewModel(
     productosRepo: ProductosRepositoryRemote(api: api),
@@ -117,6 +137,7 @@ ProductsViewModel _vm(
     demandaRepo: DemandaRepositoryRemote(api: api),
     catalogoGuardado: guardado,
     esperaBusqueda: esperaBusqueda,
+    precioFinal: precioFinal,
   );
   addTearDown(vm.dispose);
   return vm;
@@ -177,6 +198,12 @@ class _ServicioLento extends CatalogoGuardadoService {
   }
 }
 
+/// Un teléfono que se atora al guardar: la escritura nunca termina.
+class _ServicioAtorado extends CatalogoGuardadoService {
+  @override
+  Future<void> guardar(List<Product> productos) => Completer<void>().future;
+}
+
 void main() {
   group('Catálogo por páginas', () {
     test('pide la primera página con 20', () async {
@@ -226,6 +253,28 @@ void main() {
       // Al terminar ya no pide más.
       await vm.cargarMas();
       expect(_pedidas(api), hasLength(2));
+    });
+
+    // #272: si el servidor ignorara `limite` y mandara todo, cada «cargar
+    // más» traería los mismos (sin repetirse en pantalla) y, con la persona
+    // al final, se seguiría preguntando sin fin.
+    test('una página con más de 20 es la última: no se pide otra', () async {
+      // El servidor manda los 25 aunque se le pidan 20: contesta como a una
+      // petición sin `limite`.
+      const sinLimite = LlamadaApi('GET', ApiConstants.productos);
+      final api = _servidor((_) => _pagina(sinLimite, _ids(25)));
+      final vm = _vm(api);
+      await vm.cargarProductos();
+
+      expect(vm.fin, isTrue);
+      expect(vm.productos, hasLength(25));
+
+      await vm.cargarMas();
+      await vm.cargarMas();
+
+      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+      expect(vm.cargandoMas, isFalse);
+      expect(vm.errorMas, isNull);
     });
 
     test('dos cargarMas seguidos hacen una sola petición', () async {
@@ -564,9 +613,11 @@ void main() {
       final vm = _vm(api, guardado: CatalogoGuardadoService());
 
       await vm.cargarProductos();
+      // La carga no espera a que se escriba (#283): se deja terminar.
+      await _esperar();
 
-      // Al terminar la carga ya está guardada, tal como llegó: también con el
-      // agotado que la lista deja para el final.
+      // Se guarda tal como llegó: también con el agotado que la lista deja
+      // para el final.
       expect(await _guardada(), _idsServidor(20));
       expect(_idsDe(vm), isNot(contains('3')));
 
@@ -574,6 +625,35 @@ void main() {
       await vm.cargarMas();
       await _esperar();
       expect(await _guardada(), _idsServidor(20));
+    });
+
+    // #283: la carga esperaba a que se guardara la copia; si SharedPreferences
+    // se atoraba, también se quedaba girando el «jalar para recargar».
+    test('si guardar la copia se atora, la carga termina igual', () async {
+      final api = _servidor((l) => _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: _ServicioAtorado());
+
+      await vm.cargarProductos().timeout(const Duration(seconds: 1));
+
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.cargando, isFalse);
+    });
+
+    test('si guardar la copia se atora, «Reintentar» del pie termina igual',
+        () async {
+      await _guardarCopia(20);
+      var caido = true;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: _ServicioAtorado());
+      await vm.cargarProductos();
+      expect(vm.sinConexion, isTrue);
+
+      caido = false;
+      await vm.cargarMas().timeout(const Duration(seconds: 1));
+
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.cargandoMas, isFalse);
+      expect(vm.sinConexion, isFalse);
     });
 
     test('con filtros no usa la copia ni la guarda', () async {
@@ -719,6 +799,7 @@ void main() {
       expect(vm.errorMas, isNull);
       expect(vm.cargandoMas, isFalse);
       expect(vm.cargando, isFalse);
+      await _esperar(); // la copia se escribe sin que se la espere (#283)
       expect(await _guardada(), _idsServidor(20));
 
       // Después sí sigue la página 2.
@@ -870,6 +951,229 @@ void main() {
 
       expect(_idsDe(vm), ['c1', 'c3', 'c4', 'c2']);
       expect(vm.fin, isTrue, reason: 'menos de 20: no hay más páginas');
+    });
+  });
+
+  // Antes, con búsqueda, filtros, categoría u orden, jalar para refrescar sin
+  // internet vaciaba la lista y salía «No pudimos cargar el catálogo»; solo
+  // la consulta por omisión se quedaba con lo que se veía.
+  group('Jalar para refrescar sin internet (#275)', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    /// Lo que cambia la consulta que se ve, como lo hace la persona.
+    final consultas = <String, void Function(ProductsViewModel)>{
+      'sabor': (vm) => vm.alternarSabor('Fresa'),
+      'búsqueda': (vm) => vm.buscar('pay'),
+      'categoría': (vm) => unawaited(vm.seleccionarCategoria('Pays')),
+      'orden del servidor': (vm) => vm.ordenarPor(SortOption.nameAsc),
+    };
+
+    test('con búsqueda, filtros o categoría, un refresco que falla deja la '
+        'lista y pone el aviso', () async {
+      for (final MapEntry(key: nombre, value: cambiar) in consultas.entries) {
+        var caido = false;
+        final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+        final vm = _vm(api, guardado: CatalogoGuardadoService());
+        cambiar(vm);
+        await _esperar();
+        expect(_idsDe(vm), _idsServidor(20), reason: nombre);
+
+        caido = true;
+        await vm.recargar();
+
+        expect(_idsDe(vm), _idsServidor(20), reason: nombre);
+        expect(vm.sinConexion, isTrue, reason: nombre);
+        expect(vm.error, isNull, reason: nombre);
+        expect(vm.cargando, isFalse, reason: nombre);
+
+        // Al volver el internet, la página nueva quita el aviso.
+        caido = false;
+        await vm.recargar();
+
+        expect(_idsDe(vm), _idsServidor(20), reason: nombre);
+        expect(vm.sinConexion, isFalse, reason: nombre);
+      }
+    });
+
+    test('en un orden que se pide completo, lo que se veía se queda y lo que '
+        'falta se sigue mostrando sin red', () async {
+      for (final orden in [
+        SortOption.priceAsc,
+        SortOption.priceDesc,
+        SortOption.rating,
+      ]) {
+        var caido = false;
+        final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+        final vm = _vm(api, guardado: CatalogoGuardadoService())
+          ..ordenarPor(orden);
+        await _esperar();
+        await vm.cargarMas();
+        expect(vm.productos, hasLength(40), reason: '$orden');
+
+        caido = true;
+        await vm.recargar();
+
+        expect(vm.productos, hasLength(40), reason: '$orden');
+        expect(vm.sinConexion, isTrue, reason: '$orden');
+        expect(vm.error, isNull, reason: '$orden');
+
+        // El resto ya está en el teléfono.
+        await vm.cargarMas();
+
+        expect(vm.productos, hasLength(45), reason: '$orden');
+        expect(vm.fin, isTrue, reason: '$orden');
+        expect(vm.errorMas, isNull, reason: '$orden');
+        expect(_pedidas(api), hasLength(2), reason: '$orden');
+      }
+    });
+
+    test('con filtros, al volver la conexión bajar al final pone la página 1 '
+        'nueva y no la guarda como copia', () async {
+      await _guardarCopia(20);
+      var caido = false;
+      final api = _servidor((l) => caido ? _caido : _pagina(l, _ids(45)));
+      final vm = _vm(api, guardado: CatalogoGuardadoService())
+        ..alternarSabor('Fresa');
+      await _esperar();
+      caido = true;
+      await vm.recargar();
+      expect(vm.sinConexion, isTrue);
+
+      caido = false;
+      await vm.cargarMas();
+
+      expect(_pedidas(api).last, '/productos?sabor=Fresa&limite=20&offset=0');
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(vm.sinConexion, isFalse);
+      await _esperar();
+      expect(await _guardada(), _idsCopia(20));
+    });
+
+    test('con filtros y nada en pantalla sale el error de siempre', () async {
+      final vm = _vm(
+        _servidor((_) => _caido),
+        guardado: CatalogoGuardadoService(),
+      )..alternarSabor('Fresa');
+
+      await _esperar();
+
+      expect(vm.error, 'Sin conexión');
+      expect(vm.productos, isEmpty);
+      expect(vm.sinConexion, isFalse);
+    });
+  });
+
+  // El servidor ordena por el precio base: un producto con promoción quedaba
+  // en el lugar de su precio sin descuento (en el Samsung, uno de $430 con
+  // -10 % salió entre los de $430 y no junto a los de $387).
+  group('Orden por precio con las promociones (#281)', () {
+    // Precios base; el 6 está agotado y el 3 y el 7 empatan.
+    const precios = <int, num>{1: 380, 2: 430, 3: 400, 4: 430, 5: 450, 6: 100,
+        7: 400};
+    const agotados = {6};
+    // El 2 tiene -10 %: se ve en $387.
+    double conPromocion(Product p) => p.id == '2' ? 387 : p.precio;
+
+    FakeApiClient servidor() => _servidor(
+        (l) => _porPrecioBase(l, precios, agotados: agotados));
+
+    test('cada producto queda en el lugar del precio que se ve, con los '
+        'empates en el orden del servidor y los agotados al final', () async {
+      for (final (orden, esperados) in [
+        (SortOption.priceAsc, ['1', '2', '3', '7', '4', '5', '6']),
+        (SortOption.priceDesc, ['5', '4', '3', '7', '2', '1', '6']),
+      ]) {
+        final vm = _vm(servidor(), precioFinal: conPromocion)
+          ..ordenarPor(orden);
+        await _esperar();
+
+        expect(_idsDe(vm), esperados, reason: '$orden');
+        expect(vm.fin, isTrue);
+      }
+    });
+
+    test('sin promociones se respeta el orden del servidor', () async {
+      for (final (orden, esperados) in [
+        (SortOption.priceAsc, ['1', '3', '7', '2', '4', '5', '6']),
+        (SortOption.priceDesc, ['5', '2', '4', '3', '7', '1', '6']),
+      ]) {
+        // Sin decir cómo se calcula el precio final: el base.
+        final vm = _vm(servidor())..ordenarPor(orden);
+        await _esperar();
+
+        expect(_idsDe(vm), esperados, reason: '$orden');
+      }
+    });
+
+    test('los otros órdenes no se tocan', () async {
+      // El servidor manda «Mejor calificados» en su orden.
+      final api = _servidor(
+          (l) => _pagina(l, [5, 2, 1], precios: {1: 380, 2: 430, 5: 450}));
+      final vm = _vm(api, precioFinal: (p) => p.id == '5' ? 1 : p.precio)
+        ..ordenarPor(SortOption.rating);
+      await _esperar();
+
+      expect(_idsDe(vm), ['5', '2', '1']);
+    });
+
+    test('si las promociones llegan después, lo que ya se ve se queda y lo '
+        'que falta sale en el orden del precio final', () async {
+      // 45 productos de $10 a $450, en orden.
+      final api = _servidor((l) => _porPrecioBase(l, {
+            for (final id in _ids(45)) id: id * 10,
+          }));
+      final promociones = <String, double>{};
+      final vm = _vm(
+        api,
+        precioFinal: (p) => promociones[p.id] ?? p.precio,
+      )..ordenarPor(SortOption.priceAsc);
+      await _esperar();
+      expect(_idsDe(vm), _idsServidor(20));
+      var avisos = 0;
+      vm.addListener(() => avisos++);
+
+      // Llegan: el 40 queda en $105 y el 30 en $215.
+      promociones.addAll({'40': 105, '30': 215});
+      vm.reordenarPorPromociones();
+
+      // Lo que se ve no se mueve.
+      expect(_idsDe(vm), _idsServidor(20));
+      expect(avisos, 0);
+
+      await vm.cargarMas();
+
+      expect(_idsDe(vm).take(20), _idsServidor(20));
+      expect(_idsDe(vm).sublist(20, 24), ['40', '21', '30', '22']);
+      expect(vm.productos, hasLength(40));
+      await vm.cargarMas();
+      expect(vm.productos, hasLength(45));
+      expect(vm.productos.map((p) => p.id).toSet(), hasLength(45));
+      expect(_pedidas(api), ['/productos?ordenar=precio-asc']);
+
+      // Con todo a la vista ya no hay nada que reordenar.
+      final todos = _idsDe(vm);
+      promociones['1'] = 999;
+      vm.reordenarPorPromociones();
+      expect(_idsDe(vm), todos);
+    });
+
+    test('reordenar sin un orden por precio o sin nada pendiente no hace nada',
+        () async {
+      final api = _servidor((l) => _pagina(l, _ids(45)));
+      final vm = _vm(api, precioFinal: (p) => -double.parse(p.id))
+        ..reordenarPorPromociones();
+      expect(vm.productos, isEmpty, reason: 'aún no hay lista');
+
+      await vm.cargarProductos();
+      vm.reordenarPorPromociones();
+      await vm.cargarMas();
+      expect(_idsDe(vm), _idsServidor(40), reason: 'por páginas del servidor');
+
+      vm.ordenarPor(SortOption.rating);
+      await _esperar();
+      vm.reordenarPorPromociones();
+      await vm.cargarMas();
+      expect(_idsDe(vm), _idsServidor(40), reason: 'por calificación');
     });
   });
 }

@@ -67,13 +67,18 @@ FakeApiClient _backend() => FakeApiClient(respuestas: {
       ApiConstants.clicsAgotados: {'success': true},
     });
 
-ProductDetailViewModel _vm(FakeApiClient api, {Product? producto}) =>
+ProductDetailViewModel _vm(
+  FakeApiClient api, {
+  Product? producto,
+  bool esFavorito = false,
+}) =>
     ProductDetailViewModel(
       producto: producto ?? _pastel,
       productosRepo: ProductosRepositoryRemote(api: api),
       favoritosRepo: FavoritosRepositoryRemote(api: api),
       resenasRepo: ResenasRepositoryRemote(api: api),
       demandaRepo: DemandaRepositoryRemote(api: api),
+      esFavorito: esFavorito,
     );
 
 void main() {
@@ -112,6 +117,33 @@ void main() {
 
       expect(vm.esFavorito, isFalse);
       expect(api.llamo(ApiConstants.favoritosIds), isFalse);
+    });
+
+    // #275: sin red, GET /favoritos/ids falla y el corazón de un favorito
+    // salía vacío.
+    test('sin red conserva el corazón que ya se conocía', () async {
+      final api = FakeApiClient()
+        ..fallar(ApiConstants.favoritosIds, 'Sin conexión');
+      final vm = _vm(api, esFavorito: true);
+      expect(vm.esFavorito, isTrue, reason: 'desde antes de cargar');
+
+      await vm.cargarFavorito(autenticado: true);
+
+      expect(vm.esFavorito, isTrue);
+    });
+
+    test('lo que dice el servidor reemplaza al corazón que se conocía',
+        () async {
+      final api = _backend()
+        ..responder(ApiConstants.favoritosIds, {
+          'success': true,
+          'ids': [9],
+        });
+      final vm = _vm(api, esFavorito: true);
+
+      await vm.cargarFavorito(autenticado: true);
+
+      expect(vm.esFavorito, isFalse);
     });
 
     test('si el backend falla deja de cargar y conserva lo del producto',
