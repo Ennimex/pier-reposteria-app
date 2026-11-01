@@ -2,7 +2,8 @@
 // (#130) sin red: quién la ve en la agenda, las secciones, agregar pastel y
 // producto del catálogo, lo que hay que corregir, la foto que falló con
 // reintento, el error del catálogo, guardar hasta abrir la comanda creada y
-// que cerrar los selectores de fecha y hora no regresa el foco (#241).
+// que cerrar los selectores de fecha y hora (#241) o la hoja de productos
+// (#280) no regresa el foco.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
@@ -16,6 +17,7 @@ import 'package:pier_reposteria/ui/comandas/widgets/nueva_comanda_screen.dart';
 
 import '../../fakes/comandas_json.dart';
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/foco.dart';
 import '../../helpers/montar_comandas.dart';
 
 FakeApiClient _backend() => FakeApiClient()
@@ -40,10 +42,9 @@ Future<NuevaComandaViewModel> _formulario(
   return vm;
 }
 
-/// Si algún campo de texto tiene el foco (el teclado estaría abierto).
-bool _algunCampoConFoco(WidgetTester tester) => tester
-    .widgetList<EditableText>(find.byType(EditableText))
-    .any((campo) => campo.focusNode.hasFocus);
+/// El campo del teléfono.
+final Finder _telefono =
+    find.widgetWithText(TextFormField, 'Teléfono (10 dígitos)');
 
 void main() {
   group('NuevaComandaScreen', () {
@@ -281,19 +282,29 @@ void main() {
           'cerrar el selector de «$selector» con «$cierre» no regresa el foco '
           'al teléfono', (tester) async {
         await _formulario(tester, _backend());
-        await tester.tap(
-            find.widgetWithText(TextFormField, 'Teléfono (10 dígitos)'));
+        await tester.tap(_telefono);
         await tester.pump();
-        expect(_algunCampoConFoco(tester), isTrue);
+        expect(tester.algunCampoConFoco, isTrue);
 
         await tester.tap(find.text(selector));
         await tester.pumpAndSettle();
         await tester.tap(find.text(cierre));
         await tester.pumpAndSettle();
 
-        expect(_algunCampoConFoco(tester), isFalse);
+        expect(tester.algunCampoConFoco, isFalse);
         expect(tester.testTextInput.isVisible, isFalse);
       });
     }
+
+    // #280: la hoja de productos del catálogo tampoco regresa el foco, aunque
+    // el teclado ya se hubiera cerrado con «atrás».
+    testWidgets('cerrar la hoja de productos no regresa el foco al teléfono',
+        (tester) async {
+      await _formulario(tester, _backend());
+      await tester.enfocarSinTeclado(_telefono);
+
+      await tester
+          .abrirYCerrarSinTeclado(find.text('Agregar producto del catálogo'));
+    }, tags: 'regresion');
   });
 }

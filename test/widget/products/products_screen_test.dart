@@ -2,7 +2,8 @@
 // expone su ViewModel (MVVM, Fase 4), que le pide los productos a un servidor
 // falso que filtra y ordena como el real (#37), sin red: tarjetas en
 // cuadrícula y lista, badges de promoción, categorías, hojas de filtros y
-// orden, estado vacío y acciones sin sesión.
+// orden, estado vacío y acciones sin sesión; cerrar una hoja o regresar del
+// detalle no le devuelve el foco al buscador (#280).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/foco.dart';
 import '../../helpers/pantalla_apretada.dart';
 import '../../helpers/pump_app.dart';
 
@@ -509,6 +511,30 @@ void main() {
 
       expect(find.byType(LoginScreen), findsOneWidget);
     });
+  });
+
+  // Regresión de #280: con el buscador enfocado (aunque el teclado ya se
+  // hubiera cerrado con «atrás»), el teclado se volvía a abrir solo al
+  // cerrar la hoja de orden o la de filtros y al regresar del detalle:
+  // Flutter le devolvía el foco al buscador.
+  group('El teclado no se vuelve a abrir solo (#280)', () {
+    for (final (accion, boton) in [
+      ('cerrar la hoja de orden', find.byTooltip('Ordenar')),
+      ('cerrar la hoja de filtros', find.byTooltip('Filtrar')),
+      ('regresar del detalle', find.text('Rosca')),
+      (
+        'regresar de iniciar sesión',
+        find.byIcon(Icons.favorite_border_rounded).first,
+      ),
+    ]) {
+      testWidgets('$accion no le devuelve el foco al buscador',
+          (tester) async {
+        await _montar(tester);
+        await tester.enfocarSinTeclado(find.byType(TextField));
+
+        await tester.abrirYCerrarSinTeclado(boton);
+      }, tags: 'regresion');
+    }
   });
 
   // Regresión de #285: el estado vacío medía justo lo que quedaba de

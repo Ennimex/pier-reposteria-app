@@ -19,6 +19,7 @@ import 'package:pier_reposteria/ui/actividad/widgets/actividad_partes.dart';
 import 'package:pier_reposteria/ui/comandas/widgets/agenda_comandas_partes.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foco.dart';
 import 'package:pier_reposteria/utils/formatters.dart';
 import 'package:provider/provider.dart';
 
@@ -78,7 +79,7 @@ class _BitacoraTabState extends State<BitacoraTab>
   /// Abre el calendario de «Desde» (con [desde]) o de «Hasta» y aplica el
   /// día elegido. Antes suelta el foco para que no se abra el teclado.
   Future<void> _elegirFecha({required bool desde}) async {
-    FocusManager.instance.primaryFocus?.unfocus();
+    soltarFoco();
     final calendario = _vm.calendario(desde: desde);
     final elegida = await showDatePicker(
       context: context,
