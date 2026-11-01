@@ -50,6 +50,41 @@ void main() {
         'https://res.cloudinary.com/x/image/upload/w_300/v1/a.jpg',
         'https://res.cloudinary.com/x/image/upload/c_fill,w_300,h_200/v1/a.jpg',
         'https://res.cloudinary.com/x/image/upload/f_auto,q_auto/a.jpg',
+        'https://res.cloudinary.com/x/image/upload/c_limit,q_auto/v1/a.jpg',
+        // Una transformación con nombre, un efecto con nivel y una cadena.
+        'https://res.cloudinary.com/x/image/upload/t_tarjeta/v1/a.jpg',
+        'https://res.cloudinary.com/x/image/upload/e_sepia:50/pier/a.jpg',
+        'https://res.cloudinary.com/x/image/upload/c_fill,w_300/dpr_2.0/v1/a.jpg',
+        // Con una variable propia.
+        r'https://res.cloudinary.com/x/image/upload/$ancho_300,w_$ancho/a.jpg',
+      ]) {
+        expect(fotoReducida(url), url, reason: url);
+      }
+    });
+
+    test('una carpeta sin versión que parece transformación se reduce', () {
+      // Una a tres letras y un guion bajo, pero no es un parámetro de
+      // Cloudinary: es la carpeta, y la foto se pide reducida.
+      for (final carpeta in ['img_x', 'mis_fotos', 'ab_c/d']) {
+        expect(
+          fotoReducida(
+            'https://res.cloudinary.com/x/image/upload/$carpeta/a.jpg',
+          ),
+          'https://res.cloudinary.com/x/image/upload/'
+          'w_600,c_limit,q_auto,f_auto/$carpeta/a.jpg',
+          reason: carpeta,
+        );
+      }
+    });
+
+    test('firmada se deja igual: la transformación rompería la firma', () {
+      const subida = 'https://res.cloudinary.com/x/image/upload';
+      for (final url in [
+        '$subida/s--Ap2yGxcZ--/v1/a.jpg',
+        '$subida/s--Ap2yGxcZ--/pier/a.jpg',
+        '$subida/s--A-b_C9xZ--/c_fill,w_300/v1/a.jpg',
+        // La firma larga (32 caracteres).
+        '$subida/s--2Fz5HmD8kL0pQrStUvWxYz123456789A--/v1/a.jpg',
       ]) {
         expect(fotoReducida(url), url, reason: url);
       }

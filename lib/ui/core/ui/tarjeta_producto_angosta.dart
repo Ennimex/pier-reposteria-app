@@ -184,12 +184,11 @@ class TarjetaProductoAngosta extends StatelessWidget {
 
   /// La foto: si llega de internet aparece con un fundido corto (la que ya
   /// está en caché se pinta tal cual) y, con [ambitoFoto], vuela al detalle.
-  /// Es la foto reducida y guardada en el teléfono (fotoDeTarjeta), la misma
+  /// Es la foto reducida y guardada en el teléfono (FotoDeTarjeta), la misma
   /// que pinta el vuelo.
   Widget _foto(Product p) {
-    final foto = Image(
-      image: fotoDeTarjeta(p.imagenUrl),
-      fit: BoxFit.cover,
+    final foto = FotoDeTarjeta(
+      p.imagenUrl,
       frameBuilder: (context, imagen, cuadro, sincrona) => sincrona
           ? imagen
           : AnimatedOpacity(

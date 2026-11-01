@@ -251,16 +251,14 @@ class ProductoCatalogoCard extends StatelessWidget {
   /// La foto vuela al detalle (misma etiqueta de siempre,
   /// `producto-img-<id>`) con las esquinas de esta tarjeta ([radio])
   /// enderezándose en el camino; si llega de internet aparece con un fundido
-  /// corto. Es la foto reducida y guardada en el teléfono (fotoDeTarjeta), la
+  /// corto. Es la foto reducida y guardada en el teléfono (FotoDeTarjeta), la
   /// misma que pinta el vuelo.
   Widget _imagen({required double tamanoIcono, required BorderRadius radio}) =>
       FotoProductoHero(
         productoId: producto.id,
         imagenUrl: producto.imagenUrl,
         radio: radio,
-        child: Image(
-            image: fotoDeTarjeta(producto.imagenUrl),
-            fit: BoxFit.cover,
+        child: FotoDeTarjeta(producto.imagenUrl,
             frameBuilder: (_, foto, cuadro, sincrona) =>
                 AparicionFoto(foto: foto, cuadro: cuadro, sincrona: sincrona),
             errorBuilder: (_, _, _) => ColoredBox(

@@ -23,5 +23,53 @@ ImageProvider Function(String url) proveedorDeFoto =
     CachedNetworkImageProvider.new;
 
 /// El proveedor de la foto de tarjeta de [url] (reducida si es de
-/// Cloudinary), para `Image(image: fotoDeTarjeta(url), …)`.
+/// Cloudinary). Para pintarla está [FotoDeTarjeta]; las pruebas lo usan para
+/// comparar la foto que se pintó.
 ImageProvider fotoDeTarjeta(String url) => proveedorDeFoto(fotoReducida(url));
+
+/// La foto de tarjeta de [url] (fotoDeTarjeta): todo origen del vuelo de la
+/// foto (las tarjetas, el vuelo al detalle, el vuelo al carrito y la foto de
+/// abajo de la galería) la pinta con este widget, así todos piden la misma
+/// entrada de ImageCache (test/unitarias/comun/fotos_de_tarjeta_test.dart lo
+/// revisa). Lo demás es lo mismo que en [Image].
+class FotoDeTarjeta extends StatelessWidget {
+  const FotoDeTarjeta(
+    this.url, {
+    this.width,
+    this.height,
+    this.fit = BoxFit.cover,
+    this.gaplessPlayback = false,
+    this.frameBuilder,
+    this.errorBuilder,
+    super.key,
+  });
+
+  /// La dirección de la foto completa (`producto.imagenUrl`).
+  final String url;
+
+  final double? width;
+  final double? height;
+
+  /// Cubre su lugar, como en todas las tarjetas.
+  final BoxFit fit;
+
+  /// true sigue mostrando la foto de antes mientras llega otra.
+  final bool gaplessPlayback;
+
+  /// Lo que se ve según la foto ya llegó o no (un fundido, un relleno).
+  final ImageFrameBuilder? frameBuilder;
+
+  /// Lo que se ve si la foto no llega.
+  final ImageErrorWidgetBuilder? errorBuilder;
+
+  @override
+  Widget build(BuildContext context) => Image(
+    image: fotoDeTarjeta(url),
+    width: width,
+    height: height,
+    fit: fit,
+    gaplessPlayback: gaplessPlayback,
+    frameBuilder: frameBuilder,
+    errorBuilder: errorBuilder,
+  );
+}

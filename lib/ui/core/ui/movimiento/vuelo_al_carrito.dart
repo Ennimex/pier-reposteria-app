@@ -455,7 +455,7 @@ class _Miniatura extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(2),
-          // Es la foto de la tarjeta (fotoDeTarjeta: la reducida, sin
+          // Es la foto de la tarjeta (FotoDeTarjeta: la reducida, sin
           // cacheWidth), la misma entrada de ImageCache que ya pintan la
           // tarjeta, el vuelo al detalle y la foto de abajo de la galería, así
           // que sale con la foto desde el primer cuadro (sin descargarla otra
@@ -464,9 +464,8 @@ class _Miniatura extends StatelessWidget {
           child: ClipOval(
             child: imagenUrl.isEmpty
                 ? relleno
-                : Image(
-                    image: fotoDeTarjeta(imagenUrl),
-                    fit: BoxFit.cover,
+                : FotoDeTarjeta(
+                    imagenUrl,
                     frameBuilder: (_, foto, cuadro, sincrona) =>
                         sincrona || cuadro != null ? foto : relleno,
                     errorBuilder: (_, _, _) => relleno,

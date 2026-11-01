@@ -461,16 +461,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       // La foto vuela al detalle (misma etiqueta de siempre,
                       // producto-img-<id>) enderezando sus esquinas; si llega
                       // de internet aparece con un fundido corto. Es la foto
-                      // reducida de la tarjeta (fotoDeTarjeta), la misma que
+                      // reducida de la tarjeta (FotoDeTarjeta), la misma que
                       // pintan el vuelo y la miniatura del carrito.
                       child: FotoProductoHero(
                         productoId: p.id,
                         imagenUrl: p.imagenUrl,
                         radio: const BorderRadius.vertical(
                             top: Radius.circular(20)),
-                        child: Image(
-                          image: fotoDeTarjeta(p.imagenUrl),
-                          fit: BoxFit.cover,
+                        child: FotoDeTarjeta(
+                          p.imagenUrl,
                           frameBuilder: (_, foto, cuadro, sincrona) =>
                               FotoQueAparece(
                                   foto: foto, cuadro: cuadro, sincrona: sincrona),
