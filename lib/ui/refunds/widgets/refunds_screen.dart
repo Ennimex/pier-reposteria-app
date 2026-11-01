@@ -8,7 +8,8 @@
 // través y entra en cascada una sola vez: volver de la otra pestaña o
 // recargar no la repite, y la solicitud recién enviada llega con un aro
 // dorado. Un campo que no pasa la validación se sacude y el botón de envío
-// cambia en sitio.
+// cambia en sitio. Si gerencia rechazó una solicitud, su tarjeta dice por
+// qué (#138).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -559,6 +560,41 @@ class _RefundsScreenState extends State<RefundsScreen>
           ),
 
           if (r.fotos.isNotEmpty) FotosGuardadas(urls: r.fotos),
+
+          // ── POR QUÉ SE RECHAZÓ (#138) ─────────────────────────
+          if (r.justificacionRechazo case final motivo?
+              when r.estado == EstadoReembolso.rechazado)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.estadoCancelado.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.estadoCancelado.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Motivo del rechazo',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.estadoCancelado)),
+                    const SizedBox(height: 6),
+                    Text(
+                      motivo,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // ── RESPUESTA DE PIER ─────────────────────────────────
           if (respuesta != null)
