@@ -11,8 +11,9 @@
 # la app dibuje su primer cuadro e imprime cuánto tardó (TotalTime, en ms).
 # La salida de cada apertura se agrega a <salida.txt>; de ahí
 # tool/resumen_pruebas.dart (comandos arranque y comparar-rendimiento) saca la
-# mediana. Falla si alguna apertura no mostró la ventana de la app
-# (Status distinto de ok), con ese motivo.
+# mediana. tool/arranque_alternado.sh lo llama para una apertura a la vez.
+# Falla si alguna apertura no mostró la ventana de la app (Status distinto
+# de ok), con ese motivo.
 set -euo pipefail
 
 paquete="$1"
