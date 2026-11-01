@@ -3,7 +3,8 @@
 // diálogos se cierran con su propio ritmo (el del teclado es nativo y
 // pumpAndSettle no lo espera): en vez de dar un tiempo fijo y confiar, se
 // espera a que la condición se cumpla, con un límite. Y un toque que no llega
-// a su widget hace fallar la prueba en ese paso, no más adelante.
+// a su widget hace fallar la prueba en ese paso, no más adelante. También
+// escribir en un campo, que cierra el teclado al terminar (#65).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -67,3 +68,42 @@ Future<void> esperarQueSeCierre(WidgetTester tester, Finder dialogo) =>
       motivo: 'no se cerró $dialogo',
       limite: const Duration(seconds: 10),
     );
+
+/// Espera a que [buscado] se quede quieto: el mismo lugar y tamaño en dos
+/// revisiones seguidas. Mientras una lista se desliza (p. ej. al cambiar de
+/// pestaña en «Mis Pedidos») no deja tocar lo que lleva encima.
+Future<void> esperarQueSeAsiente(WidgetTester tester, Finder buscado) async {
+  Rect? anterior;
+  await esperarQue(
+    tester,
+    () {
+      if (buscado.evaluate().isEmpty) return false;
+      final actual = tester.getRect(buscado.first);
+      final quieto = actual == anterior;
+      anterior = actual;
+      return quieto;
+    },
+    motivo: 'no se quedó quieto $buscado',
+    limite: const Duration(seconds: 10),
+  );
+}
+
+/// Escribe [texto] en [campo] (un TextField), cierra el teclado y espera a
+/// que se vaya. En un celular real el teclado del sistema borra al cerrarse
+/// lo que escribió enterText (en el emulador del CI no): si pasó, deja el
+/// texto directo en el campo y se lo avisa a la pantalla, como al teclear.
+Future<void> escribirYCerrarTeclado(
+  WidgetTester tester,
+  Finder campo,
+  String texto,
+) async {
+  await tester.enterText(campo, texto);
+  await cerrarTeclado(tester);
+  final textField = tester.widget<TextField>(campo);
+  final control = textField.controller;
+  if (control != null && control.text != texto) {
+    control.text = texto;
+    textField.onChanged?.call(texto);
+  }
+  await tester.pump(const Duration(milliseconds: 300));
+}
