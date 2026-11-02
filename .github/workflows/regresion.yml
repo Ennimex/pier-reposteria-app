@@ -8,7 +8,14 @@
 #     alta falle), #112 (texto técnico sin conexión), #118 (motivo del
 #     reembolso como texto), #126 y #140 (hornos y decoración en la tienda),
 #     #155 (versiones viejas de las acciones), #160 y #162 (catálogo sin
-#     conexión) y #185 (mediciones de rendimiento en el emulador).
+#     conexión), #185 (mediciones de rendimiento en el emulador), #198
+#     (arranque que esperaba /pagos/config), #216 (horario del pedido en
+#     ISO y UTC), #241 y #280 (el foco que regresa al cerrar un selector o
+#     una hoja), #269 (aviso según el tipo de queja), #270 (entrega ya
+#     confirmada), #271 (precios que parpadean al recargar), #273 y #277
+#     (Novedades que deja de cargar), #275 (sin red, refrescar borraba la
+#     lista), #281 (orden por precio con promociones) y #285 (estados
+#     vacíos que se desbordan).
 #   Las pruebas viven donde ya estaban (test/unitarias, test/widget,
 #   test/aceptacion); las de los bugs que no tenían, en test/regresion/.
 # Cómo lo hace: flutter test --tags regresion corre, de toda la carpeta test/,
