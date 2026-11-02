@@ -539,8 +539,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.pierVerde.withValues(alpha: 0.2)),
                 ),
-                // El ícono cambia con un rebote, la etiqueta rueda y la
-                // píldora ajusta su ancho con suavidad.
+                // Dice la vista que se ve, no a la que cambia. Al tocarla, el
+                // ícono nuevo crece con un rebote, la etiqueta nueva entra
+                // deslizándose (la anterior se quita en ese mismo cuadro) y
+                // la píldora ajusta su ancho con suavidad.
                 child: TamanoAnimado(
                   alineacion: AlignmentDirectional.centerStart,
                   child: Row(children: [

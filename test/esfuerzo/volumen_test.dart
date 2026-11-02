@@ -23,10 +23,10 @@ import 'package:pier_reposteria/ui/cart/widgets/cart_screen.dart';
 import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
 import 'package:pier_reposteria/ui/products/widgets/catalogo_secciones.dart';
-import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
 import '../fakes/fake_api_client.dart';
+import '../helpers/catalogo.dart';
 import '../helpers/pump_app.dart';
 
 // ── Carrito de 100 artículos ───────────────────────────────────────────────
@@ -232,22 +232,11 @@ Future<ProductsViewModel> _abrirCatalogo(
   FakeApiClient api,
 ) async {
   proveedorDeFoto = (_) => const _FotoQueNoLlega();
-  tester.view
-    ..physicalSize = const Size(540, 3000)
-    ..devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
+  tester.usarCelular(alto: 3000);
   await tester.pumpApp(const ProductsScreen(), api: api);
   await tester.pumpAndSettle();
   return tester.widget<CatalogoHeader>(find.byType(CatalogoHeader)).viewModel;
 }
-
-/// Los parámetros de cada petición de productos del catálogo, en orden (la
-/// lista completa que pide el Inicio no los lleva).
-List<Map<String, String>> _peticiones(FakeApiClient api) => [
-      for (final l in api.llamadas)
-        if (l.endpoint.startsWith('${ApiConstants.productos}?'))
-          Uri.parse(l.endpoint).queryParameters,
-    ];
 
 /// Los productos 1 a [n], en el orden del servidor.
 List<int> _hasta(int n) => [for (var i = 1; i <= n; i++) i];
@@ -269,30 +258,10 @@ List<String> _conAgotadosAlFinal(Iterable<int> numeros) => [
 /// Los ids de toda la lista del catálogo, de arriba abajo.
 List<String> _ids(ProductsViewModel vm) => [for (final p in vm.productos) p.id];
 
-/// Los nombres de las tarjetas que la lista tiene construidas, de arriba
-/// abajo: las que se ven y unas cuantas más.
-List<String> _tarjetas(WidgetTester tester) => [
-      for (final tarjeta in tester.widgetList<ProductoCatalogoCard>(
-        find.byType(ProductoCatalogoCard),
-      ))
-        tarjeta.producto.nombre,
-    ];
-
-final Finder _lista = find.byType(CustomScrollView);
-
-/// Cuánto se ha bajado la lista.
-double _bajado(WidgetTester tester) => tester
-    .state<ScrollableState>(
-      find.descendant(of: _lista, matching: find.byType(Scrollable)),
-    )
-    .position
-    .pixels;
-
 /// Bajo hasta el final de lo cargado y espero a que llegue la página que eso
 /// pida, si pide alguna.
 Future<void> _bajar(WidgetTester tester) async {
-  await tester.drag(_lista, const Offset(0, -20000));
-  await tester.pump();
+  await tester.bajarAlFinalDelCatalogo();
   await tester.pump(_demora);
   await tester.pumpAndSettle();
 }
@@ -301,7 +270,7 @@ Future<void> _bajar(WidgetTester tester) async {
 /// últimas, la última se ve en pantalla y no queda indicador de carga.
 void _alFinal(WidgetTester tester, List<String> ids) {
   final nombres = [for (final id in ids) _nombre(int.parse(id))];
-  final tarjetas = _tarjetas(tester);
+  final tarjetas = tester.nombresEnElCatalogo;
   expect(tarjetas, isNotEmpty);
   expect(tarjetas, nombres.sublist(nombres.length - tarjetas.length));
   expect(find.text(nombres.last).hitTestable(), findsOneWidget);
@@ -354,7 +323,7 @@ void main() {
         (tester) async {
       final api = _backendDelCatalogo();
       final vm = await _abrirCatalogo(tester, api);
-      expect(_peticiones(api), [_pedida(0)]);
+      expect(parametrosDelCatalogo(api), [_pedida(0)]);
       // De los 20 de la primera página se ven 19: el 3 está agotado y espera.
       expect(_ids(vm), _disponibles(_hasta(_porPagina)));
 
@@ -362,7 +331,7 @@ void main() {
       // sigue, y solo esa; mientras haya más, los agotados esperan.
       for (var pagina = 1; pagina < _paginas; pagina++) {
         await _bajar(tester);
-        expect(_peticiones(api), hasLength(pagina + 1));
+        expect(parametrosDelCatalogo(api), hasLength(pagina + 1));
         expect(_ids(vm), _disponibles(_hasta((pagina + 1) * _porPagina)));
       }
       // Después de la página 50 se pide desde el 1,000: llega vacía y así sabe
@@ -374,7 +343,7 @@ void main() {
 
       // Se pidieron las 50 páginas una vez cada una y en orden (del 0 al
       // 980), más la vacía del final
-      expect(_peticiones(api), [
+      expect(parametrosDelCatalogo(api), [
         for (var pagina = 0; pagina <= _paginas; pagina++) _pedida(pagina),
       ]);
       // la lista tiene los 1,000 sin repetidos, con los agotados al final
@@ -385,7 +354,7 @@ void main() {
       // y en pantalla está el final: el 1,000 y después los cuatro agotados.
       _alFinal(tester, ids);
       expect(
-        _tarjetas(tester).reversed.take(_agotados.length + 1),
+        tester.nombresEnElCatalogo.reversed.take(_agotados.length + 1),
         ['Pastel de nuez 999', 'Pastel 640', 'Pastel 250', 'Pastel 3',
             'Pastel 1000'],
       );
@@ -393,7 +362,7 @@ void main() {
 
       // Al bajar otra vez tampoco se pide nada.
       await _bajar(tester);
-      expect(_peticiones(api), hasLength(_paginas + 1));
+      expect(parametrosDelCatalogo(api), hasLength(_paginas + 1));
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('No se pudieron cargar más'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -421,21 +390,21 @@ void main() {
         );
         await tester.pump(_entreTeclas);
       }
-      expect(_peticiones(api), [_pedida(0)]);
+      expect(parametrosDelCatalogo(api), [_pedida(0)]);
 
       // Al dejar de teclear, una sola petición con todo lo escrito, y su
       // primera página arriba de la lista.
       await tester.pump(_esperaBusqueda);
       await tester.pumpAndSettle();
-      expect(_peticiones(api), [_pedida(0), _pedida(0, buscada)]);
+      expect(parametrosDelCatalogo(api), [_pedida(0), _pedida(0, buscada)]);
       expect(_ids(vm), _disponibles(deNuez.take(_porPagina)));
-      expect(_bajado(tester), 0);
+      expect(tester.bajadoEnElCatalogo, 0);
 
       // Bajo hasta el final del resultado: llega su segunda página (17, con
       // el agotado) y ya no se pide nada más.
       await _bajar(tester);
       await _bajar(tester);
-      expect(_peticiones(api), [
+      expect(parametrosDelCatalogo(api), [
         _pedida(0),
         _pedida(0, buscada),
         _pedida(1, buscada),
@@ -443,18 +412,18 @@ void main() {
       expect(vm.fin, isTrue);
       expect(_ids(vm), _conAgotadosAlFinal(deNuez));
       _alFinal(tester, _ids(vm));
-      expect(_tarjetas(tester), everyElement(contains(_termino)));
+      expect(tester.nombresEnElCatalogo, everyElement(contains(_termino)));
       expect(find.text('Agotado'), findsOneWidget);
 
       // Borro la búsqueda: vuelve la página 1 del catálogo completo, arriba.
       await tester.tap(find.byKey(const ValueKey('borrar')));
       await tester.pumpAndSettle();
-      expect(_peticiones(api), hasLength(4));
-      expect(_peticiones(api).last, _pedida(0));
+      expect(parametrosDelCatalogo(api), hasLength(4));
+      expect(parametrosDelCatalogo(api).last, _pedida(0));
       expect(vm.busqueda, isEmpty);
       expect(_ids(vm), _disponibles(_hasta(_porPagina)));
-      expect(_tarjetas(tester).first, 'Pastel 1');
-      expect(_bajado(tester), 0);
+      expect(tester.nombresEnElCatalogo.first, 'Pastel 1');
+      expect(tester.bajadoEnElCatalogo, 0);
       expect(tester.takeException(), isNull);
     });
   });

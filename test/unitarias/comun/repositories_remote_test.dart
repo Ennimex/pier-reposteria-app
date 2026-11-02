@@ -293,6 +293,16 @@ void main() {
       expect(pagina.first.id, '7');
     });
 
+    test('buscarProductos con límite y sin offset pide la primera página',
+        () async {
+      final api = _apiCatalogo();
+      final repo = ProductosRepositoryRemote(api: api);
+
+      await repo.buscarProductos(const ConsultaCatalogo(), limite: 20);
+
+      expect(api.llamadas.last.endpoint, '/productos?limite=20&offset=0');
+    });
+
     test('buscarProductos sin límite pide todo', () async {
       final api = _apiCatalogo();
       final repo = ProductosRepositoryRemote(api: api);

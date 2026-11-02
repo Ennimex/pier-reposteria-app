@@ -20,6 +20,7 @@ import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
 import '../../helpers/foco.dart';
 import '../../helpers/pantalla_apretada.dart';
 import '../../helpers/pump_app.dart';
@@ -315,11 +316,6 @@ void main() {
     testWidgets('por precio, las tarjetas siguen el precio con descuento',
         (tester) async {
       await _montar(tester);
-      List<String> nombres() => [
-            for (final tarjeta in tester.widgetList<ProductoCatalogoCard>(
-                find.byType(ProductoCatalogoCard)))
-              tarjeta.producto.nombre,
-          ];
 
       await tester.tap(find.byTooltip('Ordenar'));
       await tester.pumpAndSettle();
@@ -328,7 +324,7 @@ void main() {
 
       // Flan $143, Tres leches $272 (base 320), Chocoflan $300, Rosca $342,
       // Cheesecake $360 y, agotado, el pay.
-      expect(nombres(), [
+      expect(tester.nombresEnElCatalogo, [
         'Flan napolitano',
         'Tres leches',
         'Chocoflan',
@@ -342,7 +338,7 @@ void main() {
       await tester.tap(find.text('Precio: Mayor a Menor'));
       await tester.pumpAndSettle();
 
-      expect(nombres(), [
+      expect(tester.nombresEnElCatalogo, [
         'Cheesecake',
         'Rosca',
         'Chocoflan',
