@@ -571,7 +571,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
       if (integracion != null) 'Emulador: ${lineaPruebas(integracion)}',
       if (pruebasDeLaApi != null) 'API: ${lineaPruebas(pruebasDeLaApi)}',
       if (flujosAislados != null)
-        'Flujos de compra y reseña: ${lineaPruebas(flujosAislados)}',
+        'Flujos de compra, reseña y entrega: ${lineaPruebas(flujosAislados)}',
     ],
     'regresion': [if (regresion != null) lineaPruebas(regresion)],
     'rendimiento': [

@@ -1,8 +1,9 @@
 // integration_test/flujos/catalogo_resena_test.dart — #65: del catálogo a la
 // reseña con la app real, en el celular virtual (emulador), contra el
-// entorno aislado (integracion.yml, «Flujos de compra y reseña en el entorno
-// aislado», dentro de pipeline.yml). Junta la búsqueda del catálogo (#37),
-// el historial de pedidos (#39) y la reseña de lo comprado (#41).
+// entorno aislado (integracion.yml, «Flujos de compra, reseña y entrega en
+// el entorno aislado», dentro de pipeline.yml). Junta la búsqueda del
+// catálogo (#37), el historial de pedidos (#39) y la reseña de lo comprado
+// (#41).
 //
 // La cuenta ficticia de la semilla (docker/semilla/semilla_pruebas.sql) trae
 // un pedido completado. La prueba inicia sesión con ella (USUARIO_PRUEBA y
@@ -133,7 +134,7 @@ Future<void> _buscarYAbrir(
   final tarjeta = _tarjeta(producto.id);
 
   await tester.tap(pestana('Catálogo'));
-  final buscador = _en(ProductsScreen, find.byType(TextField));
+  final buscador = enPantalla(ProductsScreen, find.byType(TextField));
   await esperar(tester, buscador);
   await escribirYCerrarTeclado(tester, buscador.first, termino);
   await esperarQue(
@@ -154,7 +155,7 @@ Future<void> _buscarYAbrir(
   );
   await esperar(
     tester,
-    _en(ProductDetailScreen, find.text(producto.nombre)),
+    enPantalla(ProductDetailScreen, find.text(producto.nombre)),
     limite: esperaDelServidor,
   );
 }
@@ -167,11 +168,11 @@ Future<void> _abrirDelHistorial(
   OrderItem renglon,
 ) async {
   await tester.tap(pestana('Pedidos'));
-  final historial = _en(OrdersScreen, find.text('Historial'));
+  final historial = enPantalla(OrdersScreen, find.text('Historial'));
   await esperar(tester, historial);
   await tester.tap(historial);
 
-  final tarjeta = _en(OrdersScreen, find.text(pedido.numero));
+  final tarjeta = enPantalla(OrdersScreen, find.text(pedido.numero));
   await esperar(tester, tarjeta, limite: esperaDelServidor);
   // La página del historial entra deslizándose y, mientras se mueve, la
   // lista no deja tocar sus tarjetas.
@@ -193,7 +194,7 @@ Future<void> _abrirDelHistorial(
 /// y el comentario → «Publicar Opinión» → el diálogo de gracias.
 Future<void> _calificar(WidgetTester tester) async {
   await tester.tap(pestana('Catálogo'));
-  final escribir = _en(ProductDetailScreen, find.text('Escribir'));
+  final escribir = enPantalla(ProductDetailScreen, find.text('Escribir'));
   await esperar(tester, escribir);
   await tester.ensureVisible(escribir);
   await esperarQueSeAsiente(tester, escribir);
@@ -247,7 +248,7 @@ Future<void> _calificar(WidgetTester tester) async {
     limite: esperaDelServidor,
     motivo: 'el servidor no contestó la reseña',
   );
-  expect(aviso, findsNothing, reason: 'la app avisó: ${_textos(aviso)}');
+  expect(aviso, findsNothing, reason: 'la app avisó: ${textosDe(aviso)}');
   expect(
     find.textContaining('Tu reseña ha sido publicada'),
     findsOneWidget,
@@ -268,11 +269,11 @@ Future<void> _verLaResenaPublicada(WidgetTester tester) async {
   // Al volver, el detalle recarga sus opiniones.
   await esperar(
     tester,
-    _en(ProductDetailScreen, find.text(_comentario)),
+    enPantalla(ProductDetailScreen, find.text(_comentario)),
     limite: esperaDelServidor,
     motivo: 'la opinión no apareció en el detalle del producto',
   );
-  final verTodas = _en(
+  final verTodas = enPantalla(
     ProductDetailScreen,
     find.textContaining(RegExp(r'^Ver las \d+ opiniones$')),
   );
@@ -302,13 +303,3 @@ Finder _tarjeta(String id) => find.descendant(
   of: listaDelCatalogo(),
   matching: find.byKey(ValueKey<String>(id)),
 );
-
-/// [buscado] dentro de la pantalla [pantalla].
-Finder _en(Type pantalla, Finder buscado) =>
-    find.descendant(of: find.byType(pantalla), matching: buscado);
-
-/// Los textos de los widgets [textos], para explicar una falla.
-String _textos(Finder textos) => textos
-    .evaluate()
-    .map((elemento) => (elemento.widget as Text).data ?? '')
-    .join(' · ');

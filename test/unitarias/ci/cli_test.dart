@@ -868,8 +868,8 @@ void main() {
         'build/evidencias/resultados-esfuerzo/recuperacion.txt',
         '${aperturas([2345])}GET /api/health: 200\n',
       );
-      // El emulador contra el entorno aislado: los flujos de compra y reseña
-      // y el arranque en frío.
+      // El emulador contra el entorno aislado: los flujos de compra, reseña
+      // y entrega, y el arranque en frío.
       _escribir(
         'build/evidencias/resultados-flujo-entorno-aislado/'
             'flujo_entorno_aislado.json',
@@ -938,7 +938,8 @@ void main() {
         texto,
         contains(
           '| Integración | ✅ Pasó | Emulador: ✅ 1 prueba pasó · API: ✅ 1 '
-          'prueba pasó · Flujos de compra y reseña: ✅ 1 prueba pasó |',
+          'prueba pasó · Flujos de compra, reseña y entrega: ✅ 1 prueba '
+          'pasó |',
         ),
       );
       expect(texto, contains('| Regresión | ✅ Pasó | ✅ 1 prueba pasó |'));
