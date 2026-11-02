@@ -1,14 +1,16 @@
 // test/widget/products/catalogo_paginado_screen_test.dart — el catálogo trae
 // sus productos por páginas al bajar (#37): al acercarse al final pide la
-// siguiente y la agrega, abajo se ve «cargando» o el aviso para reintentar,
-// una primera página que no llena la pantalla pide la siguiente sola, la
-// lista vuelve arriba al empezar otra consulta, mientras llega la primera
-// página hay esqueletos y la hoja de orden ofrece «Mejor calificados». Con la
-// copia de la primera página guardada en el teléfono (#265) se ve al instante
-// en lugar de los esqueletos (al bajar a su final, el indicador dice que viene
-// más), la página nueva la reemplaza sin mover la lista y, sin internet, se
-// queda con su aviso; al volver la conexión, «Reintentar» trae la página 1
-// antes que la 2. Servidor falso que pagina como el real; sin red.
+// siguiente y la agrega, abajo se ve «cargando» o el aviso para reintentar, una
+// primera página que no llena la pantalla pide la siguiente sola (la que llega
+// con el catálogo tapado por otra pantalla, sin error ni pedir más), la lista
+// vuelve arriba al empezar otra consulta (al recargar la misma se queda donde
+// iba), mientras llega la primera página hay esqueletos y la hoja de orden
+// ofrece «Mejor calificados». Con la copia de la primera página guardada en el
+// teléfono (#265) se ve al instante en lugar de los esqueletos (al bajar a su
+// final, el indicador dice que viene más), la página nueva la reemplaza sin
+// mover la lista y, sin internet, se queda con su aviso; al volver la conexión,
+// «Reintentar» trae la página 1 antes que la 2. Servidor falso que pagina como
+// el real; sin red.
 import 'dart:async';
 import 'dart:convert';
 
@@ -23,6 +25,7 @@ import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart'
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
 import '../../helpers/pump_app.dart';
 
 const _primera = '/productos?limite=20&offset=0';
@@ -99,54 +102,17 @@ FakeApiClient _backend({RespuestaDinamica? productos}) => FakeApiClient(
       },
     );
 
-/// Celular alto para que quepan varias filas; [alto] mayor deja ver más de
-/// la lista sin bajar.
-void _pantalla(WidgetTester tester, {double alto = 1200}) {
-  tester.view
-    ..physicalSize = Size(540, alto)
-    ..devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
-}
-
 /// Abre el catálogo y deja que llegue lo que se pidió al instante.
 Future<FakeApiClient> _montar(
   WidgetTester tester, {
   FakeApiClient? api,
   double alto = 1200,
 }) async {
-  _pantalla(tester, alto: alto);
+  tester.usarCelular(alto: alto);
   final backend = api ?? _backend();
   await tester.pumpApp(const ProductsScreen(), api: backend);
   await tester.pumpAndSettle();
   return backend;
-}
-
-/// Las peticiones de productos con parámetros (las del catálogo, no la lista
-/// completa del Inicio), en orden.
-List<String> _pedidas(FakeApiClient api) => [
-      for (final l in api.llamadas)
-        if (l.endpoint.startsWith('${ApiConstants.productos}?')) l.endpoint,
-    ];
-
-final Finder _lista = find.byType(CustomScrollView);
-final Finder _desplazable =
-    find.descendant(of: _lista, matching: find.byType(Scrollable));
-
-/// Cuánto se ha bajado la lista.
-double _bajado(WidgetTester tester) =>
-    tester.state<ScrollableState>(_desplazable).position.pixels;
-
-/// Baja hasta el final de lo que hay cargado.
-Future<void> _alFinal(WidgetTester tester) async {
-  await tester.drag(_lista, const Offset(0, -20000));
-  await tester.pump();
-}
-
-/// Desmonta para cancelar lo que la pantalla deje esperando (el registro de
-/// una búsqueda).
-Future<void> _desmontar(WidgetTester tester) async {
-  await tester.pumpWidget(const SizedBox());
-  await tester.pump(const Duration(seconds: 2));
 }
 
 /// El aviso de que se ve el catálogo guardado en el teléfono (#265).
@@ -179,7 +145,7 @@ Future<void> _abrirConCopia(
   FakeApiClient api, {
   int cuantos = 20,
 }) async {
-  _pantalla(tester);
+  tester.usarCelular();
   await tester.pumpApp(
     const ProductsScreen(),
     api: api,
@@ -196,20 +162,46 @@ void main() {
       // nuevo y pediría también la tercera página.
       final api = _backend()..demorar(_segunda, _demora);
       await _montar(tester, api: api);
-      expect(_pedidas(api), [_primera]);
+      expect(pedidasDelCatalogo(api), [_primera]);
       expect(find.text('Producto 21'), findsNothing);
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pump(_demora);
       await tester.pumpAndSettle();
 
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
       await tester.scrollUntilVisible(
         find.text('Producto 21'),
         500,
-        scrollable: _desplazable,
+        scrollable: desplazableDelCatalogo,
       );
       expect(find.text('Producto 21'), findsOneWidget);
+    });
+
+    // #283: con 600, un deslizamiento rápido llegaba al final antes que la
+    // página siguiente; como Novedades, se pide a 1,500 del final.
+    testWidgets('pide la siguiente página a 1,500 px del final, no antes',
+        (tester) async {
+      final api = _backend()..demorar(_segunda, _demora);
+      await _montar(tester, api: api);
+      final lista =
+          tester.state<ScrollableState>(desplazableDelCatalogo).position;
+
+      lista.jumpTo(lista.maxScrollExtent - 1600);
+      await tester.pump();
+      expect(pedidasDelCatalogo(api), [_primera], reason: 'a 1,600');
+
+      // Más lejos que los 600 de antes, y quieta mientras llega.
+      lista.jumpTo(lista.maxScrollExtent - 1400);
+      await tester.pump();
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+
+      // Con la página nueva la lista ya no está cerca del final: no pide la
+      // tercera hasta que se baje otra vez.
+      expect(lista.extentAfter, greaterThan(1500));
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
     });
 
     testWidgets('mientras carga más se ve el indicador abajo', (tester) async {
@@ -221,7 +213,7 @@ void main() {
       );
       expect(indicador, findsNothing);
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
 
       expect(indicador, findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -241,16 +233,16 @@ void main() {
       final api = _backend()..demorar(_segunda, _demora);
       await _montar(tester, api: api);
 
-      await _alFinal(tester);
-      await _alFinal(tester);
-      await tester.drag(_lista, const Offset(0, 200));
-      await tester.drag(_lista, const Offset(0, -200));
+      await tester.bajarAlFinalDelCatalogo();
+      await tester.bajarAlFinalDelCatalogo();
+      await tester.drag(listaDelCatalogo, const Offset(0, 200));
+      await tester.drag(listaDelCatalogo, const Offset(0, -200));
       await tester.pump();
 
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
       await tester.pump(_demora);
       await tester.pumpAndSettle();
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
     });
 
     testWidgets(
@@ -262,7 +254,7 @@ void main() {
       );
       await _montar(tester, api: api);
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
 
       // El aviso es del pie, abajo de lo que ya se veía.
       Finder delPie(Finder finder) =>
@@ -274,33 +266,33 @@ void main() {
       expect(find.text('Reintentar'), findsOneWidget);
       // Lo que ya se veía se queda.
       expect(find.byType(ProductoCatalogoCard), findsWidgets);
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
 
       // Seguir moviendo la lista no insiste: eso es del botón.
       await tester.ensureVisible(find.text('Reintentar'));
-      await tester.drag(_lista, const Offset(0, 100));
-      await tester.drag(_lista, const Offset(0, -100));
+      await tester.drag(listaDelCatalogo, const Offset(0, 100));
+      await tester.drag(listaDelCatalogo, const Offset(0, -100));
       await tester.pump();
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
 
       falla = false;
       await tester.tap(find.text('Reintentar'));
       await tester.pumpAndSettle();
 
-      expect(_pedidas(api), [_primera, _segunda, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda, _segunda]);
       expect(find.text('No se pudieron cargar más'), findsNothing);
       expect(find.text('Reintentar'), findsNothing);
       await tester.scrollUntilVisible(
         find.text('Producto 21'),
         500,
-        scrollable: _desplazable,
+        scrollable: desplazableDelCatalogo,
       );
       expect(find.text('Producto 21'), findsOneWidget);
     });
 
     testWidgets('mientras llega la primera página se ven esqueletos',
         (tester) async {
-      _pantalla(tester, alto: 4000);
+      tester.usarCelular(alto: 4000);
       final api = _backend()..demorar(_primera, _demora);
       await tester.pumpApp(const ProductsScreen(), api: api);
       await tester.pump();
@@ -320,7 +312,7 @@ void main() {
 
     testWidgets('en el primer cuadro ya hay esqueletos y no una cuadrícula vacía',
         (tester) async {
-      _pantalla(tester, alto: 4000);
+      tester.usarCelular(alto: 4000);
       final api = _backend()..demorar(_primera, _demora);
       await tester.pumpApp(const ProductsScreen(), api: api);
       // Un solo cuadro: la carga la lanza el callback posterior al cuadro.
@@ -337,7 +329,7 @@ void main() {
     testWidgets('los esqueletos se anuncian una vez como «Cargando productos»',
         (tester) async {
       final semantica = tester.ensureSemantics();
-      _pantalla(tester, alto: 4000);
+      tester.usarCelular(alto: 4000);
       final api = _backend()..demorar(_primera, _demora);
       await tester.pumpApp(const ProductsScreen(), api: api);
       await tester.pump();
@@ -356,7 +348,7 @@ void main() {
       final api = _backend()..demorar(_segunda, _demora);
       await _montar(tester, api: api);
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
 
       expect(find.bySemanticsLabel('Cargando más productos'), findsOneWidget);
       await tester.pump(_demora);
@@ -408,18 +400,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Producto 21'), findsNothing);
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Producto 21'),
         500,
-        scrollable: _desplazable,
+        scrollable: desplazableDelCatalogo,
       );
 
       expect(find.text('Producto 21'), findsOneWidget);
       // El servidor entregó todo de una vez; lo demás se muestra sin red.
       expect(
-        _pedidas(api).where((e) => e.contains('rating')),
+        pedidasDelCatalogo(api).where((e) => e.contains('rating')),
         ['/productos?ordenar=rating'],
       );
       expect(find.byType(CircularProgressIndicator), findsNothing);
@@ -431,8 +423,41 @@ void main() {
       // desplazamiento que avise, lo pide al llegar la página.
       final api = await _montar(tester, alto: 6000);
 
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
       expect(find.text('Producto 21'), findsOneWidget);
+    });
+
+    // Otra pantalla la tapa desde que se abrió: la lista existe pero aún no
+    // se acomoda, así que no sabe cuánto le falta para el final.
+    testWidgets('tapada desde que se abre, la página 1 llega sin error ni '
+        'pedir más', (tester) async {
+      tester.usarCelular();
+      final api = _backend()..demorar(_segunda, _demora);
+      await tester.pumpApp(
+        Navigator(
+          onGenerateInitialRoutes: (_, _) => [
+            MaterialPageRoute<void>(builder: (_) => const ProductsScreen()),
+            MaterialPageRoute<void>(
+              builder: (_) => const Scaffold(body: Text('Encima')),
+            ),
+          ],
+        ),
+        api: api,
+      );
+      await tester.pumpAndSettle();
+
+      // La página 1 llegó sin que la lista se acomodara: ni error ni otra.
+      expect(tester.takeException(), isNull);
+      expect(pedidasDelCatalogo(api), [_primera]);
+
+      // Al quitar la de encima ya se ve y, al bajar al final, pide la 2.
+      Navigator.of(tester.element(find.text('Encima'))).pop();
+      await tester.pumpAndSettle();
+      expect(find.text('Producto 1'), findsOneWidget);
+      await tester.bajarAlFinalDelCatalogo();
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
     });
 
     testWidgets('al llegar a la última página ya no pide ni muestra nada abajo',
@@ -440,15 +465,15 @@ void main() {
       final api = _backend(productos: _servidor(total: 25));
       await _montar(tester, api: api);
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pumpAndSettle();
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pumpAndSettle();
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pumpAndSettle();
 
       // La segunda trajo 5 (menos de 20): es la última.
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
       expect(find.text('Producto 25'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('No se pudieron cargar más'), findsNothing);
@@ -463,20 +488,20 @@ void main() {
       final api = _backend()
         ..demorar('/productos?categoria=Pays&limite=20&offset=0', _demora);
       await _montar(tester, api: api);
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pumpAndSettle();
-      expect(_bajado(tester), greaterThan(1000));
+      expect(tester.bajadoEnElCatalogo, greaterThan(1000));
 
       await tester.tap(find.text('Pays').first);
       await tester.pump();
 
       // Los esqueletos ya se ven desde arriba, no desde donde se iba.
       expect(find.byType(ProductSkeletonCard), findsWidgets);
-      expect(_bajado(tester), 0);
+      expect(tester.bajadoEnElCatalogo, 0);
 
       await tester.pump(_demora);
       await tester.pumpAndSettle();
-      expect(_bajado(tester), 0);
+      expect(tester.bajadoEnElCatalogo, 0);
       expect(find.text('Pay 1'), findsOneWidget);
     });
 
@@ -485,25 +510,53 @@ void main() {
       final api = _backend()
         ..demorar('/productos?busqueda=Pay&limite=20&offset=0', _demora);
       await _montar(tester, api: api);
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pumpAndSettle();
-      final bajado = _bajado(tester);
+      final bajado = tester.bajadoEnElCatalogo;
       expect(bajado, greaterThan(1000));
 
       // Mientras se teclea, la lista sigue donde estaba.
       await tester.enterText(find.byType(TextField), 'Pay');
       await tester.pump();
-      expect(_bajado(tester), bajado);
+      expect(tester.bajadoEnElCatalogo, bajado);
 
       await tester.pump(_esperaBusqueda);
       expect(find.byType(ProductSkeletonCard), findsWidgets);
-      expect(_bajado(tester), 0);
+      expect(tester.bajadoEnElCatalogo, 0);
 
       await tester.pump(_demora);
       await tester.pumpAndSettle();
-      expect(_bajado(tester), 0);
+      expect(tester.bajadoEnElCatalogo, 0);
       expect(find.text('Pay 1'), findsOneWidget);
-      await _desmontar(tester);
+      await tester.desmontarCatalogo();
+    });
+
+    // Jalar para refrescar empieza con la lista arriba; con la lista abajo,
+    // la misma recarga llega desde «Reintentar» del aviso sin conexión, que
+    // muestra el indicador como si se hubiera jalado.
+    testWidgets('al recargar la misma consulta no: se queda donde iba',
+        (tester) async {
+      final api = await _montar(tester);
+      await tester.drag(listaDelCatalogo, const Offset(0, -300));
+      await tester.pumpAndSettle();
+      final bajado = tester.bajadoEnElCatalogo;
+      expect(bajado, greaterThan(0));
+      api.demorar(_primera, _demora);
+
+      unawaited(tester
+          .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+          .show());
+      await tester.pump();
+      // El indicador baja y pide la página 1 otra vez.
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(pedidasDelCatalogo(api), [_primera, _primera]);
+      expect(tester.bajadoEnElCatalogo, bajado, reason: 'mientras llega');
+
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+      expect(tester.bajadoEnElCatalogo, bajado);
+      expect(find.byType(ProductSkeletonCard), findsNothing);
     });
   });
 
@@ -518,7 +571,7 @@ void main() {
       expect(find.text('Copia 1'), findsOneWidget);
       expect(find.byType(ProductSkeletonCard), findsNothing);
       expect(find.text(_aviso), findsNothing);
-      expect(_pedidas(api), [_primera]);
+      expect(pedidasDelCatalogo(api), [_primera]);
 
       await tester.pump(_demora);
       await tester.pumpAndSettle();
@@ -541,13 +594,13 @@ void main() {
         matching: find.byType(CircularProgressIndicator),
       );
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
 
       // Abajo de la copia se ve que algo viene; la página 2 no se pide
       // mientras no llegue la 1.
       expect(find.text('Copia 20'), findsOneWidget);
       expect(indicador, findsOneWidget);
-      expect(_pedidas(api), [_primera]);
+      expect(pedidasDelCatalogo(api), [_primera]);
 
       await tester.pump(_demora);
       await tester.pumpAndSettle();
@@ -556,7 +609,7 @@ void main() {
       // final, la siguiente se pidió sola.
       expect(find.text('Copia 20'), findsNothing);
       expect(find.text('Producto 20'), findsOneWidget);
-      expect(_pedidas(api), [_primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
       expect(indicador, findsNothing);
     });
 
@@ -565,9 +618,9 @@ void main() {
       final api = _backend()..demorar(_primera, _demora);
       await _abrirConCopia(tester, api);
       await tester.pump();
-      await tester.drag(_lista, const Offset(0, -300));
+      await tester.drag(listaDelCatalogo, const Offset(0, -300));
       await tester.pump();
-      final bajado = _bajado(tester);
+      final bajado = tester.bajadoEnElCatalogo;
       expect(bajado, greaterThan(0));
       expect(find.textContaining('Copia'), findsWidgets);
 
@@ -576,7 +629,7 @@ void main() {
 
       expect(find.textContaining('Copia'), findsNothing);
       expect(find.textContaining('Producto'), findsWidgets);
-      expect(_bajado(tester), bajado);
+      expect(tester.bajadoEnElCatalogo, bajado);
     });
 
     testWidgets('sin conexión con copia muestra el aviso', (tester) async {
@@ -597,9 +650,9 @@ void main() {
       final api = _backend(productos: _servidor(falla: (_) => true));
       await _abrirConCopia(tester, api);
       await tester.pumpAndSettle();
-      expect(_pedidas(api), [_primera]);
+      expect(pedidasDelCatalogo(api), [_primera]);
 
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
 
       // No hay más páginas guardadas y a la copia no se le pega la página 2:
       // se vuelve a pedir la página 1, y no llega.
@@ -607,7 +660,7 @@ void main() {
           find.descendant(of: find.byType(PieCatalogo), matching: finder);
       expect(delPie(find.text('No se pudieron cargar más')), findsOneWidget);
       expect(delPie(find.text('Reintentar')), findsOneWidget);
-      expect(_pedidas(api), [_primera, _primera]);
+      expect(pedidasDelCatalogo(api), [_primera, _primera]);
       expect(find.text('Copia 20'), findsOneWidget);
       expect(find.text(_aviso), findsOneWidget);
     });
@@ -618,10 +671,10 @@ void main() {
       final api = _backend(productos: _servidor(falla: (_) => falla));
       await _abrirConCopia(tester, api);
       await tester.pumpAndSettle();
-      await _alFinal(tester);
+      await tester.bajarAlFinalDelCatalogo();
       await tester.pumpAndSettle();
       expect(find.text(_aviso), findsOneWidget);
-      expect(_pedidas(api), [_primera, _primera]);
+      expect(pedidasDelCatalogo(api), [_primera, _primera]);
 
       // Vuelve la conexión; la página 1 tarda un poco en llegar. «Reintentar»
       // del pie (el aviso de arriba también lo ofrece, #275).
@@ -637,7 +690,7 @@ void main() {
       await tester.pump();
 
       // Mientras llega, la copia se queda donde estaba.
-      expect(_pedidas(api), [_primera, _primera, _primera]);
+      expect(pedidasDelCatalogo(api), [_primera, _primera, _primera]);
       expect(find.text('Copia 20'), findsOneWidget);
 
       await tester.pump(_demora);
@@ -647,12 +700,12 @@ void main() {
       expect(find.text('Copia 20'), findsNothing);
       expect(find.text('Producto 20'), findsOneWidget);
       expect(find.byType(ProductSkeletonCard), findsNothing);
-      expect(_bajado(tester), greaterThan(1000));
+      expect(tester.bajadoEnElCatalogo, greaterThan(1000));
 
       // El aviso se va y la página 2 se pide sola.
       await tester.pumpAndSettle();
       expect(find.text(_aviso), findsNothing);
-      expect(_pedidas(api), [_primera, _primera, _primera, _segunda]);
+      expect(pedidasDelCatalogo(api), [_primera, _primera, _primera, _segunda]);
     });
 
     testWidgets('el aviso se va cuando llega la página nueva', (tester) async {
@@ -676,7 +729,7 @@ void main() {
 
     testWidgets('sin copia y sin conexión sale el error de siempre, sin aviso',
         (tester) async {
-      _pantalla(tester);
+      tester.usarCelular();
       final api = _backend(productos: _servidor(falla: (_) => true));
       await tester.pumpApp(const ProductsScreen(), api: api);
       await tester.pumpAndSettle();
@@ -707,14 +760,14 @@ void main() {
 
       // Jalar para refrescar, sin internet.
       falla = true;
-      await tester.fling(_lista, const Offset(0, 400), 1000);
+      await tester.fling(listaDelCatalogo, const Offset(0, 400), 1000);
       await tester.pumpAndSettle();
 
       expect(find.text('Pay 1'), findsOneWidget);
       expect(find.text('No pudimos cargar el catálogo'), findsNothing);
       expect(find.text(_aviso), findsOneWidget);
       expect(reintentarDelAviso, findsOneWidget);
-      expect(_pedidas(api).where((e) => e.contains('categoria=Pays')),
+      expect(pedidasDelCatalogo(api).where((e) => e.contains('categoria=Pays')),
           hasLength(2));
 
       // Vuelve la conexión.
@@ -722,7 +775,7 @@ void main() {
       await tester.tap(reintentarDelAviso);
       await tester.pumpAndSettle();
 
-      expect(_pedidas(api).where((e) => e.contains('categoria=Pays')),
+      expect(pedidasDelCatalogo(api).where((e) => e.contains('categoria=Pays')),
           hasLength(3));
       expect(find.text(_aviso), findsNothing);
       expect(find.text('Reintentar'), findsNothing);
@@ -737,13 +790,13 @@ void main() {
       await tester.tap(find.text('Pays').first);
       await tester.pumpAndSettle();
       falla = true;
-      await tester.fling(_lista, const Offset(0, 400), 1000);
+      await tester.fling(listaDelCatalogo, const Offset(0, 400), 1000);
       await tester.pumpAndSettle();
 
       await tester.tap(reintentarDelAviso);
       await tester.pumpAndSettle();
 
-      expect(_pedidas(api).where((e) => e.contains('categoria=Pays')),
+      expect(pedidasDelCatalogo(api).where((e) => e.contains('categoria=Pays')),
           hasLength(3));
       expect(find.text('Pay 1'), findsOneWidget);
       expect(find.text(_aviso), findsOneWidget);

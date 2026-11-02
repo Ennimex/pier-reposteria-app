@@ -72,8 +72,10 @@ class _ProductsScreenState extends State<ProductsScreen>
   final GlobalKey<RefreshIndicatorState> _refresco = GlobalKey();
   bool _isGridView = true;
 
-  /// Margen (px) antes del final en el que se pide la siguiente página.
-  static const _margenCargarMas = 600.0;
+  /// Margen (px) antes del final en el que se pide la siguiente página, como
+  /// en Novedades: con 600, un deslizamiento rápido llegaba al final antes
+  /// que la página y se quedaba esperando con el indicador (#283).
+  static const _margenCargarMas = 1500.0;
 
   // La consulta de la lista que se ve: cuando empieza a pedirse otra, la lista
   // vuelve arriba (_alCambiar).
@@ -509,7 +511,8 @@ class _ProductsScreenState extends State<ProductsScreen>
         key: clave,
         delegate: SliverChildBuilderDelegate(builder,
             childCount: cantidad, findChildIndexCallback: indicePorClave),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: _CuadriculaPorCantidad(
+          cantidad: cantidad,
           crossAxisCount: _isGridView ? 2 : 1,
           childAspectRatio: _isGridView ? 0.63 : 3.2,
           crossAxisSpacing: 12,
@@ -539,8 +542,10 @@ class _ProductsScreenState extends State<ProductsScreen>
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.pierVerde.withValues(alpha: 0.2)),
                 ),
-                // El ícono cambia con un rebote, la etiqueta rueda y la
-                // píldora ajusta su ancho con suavidad.
+                // Dice la vista que se ve, no a la que cambia. Al tocarla, el
+                // ícono nuevo crece con un rebote, la etiqueta nueva entra
+                // deslizándose (la anterior se quita en ese mismo cuadro) y
+                // la píldora ajusta su ancho con suavidad.
                 child: TamanoAnimado(
                   alineacion: AlignmentDirectional.centerStart,
                   child: Row(children: [
@@ -641,4 +646,27 @@ class _ProductsScreenState extends State<ProductsScreen>
       ),
     );
   }
+}
+
+/// La cuadrícula del catálogo, que se vuelve a acomodar cuando cambia la
+/// [cantidad] de tarjetas. Flutter lo hace por su cuenta solo si ya se veía
+/// el final de la lista: si otra página llegaba con la lista más arriba, su
+/// largo se quedaba como antes, la pantalla se creía cerca del final y pedía
+/// página tras página sin que nadie bajara (#283).
+class _CuadriculaPorCantidad extends SliverGridDelegateWithFixedCrossAxisCount {
+  const _CuadriculaPorCantidad({
+    required this.cantidad,
+    required super.crossAxisCount,
+    super.mainAxisSpacing,
+    super.crossAxisSpacing,
+    super.childAspectRatio,
+  });
+
+  final int cantidad;
+
+  @override
+  bool shouldRelayout(SliverGridDelegateWithFixedCrossAxisCount oldDelegate) =>
+      super.shouldRelayout(oldDelegate) ||
+      oldDelegate is! _CuadriculaPorCantidad ||
+      oldDelegate.cantidad != cantidad;
 }

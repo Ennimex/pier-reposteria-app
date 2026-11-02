@@ -3,14 +3,14 @@
 // consulta actual, termina con una página corta, vacía o con más de lo
 // pedido (#272), hace una sola petición a la vez, descarta lo que llega tarde
 // de una consulta anterior, vacía la lista al cambiar de consulta (al
-// recargar la misma, no), no
-// repite productos, deja los agotados para cuando ya no hay más, trae
-// completos los órdenes que el servidor no desempata (precio y calificación)
-// y espera a que se deje de teclear para buscar. Con la copia de la primera
-// página guardada en el teléfono (#265), la consulta por omisión la muestra al
-// instante mientras pide la nueva, la reemplaza al llegar y, sin internet, la
-// conserva; al volver la conexión, la página 1 nueva toma su lugar antes de
-// seguir con la 2 y llegan las categorías y los filtros que fallaron. Sin red.
+// recargar la misma, no), no repite productos, deja los agotados para cuando
+// ya no hay más, trae completos los órdenes que el servidor no desempata
+// (precio y calificación) y espera a que se deje de teclear para buscar. Con
+// la copia de la primera página guardada en el teléfono (#265), la consulta
+// por omisión la muestra al instante mientras pide la nueva, la reemplaza al
+// llegar y, sin internet, la conserva (con búsqueda o filtros nunca la usa);
+// al volver la conexión, la página 1 nueva toma su lugar antes de seguir con
+// la 2 y llegan las categorías y los filtros que fallaron. Sin red.
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +24,7 @@ import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart'
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
 
 /// Ids 1 a [total], en el orden del servidor.
 List<int> _ids(int total) => [for (var i = 1; i <= total; i++) i];
@@ -143,12 +144,6 @@ ProductsViewModel _vm(
   return vm;
 }
 
-/// Las peticiones de productos, en orden.
-List<String> _pedidas(FakeApiClient api) => [
-      for (final l in api.llamadas)
-        if (l.endpoint.startsWith(ApiConstants.productos)) l.endpoint,
-    ];
-
 List<String> _idsDe(ProductsViewModel vm) => [
       for (final p in vm.productos) p.id,
     ];
@@ -214,7 +209,7 @@ void main() {
       expect(vm.cargando, isTrue);
       await carga;
 
-      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+      expect(pedidasDelCatalogo(api), ['/productos?limite=20&offset=0']);
       expect(vm.productos, hasLength(20));
       expect(vm.fin, isFalse);
       expect(vm.cargando, isFalse);
@@ -228,7 +223,7 @@ void main() {
 
       await vm.cargarMas();
 
-      expect(_pedidas(api), [
+      expect(pedidasDelCatalogo(api), [
         '/productos?limite=20&offset=0',
         '/productos?limite=20&offset=20',
       ]);
@@ -252,7 +247,7 @@ void main() {
       expect(vm.productos, hasLength(20));
       // Al terminar ya no pide más.
       await vm.cargarMas();
-      expect(_pedidas(api), hasLength(2));
+      expect(pedidasDelCatalogo(api), hasLength(2));
     });
 
     // #272: si el servidor ignorara `limite` y mandara todo, cada «cargar
@@ -272,7 +267,7 @@ void main() {
       await vm.cargarMas();
       await vm.cargarMas();
 
-      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+      expect(pedidasDelCatalogo(api), ['/productos?limite=20&offset=0']);
       expect(vm.cargandoMas, isFalse);
       expect(vm.errorMas, isNull);
     });
@@ -288,7 +283,7 @@ void main() {
       await primera;
 
       expect(
-        _pedidas(api).where((e) => e.endsWith('offset=20')),
+        pedidasDelCatalogo(api).where((e) => e.endsWith('offset=20')),
         hasLength(1),
       );
       expect(vm.productos, hasLength(40));
@@ -313,7 +308,8 @@ void main() {
       expect(_idsDe(vm), ['100']);
       expect(vm.fin, isTrue);
       expect(vm.cargandoMas, isFalse);
-      expect(_pedidas(api).last, '/productos?sabor=Fresa&limite=20&offset=0');
+      expect(pedidasDelCatalogo(api).last,
+          '/productos?sabor=Fresa&limite=20&offset=0');
     });
 
     test('una primera página que llega tarde no pisa la consulta nueva',
@@ -400,18 +396,29 @@ void main() {
     });
 
     test('recargar la misma consulta deja la lista mientras llega', () async {
-      final api = _servidor((l) => _pagina(l, _ids(45)));
-      final vm = _vm(api);
-      await vm.cargarProductos();
-      api.demorar('/productos?limite=20&offset=0', _tarde);
+      // Por páginas del servidor y en los órdenes que se piden completos.
+      for (final (orden, primera) in [
+        (SortOption.popular, '/productos?limite=20&offset=0'),
+        (SortOption.priceAsc, '/productos?ordenar=precio-asc'),
+        (SortOption.priceDesc, '/productos?ordenar=precio-desc'),
+        (SortOption.rating, '/productos?ordenar=rating'),
+      ]) {
+        // Con categorías y filtros, que recargar también pide.
+        final api = _servidorCompleto(() => false);
+        final vm = _vm(api)..ordenarPor(orden);
+        await _esperar();
+        expect(_idsDe(vm), _idsServidor(20), reason: '$orden');
+        api.demorar(primera, _tarde);
 
-      final recarga = vm.recargar();
+        final recarga = vm.recargar();
 
-      expect(vm.cargando, isTrue);
-      expect(vm.productos, hasLength(20));
-      await recarga;
-      expect(vm.cargando, isFalse);
-      expect(vm.productos, hasLength(20));
+        expect(vm.cargando, isTrue, reason: '$orden');
+        expect(_idsDe(vm), _idsServidor(20), reason: '$orden');
+        await recarga;
+        expect(vm.cargando, isFalse, reason: '$orden');
+        expect(_idsDe(vm), _idsServidor(20), reason: '$orden');
+        expect(pedidasDelCatalogo(api), [primera, primera], reason: '$orden');
+      }
     });
 
     test('sin duplicados entre páginas', () async {
@@ -481,7 +488,7 @@ void main() {
       expect(vm.fin, isFalse);
       // Sin primera página no hay «más» que pedir.
       await vm.cargarMas();
-      expect(_pedidas(api), hasLength(1));
+      expect(pedidasDelCatalogo(api), hasLength(1));
 
       // «Reintentar» vuelve a la página 1.
       caido = false;
@@ -510,23 +517,34 @@ void main() {
         expect(vm.productos, hasLength(45));
         expect(vm.fin, isTrue);
 
-        expect(_pedidas(api), ['/productos?ordenar=$ordenar'],
+        expect(pedidasDelCatalogo(api), ['/productos?ordenar=$ordenar'],
             reason: 'una sola petición sin limite');
       }
     });
 
-    test('la búsqueda espera a que se deje de teclear', () async {
+    // En testWidgets para avanzar el reloj simulado con tester.pump: sin
+    // gastar tiempo real esperando a que se deje de teclear.
+    testWidgets('la búsqueda espera a que se deje de teclear', (tester) async {
+      const espera = Duration(milliseconds: 400);
       final api = _servidor((l) => _pagina(l, _ids(3)));
-      final vm = _vm(api, esperaBusqueda: const Duration(milliseconds: 400))
-        ..buscar('pa')
-        ..buscar('pay');
+      final vm = _vm(api, esperaBusqueda: espera)..buscar('pa');
+      await tester.pump(const Duration(milliseconds: 300));
+      vm.buscar('pay');
 
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(_pedidas(api), isEmpty, reason: 'todavía está tecleando');
+      // La espera cuenta desde la última tecla, no desde la primera.
+      await tester.pump(espera - const Duration(milliseconds: 1));
+      expect(pedidasDelCatalogo(api), isEmpty,
+          reason: 'todavía está tecleando');
 
-      await Future<void>.delayed(const Duration(milliseconds: 400));
-      expect(_pedidas(api), ['/productos?busqueda=pay&limite=20&offset=0']);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(pedidasDelCatalogo(api),
+          ['/productos?busqueda=pay&limite=20&offset=0']);
       expect(vm.productos, hasLength(3));
+
+      // Borra lo que escribió: ya no queda esperando el registro de la
+      // búsqueda (testWidgets no deja temporizadores pendientes).
+      vm.limpiarBusqueda();
+      await tester.pump();
     });
   });
 
@@ -548,7 +566,7 @@ void main() {
       expect(vm.cargando, isTrue);
       expect(vm.sinConexion, isFalse);
       expect(vm.error, isNull);
-      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+      expect(pedidasDelCatalogo(api), ['/productos?limite=20&offset=0']);
 
       await carga;
 
@@ -566,7 +584,7 @@ void main() {
       final carga = vm.cargarProductos();
 
       // La petición ya salió, antes de que la copia termine de leerse.
-      expect(_pedidas(api), ['/productos?limite=20&offset=0']);
+      expect(pedidasDelCatalogo(api), ['/productos?limite=20&offset=0']);
       await carga;
       expect(_idsDe(vm), _idsServidor(20));
     });
@@ -767,7 +785,7 @@ void main() {
       expect(vm.cargandoMas, isFalse);
       expect(_idsDe(vm), _idsCopia(20));
       expect(vm.sinConexion, isTrue);
-      expect(_pedidas(api), [
+      expect(pedidasDelCatalogo(api), [
         '/productos?limite=20&offset=0',
         '/productos?limite=20&offset=0',
       ]);
@@ -792,7 +810,7 @@ void main() {
 
       // La página 1 nueva toma el lugar de la copia (sin pasar por la lista
       // vacía), se guarda y el aviso se va.
-      expect(_pedidas(api).last, '/productos?limite=20&offset=0');
+      expect(pedidasDelCatalogo(api).last, '/productos?limite=20&offset=0');
       expect(_idsDe(vm), _idsServidor(20));
       expect(cuantosSeVen, everyElement(20));
       expect(vm.sinConexion, isFalse);
@@ -804,7 +822,7 @@ void main() {
 
       // Después sí sigue la página 2.
       await vm.cargarMas();
-      expect(_pedidas(api).last, '/productos?limite=20&offset=20');
+      expect(pedidasDelCatalogo(api).last, '/productos?limite=20&offset=20');
       expect(_idsDe(vm), _idsServidor(40));
     });
 
@@ -894,7 +912,7 @@ void main() {
       await vm.cargarMas();
 
       // Cambiar las 40 por la página 1 movería a la persona de donde iba.
-      expect(_pedidas(api).last, '/productos?limite=20&offset=40');
+      expect(pedidasDelCatalogo(api).last, '/productos?limite=20&offset=40');
       expect(_idsDe(vm), _idsServidor(60));
       expect(vm.sinConexion, isFalse);
     });
@@ -1023,7 +1041,7 @@ void main() {
         expect(vm.productos, hasLength(45), reason: '$orden');
         expect(vm.fin, isTrue, reason: '$orden');
         expect(vm.errorMas, isNull, reason: '$orden');
-        expect(_pedidas(api), hasLength(2), reason: '$orden');
+        expect(pedidasDelCatalogo(api), hasLength(2), reason: '$orden');
       }
     });
 
@@ -1042,7 +1060,8 @@ void main() {
       caido = false;
       await vm.cargarMas();
 
-      expect(_pedidas(api).last, '/productos?sabor=Fresa&limite=20&offset=0');
+      expect(pedidasDelCatalogo(api).last,
+          '/productos?sabor=Fresa&limite=20&offset=0');
       expect(_idsDe(vm), _idsServidor(20));
       expect(vm.sinConexion, isFalse);
       await _esperar();
@@ -1060,6 +1079,31 @@ void main() {
       expect(vm.error, 'Sin conexión');
       expect(vm.productos, isEmpty);
       expect(vm.sinConexion, isFalse);
+    });
+
+    test('con filtros, la copia guardada no toma el lugar de lo que no llegó: '
+        'al recargar sigue el error de siempre', () async {
+      await _guardarCopia(20);
+      // Sin internet: tampoco llegan las categorías ni los filtros.
+      final api = _servidorCompleto(() => true);
+      final vm = _vm(api, guardado: CatalogoGuardadoService());
+      final vistos = <String>{};
+      vm
+        ..addListener(() => vistos.addAll(_idsDe(vm)))
+        ..alternarSabor('Fresa');
+      await _esperar();
+      expect(vm.error, 'Sin conexión');
+
+      await vm.recargar();
+
+      expect(vm.error, 'Sin conexión');
+      expect(vm.productos, isEmpty);
+      expect(vm.sinConexion, isFalse);
+      expect(vistos, isEmpty, reason: 'la copia es de la consulta por omisión');
+      expect(pedidasDelCatalogo(api), [
+        '/productos?sabor=Fresa&limite=20&offset=0',
+        '/productos?sabor=Fresa&limite=20&offset=0',
+      ]);
     });
   });
 
@@ -1148,7 +1192,7 @@ void main() {
       await vm.cargarMas();
       expect(vm.productos, hasLength(45));
       expect(vm.productos.map((p) => p.id).toSet(), hasLength(45));
-      expect(_pedidas(api), ['/productos?ordenar=precio-asc']);
+      expect(pedidasDelCatalogo(api), ['/productos?ordenar=precio-asc']);
 
       // Con todo a la vista ya no hay nada que reordenar.
       final todos = _idsDe(vm);

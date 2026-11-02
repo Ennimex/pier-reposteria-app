@@ -11,10 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
-import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
 import '../../helpers/pump_app.dart';
 
 /// La primera página del catálogo sin búsqueda ni filtros.
@@ -131,10 +131,7 @@ Future<ValueNotifier<bool>> _encenderApp(
   FakeApiClient api, {
   double alto = 3000,
 }) async {
-  tester.view
-    ..physicalSize = Size(540, alto)
-    ..devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
+  tester.usarCelular(alto: alto);
   final catalogo = ValueNotifier(false);
   addTearDown(catalogo.dispose);
   await tester.pumpApp(
@@ -175,41 +172,9 @@ Future<void> _volverAAbrir(
 Map<String, String> _primeraDe([Map<String, String> consulta = const {}]) =>
     {...consulta, 'limite': '20', 'offset': '0'};
 
-/// Los parámetros de cada petición de productos del catálogo, en orden (la
-/// lista completa que pide el Inicio no los lleva).
-List<Map<String, String>> _peticiones(FakeApiClient api) => [
-      for (final l in api.llamadas)
-        if (l.endpoint.startsWith('${ApiConstants.productos}?'))
-          Uri.parse(l.endpoint).queryParameters,
-    ];
-
-/// Los nombres de las tarjetas que la lista tiene construidas, de arriba
-/// abajo.
-List<String> _nombres(WidgetTester tester) => [
-      for (final tarjeta in tester.widgetList<ProductoCatalogoCard>(
-        find.byType(ProductoCatalogoCard),
-      ))
-        tarjeta.producto.nombre,
-    ];
-
 /// Se ven tarjetas y todas son de esa versión del catálogo.
 Matcher _soloDe(String version) =>
     allOf(isNotEmpty, everyElement(startsWith(version)));
-
-final Finder _lista = find.byType(CustomScrollView);
-final Finder _desplazable =
-    find.descendant(of: _lista, matching: find.byType(Scrollable));
-
-/// Cuánto se ha bajado la lista.
-double _bajado(WidgetTester tester) =>
-    tester.state<ScrollableState>(_desplazable).position.pixels;
-
-/// Desmonta para cancelar lo que la pantalla deje esperando (el registro de
-/// una búsqueda).
-Future<void> _desmontar(WidgetTester tester) async {
-  await tester.pumpWidget(const SizedBox());
-  await tester.pump(const Duration(seconds: 2));
-}
 
 void main() {
   group('#265 Catálogo guardado en el teléfono', () {
@@ -224,7 +189,7 @@ void main() {
       final api = _backend(menu);
       final catalogo = await _encenderApp(tester, api);
       await _abrir(tester, catalogo);
-      expect(_nombres(tester), _nombresDe('Pastel de ayer', 6));
+      expect(tester.nombresEnElCatalogo, _nombresDe('Pastel de ayer', 6));
       await _cerrar(tester, catalogo);
 
       // Cuando lo vuelvo a abrir (el menú cambió y el servidor tarda en
@@ -237,12 +202,12 @@ void main() {
 
       // Entonces veo los productos de la última vez mientras llega la versión
       // nueva
-      expect(_nombres(tester), _nombresDe('Pastel de ayer', 6));
+      expect(tester.nombresEnElCatalogo, _nombresDe('Pastel de ayer', 6));
       expect(find.byType(ProductSkeletonCard), findsNothing);
-      expect(_peticiones(api), [_primeraDe(), _primeraDe()]);
+      expect(parametrosDelCatalogo(api), [_primeraDe(), _primeraDe()]);
       await tester.pump(_demora);
       await tester.pumpAndSettle();
-      expect(_nombres(tester), _nombresDe('Pastel de hoy', 6));
+      expect(tester.nombresEnElCatalogo, _nombresDe('Pastel de hoy', 6));
     });
 
     // Escenario: la nueva la reemplaza
@@ -262,11 +227,11 @@ void main() {
         ..addAll(_pasteles('Pastel de hoy', 20, desde: 100));
       api.demorar(_primera, _demora);
       await _volverAAbrir(tester, catalogo);
-      await tester.drag(_lista, const Offset(0, -300));
+      await tester.drag(listaDelCatalogo, const Offset(0, -300));
       await tester.pump();
-      final bajado = _bajado(tester);
+      final bajado = tester.bajadoEnElCatalogo;
       expect(bajado, greaterThan(0));
-      expect(_nombres(tester), _soloDe('Pastel de ayer'));
+      expect(tester.nombresEnElCatalogo, _soloDe('Pastel de ayer'));
 
       // Cuando llega la primera página del servidor
       await tester.pump(_demora);
@@ -274,11 +239,11 @@ void main() {
 
       // Entonces la lista se actualiza sin saltos: en el mismo lugar, sin
       // pasar por la lista vacía ni por los esqueletos
-      expect(_nombres(tester), _soloDe('Pastel de hoy'));
+      expect(tester.nombresEnElCatalogo, _soloDe('Pastel de hoy'));
       expect(find.byType(ProductSkeletonCard), findsNothing);
-      expect(_bajado(tester), bajado);
+      expect(tester.bajadoEnElCatalogo, bajado);
       await tester.pumpAndSettle();
-      expect(_bajado(tester), bajado);
+      expect(tester.bajadoEnElCatalogo, bajado);
     });
 
     // Escenario: sin internet
@@ -300,8 +265,8 @@ void main() {
 
       // Entonces veo la copia con el aviso «Sin conexión: es el último
       // catálogo que viste»
-      expect(_peticiones(api), [_primeraDe(), _primeraDe()]);
-      expect(_nombres(tester), _nombresDe('Pastel de ayer', 6));
+      expect(parametrosDelCatalogo(api), [_primeraDe(), _primeraDe()]);
+      expect(tester.nombresEnElCatalogo, _nombresDe('Pastel de ayer', 6));
       expect(find.text(_aviso), findsOneWidget);
       expect(find.text('No pudimos cargar el catálogo'), findsNothing);
     });
@@ -323,7 +288,8 @@ void main() {
         ..demorar('/productos?categoria=Pays&limite=20&offset=0', _demora);
       final catalogo = await _encenderApp(tester, api);
       await _abrir(tester, catalogo);
-      expect(_nombres(tester), [..._nombresDe('Pastel', 3), ..._pays]);
+      expect(tester.nombresEnElCatalogo,
+          [..._nombresDe('Pastel', 3), ..._pays]);
 
       // Cuando busco
       await tester.enterText(find.byType(TextField), 'Pay');
@@ -331,30 +297,32 @@ void main() {
 
       // Entonces la app le pregunta al servidor y no usa la copia: mientras
       // contesta se ven esqueletos, no lo guardado
-      expect(_peticiones(api).last, _primeraDe({'busqueda': 'Pay'}));
-      expect(_nombres(tester), isEmpty);
+      expect(parametrosDelCatalogo(api).last, _primeraDe({'busqueda': 'Pay'}));
+      expect(tester.nombresEnElCatalogo, isEmpty);
       expect(find.byType(ProductSkeletonCard), findsWidgets);
       await tester.pump(_demora);
       await tester.pumpAndSettle();
-      expect(_nombres(tester), _pays);
+      expect(tester.nombresEnElCatalogo, _pays);
 
       // Cuando filtro (ya sin búsqueda: entre tanto vuelve el catálogo de
       // siempre)
       await tester.enterText(find.byType(TextField), '');
       await tester.pump(_esperaBusqueda);
       await tester.pumpAndSettle();
-      expect(_nombres(tester), [..._nombresDe('Pastel', 3), ..._pays]);
+      expect(tester.nombresEnElCatalogo,
+          [..._nombresDe('Pastel', 3), ..._pays]);
       await tester.tap(find.text('Pays').first);
       await tester.pump();
 
       // Entonces la app le pregunta al servidor y no usa la copia
-      expect(_peticiones(api).last, _primeraDe({'categoria': 'Pays'}));
-      expect(_nombres(tester), isEmpty);
+      expect(parametrosDelCatalogo(api).last,
+          _primeraDe({'categoria': 'Pays'}));
+      expect(tester.nombresEnElCatalogo, isEmpty);
       expect(find.byType(ProductSkeletonCard), findsWidgets);
       await tester.pump(_demora);
       await tester.pumpAndSettle();
-      expect(_nombres(tester), _pays);
-      await _desmontar(tester);
+      expect(tester.nombresEnElCatalogo, _pays);
+      await tester.desmontarCatalogo();
     });
   });
 }
