@@ -164,7 +164,7 @@ void main() {
       expect(descuento(15), 15);
       expect(descuento(null), isNull);
       expect(descuento('raro'), isNull);
-    });
+    }, tags: 'regresion');
 
     test('ids, precios y duración que llegan como texto no truenan', () {
       final p = Publicacion.fromJson(publicacionJson()..['id'] = '7');
@@ -441,7 +441,7 @@ void main() {
       expect(otro.cargando, isFalse);
       expect(otro.error, isNull);
       expect(_claves(otro.elementos), ['pub1']);
-    });
+    }, tags: 'regresion');
 
     test(
       'promoción con el descuento como texto: sale intercalada (#277)',
@@ -549,7 +549,7 @@ void main() {
       );
       expect(vm.cargandoMas, isFalse);
       expect(vm.errorMas, isNull);
-    });
+    }, tags: 'regresion');
 
     test('recargar borra el error de cargar más y un error que llega tarde '
         'no lo vuelve a poner (#273)', () async {

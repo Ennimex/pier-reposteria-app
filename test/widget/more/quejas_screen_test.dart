@@ -160,7 +160,7 @@ void main() {
 
         expect(api.ultima(ApiConstants.crearQueja)?.body?['tipo'], tipo.name);
         expect(find.text(aviso), findsOneWidget);
-      });
+      }, tags: 'regresion');
     }
   });
 }
