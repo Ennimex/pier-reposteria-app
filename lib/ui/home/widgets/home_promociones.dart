@@ -57,7 +57,7 @@ Widget _fundido(BuildContext _, Widget foto, int? cuadro, bool sincrona) =>
 /// los carruseles de productos. Cada tarjeta lleva su propio ámbito (sección
 /// e índice): un producto puede repetirse entre ofertas y en los carruseles.
 /// Mientras vuela, la tarjeta deja ver su propio fondo (el tinte o la arena
-/// de mientras la foto llega). [foto] se pinta con `fotoDeTarjeta(imagenUrl)`,
+/// de mientras la foto llega). [foto] se pinta con `FotoDeTarjeta(imagenUrl)`,
 /// igual que el vuelo.
 Widget _fotoQueVuela({
   required Map<String, dynamic> promo,
@@ -363,9 +363,7 @@ class HomeOfertasRelampago extends StatelessWidget {
                             // La foto reducida, como en las demás tarjetas
                             // de producto del Inicio.
                             if (imagenUrl.isNotEmpty)
-                              Image(
-                                  image: fotoDeTarjeta(imagenUrl),
-                                  fit: BoxFit.cover,
+                              FotoDeTarjeta(imagenUrl,
                                   frameBuilder: _fundido,
                                   errorBuilder: (_, _, _) =>
                                       ColoredBox(color: gradientColor)),
@@ -625,9 +623,7 @@ class HomeOfertasTemporada extends StatelessWidget {
                       imagenUrl: imagenUrl,
                       radio: const BorderRadius.vertical(
                           top: Radius.circular(18)),
-                      foto: Image(
-                          image: fotoDeTarjeta(imagenUrl),
-                          fit: BoxFit.cover,
+                      foto: FotoDeTarjeta(imagenUrl,
                           frameBuilder: _fundido,
                           errorBuilder: (_, _, _) => ColoredBox(
                             color: fondoFoto,
@@ -865,9 +861,7 @@ class HomePromoDestacado extends StatelessWidget {
                               imagenUrl: imagenUrl,
                               radio: const BorderRadius.horizontal(
                                   left: Radius.circular(16)),
-                              foto: Image(
-                                  image: fotoDeTarjeta(imagenUrl),
-                                  fit: BoxFit.cover,
+                              foto: FotoDeTarjeta(imagenUrl,
                                   frameBuilder: _fundido,
                                   errorBuilder: (_, _, _) => ColoredBox(
                                     color: AppColors.pierArena,

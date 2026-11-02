@@ -1,6 +1,7 @@
 // test/aceptacion/catalogo/catalogo_test.dart — escenarios Gherkin del
 // catálogo (historia #37: buscar y filtrar los productos por categoría,
-// sabor, tamaño y tipo, y verlos de 20 en 20 al bajar), sin red: la pantalla
+// sabor, tamaño y tipo, y verlos de 20 en 20 al bajar) y el caso de error
+// «sin resultados» de las pruebas de aceptación (#64), sin red: la pantalla
 // real del catálogo, su ViewModel y el repositorio de productos sobre
 // FakeApiClient, que responde GET /productos como el backend: deja los
 // productos que cumplen la consulta (categoría, búsqueda, sabor, tamaño y
@@ -9,20 +10,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
-import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
 import '../../helpers/pump_app.dart';
 
-// Las páginas que siguen a la primera tardan en llegar, como por la red: si
-// llegaran entre dos eventos del mismo arrastre, el último vería la lista sin
-// acomodar lo nuevo y pediría una página de más.
-const _segunda = '/productos?limite=20&offset=20';
-const _tercera = '/productos?limite=20&offset=40';
-const _segundaDePays = '/productos?categoria=Pays&limite=20&offset=20';
-
-/// Lo que tarda en llegar una página demorada.
+/// Lo que tarda en llegar una página demorada. Las que siguen a la primera
+/// tardan, como por la red: si llegaran entre dos eventos del mismo arrastre,
+/// el último vería la lista sin acomodar lo nuevo y pediría una página de más.
 const _demora = Duration(milliseconds: 300);
 
 /// Lo que la búsqueda espera a que se deje de teclear antes de preguntar.
@@ -57,9 +53,11 @@ Map<String, dynamic> _producto(
 final List<Map<String, dynamic>> _menu = [
   _producto(1, 'Chocoflan',
       sabor: 'Chocolate', tamano: 'Grande', tipo: 'Horneado'),
-  _producto(2, 'Tres leches', sabor: 'Vainilla', tamano: 'Grande', tipo: 'Frío'),
+  _producto(2, 'Tres leches',
+      sabor: 'Vainilla', tamano: 'Grande', tipo: 'Frío'),
   _producto(3, 'Rosca de reyes',
-      categoria: 'Roscas', sabor: 'Naranja', tamano: 'Grande', tipo: 'Horneado'),
+      categoria: 'Roscas', sabor: 'Naranja', tamano: 'Grande',
+      tipo: 'Horneado'),
   _producto(4, 'Pay de limón',
       categoria: 'Pays', sabor: 'Limón', tamano: 'Grande', tipo: 'Frío'),
   _producto(5, 'Pay de fresa',
@@ -162,22 +160,13 @@ FakeApiClient _backend(List<Map<String, dynamic>> catalogo) =>
       },
     );
 
-/// Un celular de ancho 540 y [alto] px: uno alto deja ver (y construir) toda
-/// la lista sin bajar.
-void _celular(WidgetTester tester, {required double alto}) {
-  tester.view
-    ..physicalSize = Size(540, alto)
-    ..devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
-}
-
 /// Abre el catálogo y deja que llegue lo que se pidió al instante.
 Future<void> _abrirCatalogo(
   WidgetTester tester,
   FakeApiClient api, {
   double alto = 3000,
 }) async {
-  _celular(tester, alto: alto);
+  tester.usarCelular(alto: alto);
   await tester.pumpApp(const ProductsScreen(), api: api);
   await tester.pumpAndSettle();
 }
@@ -190,38 +179,24 @@ Map<String, String> _pedida(
 ]) =>
     {...consulta, 'limite': '20', 'offset': '${pagina * 20}'};
 
-/// Los parámetros de cada petición de productos del catálogo, en orden (la
-/// lista completa que pide el Inicio no los lleva).
-List<Map<String, String>> _peticiones(FakeApiClient api) => [
-      for (final l in api.llamadas)
-        if (l.endpoint.startsWith('${ApiConstants.productos}?'))
-          Uri.parse(l.endpoint).queryParameters,
-    ];
-
-/// Los nombres de las tarjetas que la lista tiene construidas, de arriba
-/// abajo: con un celular alto, toda la lista.
-List<String> _nombres(WidgetTester tester) => [
-      for (final tarjeta in tester.widgetList<ProductoCatalogoCard>(
-        find.byType(ProductoCatalogoCard),
-      ))
-        tarjeta.producto.nombre,
-    ];
-
-final Finder _lista = find.byType(CustomScrollView);
-final Finder _desplazable =
-    find.descendant(of: _lista, matching: find.byType(Scrollable));
-
-/// Cuánto se ha bajado la lista.
-double _bajado(WidgetTester tester) =>
-    tester.state<ScrollableState>(_desplazable).position.pixels;
+/// La ruta con la que la app pide la [pagina] (desde 0) de una [consulta]:
+/// la que se le da a `demorar` para que su respuesta tarde.
+String _rutaDe(int pagina, [Map<String, String> consulta = const {}]) =>
+    ApiConstants.consultaProductos(_pedida(pagina, consulta));
 
 /// Bajo hasta el final de lo cargado y espero a que llegue la página que eso
 /// pida, si pide alguna.
 Future<void> _bajar(WidgetTester tester) async {
-  await tester.drag(_lista, const Offset(0, -20000));
-  await tester.pump();
+  await tester.bajarAlFinalDelCatalogo();
   await tester.pump(_demora);
   await tester.pumpAndSettle();
+}
+
+/// Subo de un salto al principio de la lista: arrastrarla hasta arriba
+/// jalaría para refrescar y volvería a pedir la página 1.
+Future<void> _subirAlPrincipio(WidgetTester tester) async {
+  tester.state<ScrollableState>(desplazableDelCatalogo).position.jumpTo(0);
+  await tester.pump();
 }
 
 /// Toco el chip de [categoria]. Las tarjetas también dicen la suya: el chip
@@ -258,13 +233,6 @@ Future<void> _quitarFiltros(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Desmonta para cancelar lo que la pantalla deje esperando (el registro de
-/// una búsqueda).
-Future<void> _desmontar(WidgetTester tester) async {
-  await tester.pumpWidget(const SizedBox());
-  await tester.pump(const Duration(seconds: 2));
-}
-
 void main() {
   group('#37 Catálogo: búsqueda, filtros y páginas', () {
     // Escenario: filtrar por categoría
@@ -275,14 +243,15 @@ void main() {
       // Dado que estoy en el catálogo
       final api = _backend(_menu);
       await _abrirCatalogo(tester, api);
-      expect(_nombres(tester), _nombresDelMenu);
+      expect(tester.nombresEnElCatalogo, _nombresDelMenu);
 
       // Cuando elijo una categoría
       await _elegirCategoria(tester, 'Pays');
 
       // Entonces solo veo los productos de esa categoría
-      expect(_nombres(tester), _paysDelMenu);
-      expect(_peticiones(api).last, _pedida(0, {'categoria': 'Pays'}));
+      expect(tester.nombresEnElCatalogo, _paysDelMenu);
+      expect(parametrosDelCatalogo(api).last,
+          _pedida(0, {'categoria': 'Pays'}));
     });
 
     // Escenario: buscar por texto
@@ -293,15 +262,44 @@ void main() {
       // Dado que estoy en el catálogo
       final api = _backend(_menu);
       await _abrirCatalogo(tester, api);
-      expect(_nombres(tester), _nombresDelMenu);
+      expect(tester.nombresEnElCatalogo, _nombresDelMenu);
 
       // Cuando escribo parte del nombre de un producto
       await _buscar(tester, 'choco');
 
       // Entonces la lista muestra los productos que coinciden
-      expect(_nombres(tester), ['Chocoflan', 'Pay de chocolate']);
-      expect(_peticiones(api).last, _pedida(0, {'busqueda': 'choco'}));
-      await _desmontar(tester);
+      expect(tester.nombresEnElCatalogo, ['Chocoflan', 'Pay de chocolate']);
+      expect(parametrosDelCatalogo(api).last,
+          _pedida(0, {'busqueda': 'choco'}));
+      await tester.desmontarCatalogo();
+    });
+
+    // Escenario: sin resultados (caso de error del #64)
+    //   Dado que estoy en el catálogo
+    //   Cuando busco algo que ningún producto tiene
+    //   Entonces veo «Sin resultados» y ninguna tarjeta
+    //   Y al tocar «Limpiar filtros» vuelvo a ver todo el menú
+    testWidgets('Escenario: sin resultados', (tester) async {
+      // Dado que estoy en el catálogo
+      final api = _backend(_menu);
+      await _abrirCatalogo(tester, api);
+      expect(tester.nombresEnElCatalogo, _nombresDelMenu);
+
+      // Cuando busco algo que ningún producto tiene
+      await _buscar(tester, 'zzz');
+
+      // Entonces veo «Sin resultados» y ninguna tarjeta
+      expect(find.text('Sin resultados'), findsOneWidget);
+      expect(tester.nombresEnElCatalogo, isEmpty);
+      expect(parametrosDelCatalogo(api).last, _pedida(0, {'busqueda': 'zzz'}));
+
+      // Y al tocar «Limpiar filtros» vuelvo a ver todo el menú
+      await tester.tap(find.text('Limpiar filtros'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sin resultados'), findsNothing);
+      expect(tester.nombresEnElCatalogo, _nombresDelMenu);
+      expect(parametrosDelCatalogo(api).last, _pedida(0));
+      await tester.desmontarCatalogo();
     });
 
     // Escenario: filtros de sabor, tamaño y tipo
@@ -313,7 +311,7 @@ void main() {
       final api = _backend(_menu);
       await _abrirCatalogo(tester, api);
       await _elegirCategoria(tester, 'Pays');
-      expect(_nombres(tester), _paysDelMenu);
+      expect(tester.nombresEnElCatalogo, _paysDelMenu);
 
       for (final (opcion, filtro, cumplen) in [
         ('Fresa', 'sabor', ['Pay de fresa']),
@@ -324,14 +322,15 @@ void main() {
         await _filtrarPor(tester, opcion);
 
         // Entonces la lista se reduce a los productos que cumplen el filtro
-        expect(_nombres(tester), cumplen);
+        expect(tester.nombresEnElCatalogo, cumplen, reason: opcion);
         expect(
-          _peticiones(api).last,
+          parametrosDelCatalogo(api).last,
           _pedida(0, {'categoria': 'Pays', filtro: opcion}),
+          reason: opcion,
         );
 
         await _quitarFiltros(tester);
-        expect(_nombres(tester), _paysDelMenu);
+        expect(tester.nombresEnElCatalogo, _paysDelMenu, reason: opcion);
       }
     });
 
@@ -348,24 +347,25 @@ void main() {
           if (!agotados.contains(i)) 'Pastel $i',
       ];
       final api = _backend(_pasteles(25, agotados: agotados))
-        ..demorar(_segunda, _demora);
+        ..demorar(_rutaDe(1), _demora);
 
-      // Cuando veo el catálogo hasta el final: con un celular alto, la
-      // primera página no lo llena y la app pide la segunda sola. Mientras
-      // llega, los agotados de la primera esperan.
-      _celular(tester, alto: 6000);
+      // y ya veo la primera página, todavía sin ellos: con un celular alto
+      // no llena la pantalla y la app pide la segunda sola; mientras llega,
+      // de sus 20 se ven 18 (el 2 y el 4 esperan).
+      tester.usarCelular(alto: 6000);
       await tester.pumpApp(const ProductsScreen(), api: api);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(_peticiones(api), [_pedida(0), _pedida(1)]);
-      // De los 20 de la primera página se ven 18: el 2 y el 4 esperan.
-      expect(_nombres(tester), disponibles.take(18).toList());
+      expect(parametrosDelCatalogo(api), [_pedida(0), _pedida(1)]);
+      expect(tester.nombresEnElCatalogo, disponibles.take(18).toList());
       expect(find.text('Agotado'), findsNothing);
+
+      // Cuando veo el catálogo hasta el final (llega la segunda página)
       await tester.pump(_demora);
       await tester.pumpAndSettle();
 
       // Entonces los agotados aparecen al final de la lista
-      expect(_nombres(tester), [
+      expect(tester.nombresEnElCatalogo, [
         ...disponibles,
         for (final n in agotados) 'Pastel $n',
       ]);
@@ -378,21 +378,25 @@ void main() {
     //   Entonces se cargan los siguientes y los veo
     testWidgets('Escenario: cargar más al bajar', (tester) async {
       // Dado que el catálogo tiene más de 20 productos
-      final api = _backend(_pasteles(45))..demorar(_segunda, _demora);
+      final api = _backend(_pasteles(45))..demorar(_rutaDe(1), _demora);
       await _abrirCatalogo(tester, api, alto: 1200);
-      expect(_peticiones(api), [_pedida(0)]);
+      expect(parametrosDelCatalogo(api), [_pedida(0)]);
 
       // Cuando bajo hasta el final de la lista
       await _bajar(tester);
 
       // Entonces se cargan los siguientes y los veo
-      expect(_peticiones(api), [_pedida(0), _pedida(1)]);
+      expect(parametrosDelCatalogo(api), [_pedida(0), _pedida(1)]);
       await tester.scrollUntilVisible(
         find.text('Pastel 21'),
         500,
-        scrollable: _desplazable,
+        scrollable: desplazableDelCatalogo,
       );
       expect(find.text('Pastel 21'), findsOneWidget);
+      // debajo de los primeros 20, que siguen en la lista
+      await _subirAlPrincipio(tester);
+      expect(tester.nombresEnElCatalogo.first, 'Pastel 1');
+      expect(parametrosDelCatalogo(api), hasLength(2));
     });
 
     // Escenario: al filtrar se empieza de nuevo
@@ -403,38 +407,48 @@ void main() {
     testWidgets('Escenario: al filtrar se empieza de nuevo', (tester) async {
       // Dado que ya cargué varias páginas
       final api = _backend([..._pasteles(60), ..._pays(25)])
-        ..demorar(_segunda, _demora)
-        ..demorar(_tercera, _demora)
-        ..demorar(_segundaDePays, _demora);
+        ..demorar(_rutaDe(1), _demora)
+        ..demorar(_rutaDe(2), _demora)
+        ..demorar(_rutaDe(1, {'categoria': 'Pays'}), _demora);
       await _abrirCatalogo(tester, api, alto: 1200);
       await _bajar(tester);
       await _bajar(tester);
-      expect(_peticiones(api), [_pedida(0), _pedida(1), _pedida(2)]);
+      expect(parametrosDelCatalogo(api), [_pedida(0), _pedida(1), _pedida(2)]);
       await tester.scrollUntilVisible(
         find.text('Pastel 41'),
         500,
-        scrollable: _desplazable,
+        scrollable: desplazableDelCatalogo,
       );
-      expect(_bajado(tester), greaterThan(1000));
+      expect(tester.bajadoEnElCatalogo, greaterThan(1000));
 
       // Cuando elijo una categoría
       await _elegirCategoria(tester, 'Pays');
 
       // Entonces la lista empieza otra vez desde la primera página de esa
       // categoría
-      expect(_peticiones(api).last, _pedida(0, {'categoria': 'Pays'}));
-      expect(_bajado(tester), 0);
-      expect(_nombres(tester).first, 'Pay 1');
-      expect(_nombres(tester), everyElement(startsWith('Pay ')));
-      // y las páginas que siguen son las de esa categoría, desde la segunda
+      expect(parametrosDelCatalogo(api).last,
+          _pedida(0, {'categoria': 'Pays'}));
+      expect(tester.bajadoEnElCatalogo, 0);
+      expect(tester.nombresEnElCatalogo.first, 'Pay 1');
+      expect(tester.nombresEnElCatalogo, everyElement(startsWith('Pay ')));
+      // y las páginas que siguen son las de esa categoría, desde la segunda,
+      // debajo de la primera, que sigue en la lista
       await _bajar(tester);
-      expect(_peticiones(api), [
+      expect(parametrosDelCatalogo(api), [
         _pedida(0),
         _pedida(1),
         _pedida(2),
         _pedida(0, {'categoria': 'Pays'}),
         _pedida(1, {'categoria': 'Pays'}),
       ]);
+      await tester.scrollUntilVisible(
+        find.text('Pay 25'),
+        500,
+        scrollable: desplazableDelCatalogo,
+      );
+      await _subirAlPrincipio(tester);
+      expect(tester.nombresEnElCatalogo.first, 'Pay 1');
+      expect(parametrosDelCatalogo(api), hasLength(5));
     });
 
     // Escenario: fin de la lista
@@ -443,7 +457,7 @@ void main() {
     //   Entonces no se piden más productos
     testWidgets('Escenario: fin de la lista', (tester) async {
       // Dado que llegué a la última página (la segunda trae 5: menos de 20)
-      final api = _backend(_pasteles(25))..demorar(_segunda, _demora);
+      final api = _backend(_pasteles(25))..demorar(_rutaDe(1), _demora);
       await _abrirCatalogo(tester, api, alto: 1200);
       await _bajar(tester);
       await _bajar(tester);
@@ -454,7 +468,7 @@ void main() {
       await _bajar(tester);
 
       // Entonces no se piden más productos
-      expect(_peticiones(api), [_pedida(0), _pedida(1)]);
+      expect(parametrosDelCatalogo(api), [_pedida(0), _pedida(1)]);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('No se pudieron cargar más'), findsNothing);
     });

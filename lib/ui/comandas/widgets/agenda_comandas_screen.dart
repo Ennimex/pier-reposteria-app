@@ -27,6 +27,7 @@ import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foco.dart';
 import 'package:pier_reposteria/ui/home/widgets/home_encabezado.dart';
 import 'package:pier_reposteria/ui/notifications/widgets/notifications_screen.dart';
 import 'package:pier_reposteria/ui/pedidos_personal/widgets/pedidos_del_dia_screen.dart';
@@ -96,26 +97,28 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     unawaited(salirDeComandas(context, mensaje: _vm.error));
   }
 
+  /// Abre [pantalla] encima de la agenda. Antes le quita el foco al
+  /// buscador: al volver, el teclado no se abre solo (#280).
+  Future<T?> _ir<T>(Widget pantalla) {
+    soltarFoco();
+    return Navigator.push<T>(
+      context,
+      MaterialPageRoute<T>(builder: (_) => pantalla),
+    );
+  }
+
   /// Abre el detalle; al volver, la agenda se actualiza (pudo confirmar).
   Future<void> _abrir(ResumenComanda comanda) => _abrirDetalle(comanda.id);
 
   Future<void> _abrirDetalle(int id) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => DetalleComandaScreen(id: id),
-      ),
-    );
+    await _ir<void>(DetalleComandaScreen(id: id));
     if (mounted) unawaited(_vm.recargar());
   }
 
   /// Abre las notificaciones; al volver, la agenda se actualiza (pudo
   /// abrir y confirmar una comanda desde ahí).
   Future<void> _abrirNotificaciones() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
-    );
+    await _ir<void>(const NotificationsScreen());
     if (mounted) unawaited(_vm.recargar());
   }
 
@@ -123,10 +126,7 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
   /// Captura una comanda; si se creó, abre su detalle (la agenda se
   /// actualiza al volver de él).
   Future<void> _nueva() async {
-    final creada = await Navigator.push<ComandaCreada>(
-      context,
-      MaterialPageRoute(builder: (_) => const NuevaComandaScreen()),
-    );
+    final creada = await _ir<ComandaCreada>(const NuevaComandaScreen());
     if (!mounted) return;
     if (creada == null) {
       unawaited(_vm.recargar());
@@ -135,24 +135,11 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
     await _abrirDetalle(creada.id);
   }
 
-  Future<void> _abrirPedidos() => Navigator.push(
-        context,
-        MaterialPageRoute<void>(builder: (_) => const PedidosDelDiaScreen()),
-      );
+  Future<void> _abrirPedidos() => _ir<void>(const PedidosDelDiaScreen());
 
-  Future<void> _abrirAtencion() => Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => const AtencionClientesScreen(),
-        ),
-      );
+  Future<void> _abrirAtencion() => _ir<void>(const AtencionClientesScreen());
 
-  Future<void> _abrirActividad() => Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => const ActividadEquipoScreen(),
-        ),
-      );
+  Future<void> _abrirActividad() => _ir<void>(const ActividadEquipoScreen());
 
   Future<void> _abrirSitio() async {
     final ok = await launchUrl(
@@ -222,6 +209,9 @@ class _AgendaComandasScreenState extends State<AgendaComandasScreen>
           PopupMenuButton<_Opcion>(
             tooltip: 'Más opciones',
             icon: const Icon(LucideIcons.ellipsisVertical),
+            // El menú también es una ruta: al cerrarlo, el buscador no
+            // recupera el foco (#280).
+            onOpened: soltarFoco,
             onSelected: (o) => unawaited(switch (o) {
               _Opcion.sitioWeb => _abrirSitio(),
               _Opcion.cerrarSesion => salirDeComandas(context),

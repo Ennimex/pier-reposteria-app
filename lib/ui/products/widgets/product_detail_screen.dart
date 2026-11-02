@@ -39,6 +39,7 @@ class ProductDetailScreen extends StatefulWidget {
     super.key,
     this.viewModel,
     this.ambitoFoto,
+    this.esFavorito = false,
   });
 
   final Product product;
@@ -51,6 +52,11 @@ class ProductDetailScreen extends StatefulWidget {
   /// recomendados de otro detalle) para que la foto vuele. Sin ámbito, la
   /// etiqueta es la de siempre (catálogo, favoritos).
   final String? ambitoFoto;
+
+  /// Si quien abre el detalle ya sabe que el producto es favorito (el
+  /// catálogo, la lista de favoritos): el corazón sale lleno desde el
+  /// principio y, si el servidor no contesta (sin red), se queda así (#275).
+  final bool esFavorito;
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -71,6 +77,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         favoritosRepo: context.read(),
         resenasRepo: context.read(),
         demandaRepo: context.read(),
+        esFavorito: widget.esFavorito,
       );
   late final AnimationController _cartAnimController;
   late final Animation<double> _cartAnim;

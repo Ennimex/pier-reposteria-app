@@ -3,10 +3,12 @@
 // Hojas inferiores del catálogo: filtros (sabor, tamaño, tipo) y orden. Leen
 // y modifican el ProductsViewModel; se repintan solas al cambiarlo. Suben con
 // la curva enfática de la casa y su contenido entra en cascada mientras la
-// hoja llega.
+// hoja llega. Al abrirse le quitan el foco al buscador: al cerrarlas, el
+// teclado no se vuelve a abrir solo (#280).
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foco.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
 import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
@@ -14,6 +16,7 @@ import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
 /// Abre la hoja de filtros del catálogo.
 Future<void> mostrarFiltrosCatalogo(
     BuildContext context, ProductsViewModel viewModel) {
+  soltarFoco();
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.white,
@@ -28,6 +31,7 @@ Future<void> mostrarFiltrosCatalogo(
 /// Abre la hoja para elegir el orden del catálogo.
 Future<void> mostrarOrdenCatalogo(
     BuildContext context, ProductsViewModel viewModel) {
+  soltarFoco();
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.white,

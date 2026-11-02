@@ -22,6 +22,7 @@ import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/state/product_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foco.dart';
 import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
@@ -134,6 +135,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
+      soltarFoco();
       Navigator.push(context,
           MaterialPageRoute<void>(builder: (_) => const LoginScreen()))
           .ignore();
@@ -422,6 +424,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   static String _idTarjeta(Product p) => 'favorito-${p.id}';
 
+  /// Abre el detalle de [p]; al volver se recargan los favoritos (pudo
+  /// quitarlo). Antes le quita el foco al buscador: al volver, el teclado no
+  /// se abre solo (#280).
+  Future<void> _abrirDetalle(Product p) async {
+    soltarFoco();
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ProductDetailScreen(product: p, esFavorito: true),
+      ),
+    );
+    if (mounted) await _vm.cargarFavoritos();
+  }
+
   // ── CARD ──────────────────────────────────────────────────────────
   /// La tarjeta se hunde un poco al tocarla (el corazón y el «+» se hunden
   /// solos, sin hundirla) y su foto vuela al detalle.
@@ -430,10 +446,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final precioFinal = prov.precioConDescuento(p.id, p.precio);
     return PresionEscala(
       child: GestureDetector(
-        onTap: () => unawaited(Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => ProductDetailScreen(product: p)),
-        ).then((_) => _vm.cargarFavoritos())),
+        onTap: () => unawaited(_abrirDetalle(p)),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -459,16 +472,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       // La foto vuela al detalle (misma etiqueta de siempre,
                       // producto-img-<id>) enderezando sus esquinas; si llega
                       // de internet aparece con un fundido corto. Es la foto
-                      // reducida de la tarjeta (fotoDeTarjeta), la misma que
+                      // reducida de la tarjeta (FotoDeTarjeta), la misma que
                       // pintan el vuelo y la miniatura del carrito.
                       child: FotoProductoHero(
                         productoId: p.id,
                         imagenUrl: p.imagenUrl,
                         radio: const BorderRadius.vertical(
                             top: Radius.circular(20)),
-                        child: Image(
-                          image: fotoDeTarjeta(p.imagenUrl),
-                          fit: BoxFit.cover,
+                        child: FotoDeTarjeta(
+                          p.imagenUrl,
                           frameBuilder: (_, foto, cuadro, sincrona) =>
                               FotoQueAparece(
                                   foto: foto, cuadro: cuadro, sincrona: sincrona),

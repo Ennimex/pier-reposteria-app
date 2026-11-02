@@ -460,7 +460,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       MaterialPageRoute(
                           builder: (_) => ProductDetailScreen(
-                              product: p, ambitoFoto: _ambitoFavoritos)),
+                              product: p,
+                              ambitoFoto: _ambitoFavoritos,
+                              esFavorito: true)),
                     );
                   },
                   child: SizedBox(
@@ -476,11 +478,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ambito: _ambitoFavoritos,
                             radio: BorderRadius.circular(12),
                             // ✅ FIX: (_, e, __) en lugar de (_, _, _)
-                            child: Image(
-                              image: fotoDeTarjeta(p.imagenUrl),
+                            child: FotoDeTarjeta(
+                              p.imagenUrl,
                               width: 120,
                               height: 100,
-                              fit: BoxFit.cover,
                               errorBuilder: (_, e, _) => Container(
                                 width: 120,
                                 height: 100,

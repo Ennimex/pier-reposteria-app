@@ -2,7 +2,7 @@
 //
 // La foto del producto vuela de la tarjeta al detalle (y de regreso, también
 // con el gesto de regresar de iOS). El vuelo pinta SIEMPRE la foto de la
-// tarjeta, con fotoDeTarjeta: la reducida que la tarjeta ya pintó, o sea la
+// tarjeta, con FotoDeTarjeta: la reducida que la tarjeta ya pintó, o sea la
 // misma entrada de caché; redondea o endereza sus esquinas en el camino.
 // Nunca vuela la galería del detalle, cuya primera foto es la completa y
 // puede estar aún sin descargar. Mientras vuela, la tarjeta deja un hueco
@@ -32,7 +32,7 @@ class FotoProductoHero extends StatelessWidget {
   final String imagenUrl;
 
   /// Lo que se ve en reposo (la imagen de la tarjeta o la galería). La
-  /// tarjeta pinta su foto con `fotoDeTarjeta(imagenUrl)`, igual que el
+  /// tarjeta pinta su foto con `FotoDeTarjeta(imagenUrl)`, igual que el
   /// vuelo: así este sale con la foto desde el primer cuadro.
   final Widget child;
 
@@ -121,9 +121,8 @@ class _FotoEnVuelo extends StatelessWidget {
   Widget build(BuildContext context) {
     final arena = ColoredBox(color: AppColors.pierArena);
     if (url.isEmpty) return arena;
-    return Image(
-      image: fotoDeTarjeta(url),
-      fit: BoxFit.cover,
+    return FotoDeTarjeta(
+      url,
       gaplessPlayback: true,
       errorBuilder: (_, _, _) => arena,
     );

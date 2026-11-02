@@ -12,6 +12,7 @@ import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/products/view_model/products_view_model.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
 
 Map<String, dynamic> _producto(
   int id,
@@ -35,38 +36,30 @@ final List<Map<String, dynamic>> _catalogo = [
   _producto(4, 'Arcoíris'),
 ];
 
-/// GET /productos como el servidor: los del catálogo cuyo nombre tiene la
-/// `busqueda` (sin ella, todos).
-Map<String, dynamic> _productosQueCoinciden(LlamadaApi llamada) {
-  final busqueda =
-      Uri.parse(llamada.endpoint).queryParameters['busqueda'] ?? '';
-  return {
-    'success': true,
-    'productos': [
-      for (final p in _catalogo)
-        if ((p['nombre'] as String)
-            .toLowerCase()
-            .contains(busqueda.toLowerCase()))
-          p,
-    ],
-  };
-}
-
+/// El ViewModel sobre [api], que se cierra al terminar la prueba; con
+/// [cerrarAlTerminar] en false lo cierra la prueba.
 ProductsViewModel _vm(
   FakeApiClient api, {
   String categoriaInicial = ProductsViewModel.todas,
-}) =>
-    ProductsViewModel(
-      productosRepo: ProductosRepositoryRemote(api: api),
-      favoritosRepo: FavoritosRepositoryRemote(api: api),
-      demandaRepo: DemandaRepositoryRemote(api: api),
-      categoriaInicial: categoriaInicial,
-      esperaBusqueda: Duration.zero,
-      esperaRegistroBusqueda: Duration.zero,
-    );
+  Duration esperaBusqueda = Duration.zero,
+  bool cerrarAlTerminar = true,
+}) {
+  final vm = ProductsViewModel(
+    productosRepo: ProductosRepositoryRemote(api: api),
+    favoritosRepo: FavoritosRepositoryRemote(api: api),
+    demandaRepo: DemandaRepositoryRemote(api: api),
+    categoriaInicial: categoriaInicial,
+    esperaBusqueda: esperaBusqueda,
+    esperaRegistroBusqueda: Duration.zero,
+  );
+  if (cerrarAlTerminar) addTearDown(vm.dispose);
+  return vm;
+}
 
+/// El backend: GET /productos busca por nombre en [_catalogo] (sin páginas);
+/// categorías, filtros, favoritos y demanda contestan siempre lo mismo.
 FakeApiClient _backend() => FakeApiClient(respuestas: {
-      ApiConstants.productos: _productosQueCoinciden,
+      ApiConstants.productos: productosQueCoinciden(_catalogo),
       ApiConstants.categorias: {
         'success': true,
         'categorias': [
@@ -99,26 +92,20 @@ FakeApiClient _backend() => FakeApiClient(respuestas: {
       ApiConstants.clicsAgotados: {'success': true},
     });
 
-/// Las peticiones de productos, en orden.
-List<String> _pedidas(FakeApiClient api) => [
-      for (final l in api.llamadas)
-        if (l.endpoint.startsWith(ApiConstants.productos)) l.endpoint,
-    ];
-
 /// Deja correr los timers en cero y los envíos sin await de la demanda.
 Future<void> _esperar() => Future<void>.delayed(Duration.zero);
 
 void main() {
   group('parámetros de la consulta', () {
     test('por omisión no filtra ni ordena', () {
-      final consulta = _vm(FakeApiClient()).consulta;
+      final consulta = _vm(_backend()).consulta;
 
       expect(consulta.parametros, isEmpty);
       expect(consulta.orden, SortOption.popular);
     });
 
     test('por categoría y por búsqueda, recortada', () {
-      final vm = _vm(FakeApiClient(), categoriaInicial: 'Pasteles');
+      final vm = _vm(_backend(), categoriaInicial: 'Pasteles');
       expect(vm.consulta.parametros, {'categoria': 'Pasteles'});
 
       vm
@@ -129,7 +116,7 @@ void main() {
     });
 
     test('sabor, tamaño y tipo se alternan y se combinan', () {
-      final vm = _vm(FakeApiClient())..alternarSabor('Fresa');
+      final vm = _vm(_backend())..alternarSabor('Fresa');
       expect(vm.consulta.parametros, {'sabor': 'Fresa'});
       expect(vm.hayFiltrosDeOpciones, isTrue);
 
@@ -150,7 +137,7 @@ void main() {
     });
 
     test('ordena por precio, por nombre y por calificación', () {
-      final vm = _vm(FakeApiClient())..ordenarPor(SortOption.priceAsc);
+      final vm = _vm(_backend())..ordenarPor(SortOption.priceAsc);
       expect(vm.consulta.parametros, {'ordenar': 'precio-asc'});
       vm.ordenarPor(SortOption.priceDesc);
       expect(vm.consulta.parametros, {'ordenar': 'precio-desc'});
@@ -161,7 +148,7 @@ void main() {
     });
 
     test('limpiarTodo regresa búsqueda, categoría, orden y filtros', () {
-      final vm = _vm(FakeApiClient(), categoriaInicial: 'Pays')
+      final vm = _vm(_backend(), categoriaInicial: 'Pays')
         ..buscar('x')
         ..ordenarPor(SortOption.rating)
         ..alternarSabor('Fresa');
@@ -183,31 +170,32 @@ void main() {
 
       vm.alternarSabor('Fresa');
       await _esperar();
-      expect(_pedidas(api).last, '/productos?sabor=Fresa&limite=20&offset=0');
+      expect(pedidasDelCatalogo(api).last,
+          '/productos?sabor=Fresa&limite=20&offset=0');
 
       await vm.seleccionarCategoria('Pasteles');
       await _esperar();
-      expect(_pedidas(api).last,
+      expect(pedidasDelCatalogo(api).last,
           '/productos?categoria=Pasteles&sabor=Fresa&limite=20&offset=0');
 
       vm.limpiarFiltrosDeOpciones();
       await _esperar();
-      expect(_pedidas(api).last,
+      expect(pedidasDelCatalogo(api).last,
           '/productos?categoria=Pasteles&limite=20&offset=0');
 
       vm.buscar('fresa');
       await _esperar();
-      expect(_pedidas(api).last,
+      expect(pedidasDelCatalogo(api).last,
           '/productos?categoria=Pasteles&busqueda=fresa&limite=20&offset=0');
 
       vm.limpiarBusqueda();
       await _esperar();
-      expect(_pedidas(api).last,
+      expect(pedidasDelCatalogo(api).last,
           '/productos?categoria=Pasteles&limite=20&offset=0');
 
       vm.limpiarTodo();
       await _esperar();
-      expect(_pedidas(api).last, '/productos?limite=20&offset=0');
+      expect(pedidasDelCatalogo(api).last, '/productos?limite=20&offset=0');
     });
 
     test('lo que no cambia la consulta no vuelve a preguntar', () async {
@@ -220,7 +208,8 @@ void main() {
         ..limpiarFiltrosDeOpciones();
       await _esperar();
 
-      expect(_pedidas(api), ['/productos?busqueda=fresa&limite=20&offset=0']);
+      expect(pedidasDelCatalogo(api),
+          ['/productos?busqueda=fresa&limite=20&offset=0']);
     });
   });
 
@@ -250,6 +239,7 @@ void main() {
 
     test('si el backend falla se queda sin filtros ni categorías', () async {
       final api = FakeApiClient()
+        ..fallar(ApiConstants.productos, 'caído')
         ..fallar(ApiConstants.categorias, 'caído')
         ..fallar(ApiConstants.filtros, 'caído')
         ..fallar(ApiConstants.favoritosIds, 'caído');
@@ -308,7 +298,30 @@ void main() {
       expect(vm.tipos, ['Frío', 'Horneado']);
       expect(vm.filtroSabor, isNull);
       // Y la página 1 se vuelve a pedir sin el sabor que se quitó.
-      expect(_pedidas(api).last, '/productos?categoria=Pays&limite=20&offset=0');
+      expect(pedidasDelCatalogo(api).last,
+          '/productos?categoria=Pays&limite=20&offset=0');
+    });
+
+    // #283: al llegar las opciones se volvía a preguntar aunque no se
+    // hubiera quitado ningún filtro; con la búsqueda a medio escribir salía
+    // una petición de más.
+    test('si sus opciones no quitan ningún filtro, no vuelve a preguntar',
+        () async {
+      final api = _backend()
+        ..demorar(ApiConstants.categoriaOpciones('2'),
+            const Duration(milliseconds: 10));
+      final vm = _vm(api, esperaBusqueda: const Duration(milliseconds: 400));
+      await vm.cargar(autenticado: false);
+      api.llamadas.clear();
+
+      // Elige Pays y, mientras llegan sus opciones, empieza a teclear.
+      final opciones = vm.seleccionarCategoria('Pays');
+      vm.buscar('pa');
+      await opciones;
+
+      expect(vm.sabores, ['Limón', 'Maracuyá'], reason: 'ya llegaron');
+      expect(pedidasDelCatalogo(api),
+          ['/productos?categoria=Pays&limite=20&offset=0']);
     });
 
     test('entrar con categoría preseleccionada carga sus opciones', () async {
@@ -353,6 +366,22 @@ void main() {
       expect(vm.esFavorito('1'), isFalse);
       expect(api.llamo(ApiConstants.favoritoById('1'), metodo: 'DELETE-Auth'),
           isTrue);
+    });
+
+    // #275: sin red, los corazones conservan lo último que se supo.
+    test('si la carga de favoritos falla se quedan los corazones que había',
+        () async {
+      final api = _backend();
+      final vm = _vm(api);
+      await vm.cargarFavoritos(autenticado: true);
+      expect(vm.esFavorito('2'), isTrue);
+
+      api.fallar(ApiConstants.favoritosIds, 'Sin conexión');
+      await vm.cargarFavoritos(autenticado: true);
+
+      expect(vm.esFavorito('2'), isTrue);
+      expect(vm.esFavorito('4'), isTrue);
+      expect(vm.esFavorito('1'), isFalse);
     });
 
     test('si el backend falla se revierte y devuelve su mensaje', () async {
@@ -434,15 +463,17 @@ void main() {
       expect(api.ultima(ApiConstants.clicsAgotados)!.body, {'producto_id': 3});
     });
 
-    test('al cerrar la pantalla ya no se registra la búsqueda pendiente',
-        () async {
+    test('al cerrar la pantalla ya no se pide ni se registra la búsqueda '
+        'pendiente', () async {
       final api = _backend();
-      _vm(api)
+      _vm(api, cerrarAlTerminar: false)
         ..buscar('fresa')
         ..dispose();
 
       await _esperar();
 
+      expect(pedidasDelCatalogo(api), isEmpty,
+          reason: 'la búsqueda esperaba la última tecla');
       expect(api.llamo(ApiConstants.busquedas), isFalse);
     });
   });

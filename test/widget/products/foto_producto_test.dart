@@ -7,6 +7,8 @@
 // completa que no llega no tapa la de la tarjeta, y una foto que no es de
 // Cloudinary la galería la pinta con la misma entrada que la tarjeta. En las
 // pruebas la red contesta 400: una foto pedida por internet nunca llega.
+// FotoDeTarjeta (#284), el widget con que todas la pintan, pasa a su Image lo
+// que recibe.
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -144,6 +146,12 @@ Map<String, dynamic> _promo(String tipo) => {
   'nombre_temporada': 'Temporada de rosca',
 };
 
+/// El frameBuilder y el errorBuilder que FotoDeTarjeta pasa a su Image.
+Widget _cuadro(BuildContext _, Widget foto, int? _, bool _) => foto;
+
+Widget _sinFoto(BuildContext _, Object _, StackTrace? _) =>
+    const SizedBox.shrink();
+
 /// Un favorito con foto de Cloudinary, como lo manda el backend.
 Map<String, dynamic> _favorito() => {
   'id': 36,
@@ -180,6 +188,53 @@ void main() {
       fotoDeTarjeta('https://pier.mx/a.png');
       fotoDeTarjeta('');
       expect(pedidas, ['https://pier.mx/a.png', '']);
+    });
+  });
+
+  group('FotoDeTarjeta', () {
+    // La foto ya está en el teléfono: se pinta sin red.
+    setUp(() {
+      proveedorDeFoto = (url) {
+        pedidas.add(url);
+        return MemoryImage(_pixel);
+      };
+    });
+
+    testWidgets('pinta la foto reducida con lo que recibe', (tester) async {
+      await tester.pumpWidget(
+        const FotoDeTarjeta(
+          _original,
+          width: 120,
+          height: 100,
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+          frameBuilder: _cuadro,
+          errorBuilder: _sinFoto,
+        ),
+      );
+
+      final foto = tester.widget<Image>(find.byType(Image));
+      expect(pedidas, [_reducida]);
+      expect(foto.image, MemoryImage(_pixel));
+      expect(foto.width, 120);
+      expect(foto.height, 100);
+      expect(foto.fit, BoxFit.contain);
+      expect(foto.gaplessPlayback, isTrue);
+      expect(foto.frameBuilder, same(_cuadro));
+      expect(foto.errorBuilder, same(_sinFoto));
+    });
+
+    testWidgets('sin más, cubre su lugar como las tarjetas', (tester) async {
+      await tester.pumpWidget(const FotoDeTarjeta(_original));
+
+      final foto = tester.widget<Image>(find.byType(Image));
+      expect(pedidas, [_reducida]);
+      expect(foto.fit, BoxFit.cover);
+      expect(foto.gaplessPlayback, isFalse);
+      expect(foto.width, isNull);
+      expect(foto.height, isNull);
+      expect(foto.frameBuilder, isNull);
+      expect(foto.errorBuilder, isNull);
     });
   });
 

@@ -2,19 +2,18 @@
 // catálogo y del detalle de producto: las tarjetas entran en cascada una sola
 // vez por tanda (buscar no las repite si lo buscado llega en el mismo cuadro;
 // si tarda, pasa por los esqueletos y entran otra vez, como al cambiar de
-// categoría), el chip de
-// una categoría pedida desde el inicio llega a la vista aunque esté al fondo
-// de la fila, el estado vacío entra y termina quieto, el «+» rebota, vuelve a
-// su tamaño y pasa a palomita, el detalle arma su hoja después del push, el
-// total rueda hasta el valor exacto, «−» en 1 sacude la píldora, «Añadir»
-// rechazado no se queda agrandado, el «+» de un recomendado rebota al tocarlo
-// (sin esperar al backend) y la foto de un recomendado comparte ámbito con el
-// detalle que abre; con movimiento reducido todo queda en su lugar y ningún
-// botón de agregar rebota. En el shell, la primera tanda del catálogo espera a
-// que se abra su pestaña, el «+» lanza la miniatura al carrito (la insignia
-// del encabezado la espera en vez de adelantarse) y la foto de la tarjeta
-// vuela al detalle, cuyo «Añadir» también la lanza. También las piezas de
-// movimiento_catalogo.dart. Sin red.
+// categoría), el chip de una categoría pedida desde el inicio llega a la vista
+// aunque esté al fondo de la fila, el estado vacío entra y termina quieto, el
+// «+» rebota, vuelve a su tamaño y pasa a palomita, el detalle arma su hoja
+// después del push, el total rueda hasta el valor exacto, «−» en 1 sacude la
+// píldora, «Añadir» rechazado no se queda agrandado, el «+» de un recomendado
+// rebota al tocarlo (sin esperar al backend) y la foto de un recomendado
+// comparte ámbito con el detalle que abre; con movimiento reducido todo queda
+// en su lugar y ningún botón de agregar rebota. En el shell, la primera tanda
+// del catálogo espera a que se abra su pestaña, el «+» lanza la miniatura al
+// carrito (la insignia del encabezado la espera en vez de adelantarse) y la
+// foto de la tarjeta vuela al detalle, cuyo «Añadir» también la lanza. También
+// las piezas de movimiento_catalogo.dart. Sin red.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -35,6 +34,7 @@ import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
 import '../../helpers/movimiento.dart';
 import '../../helpers/pump_app.dart';
 
@@ -91,29 +91,12 @@ final List<Map<String, dynamic>> _catalogo = [
   _producto(3, 'Rosca', precio: 380),
 ];
 
-/// GET /productos como el servidor: los que tienen la `busqueda` en el
-/// nombre (sin ella, todos).
-Map<String, dynamic> _productosQueCoinciden(LlamadaApi llamada) {
-  final busqueda =
-      Uri.parse(llamada.endpoint).queryParameters['busqueda'] ?? '';
-  return {
-    'success': true,
-    'productos': [
-      for (final p in _catalogo)
-        if ((p['nombre'] as String).toLowerCase().contains(
-          busqueda.toLowerCase(),
-        ))
-          p,
-    ],
-  };
-}
-
 /// Lo que la búsqueda espera a que se deje de teclear antes de preguntar.
 const _esperaBusqueda = Duration(milliseconds: 400);
 
 FakeApiClient _backendCatalogo({_Carrito? carrito}) => FakeApiClient(
   respuestas: {
-    ApiConstants.productos: _productosQueCoinciden,
+    ApiConstants.productos: productosQueCoinciden(_catalogo),
     ApiConstants.promocionesActivas: {
       'success': true,
       'promociones': <Map<String, dynamic>>[],

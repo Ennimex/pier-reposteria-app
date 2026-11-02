@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/quejas_repository_remote.dart';
+import 'package:pier_reposteria/domain/models/queja.dart';
 import 'package:pier_reposteria/ui/more/view_model/quejas_view_model.dart';
 import 'package:pier_reposteria/ui/more/widgets/quejas_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -117,5 +118,49 @@ void main() {
           findsOneWidget);
       expect(api.llamo(ApiConstants.crearQueja), isFalse);
     });
+
+    // #269: el aviso nombra lo que se envió (queja, sugerencia o
+    // comentario), con su ticket.
+    for (final (tipo, aviso) in [
+      (TipoQueja.queja, 'Queja enviada — ticket QJ-0010'),
+      (TipoQueja.sugerencia, 'Sugerencia enviada — ticket QJ-0010'),
+      (TipoQueja.comentario, 'Comentario enviado — ticket QJ-0010'),
+    ]) {
+      testWidgets('al enviar el tipo ${tipo.etiqueta} avisa «$aviso»',
+          (tester) async {
+        final api = FakeApiClient(
+          respuestas: {
+            ..._sinPedidos,
+            ApiConstants.misQuejas: {'success': true, 'quejas': <Object>[]},
+            ApiConstants.crearQueja: {
+              'success': true,
+              'queja': {'id': 10, 'ticket': 'QJ-0010'},
+            },
+          },
+        );
+        await _montar(tester, api);
+
+        await tester.tap(find.text('Nueva'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(DropdownButton<TipoQueja>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(tipo.etiqueta).last);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+            find.widgetWithText(TextField, 'Describe brevemente tu queja'),
+            'Horarios');
+        await tester.enterText(
+            find.widgetWithText(TextField, 'Detalla tu queja o sugerencia...'),
+            'Abran los domingos');
+        final enviar = find.text('Enviar queja');
+        await tester.ensureVisible(enviar);
+        await tester.pumpAndSettle();
+        await tester.tap(enviar);
+        await tester.pumpAndSettle();
+
+        expect(api.ultima(ApiConstants.crearQueja)?.body?['tipo'], tipo.name);
+        expect(find.text(aviso), findsOneWidget);
+      });
+    }
   });
 }

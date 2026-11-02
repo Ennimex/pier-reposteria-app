@@ -2,7 +2,8 @@
 // expone su ViewModel (MVVM, Fase 4), que le pide los productos a un servidor
 // falso que filtra y ordena como el real (#37), sin red: tarjetas en
 // cuadrícula y lista, badges de promoción, categorías, hojas de filtros y
-// orden, estado vacío y acciones sin sesión.
+// orden, estado vacío y acciones sin sesión; cerrar una hoja o regresar del
+// detalle no le devuelve el foco al buscador (#280).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -12,12 +13,15 @@ import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
+import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/catalogo.dart';
+import '../../helpers/foco.dart';
 import '../../helpers/pantalla_apretada.dart';
 import '../../helpers/pump_app.dart';
 
@@ -72,6 +76,9 @@ Map<String, dynamic> _catalogo(LlamadaApi llamada) {
   if (q['ordenar'] == 'precio-desc') {
     productos.sort((a, b) =>
         (b['precio_chico'] as num).compareTo(a['precio_chico'] as num));
+  } else if (q['ordenar'] == 'precio-asc') {
+    productos.sort((a, b) =>
+        (a['precio_chico'] as num).compareTo(b['precio_chico'] as num));
   }
   return {'success': true, 'productos': productos};
 }
@@ -164,6 +171,57 @@ void main() {
       expect(y, greaterThan(tester.getTopLeft(find.text('Chocoflan')).dy));
     });
 
+    // #271: al jalar para recargar, las promociones se vaciaban antes de
+    // pedirlas otra vez y, mientras llegaban, las tarjetas salían sin
+    // descuento.
+    group('al jalar para recargar (#271)', () {
+      /// Jala para recargar y deja que la recarga empiece (sin terminar).
+      Future<void> jalar(WidgetTester tester) async {
+        unawaited(tester
+            .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+            .show());
+        // El indicador baja (150 ms) y entonces empieza la recarga.
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump();
+      }
+
+      int pedidasDePromociones(FakeApiClient api) => api.llamadas
+          .where((l) => l.endpoint == ApiConstants.promocionesActivas)
+          .length;
+
+      testWidgets('mientras llegan las promociones, la tarjeta sigue con su '
+          'precio con descuento', (tester) async {
+        final api = await _montar(tester);
+        api.demorar(
+            ApiConstants.promocionesActivas, const Duration(seconds: 1));
+
+        await jalar(tester);
+
+        expect(pedidasDePromociones(api), 2, reason: 'ya se recargan');
+        expect(find.text(r'$342'), findsOneWidget); // 380 - 10 %
+        expect(find.text('-10%'), findsOneWidget);
+        expect(find.text('Flash'), findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+        expect(find.text(r'$342'), findsOneWidget);
+      });
+
+      testWidgets('si las promociones no llegan, se quedan las de antes',
+          (tester) async {
+        final api = await _montar(tester);
+        api.fallar(ApiConstants.promocionesActivas, _sinRed);
+
+        await jalar(tester);
+        await tester.pumpAndSettle();
+
+        expect(pedidasDePromociones(api), 2);
+        expect(find.text(r'$342'), findsOneWidget);
+        expect(find.text('-10%'), findsOneWidget);
+      });
+    });
+
     testWidgets('cambia a lista y de regreso', (tester) async {
       await _montar(tester);
 
@@ -252,6 +310,42 @@ void main() {
       final chocoflan = tester.getTopLeft(find.text('Chocoflan'));
       expect(cheesecake.dy <= chocoflan.dy, isTrue);
       expect(find.text('Ordenar por'), findsNothing);
+    });
+
+    // #281: el servidor ordena por el precio base, sin las promociones.
+    testWidgets('por precio, las tarjetas siguen el precio con descuento',
+        (tester) async {
+      await _montar(tester);
+
+      await tester.tap(find.byTooltip('Ordenar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Precio: Menor a Mayor'));
+      await tester.pumpAndSettle();
+
+      // Flan $143, Tres leches $272 (base 320), Chocoflan $300, Rosca $342,
+      // Cheesecake $360 y, agotado, el pay.
+      expect(tester.nombresEnElCatalogo, [
+        'Flan napolitano',
+        'Tres leches',
+        'Chocoflan',
+        'Rosca',
+        'Cheesecake',
+        'Pay de limón',
+      ]);
+
+      await tester.tap(find.byTooltip('Ordenar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Precio: Mayor a Menor'));
+      await tester.pumpAndSettle();
+
+      expect(tester.nombresEnElCatalogo, [
+        'Cheesecake',
+        'Rosca',
+        'Chocoflan',
+        'Tres leches',
+        'Flan napolitano',
+        'Pay de limón',
+      ]);
     });
 
     testWidgets('una búsqueda sin resultados ofrece limpiar los filtros',
@@ -379,6 +473,32 @@ void main() {
       expect(alta.body, {'producto_id': 1, 'cantidad': 1, 'tamano': 'chico'});
     }, tags: 'regresion');
 
+    // #275: sin red, GET /favoritos/ids falla y el detalle de un favorito
+    // salía con el corazón vacío.
+    testWidgets('sin red, el detalle de un favorito conserva el corazón lleno',
+        (tester) async {
+      final api = _backend()
+        ..responder(ApiConstants.favoritosIds, {
+          'success': true,
+          'ids': [4],
+        });
+      await _montar(tester, api: api);
+      await tester.iniciarSesion(find.byType(ProductsScreen));
+      await tester.pumpAndSettle();
+      api.fallar(ApiConstants.favoritosIds, _sinRed);
+
+      await tester.tap(find.text('Rosca'));
+      await tester.pumpAndSettle();
+
+      final delDetalle = find.descendant(
+        of: find.byType(ProductDetailScreen),
+        matching: find.byIcon(Icons.favorite_rounded),
+      );
+      expect(delDetalle, findsOneWidget);
+      expect(api.llamadas.where((l) => l.endpoint == ApiConstants.favoritosIds),
+          hasLength(2));
+    });
+
     testWidgets('sin sesión, el corazón manda a iniciar sesión', (tester) async {
       await _montar(tester);
 
@@ -387,6 +507,30 @@ void main() {
 
       expect(find.byType(LoginScreen), findsOneWidget);
     });
+  });
+
+  // Regresión de #280: con el buscador enfocado (aunque el teclado ya se
+  // hubiera cerrado con «atrás»), el teclado se volvía a abrir solo al
+  // cerrar la hoja de orden o la de filtros y al regresar del detalle:
+  // Flutter le devolvía el foco al buscador.
+  group('El teclado no se vuelve a abrir solo (#280)', () {
+    for (final (accion, boton) in [
+      ('cerrar la hoja de orden', find.byTooltip('Ordenar')),
+      ('cerrar la hoja de filtros', find.byTooltip('Filtrar')),
+      ('regresar del detalle', find.text('Rosca')),
+      (
+        'regresar de iniciar sesión',
+        find.byIcon(Icons.favorite_border_rounded).first,
+      ),
+    ]) {
+      testWidgets('$accion no le devuelve el foco al buscador',
+          (tester) async {
+        await _montar(tester);
+        await tester.enfocarSinTeclado(find.byType(TextField));
+
+        await tester.abrirYCerrarSinTeclado(boton);
+      }, tags: 'regresion');
+    }
   });
 
   // Regresión de #285: el estado vacío medía justo lo que quedaba de

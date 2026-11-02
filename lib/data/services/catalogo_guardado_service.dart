@@ -15,21 +15,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class CatalogoGuardadoService {
   /// [ahora] da la fecha que se guarda junto con la copia (en pruebas, una
-  /// fija).
-  CatalogoGuardadoService({DateTime Function() ahora = DateTime.now})
-      : _ahora = ahora;
+  /// fija) y [preferencias], dónde se guarda (en pruebas, un teléfono que no
+  /// acepta la escritura).
+  CatalogoGuardadoService({
+    DateTime Function() ahora = DateTime.now,
+    Future<SharedPreferences> Function() preferencias =
+        SharedPreferences.getInstance,
+  })  : _ahora = ahora,
+        _preferencias = preferencias;
 
   /// La versión va en la llave: si cambia el formato, la copia vieja se deja
   /// de leer sin romper nada.
   static const _llave = 'pierreposteria_catalogo_v1';
 
   final DateTime Function() _ahora;
+  final Future<SharedPreferences> Function() _preferencias;
 
   /// La copia guardada, o null si no hay, no se puede leer o no trae
   /// productos.
   Future<List<Product>?> leer() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await _preferencias();
       final guardado = prefs.getString(_llave);
       if (guardado == null) return null;
       final datos = jsonDecode(guardado) as Map<String, dynamic>;
@@ -47,18 +53,24 @@ class CatalogoGuardadoService {
   /// Guarda [productos] (la página 1 tal como llegó del servidor) con la
   /// fecha de ahora en UTC. Reemplaza la copia anterior. Una página vacía no
   /// es una copia: se queda la anterior. Nunca lanza: sin copia el catálogo
-  /// funciona igual.
+  /// funciona igual; si no se pudo guardar, lo registra.
   Future<void> guardar(List<Product> productos) async {
     if (productos.isEmpty) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
+      final prefs = await _preferencias();
+      final guardado = await prefs.setString(
         _llave,
         jsonEncode({
           'guardado': _ahora().toUtc().toIso8601String(),
           'productos': [for (final p in productos) p.toJson()],
         }),
       );
+      // El teléfono no la aceptó: se queda la anterior, pero que se sepa
+      // (#283).
+      if (!guardado) {
+        PierLog.error('No se pudo guardar el catálogo: el teléfono no aceptó '
+            'la copia');
+      }
     } on Object catch (e) {
       PierLog.error('No se pudo guardar el catálogo: $e');
     }

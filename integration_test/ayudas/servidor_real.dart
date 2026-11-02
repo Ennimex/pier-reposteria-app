@@ -8,7 +8,11 @@
 // o en un Pull Request sin acceso a los secretos) las pruebas se omiten. El
 // flujo de compra también corre contra el entorno aislado (integracion.yml):
 // ahí el servidor es el del contenedor (API_BASE_URL) y la cuenta, la
-// ficticia de la semilla.
+// ficticia de la semilla. Del catálogo a la reseña (#65,
+// flujos/catalogo_resena_test.dart) y la entrega con su reembolso (#69,
+// flujos/entrega_reembolso_test.dart) corren solo ahí; la entrega también
+// inicia sesión como el repartidor de la semilla (REPARTIDOR_PRUEBA y
+// CLAVE_REPARTIDOR_PRUEBA, también con --dart-define).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/app.dart';
@@ -28,6 +32,8 @@ export 'esperas.dart';
 
 const _usuario = String.fromEnvironment('USUARIO_PRUEBA');
 const _clave = String.fromEnvironment('CLAVE_PRUEBA');
+const _repartidor = String.fromEnvironment('REPARTIDOR_PRUEBA');
+const _claveRepartidor = String.fromEnvironment('CLAVE_REPARTIDOR_PRUEBA');
 
 /// El servidor gratuito se duerme y tarda en contestar la primera vez.
 const esperaDelServidor = Duration(seconds: 90);
@@ -36,6 +42,39 @@ const esperaDelServidor = Duration(seconds: 90);
 bool faltanCredenciales() {
   if (_usuario.isNotEmpty && _clave.isNotEmpty) return false;
   markTestSkipped('faltan USUARIO_PRUEBA y CLAVE_PRUEBA (--dart-define)');
+  return true;
+}
+
+/// La cuenta ficticia de docker/semilla/semilla_pruebas.sql: solo existe en
+/// el contenedor del entorno aislado.
+const cuentaDeLaSemilla = 'cliente@pier.test';
+
+/// Omite la prueba (y lo dice) si no inicia sesión con la cuenta de la
+/// semilla, es decir, si no corre contra el entorno aislado: para lo que
+/// deja datos que no se pueden borrar o necesita los datos de la semilla.
+bool faltaLaCuentaDeLaSemilla() {
+  if (_usuario == cuentaDeLaSemilla) return false;
+  markTestSkipped(
+    'solo corre en el entorno aislado, con la cuenta de la semilla '
+    '($cuentaDeLaSemilla)',
+  );
+  return true;
+}
+
+/// El repartidor ficticio de docker/semilla/semilla_pruebas.sql: como la
+/// cuenta de la semilla, solo existe en el contenedor del entorno aislado.
+const repartidorDeLaSemilla = 'repartidor@pier.test';
+
+/// Omite la prueba (y lo dice) si no llegaron las credenciales del
+/// repartidor de la semilla.
+bool faltaElRepartidorDeLaSemilla() {
+  if (_repartidor == repartidorDeLaSemilla && _claveRepartidor.isNotEmpty) {
+    return false;
+  }
+  markTestSkipped(
+    'faltan REPARTIDOR_PRUEBA y CLAVE_REPARTIDOR_PRUEBA (--dart-define) con '
+    'el repartidor de la semilla ($repartidorDeLaSemilla)',
+  );
   return true;
 }
 
@@ -61,18 +100,27 @@ Future<ApiService> abrirLaApp(
   return api;
 }
 
-/// Desde «Iniciar Sesión» hasta el Inicio, con el carrito vacío.
-Future<void> iniciarSesion(WidgetTester tester) async {
+/// Desde «Iniciar Sesión» hasta el Inicio, con el carrito vacío. Sin
+/// [usuario] ni [clave] entra con la cuenta de prueba; con [vaciarCarrito]
+/// en false no toca el carrito (el repartidor no compra).
+Future<void> iniciarSesion(
+  WidgetTester tester, {
+  String? usuario,
+  String? clave,
+  bool vaciarCarrito = true,
+}) async {
+  final correo = usuario ?? _usuario;
+  final contrasena = clave ?? _clave;
   await esperar(tester, find.text('Iniciar Sesión'));
-  await tester.enterText(find.byType(TextFormField).at(0), _usuario);
-  await tester.enterText(find.byType(TextFormField).at(1), _clave);
+  await tester.enterText(find.byType(TextFormField).at(0), correo);
+  await tester.enterText(find.byType(TextFormField).at(1), contrasena);
   // En pantallas chicas el teclado tapa el botón (ver app_smoke_test.dart):
   // se cierra y se espera a que se vaya (#215).
   await cerrarTeclado(tester);
   // En un celular real el teclado del sistema borra al cerrarse lo que
   // escribió enterText (en el emulador del CI no): se deja el texto directo
   // en los campos.
-  for (final (campo, texto) in [(0, _usuario), (1, _clave)]) {
+  for (final (campo, texto) in [(0, correo), (1, contrasena)]) {
     final editable = find.byType(EditableText).at(campo);
     tester.widget<EditableText>(editable).controller.text = texto;
   }
@@ -85,8 +133,10 @@ Future<void> iniciarSesion(WidgetTester tester) async {
     limite: esperaDelServidor,
     motivo:
         'no se pudo iniciar sesión: revisa que la cuenta de prueba '
-        'exista, sea de cliente y tenga el correo verificado',
+        'exista, tenga el rol que la prueba espera (cliente o repartidor) '
+        'y el correo verificado',
   );
+  if (!vaciarCarrito) return;
 
   // Un carrito con restos de otra corrida cambiaría el total.
   final carrito = tester.element(find.byType(BottomNavigationBar));
@@ -94,14 +144,30 @@ Future<void> iniciarSesion(WidgetTester tester) async {
   expect(error, isNull, reason: 'no se pudo vaciar el carrito: $error');
 }
 
+/// Desde «Iniciar Sesión» hasta el panel del repartidor de la semilla
+/// («Entregas», «Historial» y «Perfil»).
+Future<void> iniciarSesionComoRepartidor(WidgetTester tester) => iniciarSesion(
+  tester,
+  usuario: _repartidor,
+  clave: _claveRepartidor,
+  vaciarCarrito: false,
+);
+
+/// Los productos del catálogo del servidor (GET /productos).
+Future<List<Product>> catalogoDelServidor(ApiService api) async {
+  final respuesta = await ProductosRepositoryRemote(api: api).listar();
+  return (respuesta['productos'] as List<dynamic>? ?? const [])
+      .whereType<Map<String, dynamic>>()
+      .map(Product.fromJson)
+      .toList();
+}
+
 /// Toma del catálogo real un producto activo con existencias, para no
 /// depender de uno en particular.
 Future<Product> productoConExistencias(ApiService api) async {
-  final respuesta = await ProductosRepositoryRemote(api: api).listar();
-  final productos = (respuesta['productos'] as List<dynamic>? ?? const [])
-      .whereType<Map<String, dynamic>>()
-      .map(Product.fromJson)
-      .where((producto) => producto.disponible && !producto.agotado);
+  final productos = (await catalogoDelServidor(
+    api,
+  )).where((producto) => producto.disponible && !producto.agotado);
   if (productos.isEmpty) {
     fail('el catálogo no tiene productos activos con existencias');
   }
@@ -159,6 +225,17 @@ Finder pestana(String nombre) => find.descendant(
   of: find.byType(BottomNavigationBar),
   matching: find.text(nombre),
 );
+
+/// [buscado] dentro de la pantalla [pantalla].
+Finder enPantalla(Type pantalla, Finder buscado) =>
+    find.descendant(of: find.byType(pantalla), matching: buscado);
+
+/// Los textos de los widgets [textos] (de tipo Text), para explicar una
+/// falla.
+String textosDe(Finder textos) => textos
+    .evaluate()
+    .map((elemento) => (elemento.widget as Text).data ?? '')
+    .join(' · ');
 
 /// La lista vertical del catálogo.
 Finder listaDelCatalogo() => find.descendant(

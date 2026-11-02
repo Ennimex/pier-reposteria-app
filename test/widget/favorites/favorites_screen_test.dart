@@ -1,5 +1,7 @@
 // test/widget/favorites/favorites_screen_test.dart — la vista de «Mis
-// Favoritos» pinta lo que expone su ViewModel (MVVM, Fase 3), sin red.
+// Favoritos» pinta lo que expone su ViewModel (MVVM, Fase 3), sin red;
+// regresar del detalle o de iniciar sesión no le devuelve el foco al
+// buscador (#280).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -11,6 +13,7 @@ import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/foco.dart';
 import '../../helpers/pantalla_apretada.dart';
 import '../../helpers/pump_app.dart';
 
@@ -125,6 +128,40 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Fresa Matcha Bliss agregado al carrito'), findsOneWidget);
     }, tags: 'regresion');
+
+    // Regresión de #280: como en el catálogo, con el buscador enfocado el
+    // teclado se volvía a abrir solo al regresar del detalle o de iniciar
+    // sesión.
+    for (final (accion, boton) in [
+      ('regresar del detalle', find.text('Pay de queso')),
+      ('regresar de iniciar sesión', find.byIcon(LucideIcons.plus)),
+    ]) {
+      testWidgets('$accion no le devuelve el foco al buscador',
+          (tester) async {
+        await _montar(
+          tester,
+          FakeApiClient(
+            respuestas: {
+              ApiConstants.favoritos: {
+                'success': true,
+                'favoritos': [
+                  {'id': 40, 'nombre': 'Pay de queso', 'categoria': 'Pays'},
+                ],
+              },
+            },
+          ),
+        );
+        // La pantalla ancha de las pruebas del detalle: con la letra de
+        // pruebas su contenido no cabe en un celular.
+        tester.view
+          ..physicalSize = const Size(1080, 4200)
+          ..devicePixelRatio = 1;
+        await tester.pumpAndSettle();
+        await tester.enfocarSinTeclado(find.byType(TextField));
+
+        await tester.abrirYCerrarSinTeclado(boton);
+      }, tags: 'regresion');
+    }
   });
 
   // Regresión de #285: los estados vacíos medían justo lo que quedaba de

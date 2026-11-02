@@ -295,6 +295,32 @@ void main() {
           {'estado': 'entregada', 'recibio_nombre': 'María'});
     });
 
+    testWidgets('#270: si ya estaba confirmada lo avisa claro, recarga el '
+        'panel y cierra el detalle', (tester) async {
+      final m = await _montar(tester,
+          entrega: _entrega(estado: 'en_camino'),
+          respuestas: {
+            _estado: {
+              'success': false,
+              'message': 'No se puede pasar de "entregada" a "entregada"',
+            },
+          });
+
+      await _tocar(tester, find.text('Marcar entregado'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'María');
+      await _tocar(tester, _boton('Confirmar entrega'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Esta entrega ya estaba confirmada'), findsOneWidget);
+      expect(find.text('No se puede pasar de "entregada" a "entregada"'),
+          findsNothing);
+      expect(find.byType(ConfirmarEntregaScreen), findsNothing);
+      expect(find.byType(EntregaDetailScreen), findsNothing);
+      expect(m.resultado.value, isTrue);
+      expect(m.avisos, 1);
+    });
+
     testWidgets('regresar de la confirmación deja el detalle abierto',
         (tester) async {
       await _montar(tester);

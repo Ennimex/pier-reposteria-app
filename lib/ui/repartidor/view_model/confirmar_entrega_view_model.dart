@@ -40,16 +40,25 @@ class ConfirmarEntregaViewModel extends AccionEntregaViewModel {
 
   /// Sube la evidencia (si hay) y marca la entrega como entregada a nombre
   /// de [recibio], que es obligatorio.
+  ///
+  /// Si ya estaba entregada (#270) termina bien: es lo que el repartidor
+  /// buscaba. Se le dice con claridad y el panel se pone al día para que la
+  /// entrega pase al historial; la vista se cierra como al confirmar.
   Future<ResultadoEntrega> confirmar(String recibio) async {
     _fotoSinSubir = false;
     final nombre = recibio.trim();
     if (nombre.isEmpty) return (ok: false, mensaje: faltaQuienRecibio);
     return correr((v) => _enviando = v, () async {
-      await cambiarEstado(
-        EstadoEntrega.entregada,
-        recibioNombre: nombre,
-        evidenciaUrl: await _subirEvidencia(),
-      );
+      try {
+        await cambiarEstado(
+          EstadoEntrega.entregada,
+          recibioNombre: nombre,
+          evidenciaUrl: await _subirEvidencia(),
+        );
+      } on EntregaYaConfirmadaException catch (e) {
+        await avisarCambio();
+        return e.message;
+      }
       return mensajeConfirmada;
     });
   }

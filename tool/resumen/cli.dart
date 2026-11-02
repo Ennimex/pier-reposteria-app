@@ -534,7 +534,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
   final datosDelFlujo = flujo == null ? null : jsonDecode(flujo);
   final integracion = corrida('integracion.json');
   final pruebasDeLaApi = corrida('api.json');
-  final flujoDeCompra = corrida('flujo_entorno_aislado.json');
+  final flujosAislados = corrida('flujo_entorno_aislado.json');
   final regresion = corrida('regresion.json');
   final apk = buscar((nombre) => nombre.endsWith('-release.apk'));
   final arranque = leer('arranque_en_frio.txt');
@@ -570,8 +570,8 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
     'integracion': [
       if (integracion != null) 'Emulador: ${lineaPruebas(integracion)}',
       if (pruebasDeLaApi != null) 'API: ${lineaPruebas(pruebasDeLaApi)}',
-      if (flujoDeCompra != null)
-        'Flujo de compra: ${lineaPruebas(flujoDeCompra)}',
+      if (flujosAislados != null)
+        'Flujos de compra, reseña y entrega: ${lineaPruebas(flujosAislados)}',
     ],
     'regresion': [if (regresion != null) lineaPruebas(regresion)],
     'rendimiento': [
@@ -618,7 +618,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
         ?gherkin,
         ?integracion,
         ?pruebasDeLaApi,
-        ?flujoDeCompra,
+        ?flujosAislados,
         ?regresion,
       ],
       destino: destino,

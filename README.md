@@ -208,7 +208,7 @@ análisis estático ─┘                └─ regresión ───┘     └
 | Unitarias | Validadores, providers, repositorios y ViewModels, sin red, con `FakeApiClient` | `test/unitarias/<épica>/` | Etapa 1 del pipeline (`unitarias.yml`) |
 | Análisis de código estático | Errores, malas prácticas y vulnerabilidades, sin ejecutar la app | `flutter analyze` y SonarCloud | Etapa 1 del pipeline (`analisis-estatico.yml`) |
 | Aceptación | Escenarios Gherkin automatizados como pruebas de widget, una por escenario, y el flujo principal #34 → #35 → #36 (inicio de sesión, carrito y checkout) en emulador Android con `FakeApiClient`, con una captura por paso | `test/aceptacion/<épica>/` e `integration_test/aceptacion/` | Etapa 2 del pipeline (`aceptacion.yml`) |
-| Integración | Smoke tests del login y catálogo con `FakeApiClient` en emulador Android; la API real del backend contra el entorno aislado (health, catálogo con `Product.fromJson`, categorías e inicio de sesión), y el flujo de compra en emulador contra el entorno aislado (login → producto con existencias → carrito → «Finalizar Pedido», sin el pago) | `integration_test/app_smoke_test.dart`, `test/api/` e `integration_test/flujos/` | Etapa 3 del pipeline (`integracion.yml`) |
+| Integración | Smoke tests del login y catálogo con `FakeApiClient` en emulador Android; la API real del backend contra el entorno aislado (health, catálogo con `Product.fromJson`, categorías e inicio de sesión), y tres flujos en emulador contra el entorno aislado: el de compra (login → producto con existencias → carrito → «Finalizar Pedido», sin el pago), del catálogo a la reseña (busca el producto del pedido completado de la semilla, ve el pedido en el historial y lo califica: sale como «Compra verificada») y la entrega con su reembolso (el repartidor de la semilla se pone disponible, toma el pedido a domicilio, sale en camino, avisa que llegó y lo entrega; el cliente pide el reembolso y la solicitud queda pendiente) | `integration_test/app_smoke_test.dart`, `test/api/` e `integration_test/flujos/` | Etapa 3 del pipeline (`integracion.yml`) |
 | Flujo de compra real | El flujo de compra (login → carrito → checkout → intento de pago) contra el servidor real con una cuenta de prueba, en emulador Android | `integration_test/flujos/` | A mano (`flujo-compra.yml`) y en la regresión completa |
 | Regresión | Las pruebas de cada bug ya corregido, con la etiqueta `regresion` (`dart_test.yaml`) | `test/` (las que llevan la etiqueta) y `test/regresion/` | Etapa 3 del pipeline, martes 09:30, cada tag y a mano (`regresion.yml`) |
 | Regresión completa | Toda la suite acumulada sobre la rama o tag, con el flujo de compra real, y el APK (menos rendimiento, que necesita el celular físico) | `test/`, `integration_test/app_smoke_test.dart` e `integration_test/flujos/` | Martes 09:30 de México (15:30 UTC), cada tag y a mano (`regresion-completa.yml`) |
@@ -216,7 +216,7 @@ análisis estático ─┘                └─ regresión ───┘     └
 | Rendimiento en el celular | Arranque y fluidez del catálogo en el Samsung SM-N975U, en modo profile (#61) | `integration_test/rendimiento/` | A mano, con un runner propio (`rendimiento-celular.yml`) |
 | Entorno de liberación | El candidato de liberación (APK en modo release apuntando al entorno aislado) instalado en emulador Android: abre, carga el catálogo e inicia sesión con la cuenta de la semilla. Como en release no hay `integration_test`, el smoke maneja la app con `adb` y lee la pantalla con `uiautomator`, con una captura por paso | `tool/smoke_liberacion.dart` y `tool/resumen/smoke_liberacion.dart` | Antes de publicar cada tag y a mano en modo ensayo (`release.yml`) |
 | Esfuerzo | 1,000 toques de monkey en cada Pull Request (5,000 con «completo» o a mano) sobre la app apuntando al entorno aislado, con cierres y congelamientos contados en logcat y la recuperación (reabre en frío y `/api/health` responde 200); esfuerzo de la API con k6 (subir, sostener, pico y recuperación) contra el entorno aislado | `pruebas/k6/esfuerzo.js` y `tool/arranque_en_frio.sh` | Etapa 4 del pipeline y a mano (`esfuerzo.yml`) |
-| Volumen de datos | Carrito de 100 artículos con `FakeApiClient` (#70; el catálogo de 1,000 productos llega con el catálogo por páginas) | `test/esfuerzo/` (etiqueta `esfuerzo`) | Etapa de esfuerzo del pipeline (`esfuerzo.yml`, trabajo «Volumen de datos») |
+| Volumen de datos | Carrito de 100 artículos y catálogo de 1,000 productos con `FakeApiClient` (#70): bajar hasta el final pide sus 50 páginas una vez cada una, sin repetir productos y con los agotados al final; la búsqueda pregunta una sola vez al dejar de teclear y trae solo lo que coincide | `test/esfuerzo/` (etiqueta `esfuerzo`) | Etapa de esfuerzo del pipeline (`esfuerzo.yml`, trabajo «Volumen de datos») |
 
 Herramientas: `flutter_test` e `integration_test` (vienen con el SDK), SonarCloud,
 `reactivecircus/android-emulator-runner` y GitHub Actions. Los trabajos que
@@ -232,7 +232,13 @@ lo que no contacta el backend ni requiere credenciales. El flujo de compra de
 cuenta de prueba de los secretos `USUARIO_PRUEBA` y `CLAVE_PRUEBA`, crea el
 intento de pago en Stripe (modo de prueba) y cierra la hoja sin pagar, así que
 no crea pedidos; sin esas credenciales se omite, y el escenario del pago se omite
-fuera del horario de la tienda.
+fuera del horario de la tienda. Del catálogo a la reseña
+(`integration_test/flujos/catalogo_resena_test.dart`, #65) corre solo contra el
+entorno aislado, con la cuenta de la semilla: contra el servidor real se omite,
+porque deja una reseña que no se puede borrar. La entrega con su reembolso
+(`integration_test/flujos/entrega_reembolso_test.dart`, #69) también corre solo
+ahí: además de la cuenta de la semilla, inicia sesión con su repartidor
+(`REPARTIDOR_PRUEBA` y `CLAVE_REPARTIDOR_PRUEBA`).
 El análisis usa las reglas de `very_good_analysis`; las excepciones y su motivo
 están en `analysis_options.yaml`. El workflow `analisis-estatico.yml` compara el resultado con el
 baseline de `tool/check_analysis.sh` (0 errores, 0 warnings y 151 infos, medido
@@ -251,8 +257,8 @@ flutter test integration_test/flujos --dart-define=USUARIO_PRUEBA=<correo> --dar
 
 ### Entorno aislado de pruebas
 
-Las pruebas del pipeline que necesitan servidor (API, k6, el flujo de compra
-en el emulador, monkey y el arranque en frío) y las del entorno de liberación
+Las pruebas del pipeline que necesitan servidor (API, k6, los flujos de compra,
+reseña y entrega en el emulador, monkey y el arranque en frío) y las del entorno de liberación
 (`release.yml`) no usan producción: corren
 contra la API del backend y su base de datos en contenedores desechables, con
 datos ficticios. Lo genera `tool/entorno_pruebas.sh`, el mismo script que usa
@@ -263,6 +269,8 @@ bash tool/entorno_pruebas.sh levantar   # descarga el backend en .backend/, cons
 flutter test --tags api --run-skipped --dart-define=API_BASE_URL=http://localhost:3000/api   # pruebas de la API
 k6 run --env API_BASE_URL=http://localhost:3000/api pruebas/k6/rendimiento.js                # carga normal
 flutter test integration_test/flujos/compra_test.dart --plain-name "Escenario: del inicio de sesión al checkout" --dart-define=API_BASE_URL=http://10.0.2.2:3000/api --dart-define=USUARIO_PRUEBA=cliente@pier.test --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026   # flujo de compra, con el emulador encendido
+flutter test integration_test/flujos/catalogo_resena_test.dart --dart-define=API_BASE_URL=http://10.0.2.2:3000/api --dart-define=USUARIO_PRUEBA=cliente@pier.test --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026   # del catálogo a la reseña (una vez por entorno: la reseña se queda en la base)
+flutter test integration_test/flujos/entrega_reembolso_test.dart --dart-define=API_BASE_URL=http://10.0.2.2:3000/api --dart-define=USUARIO_PRUEBA=cliente@pier.test --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026 --dart-define=REPARTIDOR_PRUEBA=repartidor@pier.test --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026   # entrega y reembolso (una vez por entorno: el pedido queda entregado)
 bash tool/arranque_en_frio.sh mx.com.pierreposteria 5 build/resultados/arranque_en_frio.txt   # arranque en frío de la app ya instalada
 bash tool/arranque_alternado.sh mx.com.pierreposteria 7 build/app/outputs/flutter-apk/app-prod-debug.apk build/resultados develop.apk   # este APK contra el de develop, alternados (sin develop.apk: solo este)
 flutter build apk --release --dart-define=API_BASE_URL=http://10.0.2.2:3000/api && adb install -r build/app/outputs/flutter-apk/app-prod-release.apk   # candidato de liberación
@@ -275,7 +283,7 @@ bash tool/entorno_pruebas.sh bajar      # apaga y borra los contenedores
 | `docker/backend.version` | El commit del backend (`PedroRubioo/pier-reposteria-backend`) que se prueba: el mismo en todas las corridas |
 | `docker/backend.Dockerfile` | La API: `node:22-alpine`, `npm ci --omit=dev`, usuario `node` |
 | `docker/base.Dockerfile` | PostgreSQL 17 con las migraciones del backend y la semilla |
-| `docker/semilla/semilla_pruebas.sql` | 1 cliente ficticio (`cliente@pier.test`), 2 categorías y 4 productos, uno agotado |
+| `docker/semilla/semilla_pruebas.sql` | 1 cliente ficticio (`cliente@pier.test`) con un pedido completado y otro a domicilio pagado y listo para salir (`PIER-PRUEBA-0002`), cada uno de 1 «Pastel de tres leches»; 1 repartidor (`repartidor@pier.test`) sin disponibilidad; 2 categorías y 4 productos, uno agotado |
 | `docker/compose.pruebas.yml` | Los dos servicios con sus healthchecks; la API en `http://localhost:3000/api` (desde el emulador, `http://10.0.2.2:3000/api`) |
 | `.github/actions/entorno-aislado` | Lo mismo para los jobs del pipeline: cada uno levanta su propio entorno |
 
