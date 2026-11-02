@@ -1011,7 +1011,7 @@ void main() {
         expect(_idsDe(vm), _idsServidor(20), reason: nombre);
         expect(vm.sinConexion, isFalse, reason: nombre);
       }
-    });
+    }, tags: 'regresion');
 
     test('en un orden que se pide completo, lo que se veía se queda y lo que '
         'falta se sigue mostrando sin red', () async {

@@ -319,7 +319,7 @@ void main() {
       expect(find.byType(EntregaDetailScreen), findsNothing);
       expect(m.resultado.value, isTrue);
       expect(m.avisos, 1);
-    });
+    }, tags: 'regresion');
 
     testWidgets('regresar de la confirmación deja el detalle abierto',
         (tester) async {

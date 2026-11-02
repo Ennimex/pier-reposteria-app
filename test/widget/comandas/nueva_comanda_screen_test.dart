@@ -293,7 +293,7 @@ void main() {
 
         expect(tester.algunCampoConFoco, isFalse);
         expect(tester.testTextInput.isVisible, isFalse);
-      });
+      }, tags: 'regresion');
     }
 
     // #280: la hoja de productos del catálogo tampoco regresa el foco, aunque

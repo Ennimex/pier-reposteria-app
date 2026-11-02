@@ -206,7 +206,7 @@ void main() {
         await tester.pump(const Duration(seconds: 1));
         await tester.pumpAndSettle();
         expect(find.text(r'$342'), findsOneWidget);
-      });
+      }, tags: 'regresion');
 
       testWidgets('si las promociones no llegan, se quedan las de antes',
           (tester) async {
@@ -219,7 +219,7 @@ void main() {
         expect(pedidasDePromociones(api), 2);
         expect(find.text(r'$342'), findsOneWidget);
         expect(find.text('-10%'), findsOneWidget);
-      });
+      }, tags: 'regresion');
     });
 
     testWidgets('cambia a lista y de regreso', (tester) async {
@@ -346,7 +346,7 @@ void main() {
         'Flan napolitano',
         'Pay de limón',
       ]);
-    });
+    }, tags: 'regresion');
 
     testWidgets('una búsqueda sin resultados ofrece limpiar los filtros',
         (tester) async {
@@ -497,7 +497,7 @@ void main() {
       expect(delDetalle, findsOneWidget);
       expect(api.llamadas.where((l) => l.endpoint == ApiConstants.favoritosIds),
           hasLength(2));
-    });
+    }, tags: 'regresion');
 
     testWidgets('sin sesión, el corazón manda a iniciar sesión', (tester) async {
       await _montar(tester);
