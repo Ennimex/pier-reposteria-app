@@ -141,7 +141,7 @@ Future<void> _elegirRecogidaManana(WidgetTester tester) async {
   );
   await esperar(tester, aceptar);
   await tester.tap(aceptar);
-  // El toque en «Hora» caía en el selector que todavía se cerraba (#215).
+  // Antes de abrir el menú de horas, el selector de fecha ya se cerró (#215).
   await esperarQueSeCierre(tester, find.byType(DatePickerDialog));
 
   final horario = RegExp(r'^\d{2}:\d{2} - \d{2}:\d{2}$');
@@ -150,8 +150,16 @@ Future<void> _elegirRecogidaManana(WidgetTester tester) async {
   );
   // Las que se ven con el menú cerrado (las copias que miden el botón).
   final cerrado = horas.evaluate().length;
-  await tester.ensureVisible(find.text('Hora'));
-  await tester.tap(find.text('Hora'));
+  // «Hora» es la pista del menú y Flutter envuelve la pista en IgnorePointer:
+  // un toque sobre el texto abre el menú, pero nunca le llega al texto y, con
+  // los toques perdidos como falla (#215), la prueba tronaba. Se toca el botón
+  // que la contiene (#305).
+  final menuDeHoras = find.ancestor(
+    of: find.text('Hora'),
+    matching: find.byType(DropdownButton<String>),
+  );
+  await tester.ensureVisible(menuDeHoras);
+  await tester.tap(menuDeHoras);
   await esperarQue(
     tester,
     () => horas.evaluate().length > cerrado,
