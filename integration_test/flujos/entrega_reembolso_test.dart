@@ -256,8 +256,11 @@ Future<void> _cerrarSesion(WidgetTester tester) async {
   // El perfil es un ListView: el botón, al final, no existe hasta bajar. Y es
   // un ElevatedButton.icon (otra clase que ElevatedButton), así que se busca
   // por su texto, como en las pruebas de widget del perfil.
-  final lista = enPantalla(PerfilRepartidorScreen, find.byType(ListView)).first;
-  await esperar(tester, lista, limite: esperaDelServidor);
+  // Se espera sin .first: esperar describe el buscador antes de que exista
+  // la lista, y .first sin coincidencias no se puede describir.
+  final listas = enPantalla(PerfilRepartidorScreen, find.byType(ListView));
+  await esperar(tester, listas, limite: esperaDelServidor);
+  final lista = listas.first;
   final boton = enPantalla(PerfilRepartidorScreen, find.text('Cerrar sesión'));
   await tester.dragUntilVisible(boton, lista, const Offset(0, -300));
   await _tocar(tester, boton);
@@ -299,8 +302,9 @@ Future<void> _abrirMisReembolsos(WidgetTester tester) async {
   await tester.tap(pestana('Más'));
   // «Más» también es un ListView: «Mis Reembolsos», en «Mi Cuenta», puede no
   // existir hasta bajar.
-  final lista = enPantalla(MoreScreen, find.byType(ListView)).first;
-  await esperar(tester, lista, limite: esperaDelServidor);
+  final listas = enPantalla(MoreScreen, find.byType(ListView));
+  await esperar(tester, listas, limite: esperaDelServidor);
+  final lista = listas.first;
   final opcion = enPantalla(MoreScreen, find.text('Mis Reembolsos'));
   await tester.dragUntilVisible(opcion, lista, const Offset(0, -300));
   await _tocar(tester, opcion);
