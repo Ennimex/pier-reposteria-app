@@ -221,18 +221,19 @@ class _FotoQueNoLlega extends ImageProvider<_FotoQueNoLlega> {
       OneFrameImageStreamCompleter(Completer<ImageInfo>().future);
 }
 
-/// Abre el catálogo en un celular alto (540×3000: caben unas 7 filas de
-/// tarjetas y al final se ven juntos el último disponible y los agotados), deja
-/// que llegue la primera página y devuelve el ViewModel de la pantalla, que
-/// tiene la lista completa (también lo que no está construido). Las fotos son
-/// [_FotoQueNoLlega] (flutter_test_config.dart vuelve a NetworkImage en la
-/// prueba siguiente).
+/// Abre el catálogo en un celular alto (540×2600: caben unas 6 filas de
+/// tarjetas, debajo de la primera página quedan más de los 1,500 px con los
+/// que se pide la siguiente y al final se ven juntos el último disponible y
+/// los agotados), deja que llegue la primera página y devuelve el ViewModel
+/// de la pantalla, que tiene la lista completa (también lo que no está
+/// construido). Las fotos son [_FotoQueNoLlega] (flutter_test_config.dart
+/// vuelve a NetworkImage en la prueba siguiente).
 Future<ProductsViewModel> _abrirCatalogo(
   WidgetTester tester,
   FakeApiClient api,
 ) async {
   proveedorDeFoto = (_) => const _FotoQueNoLlega();
-  tester.usarCelular(alto: 3000);
+  tester.usarCelular(alto: 2600);
   await tester.pumpApp(const ProductsScreen(), api: api);
   await tester.pumpAndSettle();
   return tester.widget<CatalogoHeader>(find.byType(CatalogoHeader)).viewModel;

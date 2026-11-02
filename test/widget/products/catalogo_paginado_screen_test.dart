@@ -178,6 +178,32 @@ void main() {
       expect(find.text('Producto 21'), findsOneWidget);
     });
 
+    // #283: con 600, un deslizamiento rápido llegaba al final antes que la
+    // página siguiente; como Novedades, se pide a 1,500 del final.
+    testWidgets('pide la siguiente página a 1,500 px del final, no antes',
+        (tester) async {
+      final api = _backend()..demorar(_segunda, _demora);
+      await _montar(tester, api: api);
+      final lista =
+          tester.state<ScrollableState>(desplazableDelCatalogo).position;
+
+      lista.jumpTo(lista.maxScrollExtent - 1600);
+      await tester.pump();
+      expect(pedidasDelCatalogo(api), [_primera], reason: 'a 1,600');
+
+      // Más lejos que los 600 de antes, y quieta mientras llega.
+      lista.jumpTo(lista.maxScrollExtent - 1400);
+      await tester.pump();
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
+      await tester.pump(_demora);
+      await tester.pumpAndSettle();
+
+      // Con la página nueva la lista ya no está cerca del final: no pide la
+      // tercera hasta que se baje otra vez.
+      expect(lista.extentAfter, greaterThan(1500));
+      expect(pedidasDelCatalogo(api), [_primera, _segunda]);
+    });
+
     testWidgets('mientras carga más se ve el indicador abajo', (tester) async {
       final api = _backend()..demorar(_segunda, _demora);
       await _montar(tester, api: api);
