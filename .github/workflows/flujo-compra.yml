@@ -23,9 +23,11 @@
 #   CLAVE_PRUEBA (Settings → Secrets and variables → Actions); nunca se
 #   escriben en el código. Sin ellos, el flujo de compra se omite.
 # Dónde está la prueba: integration_test/flujos/compra_test.dart. La carpeta
-#   también trae catalogo_resena_test.dart (#65), que solo corre en el
-#   entorno aislado (integracion.yml): aquí sale omitida (⏭️), porque deja
-#   una reseña que no se puede borrar.
+#   también trae catalogo_resena_test.dart (#65) y
+#   entrega_reembolso_test.dart (#69), que solo corren en el entorno aislado
+#   (integracion.yml): aquí salen omitidas (⏭️), porque dejan una reseña, una
+#   entrega y una solicitud de reembolso que no se pueden deshacer, y la
+#   entrega necesita el repartidor y el pedido a domicilio de la semilla.
 # Issue: #58 (Sprint 2).
 # ─────────────────────────────────────────────────────────────────────────────
 name: Flujo de compra contra el servidor real
