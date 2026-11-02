@@ -253,13 +253,14 @@ Future<void> _verEnElHistorial(WidgetTester tester, ApiService api) async {
 /// vuelve «Iniciar Sesión».
 Future<void> _cerrarSesion(WidgetTester tester) async {
   await tester.tap(pestana('Perfil'));
-  await _tocar(
-    tester,
-    enPantalla(
-      PerfilRepartidorScreen,
-      find.widgetWithText(ElevatedButton, 'Cerrar sesión'),
-    ),
-  );
+  // El perfil es un ListView: el botón, al final, no existe hasta bajar. Y es
+  // un ElevatedButton.icon (otra clase que ElevatedButton), así que se busca
+  // por su texto, como en las pruebas de widget del perfil.
+  final lista = enPantalla(PerfilRepartidorScreen, find.byType(ListView)).first;
+  await esperar(tester, lista, limite: esperaDelServidor);
+  final boton = enPantalla(PerfilRepartidorScreen, find.text('Cerrar sesión'));
+  await tester.dragUntilVisible(boton, lista, const Offset(0, -300));
+  await _tocar(tester, boton);
   final confirmar = find.widgetWithText(TextButton, 'Cerrar sesión');
   await esperar(tester, confirmar);
   await esperarQueSeAsiente(tester, confirmar);
@@ -296,7 +297,13 @@ Future<Order> _pedidoEntregado(ApiService api) async {
 /// Pestaña «Más» → «Mis Reembolsos».
 Future<void> _abrirMisReembolsos(WidgetTester tester) async {
   await tester.tap(pestana('Más'));
-  await _tocar(tester, enPantalla(MoreScreen, find.text('Mis Reembolsos')));
+  // «Más» también es un ListView: «Mis Reembolsos», en «Mi Cuenta», puede no
+  // existir hasta bajar.
+  final lista = enPantalla(MoreScreen, find.byType(ListView)).first;
+  await esperar(tester, lista, limite: esperaDelServidor);
+  final opcion = enPantalla(MoreScreen, find.text('Mis Reembolsos'));
+  await tester.dragUntilVisible(opcion, lista, const Offset(0, -300));
+  await _tocar(tester, opcion);
   await esperar(tester, find.byType(RefundsScreen));
 }
 
