@@ -3,10 +3,13 @@
 // Implementación HTTP de ConfiguracionRepository. Recibe el ApiClient por constructor:
 // en la app, el ApiService único de lib/config/dependencies.dart; en
 // pruebas, FakeApiClient (test/fakes/).
+import 'dart:async';
+
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
+import 'package:pier_reposteria/data/services/contacto_guardado_service.dart';
 import 'package:pier_reposteria/domain/models/info_contacto.dart';
 import 'package:pier_reposteria/domain/models/info_nosotros.dart';
 import 'package:pier_reposteria/domain/models/pregunta_frecuente.dart';
@@ -14,9 +17,14 @@ import 'package:pier_reposteria/domain/models/textos_legales.dart';
 
 /// Implementación de [ConfiguracionRepository] contra el backend vía [ApiClient].
 class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
-  ConfiguracionRepositoryRemote({required ApiClient api}) : _api = api;
+  ConfiguracionRepositoryRemote({
+    required ApiClient api,
+    ContactoGuardadoService? contactoGuardado,
+  })  : _api = api,
+        _contactoGuardado = contactoGuardado ?? ContactoGuardadoService();
 
   final ApiClient _api;
+  final ContactoGuardadoService _contactoGuardado;
 
   @override
   Future<Map<String, dynamic>> seccion(String nombre) =>
@@ -31,7 +39,15 @@ class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
       );
     }
     final cfg = r['config'];
-    return cfg is Map ? InfoContacto.fromConfig(cfg) : const InfoContacto();
+    if (cfg is! Map) return const InfoContacto();
+    unawaited(_contactoGuardado.guardar(Map<String, dynamic>.from(cfg)));
+    return InfoContacto.fromConfig(cfg);
+  }
+
+  @override
+  Future<InfoContacto?> contactoGuardado() async {
+    final cfg = await _contactoGuardado.leer();
+    return cfg == null ? null : InfoContacto.fromConfig(cfg);
   }
 
   @override

@@ -1,8 +1,9 @@
 // lib/ui/more/view_model/more_view_model.dart
 //
 // Estado de la pestaña «Más» (MVVM, Fase 3): los datos de «Encuéntranos» y
-// los contadores del cliente (pedidos, favoritos, reseñas). Si algo falla se
-// muestra lo de BusinessInfo o 0, como antes. La sesión, la navegación y el
+// los contadores del cliente (pedidos, favoritos, reseñas). Si el contacto no
+// llega se muestra el último que llegó (#312) o lo de BusinessInfo; si falla
+// un contador, 0, como antes. La sesión, la navegación y el
 // cierre de sesión siguen en la vista (usan los providers globales).
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
@@ -31,6 +32,11 @@ class MoreViewModel extends ChangeNotifier {
 
   InfoContacto _contacto = const InfoContacto();
   bool _cargandoContacto = true;
+  bool _pidiendoContacto = false;
+
+  /// El contacto que se ve llegó del servidor (si no, es el guardado o el de
+  /// BusinessInfo y se vuelve a pedir al regresar a la pestaña).
+  bool _contactoAlDia = false;
 
   int _totalPedidos = 0;
   int _totalFavoritos = 0;
@@ -52,14 +58,30 @@ class MoreViewModel extends ChangeNotifier {
   bool get cargandoStats => _cargandoStats;
 
   Future<void> cargarContacto() async {
+    if (_pidiendoContacto) return;
+    _pidiendoContacto = true;
     try {
       _contacto = await _configRepo.contacto();
+      _contactoAlDia = true;
     } on ApiException {
-      // Se queda vacío: la vista usa BusinessInfo.
+      // Sin red: el último que llegó; si nunca llegó, se queda vacío y la
+      // vista usa BusinessInfo.
+      _contactoAlDia = false;
+      final guardado = await _configRepo.contactoGuardado();
+      if (guardado != null) _contacto = guardado;
+    } finally {
+      _pidiendoContacto = false;
     }
     if (_cerrado) return;
     _cargandoContacto = false;
     notifyListeners();
+  }
+
+  /// Al volver a la pestaña: si el contacto no llegó del servidor (sin red al
+  /// abrir la app), se vuelve a pedir (#312).
+  Future<void> reintentarContacto() async {
+    if (_contactoAlDia) return;
+    await cargarContacto();
   }
 
   /// Avisa quién tiene la sesión. Si cambió, recarga los contadores (con
