@@ -58,7 +58,9 @@ class _MoreScreenState extends State<MoreScreen> {
   // la app: sus secciones se pintan tal cual y se envuelven en su entrada
   // en el primer cuadro en que se ve (oculta no deja entradas pendientes).
   // Se escucha el TickerMode sin depender de él: cambiar de pestaña no
-  // reconstruye la pantalla.
+  // reconstruye la pantalla. Se sigue escuchando después: cada vez que la
+  // pestaña se vuelve a ver, el contacto se pide otra vez si no había
+  // llegado (#312).
   ValueListenable<TickerModeData>? _modoTicker;
   bool _vista = false;
 
@@ -87,27 +89,24 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   void _seguirVisibilidad() {
-    if (_vista) return;
     final modo = TickerMode.getValuesNotifier(context);
     if (!identical(modo, _modoTicker)) {
       _modoTicker?.removeListener(_alCambiarVisibilidad);
       _modoTicker = modo..addListener(_alCambiarVisibilidad);
     }
     // A la vista desde el primer cuadro (p. ej. sin pestañas alrededor).
-    if (modo.value.enabled) _dejarDeSeguir();
+    if (modo.value.enabled) _vista = true;
   }
 
   // Llega mientras se construye el TickerMode de arriba: la pantalla se
-  // reconstruye en ese mismo cuadro, ya con las entradas.
+  // reconstruye en ese mismo cuadro, ya con las entradas. El contacto se
+  // pide tras el cuadro (aquí no se puede notificar).
   void _alCambiarVisibilidad() {
-    if (_vista || !(_modoTicker?.value.enabled ?? false)) return;
-    setState(_dejarDeSeguir);
-  }
-
-  void _dejarDeSeguir() {
-    _vista = true;
-    _modoTicker?.removeListener(_alCambiarVisibilidad);
-    _modoTicker = null;
+    if (!(_modoTicker?.value.enabled ?? false)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_vm.reintentarContacto());
+    });
+    if (!_vista) setState(() => _vista = true);
   }
 
   @override

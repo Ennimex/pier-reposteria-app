@@ -15,20 +15,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../fakes/fake_api_client.dart';
 import '../../helpers/pump_app.dart';
 
-Future<void> _montar(WidgetTester tester, FakeApiClient api) async {
+/// [aLaVista]: si se da, la pantalla está en una pestaña que se ve o no
+/// (TickerMode), como en MainScreen.
+Future<void> _montar(
+  WidgetTester tester,
+  FakeApiClient api, {
+  ValueNotifier<bool>? aLaVista,
+}) async {
   tester.view
     ..physicalSize = const Size(1440, 3040)
     ..devicePixelRatio = 3.5;
   addTearDown(tester.view.reset);
-  await tester.pumpApp(
-    MoreScreen(
-      viewModel: MoreViewModel(
-        configRepo: ConfiguracionRepositoryRemote(api: api),
-        pedidosRepo: PedidosRepositoryRemote(api: api),
-        favoritosRepo: FavoritosRepositoryRemote(api: api),
-        resenasRepo: ResenasRepositoryRemote(api: api),
-      ),
+  final pantalla = MoreScreen(
+    viewModel: MoreViewModel(
+      configRepo: ConfiguracionRepositoryRemote(api: api),
+      pedidosRepo: PedidosRepositoryRemote(api: api),
+      favoritosRepo: FavoritosRepositoryRemote(api: api),
+      resenasRepo: ResenasRepositoryRemote(api: api),
     ),
+  );
+  await tester.pumpApp(
+    aLaVista == null
+        ? pantalla
+        : ValueListenableBuilder<bool>(
+            valueListenable: aLaVista,
+            builder: (_, visible, hijo) =>
+                TickerMode(enabled: visible, child: hijo!),
+            child: pantalla,
+          ),
     api: api,
   );
   await tester.pump();
@@ -70,5 +84,32 @@ void main() {
 
       expect(find.textContaining(BusinessInfo.telefono), findsWidgets);
     });
+
+    // #312: sin red al abrir, «Encuéntranos» mostraba un teléfono de relleno
+    // (771 123 4567) y no se actualizaba al volver la red.
+    testWidgets('sin red no muestra el teléfono de relleno y al volver a la '
+        'pestaña con red se actualiza', (tester) async {
+      final contacto = ApiConstants.configuracionSeccion('contacto');
+      final api = FakeApiClient()..fallar(contacto, 'Sin conexión');
+      final aLaVista = ValueNotifier(true);
+      addTearDown(aLaVista.dispose);
+      await _montar(tester, api, aLaVista: aLaVista);
+
+      expect(find.textContaining('771 123 4567'), findsNothing);
+      expect(find.textContaining('789 896 5413'), findsWidgets);
+
+      // Vuelve la red; se va a otra pestaña y regresa a «Más».
+      api.responder(contacto, {
+        'success': true,
+        'config': {'telefono': '921 000 0000'},
+      });
+      aLaVista.value = false;
+      await tester.pump();
+      aLaVista.value = true;
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('921 000 0000'), findsWidgets);
+    }, tags: 'regresion');
   });
 }
