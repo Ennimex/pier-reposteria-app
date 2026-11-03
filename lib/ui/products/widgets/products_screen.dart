@@ -251,12 +251,14 @@ class _ProductsScreenState extends State<ProductsScreen>
   }
 
   /// Deslizar para recargar y «Reintentar» (catálogo sin conexión, #160): las
-  /// promociones de las tarjetas y la página 1 con categorías y filtros. No
-  /// se limpia el imageCache global: recargar los datos basta y evita que
-  /// TODA la app vuelva a descargar imágenes.
+  /// promociones de las tarjetas, la página 1 con categorías y filtros, y los
+  /// corazones (pudieron cambiar en la web o en otro teléfono, #308). No se
+  /// limpia el imageCache global: recargar los datos basta y evita que TODA
+  /// la app vuelva a descargar imágenes.
   Future<void> _recargar() => Future.wait([
         context.read<ProductProvider>().refrescar(),
         _vm.recargar(),
+        _vm.cargarFavoritos(autenticado: _autenticado),
       ]);
 
   void _aviso(String texto,

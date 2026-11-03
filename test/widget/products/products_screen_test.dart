@@ -13,6 +13,7 @@ import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/core/state/navigation_provider.dart';
 import 'package:pier_reposteria/ui/core/ui/skeletons.dart';
+import 'package:pier_reposteria/ui/favorites/view_model/favorites_view_model.dart';
 import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/producto_catalogo_card.dart';
 import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
@@ -498,6 +499,74 @@ void main() {
       expect(api.llamadas.where((l) => l.endpoint == ApiConstants.favoritosIds),
           hasLength(2));
     }, tags: 'regresion');
+
+    // #308: quitar un favorito en «Mis Favoritos» dejaba lleno el corazón de
+    // su tarjeta, y jalar para refrescar no volvía a pedir los favoritos.
+    group('el corazón de la tarjeta sigue al servidor (#308)', () {
+      FakeApiClient conRoscaFavorita() => _backend()
+        ..responder(ApiConstants.favoritosIds, {
+          'success': true,
+          'ids': [4],
+        })
+        ..responder(ApiConstants.favoritos, {
+          'success': true,
+          'favoritos': [_productos[3]],
+        })
+        ..responder(ApiConstants.favoritoById('4'), {'success': true});
+
+      IconData? corazonDe(WidgetTester tester, String nombre) {
+        final tarjeta = find.ancestor(
+            of: find.text(nombre), matching: find.byType(ProductoCatalogoCard));
+        return tester
+            .widget<Icon>(find.descendant(
+              of: tarjeta,
+              matching: find.byWidgetPredicate((w) =>
+                  w is Icon &&
+                  (w.icon == Icons.favorite_rounded ||
+                      w.icon == Icons.favorite_border_rounded)),
+            ))
+            .icon;
+      }
+
+      testWidgets('al quitarlo en «Mis Favoritos»', (tester) async {
+        await _montar(tester, api: conRoscaFavorita());
+        await tester.iniciarSesion(find.byType(ProductsScreen));
+        await tester.pumpAndSettle();
+        expect(corazonDe(tester, 'Rosca'), Icons.favorite_rounded);
+
+        // «Mis Favoritos» (otra pestaña) lo quita con su ViewModel.
+        final contexto = tester.element(find.byType(ProductsScreen));
+        final misFavoritos = FavoritesViewModel(
+          favoritosRepo: contexto.read(),
+          productosRepo: contexto.read(),
+          registrarInteres: (_) {},
+        );
+        addTearDown(misFavoritos.dispose);
+        await misFavoritos.cargarFavoritos();
+        expect(await misFavoritos.quitar(misFavoritos.favoritos.single), isTrue);
+        await tester.pumpAndSettle();
+
+        expect(corazonDe(tester, 'Rosca'), Icons.favorite_border_rounded);
+      }, tags: 'regresion');
+
+      testWidgets('al jalar para refrescar', (tester) async {
+        final api = conRoscaFavorita();
+        await _montar(tester, api: api);
+        await tester.iniciarSesion(find.byType(ProductsScreen));
+        await tester.pumpAndSettle();
+        expect(corazonDe(tester, 'Rosca'), Icons.favorite_rounded);
+
+        // Se quitó en la web: el servidor ya no lo tiene.
+        api.responder(
+            ApiConstants.favoritosIds, {'success': true, 'ids': <int>[]});
+        unawaited(tester
+            .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+            .show());
+        await tester.pumpAndSettle();
+
+        expect(corazonDe(tester, 'Rosca'), Icons.favorite_border_rounded);
+      }, tags: 'regresion');
+    });
 
     testWidgets('sin sesión, el corazón manda a iniciar sesión', (tester) async {
       await _montar(tester);
