@@ -11,7 +11,17 @@
 // backend falla; los crudos siguen para las pantallas aún sin ViewModel.
 import 'package:pier_reposteria/domain/models/product_model.dart';
 
+/// Un favorito que el servidor confirmó: se agregó (`favorito` true) o se
+/// quitó.
+typedef CambioFavorito = ({String productoId, bool favorito});
+
 abstract class FavoritosRepository {
+  /// Cada favorito que se agrega o se quita, desde la pantalla que sea:
+  /// el catálogo y el detalle ponen o quitan su corazón sin volver a
+  /// preguntar (#308: quitarlo en «Mis Favoritos» dejaba lleno el del
+  /// catálogo). Solo los que el servidor aceptó.
+  Stream<CambioFavorito> get cambios;
+
   /// GET /favoritos/ids: solo ids (para pintar corazones).
   Future<Map<String, dynamic>> ids();
 

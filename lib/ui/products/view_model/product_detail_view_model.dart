@@ -5,6 +5,8 @@
 // (optimista), recomendaciones por co-compra, tamaño y cantidad elegidos, y
 // "Avísame" de los agotados. Precios con descuento y carrito siguen en sus
 // providers globales; la vista decide si manda a iniciar sesión.
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
@@ -32,7 +34,9 @@ class ProductDetailViewModel extends ChangeNotifier {
             : [producto.imagenUrl],
         _totalResenas = producto.totalResenas,
         _rating = producto.rating,
-        _esFavorito = esFavorito;
+        _esFavorito = esFavorito {
+    _cambiosDeFavoritos = favoritosRepo.cambios.listen(_alCambiarFavorito);
+  }
 
   /// Etiquetas del selector (el backend no tiene porciones por tamaño).
   static const List<String> tamanos = ['Chico', 'Grande'];
@@ -55,6 +59,9 @@ class ProductDetailViewModel extends ChangeNotifier {
   // Lo que sabía quien abrió el detalle (el catálogo, favoritos) hasta que
   // conteste el servidor; si no contesta (sin red), se queda (#275).
   bool _esFavorito;
+  // Este mismo producto pudo cambiar en otra pantalla, p. ej. en otro
+  // detalle abierto desde las recomendaciones (#308).
+  late final StreamSubscription<CambioFavorito> _cambiosDeFavoritos;
   List<Product> _recomendaciones = const [];
   int _cantidad = 1;
   int _tamano = 0;
@@ -126,6 +133,16 @@ class ProductDetailViewModel extends ChangeNotifier {
     } on ApiException catch (e) {
       PierLog.error('Error al cargar favorito: ${e.message}');
     }
+  }
+
+  void _alCambiarFavorito(CambioFavorito cambio) {
+    if (_cerrado ||
+        cambio.productoId != producto.id ||
+        cambio.favorito == _esFavorito) {
+      return;
+    }
+    _esFavorito = cambio.favorito;
+    notifyListeners();
   }
 
   /// Otros clientes también pidieron (sin el producto actual).
@@ -222,6 +239,7 @@ class ProductDetailViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _cerrado = true;
+    unawaited(_cambiosDeFavoritos.cancel());
     super.dispose();
   }
 }
