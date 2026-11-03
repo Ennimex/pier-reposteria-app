@@ -4,12 +4,15 @@
 // 300 ms solo queda la nueva; las ocultas quedan fuera de escena, sin tickers
 // ni Hero y con su estado intacto; el fling cambia de pestaña; con «reducir
 // movimiento» el cambio es instantáneo; una entrada con trasPestana no
-// avanza mientras la pestaña sigue transparente.
+// avanza mientras la pestaña sigue transparente; la pestaña que se deja
+// suelta el foco y no se lo devuelve a su buscador (#309).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/ui/core/ui/animated_indexed_stack.dart';
+import 'package:pier_reposteria/ui/core/ui/foco.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 
+import '../../helpers/foco.dart';
 import '../../helpers/movimiento.dart';
 
 /// Pestaña con un contador propio (para ver que conserva su estado).
@@ -37,11 +40,41 @@ class _PestanaState extends State<_Pestana> {
   );
 }
 
+/// Pestaña con su propio Navigator y un buscador, como las de MainScreen.
+/// «Abrir» suelta el foco antes, como el catálogo (#280).
+Widget _pestanaConBuscador(String nombre) => Navigator(
+  onGenerateRoute: (_) => MaterialPageRoute<void>(
+    builder: (context) => Scaffold(
+      body: Column(
+        children: [
+          TextField(key: Key('buscador $nombre')),
+          TextButton(
+            onPressed: () {
+              soltarFoco();
+              Navigator.of(context)
+                  .push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => Scaffold(body: Text('Detalle $nombre')),
+                    ),
+                  )
+                  .ignore();
+            },
+            child: Text('Abrir $nombre'),
+          ),
+        ],
+      ),
+    ),
+  ),
+);
+
 /// Anfitrión con su índice, como MainScreen o el panel del repartidor.
 class _Pestanas extends StatefulWidget {
-  const _Pestanas({this.conDeslizar = true});
+  const _Pestanas({this.conDeslizar = true, this.hijos});
 
   final bool conDeslizar;
+
+  /// Las pestañas; si no, tres con su contador.
+  final List<Widget>? hijos;
 
   @override
   State<_Pestanas> createState() => _PestanasState();
@@ -56,7 +89,9 @@ class _PestanasState extends State<_Pestanas> {
   Widget build(BuildContext context) => AnimatedIndexedStack(
     index: indice,
     onSwipeToIndex: widget.conDeslizar ? ir : null,
-    children: const [_Pestana('Uno'), _Pestana('Dos'), _Pestana('Tres')],
+    children:
+        widget.hijos ??
+        const [_Pestana('Uno'), _Pestana('Dos'), _Pestana('Tres')],
   );
 }
 
@@ -65,14 +100,16 @@ Future<_PestanasState> _montar(
   bool conDeslizar = true,
   bool reducido = false,
   TextDirection direccion = TextDirection.ltr,
+  List<Widget>? hijos,
 }) async {
+  final pestanas = _Pestanas(conDeslizar: conDeslizar, hijos: hijos);
   await tester.pumpWidget(
     MaterialApp(
       home: Directionality(
         textDirection: direccion,
         child: reducido
-            ? ConMovimientoReducido(child: _Pestanas(conDeslizar: conDeslizar))
-            : _Pestanas(conDeslizar: conDeslizar),
+            ? ConMovimientoReducido(child: pestanas)
+            : pestanas,
       ),
     ),
   );
@@ -161,6 +198,35 @@ void main() {
     await tester.pump();
     expect(find.text('Tres 1'), findsOneWidget);
   });
+
+  // #309: con el buscador enfocado (el teclado ya cerrado con «atrás»), al
+  // cambiar de pestaña y volver, regresar de otra pantalla le devolvía el
+  // foco y se abría el teclado: soltarFoco() ya no lo encontraba, porque al
+  // ocultarse la pestaña el foco había salido de ella sin que su pantalla
+  // olvidara el campo.
+  testWidgets('la pestaña que se deja suelta el foco: al volver y regresar '
+      'de otra pantalla el buscador no lo recupera', (tester) async {
+    final pestanas = await _montar(
+      tester,
+      hijos: [_pestanaConBuscador('Uno'), _pestanaConBuscador('Dos')],
+    );
+    await tester.enfocarSinTeclado(find.byKey(const Key('buscador Uno')));
+
+    pestanas.ir(1);
+    await tester.pumpAndSettle();
+    pestanas.ir(0);
+    await tester.pumpAndSettle();
+    expect(tester.algunCampoConFoco, isFalse);
+
+    await tester.tap(find.text('Abrir Uno'));
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(find.text('Detalle Uno'))).pop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Abrir Uno'), findsOneWidget);
+    expect(tester.algunCampoConFoco, isFalse, reason: 'el foco no regresó');
+    expect(tester.testTextInput.isVisible, isFalse);
+  }, tags: 'regresion');
 
   testWidgets('cada pestaña conserva su estado', (tester) async {
     final pestanas = await _montar(tester);
