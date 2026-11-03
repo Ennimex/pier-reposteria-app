@@ -2,9 +2,11 @@
 // (#132, #133 y #175): en el Inicio, solo las 3 más recientes con «Ver todo»;
 // en Novedades, todas con una promoción cada 5, sugerencias al acabarse y
 // «Ya viste todo por hoy», agregar al carrito y errores; el invitado ve una
-// invitación a entrar en lugar de las publicaciones.
+// invitación a entrar en lugar de las publicaciones; un producto sin foto
+// muestra el pastelito del catálogo (#310).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/ui/feed/widgets/novedades_screen.dart';
 import 'package:pier_reposteria/ui/home/widgets/home_screen.dart';
@@ -266,6 +268,50 @@ void main() {
       expect(find.text('Ya no hay existencias'), findsOneWidget);
       await _desmontar(tester);
     });
+
+    // #310: las sugerencias «De los más pedidos» sin foto, y la promoción
+    // cuya foto no llega, mostraban la imagen rota (la de las publicaciones);
+    // el catálogo muestra el pastelito.
+    testWidgets('un producto sin foto muestra el pastelito, no la imagen '
+        'rota', (tester) async {
+      final api = _backend()
+        ..responder(
+          _sugerencias,
+          sugerenciasJson([
+            {...sugeridoJson(), 'imagen_url': ''},
+          ]),
+        );
+      await _montar(tester, api: api);
+      await _abrirNovedades(tester);
+
+      // La tarjeta (Container) más cercana a [texto].
+      Finder tarjetaDe(String texto) => find
+          .ancestor(of: find.text(texto), matching: find.byType(Container))
+          .first;
+      Future<void> revisar(String texto) async {
+        await _bajarHasta(tester, find.text(texto));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        final tarjeta = tarjetaDe(texto);
+        expect(
+          find.descendant(of: tarjeta, matching: find.byIcon(LucideIcons.cake)),
+          findsOneWidget,
+          reason: texto,
+        );
+        expect(
+          find.descendant(
+            of: tarjeta,
+            matching: find.byIcon(LucideIcons.imageOff),
+          ),
+          findsNothing,
+          reason: texto,
+        );
+      }
+
+      await revisar(r'$200.00'); // la promoción: su foto no llega
+      await revisar('De los más pedidos'); // la sugerencia: sin foto
+      await _desmontar(tester);
+    }, tags: 'regresion');
 
     testWidgets('si falla al cargar más, deja reintentar', (tester) async {
       final api = _backend()..fallar(_siguiente, 'Sin conexión');
