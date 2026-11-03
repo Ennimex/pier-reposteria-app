@@ -10,7 +10,9 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/routing/app_routes.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/public/widgets/legal_screen.dart';
@@ -40,9 +42,11 @@ void mostrarAvisoAuth(
 }
 
 /// Botón circular de regreso, alineado a la izquierda. [grande]: 44 px con
-/// sombra desplazada; si no, 40 px. Sin [onTap], cierra la pantalla. Se
-/// hunde un poco al tocarlo (sigue siendo un GestureDetector, no un
-/// IconButton).
+/// sombra desplazada; si no, 40 px. Sin [onTap], cierra la pantalla, y si
+/// es la única de la pila (llegó con context.go, como «Verifica tu correo»
+/// desde el registro) va al inicio de sesión: un pop ahí deja la app en
+/// negro (#311). Se hunde un poco al tocarlo (sigue siendo un
+/// GestureDetector, no un IconButton).
 class BotonAtrasAuth extends StatelessWidget {
   const BotonAtrasAuth({super.key, this.grande = true, this.onTap});
 
@@ -57,7 +61,7 @@ class BotonAtrasAuth extends StatelessWidget {
       child: PresionEscala(
         escala: AppMovimiento.escalaPresionChica,
         child: GestureDetector(
-          onTap: onTap ?? () => Navigator.pop(context),
+          onTap: onTap ?? () => _regresar(context),
           child: Container(
             width: tamano,
             height: tamano,
@@ -78,6 +82,14 @@ class BotonAtrasAuth extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static void _regresar(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      context.go(AppRoutes.login);
+    }
   }
 }
 
