@@ -28,15 +28,16 @@ class BusinessInfo {
   static const String direccionCompleta =
       '$calle, $ciudad, C.P. $cp';
 
-  // Contacto
-  static const String telefono = '771 123 4567';
+  // Contacto. El teléfono y el WhatsApp son el respaldo de la configuración
+  // (contacto) cuando nunca llegó: los reales, los mismos de la web (#312).
+  static const String telefono = '789 896 5413';
   static const String email = 'pierreposteria@gmail.com';
 
   /// Sitio web / panel administrativo (roles internos operan aquí).
   static const String sitioWeb = 'https://pier-reposteria.vercel.app';
 
   /// Solo dígitos con lada país, para enlaces de WhatsApp (wa.me).
-  static const String whatsappNumero = '527711234567';
+  static const String whatsappNumero = '527898965413';
 
   // Horario
   static const String horario = 'Lun–Sáb • 9:00 – 21:00 hrs';

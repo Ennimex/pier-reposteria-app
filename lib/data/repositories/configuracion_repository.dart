@@ -20,8 +20,14 @@ abstract class ConfiguracionRepository {
   /// Solo secciones de la whitelist pública del backend; el resto da 403.
   Future<Map<String, dynamic>> seccion(String nombre);
 
-  /// GET /configuracion/contacto. Sin `config` devuelve todo null.
+  /// GET /configuracion/contacto. Sin `config` devuelve todo null. Lo que
+  /// llega se guarda en el teléfono (contactoGuardado).
   Future<InfoContacto> contacto();
+
+  /// El último contacto que llegó del servidor, guardado en el teléfono; null
+  /// si nunca llegó (#312: sin red, «Encuéntranos» lo usa en lugar de
+  /// BusinessInfo).
+  Future<InfoContacto?> contactoGuardado();
 
   /// GET /configuracion/nosotros. Sin `config` devuelve todo vacío.
   Future<InfoNosotros> nosotros();

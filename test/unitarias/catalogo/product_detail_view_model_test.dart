@@ -179,6 +179,37 @@ void main() {
       expect(vm.esFavorito, isFalse);
     });
 
+    // #308: el mismo producto abierto otra vez desde las recomendaciones;
+    // lo que se cambie en el de arriba se ve al regresar al de abajo.
+    test('otro detalle del mismo producto le cambia el corazón', () async {
+      final api = _backend();
+      final favoritos = FavoritosRepositoryRemote(api: api);
+      ProductDetailViewModel detalle(Product producto) => ProductDetailViewModel(
+            producto: producto,
+            productosRepo: ProductosRepositoryRemote(api: api),
+            favoritosRepo: favoritos,
+            resenasRepo: ResenasRepositoryRemote(api: api),
+            demandaRepo: DemandaRepositoryRemote(api: api),
+            esFavorito: true,
+          );
+      final abajo = detalle(_pastel);
+      final otro = detalle(Product.fromJson({'id': 9, 'nombre': 'Rosca'}));
+      final arriba = detalle(_pastel);
+      addTearDown(abajo.dispose);
+      addTearDown(otro.dispose);
+      addTearDown(arriba.dispose);
+
+      expect(await arriba.alternarFavorito(), isNull);
+
+      expect(abajo.esFavorito, isFalse);
+      expect(otro.esFavorito, isTrue, reason: 'es otro producto');
+
+      // Si el servidor no lo acepta, nadie más cambia.
+      api.fallar(ApiConstants.favoritoById('7'), 'Sin sesión');
+      expect(await arriba.alternarFavorito(), 'Sin sesión');
+      expect(abajo.esFavorito, isFalse);
+    });
+
     test('marcar útil suma al instante y si falla se revierte', () async {
       final api = _backend();
       final vm = _vm(api);

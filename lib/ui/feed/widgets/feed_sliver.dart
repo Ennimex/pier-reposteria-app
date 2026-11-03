@@ -13,6 +13,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/foto_producto.dart';
 import 'package:pier_reposteria/ui/core/ui/pie_de_lista.dart';
 import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
 import 'package:pier_reposteria/ui/feed/widgets/comentarios_sheet.dart';
@@ -214,7 +215,7 @@ class _TarjetaPromocion extends StatelessWidget {
           SizedBox(
             width: 120,
             height: 140,
-            child: ImagenFeed(p.imagenUrl),
+            child: _FotoDeProducto(p.imagenUrl),
           ),
           Expanded(
             child: Padding(
@@ -359,7 +360,9 @@ class _TarjetaSugerido extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: SizedBox.expand(child: ImagenFeed(s.imagenUrl))),
+          Expanded(
+            child: SizedBox.expand(child: _FotoDeProducto(s.imagenUrl)),
+          ),
           Padding(
             padding: const EdgeInsets.all(8),
             child: Column(
@@ -398,6 +401,27 @@ class _TarjetaSugerido extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Foto de un producto en las promociones y las sugerencias: la de las
+/// tarjetas del catálogo (reducida y guardada en el teléfono, #267) y, si no
+/// tiene o no llega, el mismo pastelito del catálogo. Con ImagenFeed (la de
+/// las publicaciones) salía la imagen rota (#310).
+class _FotoDeProducto extends StatelessWidget {
+  const _FotoDeProducto(this.url);
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) => FotoDeTarjeta(
+    url,
+    errorBuilder: (_, _, _) => ColoredBox(
+      color: AppColors.pierArena,
+      child: Center(
+        child: Icon(LucideIcons.cake, color: AppColors.pierVerde, size: 36),
+      ),
+    ),
+  );
 }
 
 /// «Agregar» que se deshabilita mientras se agrega (sin dobles toques).

@@ -13,7 +13,8 @@
 // pruebas no las ven), con sus tickers pausados (TickerMode: el Lottie del
 // carrito o un shimmer oculto no gastan batería y las entradas de una
 // pestaña se ven la primera vez que se abre) y sin Hero (HeroMode: nada de
-// etiquetas repetidas entre pestañas).
+// etiquetas repetidas entre pestañas). Solo la actual recibe el foco, y la
+// que se deja lo suelta desde el campo que lo tenga (#309).
 import 'package:flutter/material.dart';
 import 'package:pier_reposteria/ui/core/themes/app_movimiento.dart';
 
@@ -72,6 +73,21 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
   int? _saliente;
   int _direccion = 1;
 
+  // Un nodo por pestaña (el Focus que solo deja enfocar a la actual): dice
+  // si el foco está dentro de la que se deja.
+  final List<FocusNode> _focos = [];
+
+  FocusNode _focoDe(int pestana) {
+    while (_focos.length <= pestana) {
+      _focos.add(FocusNode(
+        debugLabel: 'Pestaña ${_focos.length}',
+        canRequestFocus: false,
+        skipTraversal: true,
+      ));
+    }
+    return _focos[pestana];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,6 +110,7 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
       _saliente = null;
     }
     if (oldWidget.index == widget.index) return;
+    _soltarFocoDe(oldWidget.index);
     if (AppMovimiento.reducido(context)) {
       // Movimiento reducido: cambio instantáneo.
       _saliente = null;
@@ -108,6 +125,17 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
     _controller.forward(from: _finSalida * (1 - opacidadActual)).ignore();
   }
 
+  // La pestaña que se deja suelta el foco desde el campo que lo tenga, antes
+  // de que su Focus se lo quite: así su pantalla olvida el campo. Si no, al
+  // volver y cerrar algo encima (un detalle, una hoja), Flutter se lo
+  // devolvía y se abría el teclado, aunque soltarFoco() se hubiera llamado
+  // antes de abrirlo: el foco ya no estaba en la pestaña (#309).
+  void _soltarFocoDe(int pestana) {
+    if (pestana < _focos.length && _focos[pestana].hasFocus) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+  }
+
   // La saliente queda fuera de escena en el mismo cuadro en que termina la
   // transición (las pruebas del repartidor revisan a los 400 ms).
   void _alCambiarEstado(AnimationStatus estado) {
@@ -119,6 +147,9 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
   @override
   void dispose() {
     _controller.dispose();
+    for (final foco in _focos) {
+      foco.dispose();
+    }
     super.dispose();
   }
 
@@ -142,6 +173,7 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
         for (var i = 0; i < widget.children.length; i++)
           if (i == widget.index)
             _CapaPestana(
+              foco: _focoDe(i),
               enEscena: true,
               activa: true,
               opacidad: _entra,
@@ -152,6 +184,7 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
             )
           else if (i == _saliente)
             _CapaPestana(
+              foco: _focoDe(i),
               enEscena: true,
               activa: false,
               opacidad: _sale,
@@ -162,6 +195,7 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
             )
           else
             _CapaPestana(
+              foco: _focoDe(i),
               enEscena: false,
               activa: false,
               opacidad: kAlwaysCompleteAnimation,
@@ -185,6 +219,7 @@ class _AnimatedIndexedStackState extends State<AnimatedIndexedStack>
 /// los Navigators anidados conservan su estado.
 class _CapaPestana extends StatelessWidget {
   const _CapaPestana({
+    required this.foco,
     required this.enEscena,
     required this.activa,
     required this.opacidad,
@@ -193,6 +228,9 @@ class _CapaPestana extends StatelessWidget {
     required this.hasta,
     required this.child,
   });
+
+  /// Nodo de la pestaña: no toma el foco, solo lo deja pasar a la actual.
+  final FocusNode foco;
 
   /// Se pinta: la actual o la que está saliendo.
   final bool enEscena;
@@ -213,12 +251,16 @@ class _CapaPestana extends StatelessWidget {
   Widget build(BuildContext context) {
     return Offstage(
       offstage: !enEscena,
-      child: ExcludeFocus(
-        // Como en IndexedStack: solo la pestaña actual conserva el foco.
-        excluding: !activa,
+      // Como en IndexedStack: solo la pestaña actual conserva el foco. Es
+      // un ExcludeFocus con nodo propio (el estado lo consulta).
+      child: Focus(
+        focusNode: foco,
+        includeSemantics: false,
+        descendantsAreFocusable: activa,
+        descendantsAreTraversable: activa,
         child: Visibility(
           // Mismas banderas que IndexedStack (Visibility.of sigue igual);
-          // el foco lo decide el ExcludeFocus de arriba.
+          // el foco lo decide el Focus de arriba.
           visible: enEscena,
           maintainState: true,
           maintainAnimation: true,

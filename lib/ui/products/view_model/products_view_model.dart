@@ -45,7 +45,9 @@ class ProductsViewModel extends ChangeNotifier {
         _demandaRepo = demandaRepo,
         _catalogoGuardado = catalogoGuardado,
         _precioFinal = precioFinal ?? _precioBase,
-        _categoria = categoriaInicial;
+        _categoria = categoriaInicial {
+    _cambiosDeFavoritos = favoritosRepo.cambios.listen(_alCambiarFavorito);
+  }
 
   /// Categoría que muestra todo el catálogo.
   static const String todas = ConsultaCatalogo.todas;
@@ -197,6 +199,10 @@ class ProductsViewModel extends ChangeNotifier {
       _busqueda.isNotEmpty || _categoria != todas || hayFiltrosDeOpciones;
 
   bool esFavorito(String productoId) => _favoritos.contains(productoId);
+
+  // Favoritos que cambiaron en otra pantalla («Mis Favoritos», el detalle):
+  // la pestaña vive en el IndexedStack y no se vuelve a cargar (#308).
+  late final StreamSubscription<CambioFavorito> _cambiosDeFavoritos;
 
   // ── Carga ────────────────────────────────────────────────────────────────
 
@@ -585,6 +591,11 @@ class ProductsViewModel extends ChangeNotifier {
     }
   }
 
+  void _alCambiarFavorito(CambioFavorito cambio) {
+    if (_cerrado || esFavorito(cambio.productoId) == cambio.favorito) return;
+    _ponerFavorito(cambio.productoId, cambio.favorito);
+  }
+
   void _ponerFavorito(String productoId, bool favorito) {
     if (favorito) {
       _favoritos.add(productoId);
@@ -696,6 +707,7 @@ class ProductsViewModel extends ChangeNotifier {
   void dispose() {
     _cerrado = true;
     _olvidarBusquedaPendiente();
+    unawaited(_cambiosDeFavoritos.cancel());
     super.dispose();
   }
 }

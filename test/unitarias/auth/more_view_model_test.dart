@@ -8,6 +8,7 @@ import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart
 import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_reposteria/domain/models/info_contacto.dart';
 import 'package:pier_reposteria/ui/more/view_model/more_view_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
 
@@ -51,6 +52,10 @@ MoreViewModel _vm(FakeApiClient api) => MoreViewModel(
     );
 
 void main() {
+  // El contacto que llega se guarda en el teléfono (#312): cada prueba
+  // empieza sin copia.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   group('Repositorios y modelo', () {
     test('InfoContacto lee la dirección; vacía = null', () {
       expect(
@@ -90,6 +95,39 @@ void main() {
 
       expect(vm.cargandoContacto, isFalse);
       expect(vm.contacto.telefono, isNull);
+    });
+
+    // #312: sin red al abrir, «Encuéntranos» mostraba los datos de respaldo
+    // aunque antes ya hubiera llegado el contacto real.
+    test('sin red usa el último contacto que llegó', () async {
+      final api = FakeApiClient(respuestas: _conDatos());
+      await _vm(api).cargarContacto();
+      await pumpEventQueue(); // se guarda sin esperarlo
+
+      api.fallar(_contacto, 'Sin conexión');
+      final vm = _vm(api);
+      await vm.cargarContacto();
+
+      expect(vm.cargandoContacto, isFalse);
+      expect(vm.contacto.telefono, '921 000 0000');
+      expect(vm.contacto.direccion, 'Av. Siempre Viva 742');
+    });
+
+    test('al volver a la pestaña lo pide otra vez solo si no había llegado',
+        () async {
+      final api = FakeApiClient()..fallar(_contacto, 'Sin conexión');
+      final vm = _vm(api);
+      await vm.cargarContacto();
+      expect(vm.contacto.telefono, isNull);
+
+      api.responder(_contacto, _conDatos()[_contacto] as Map<String, dynamic>);
+      await vm.reintentarContacto();
+      expect(vm.contacto.telefono, '921 000 0000');
+
+      final pedidas = api.llamadas.where((l) => l.endpoint == _contacto).length;
+      await vm.reintentarContacto();
+      expect(api.llamadas.where((l) => l.endpoint == _contacto),
+          hasLength(pedidas), reason: 'ya llegó: no se vuelve a pedir');
     });
 
     test('con sesión cuenta pedidos, favoritos y reseñas', () async {

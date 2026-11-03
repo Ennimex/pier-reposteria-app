@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/app.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/routing/app_routes.dart';
+import 'package:pier_reposteria/ui/auth/widgets/auth_partes.dart';
+import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/auth/widgets/verify_email_screen.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/main/widgets/main_screen.dart';
@@ -177,5 +179,25 @@ void main() {
       expect(find.byType(MainScreen), findsNothing);
       expect(_sesion(tester).isAuthenticated, isFalse);
     });
+
+    // Escenario: regresar desde la verificación (#311)
+    //   Dado que me registré y la app me pide el código del correo
+    //   Cuando toco la flecha «atrás»
+    //   Entonces llego al inicio de sesión, no a una pantalla en negro.
+    testWidgets('Escenario: regresar desde la verificación', (tester) async {
+      final api = _backend();
+      await tester.pumpMyApp(api: api, initialLocation: AppRoutes.registro);
+      await tester.pumpAndSettle();
+      await _registrarse(tester);
+      expect(find.byType(VerifyEmailScreen), findsOneWidget);
+
+      // El botón es un Align a todo lo ancho: se toca el círculo (su ícono).
+      await tester.tap(find.descendant(
+          of: find.byType(BotonAtrasAuth), matching: find.byType(Icon)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VerifyEmailScreen), findsNothing);
+      expect(find.byType(LoginScreen), findsOneWidget);
+    }, tags: 'regresion');
   });
 }
