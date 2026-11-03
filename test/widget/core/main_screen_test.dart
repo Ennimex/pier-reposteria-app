@@ -15,9 +15,11 @@ import 'package:pier_reposteria/ui/core/ui/animated_indexed_stack.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/home/widgets/home_screen.dart';
 import 'package:pier_reposteria/ui/main/widgets/main_screen.dart';
+import 'package:pier_reposteria/ui/products/widgets/products_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../helpers/foco.dart';
 import '../../helpers/pump_app.dart';
 
 FakeApiClient _backend() => FakeApiClient(
@@ -68,12 +70,12 @@ FakeApiClient _backend() => FakeApiClient(
 /// Monta el shell en una pantalla de celular ancha (576×1216 lógicos, como
 /// las pruebas de aceptación: con la fuente de pruebas el catálogo no cabe
 /// en menos).
-Future<void> _montar(WidgetTester tester) async {
+Future<void> _montar(WidgetTester tester, {FakeApiClient? api}) async {
   tester.view
     ..physicalSize = const Size(1440, 3040)
     ..devicePixelRatio = 2.5;
   addTearDown(tester.view.reset);
-  await tester.pumpApp(const MainScreen(), api: _backend());
+  await tester.pumpApp(const MainScreen(), api: api ?? _backend());
   await tester.pump();
   await tester.pump(const Duration(seconds: 1));
 }
@@ -223,6 +225,45 @@ void main() {
       await _desmontar(tester);
     },
   );
+
+  // #309: el buscador del catálogo enfocado (teclado cerrado con «atrás»),
+  // Inicio y de vuelta al catálogo: al regresar de un producto se abría el
+  // teclado, con el cursor en el buscador.
+  testWidgets('el buscador del catálogo no recupera el foco después de '
+      'cambiar de pestaña y abrir un producto', (tester) async {
+    await _montar(
+      tester,
+      api: _backend()
+        ..responder(ApiConstants.productos, {
+          'success': true,
+          'productos': [
+            {
+              'id': 4,
+              'nombre': 'Rosca',
+              'precio_chico': 380,
+              'categoria': 'Roscas',
+              'imagen_url': '',
+              'activo': true,
+            },
+          ],
+        }),
+    );
+    await _irA(tester, 'Catálogo');
+    await tester.pumpAndSettle();
+    await tester.enfocarSinTeclado(
+      find.descendant(
+        of: find.byType(ProductsScreen),
+        matching: find.byType(TextField),
+      ),
+    );
+
+    await _irA(tester, 'Inicio');
+    await _irA(tester, 'Catálogo');
+    expect(tester.algunCampoConFoco, isFalse);
+
+    await tester.abrirYCerrarSinTeclado(find.text('Rosca'));
+    await _desmontar(tester);
+  }, tags: 'regresion');
 
   testWidgets('el regreso del sistema saca la pila de la pestaña visible', (
     tester,
