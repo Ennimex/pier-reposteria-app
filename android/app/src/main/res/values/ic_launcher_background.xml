@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo del ícono adaptable (#327): el verde olivo de la marca (tema
+         Pier Clásico), el mismo del ícono de la ficha de Play. -->
+    <color name="ic_launcher_background">#6B7C3E</color>
+</resources>
