@@ -78,14 +78,17 @@ Future<void> _asentar(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 1));
 }
 
+/// [abierto] fija si la tienda está abierta; null: lo decide el horario de
+/// atención con el reloj [ahora] (#320).
 Future<(FakeApiClient, _PasarelaFalsa, CheckoutViewModel)> _montar(
     WidgetTester tester,
-    {bool abierto = true}) async {
+    {bool? abierto = true, DateTime Function()? ahora}) async {
   tester.view.physicalSize = const Size(1080, 3600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final api = _backend();
   final pasarela = _PasarelaFalsa();
+  final fijo = abierto;
   final vm = CheckoutViewModel(
     configRepo: ConfiguracionRepositoryRemote(api: api),
     direccionesRepo: DireccionesRepositoryRemote(api: api),
@@ -93,7 +96,8 @@ Future<(FakeApiClient, _PasarelaFalsa, CheckoutViewModel)> _montar(
     pasarela: pasarela,
     totalCarrito: () => 300,
     confirmarPorConfirmar: (_) async => true,
-    estaAbierto: () => abierto,
+    estaAbierto: fijo == null ? null : () => fijo,
+    ahora: ahora ?? DateTime.now,
     esperar: (_) async {},
   );
   await tester.pumpApp(CheckoutScreen(viewModel: vm), api: api);
@@ -256,6 +260,27 @@ void main() {
       final boton = tester.widget<ElevatedButton>(
           find.widgetWithText(ElevatedButton, r'Pagar  $300 MXN'));
       expect(boton.onPressed, isNotNull);
+    });
+
+    testWidgets('fuera de horario el aviso dice cuándo se prepara el pedido '
+        '(#320)', (tester) async {
+      // Sábado a las 22: el horario de respaldo no abre el domingo.
+      await _montar(tester,
+          abierto: null, ahora: () => DateTime(2026, 11, 7, 22));
+
+      expect(find.text('Fuera de servicio'), findsOneWidget);
+      expect(
+          find.textContaining('lo preparamos en el siguiente horario de '
+              'atención: el lunes a partir de las 9:00.'),
+          findsOneWidget);
+    });
+
+    testWidgets('en horario de atención no sale el aviso (#320)',
+        (tester) async {
+      await _montar(tester,
+          abierto: null, ahora: () => DateTime(2026, 11, 9, 12));
+
+      expect(find.text('Fuera de servicio'), findsNothing);
     });
   });
 }

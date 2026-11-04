@@ -159,9 +159,11 @@ Future<void> _asentar(WidgetTester tester) async {
 /// Dado que tengo productos en el carrito: carga el carrito del backend y
 /// abre el checkout, con la tienda abierta salvo que se diga otra cosa.
 /// Devuelve el backend falso, la pasarela y el ViewModel.
+/// [horarios]: el de las sucursales en la configuración (#320); sin él,
+/// la app usa el de respaldo.
 Future<(FakeApiClient, _PasarelaFalsa, CheckoutViewModel)> _abrirCheckout(
     WidgetTester tester,
-    {bool abierto = true}) async {
+    {bool abierto = true, Object? horarios}) async {
   // El checkout se prueba a 1080 de ancho (checkout_screen_test.dart): con
   // la fuente de pruebas (Ahem) se desborda a 412.
   tester.view
@@ -169,6 +171,12 @@ Future<(FakeApiClient, _PasarelaFalsa, CheckoutViewModel)> _abrirCheckout(
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final api = _backend();
+  if (horarios != null) {
+    api.responder(ApiConstants.configuracionSeccion('contacto'), {
+      'success': true,
+      'config': {'direccion': 'Av. Revolución 100', 'horarios': horarios},
+    });
+  }
   final pasarela = _PasarelaFalsa();
   await tester.pumpApp(
     Provider<FakeApiClient>.value(
@@ -561,6 +569,60 @@ void main() {
       // Entonces la app me pide la fecha y la hora de recolección
       expect(find.text('Selecciona fecha y hora de recolección'),
           findsOneWidget);
+      expect(pasarela.cobros, isEmpty);
+      expect(api.llamo(ApiConstants.crearPaymentIntent, metodo: 'POST-Auth'),
+          isFalse);
+    });
+  });
+
+  group('#320 Checkout: horario de atención de las sucursales', () {
+    // Escenario: las horas siguen el horario de las sucursales
+    //   Dado que una sucursal abre de 8:00 a 21:00 y la otra de 10:00 a
+    //     22:00, de lunes a domingo
+    //   Cuando elijo recoger un domingo
+    //   Entonces la lista de horas empieza a las 10:00
+    //   Y no ofrece las 9:00
+    testWidgets('Escenario: las horas siguen el horario de las sucursales',
+        (tester) async {
+      // Dado que una sucursal abre de 8:00 a 21:00 y la otra de 10:00 a 22:00
+      final (_, _, vm) = await _abrirCheckout(tester, horarios: [
+        {'sucursal': 'Aviación', 'horario': 'Lun - Dom: 8:00 AM - 9:00 PM'},
+        {'sucursal': 'Tahuizán', 'horario': 'Lun - Dom: 10:00 AM - 10:00 PM'},
+      ]);
+
+      // Cuando elijo recoger un domingo
+      vm.elegirFecha(DateTime(2026, 11, 8));
+      await _asentar(tester);
+      final hora = find.byType(DropdownButton<String>);
+      await tester.ensureVisible(hora);
+      await tester.tap(hora);
+      await _asentar(tester);
+
+      // Entonces la lista de horas empieza a las 10:00
+      expect(find.text('10:00 - 11:00'), findsWidgets);
+      // Y no ofrece las 9:00
+      expect(find.text('09:00 - 10:00'), findsNothing);
+    });
+
+    // Escenario: sin horario en la configuración, el domingo no abre
+    //   Dado que la configuración no trae el horario de las sucursales
+    //   Cuando elijo un domingo y presiono "Pagar"
+    //   Entonces la app me dice que ese día no abrimos
+    //   Y no se cobra nada
+    testWidgets('Escenario: sin horario en la configuración, el domingo no '
+        'abre', (tester) async {
+      // Dado que la configuración no trae el horario de las sucursales
+      final (api, pasarela, vm) = await _abrirCheckout(tester);
+
+      // Cuando elijo un domingo y presiono "Pagar"
+      vm.elegirFecha(DateTime(2026, 11, 8));
+      await _asentar(tester);
+      await _pagar(tester, 690);
+
+      // Entonces la app me dice que ese día no abrimos
+      expect(find.text('Ese día no abrimos: elige otra fecha'),
+          findsOneWidget);
+      // Y no se cobra nada
       expect(pasarela.cobros, isEmpty);
       expect(api.llamo(ApiConstants.crearPaymentIntent, metodo: 'POST-Auth'),
           isFalse);

@@ -14,6 +14,11 @@
 // Cada intento (ya validado) se mide en Sentry con su resultado (#24): solo
 // las fallas del servidor o de la conexión cuentan contra el objetivo de
 // errores del pago (docs/SLO.md).
+//
+// El horario de atención sale de la configuración de contacto (#320): el
+// calendario solo ofrece días en que se abre, la lista de horas solo las que
+// caben en ese horario y, fuera de él, el aviso dice cuándo se prepara el
+// pedido. Se puede pagar igual (#188).
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/config/monitoreo.dart';
@@ -23,6 +28,7 @@ import 'package:pier_reposteria/data/repositories/direcciones_repository.dart';
 import 'package:pier_reposteria/data/repositories/pagos_repository.dart';
 import 'package:pier_reposteria/data/services/pasarela_pago.dart';
 import 'package:pier_reposteria/domain/models/direccion_model.dart';
+import 'package:pier_reposteria/domain/models/horario_atencion.dart';
 import 'package:pier_reposteria/domain/models/pago.dart';
 import 'package:pier_reposteria/utils/command.dart';
 import 'package:pier_reposteria/utils/config_format.dart';
@@ -77,7 +83,8 @@ class CheckoutViewModel extends ChangeNotifier {
     required PasarelaPago pasarela,
     required double Function() totalCarrito,
     required Future<bool> Function(List<String> faltantes) confirmarPorConfirmar,
-    bool Function() estaAbierto = _abiertoAhora,
+    bool Function()? estaAbierto,
+    DateTime Function() ahora = DateTime.now,
     Future<void> Function(Duration) esperar = Future<void>.delayed,
     MonitorDePagos monitor = const MonitorDePagosSentry(),
   })  : _configRepo = configRepo,
@@ -87,14 +94,26 @@ class CheckoutViewModel extends ChangeNotifier {
         _totalCarrito = totalCarrito,
         _confirmarPorConfirmar = confirmarPorConfirmar,
         _estaAbierto = estaAbierto,
+        _ahora = ahora,
         _esperar = esperar,
         _monitor = monitor {
     pagar = Command0<ResultadoPago>(_pagar);
   }
 
-  static bool _abiertoAhora() => BusinessInfo.estaAbierto();
+  /// Lunes a sábado de 9 a 21 (BusinessInfo): cuando la configuración no
+  /// trae un horario que se entienda (#320).
+  static final HorarioAtencion horarioDeRespaldo = HorarioAtencion.semanal(
+    dias: BusinessInfo.diasAbiertos,
+    abre: BusinessInfo.horaApertura,
+    cierra: BusinessInfo.horaCierre,
+  );
 
-  /// Horarios de recolección/entrega entre semana.
+  static const List<String> _nombresDeDia = [
+    'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
+  ];
+
+  /// Horarios de recolección/entrega entre semana. Solo se ofrecen los que
+  /// caben en el horario de atención del día (#320).
   static const List<String> horariosEntreSemana = [
     '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
     '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00',
@@ -116,7 +135,9 @@ class CheckoutViewModel extends ChangeNotifier {
   final PasarelaPago _pasarela;
   final double Function() _totalCarrito;
   final Future<bool> Function(List<String>) _confirmarPorConfirmar;
-  final bool Function() _estaAbierto;
+  // Solo en pruebas: decide si está abierto sin mirar el horario ni el reloj.
+  final bool Function()? _estaAbierto;
+  final DateTime Function() _ahora;
   final Future<void> Function(Duration) _esperar;
   final MonitorDePagos _monitor;
   bool _cerrado = false;
@@ -131,6 +152,7 @@ class CheckoutViewModel extends ChangeNotifier {
   DireccionCliente? _direccion;
   bool _cargandoDirecciones = false;
   String _direccionSucursal = BusinessInfo.direccion;
+  HorarioAtencion _horarioAtencion = horarioDeRespaldo;
   String? _errorPago;
 
   // Cobro hecho cuya confirmación falló: se reintenta solo la confirmación.
@@ -146,19 +168,67 @@ class CheckoutViewModel extends ChangeNotifier {
   bool get cargandoDirecciones => _cargandoDirecciones;
   String get direccionSucursal => _direccionSucursal;
 
+  /// El de la configuración o, mientras no llega o si no se entiende, el de
+  /// respaldo.
+  HorarioAtencion get horarioAtencion => _horarioAtencion;
+
+  /// Ahora mismo (el reloj del teléfono; en pruebas, uno fijo).
+  DateTime get ahora => _ahora();
+
   /// Aviso de error del último pago (se muestra bajo el método de pago).
   String? get errorPago => _errorPago;
 
-  /// ¿La tienda está abierta ahora? Solo decide si se muestra el aviso: el
-  /// pedido siempre es para otro día, así que se paga igual (#188).
-  bool get abierto => _estaAbierto();
+  /// ¿La tienda está abierta ahora, según su horario de atención? Solo
+  /// decide si se muestra el aviso: el pedido siempre es para otro día, así
+  /// que se paga igual (#188).
+  bool get abierto =>
+      _estaAbierto?.call() ?? _horarioAtencion.abiertoEn(_ahora());
 
-  /// Horarios del día elegido (sin día: los de entre semana).
+  /// Horarios del día elegido que caben en el horario de atención (sin día:
+  /// los de entre semana).
   List<String> get horarios {
-    final dia = _fecha?.weekday;
-    return (dia == DateTime.saturday || dia == DateTime.sunday)
-        ? horariosFinDeSemana
-        : horariosEntreSemana;
+    final fecha = _fecha;
+    return fecha == null ? horariosEntreSemana : horariosDel(fecha);
+  }
+
+  /// Horarios para recoger o entregar el día de [dia].
+  List<String> horariosDel(DateTime dia) {
+    final finDeSemana =
+        dia.weekday == DateTime.saturday || dia.weekday == DateTime.sunday;
+    return _horarioAtencion.franjasDel(
+        dia, finDeSemana ? horariosFinDeSemana : horariosEntreSemana);
+  }
+
+  /// ¿Se puede recoger o entregar el día de [dia]? (el calendario solo deja
+  /// elegir estos).
+  bool diaDisponible(DateTime dia) => horariosDel(dia).isNotEmpty;
+
+  /// El primer día disponible de [desde] a [hasta] (null si ninguno).
+  DateTime? primerDiaDisponible(DateTime desde, {required DateTime hasta}) {
+    for (var dia = DateTime(desde.year, desde.month, desde.day);
+        !dia.isAfter(hasta);
+        dia = DateTime(dia.year, dia.month, dia.day + 1)) {
+      if (diaDisponible(dia)) return dia;
+    }
+    return null;
+  }
+
+  /// Cuándo vuelve a abrir, para el aviso de fuera de horario: «hoy a partir
+  /// de las 9:00», «mañana …» o «el lunes …». null si no abre ningún día.
+  String? get siguienteAtencion {
+    final ahora = _ahora();
+    final abre = _horarioAtencion.siguienteApertura(ahora);
+    if (abre == null) return null;
+    final dias = DateTime(abre.year, abre.month, abre.day)
+        .difference(DateTime(ahora.year, ahora.month, ahora.day))
+        .inDays;
+    final cuando = switch (dias) {
+      0 => 'hoy',
+      1 => 'mañana',
+      _ => 'el ${_nombresDeDia[abre.weekday - 1]}',
+    };
+    final minutos = abre.minute.toString().padLeft(2, '0');
+    return '$cuando a partir de las ${abre.hour}:$minutos';
   }
 
   /// Envío de la dirección elegida (solo a domicilio y con cobertura).
@@ -170,9 +240,10 @@ class CheckoutViewModel extends ChangeNotifier {
   // ── Carga ────────────────────────────────────────────────────────────────
 
   Future<void> cargar() =>
-      Future.wait([_cargarDireccionSucursal(), cargarDirecciones()]);
+      Future.wait([_cargarSucursal(), cargarDirecciones()]);
 
-  Future<void> _cargarDireccionSucursal() async {
+  /// Dirección y horario de atención de la configuración de contacto.
+  Future<void> _cargarSucursal() async {
     try {
       final config = await _configRepo.configDe('contacto');
       if (_cerrado) return;
@@ -180,11 +251,15 @@ class CheckoutViewModel extends ChangeNotifier {
       // mostrar el objeto crudo.
       final dir = formatearDireccion(config['direccion'],
           fallback: BusinessInfo.direccion);
-      if (dir.isEmpty) return;
-      _direccionSucursal = dir;
+      if (dir.isNotEmpty) _direccionSucursal = dir;
+      // Sin un horario que se entienda se queda el de respaldo (#320).
+      _horarioAtencion =
+          HorarioAtencion.desdeConfig(config['horarios']) ?? horarioDeRespaldo;
+      // Lo elegido antes de que llegara el horario puede ya no ofrecerse.
+      if (_hora != null && !horarios.contains(_hora)) _hora = null;
       notifyListeners();
     } on ApiException {
-      // Se queda la de BusinessInfo.
+      // Se quedan la dirección y el horario de BusinessInfo.
     }
   }
 
@@ -213,8 +288,8 @@ class CheckoutViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Si el día nuevo es fin de semana y la hora elegida no existe ese día,
-  /// se borra la hora.
+  /// Si la hora elegida no se ofrece el día nuevo (fin de semana o fuera del
+  /// horario de atención), se borra la hora.
   void elegirFecha(DateTime fecha) {
     _fecha = fecha;
     if (_hora != null && !horarios.contains(_hora)) _hora = null;
@@ -264,7 +339,13 @@ class CheckoutViewModel extends ChangeNotifier {
         return 'Esa colonia no tiene cobertura de envío. Elige otra o recoge en sucursal.';
       }
     }
-    if (_fecha == null || _hora == null) {
+    final fecha = _fecha;
+    if (fecha != null && !diaDisponible(fecha)) {
+      return esDomicilio
+          ? 'Ese día no hay entregas: elige otra fecha'
+          : 'Ese día no abrimos: elige otra fecha';
+    }
+    if (fecha == null || _hora == null) {
       return esDomicilio
           ? 'Selecciona fecha y hora de entrega'
           : 'Selecciona fecha y hora de recolección';
