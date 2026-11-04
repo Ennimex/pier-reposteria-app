@@ -4,7 +4,10 @@
 // el texto («Ver más» si es largo), las fotos o videos (deslizables, con su
 // proporción acotada), «Me encanta», «Comentar» y los comentarios más
 // recientes (#133). Los videos se reproducen en la tarjeta (#134,
-// video_publicacion.dart).
+// video_publicacion.dart). Las fotos se decodifican al tamaño en que se ven
+// (#324): las originales de Cloudinary pesan varias veces la pantalla.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
@@ -244,7 +247,9 @@ class _Medio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!medio.esVideo) return ImagenFeed(medio.url);
+    if (!medio.esVideo) {
+      return ImagenFeed(medio.url, proporcion: medio.proporcion);
+    }
     // Antes de reproducirse: la portada con su duración.
     final portada = medio.portada;
     return VideoPublicacion(
@@ -255,7 +260,7 @@ class _Medio extends StatelessWidget {
           if (portada == null)
             const ColoredBox(color: Colors.black87)
           else
-            ImagenFeed(portada),
+            ImagenFeed(portada, proporcion: medio.proporcion),
           if (medio.duracion case final segundos?)
             Positioned(
               bottom: 10,
@@ -415,17 +420,57 @@ class ComentarioBreve extends StatelessWidget {
   }
 }
 
-/// Imagen de red con un recuadro gris si no carga.
+/// Ancho en píxeles al que conviene decodificar una foto de proporción
+/// [proporcion] que cubre una caja de [caja] (BoxFit.cover): el que ocupa en
+/// pantalla, ni uno más (con contain ocupa menos, así que tampoco se ve
+/// borrosa). null si la caja no tiene ancho finito: entonces va completa.
+@visibleForTesting
+int? anchoDeDecodificacion(
+  BoxConstraints caja,
+  double proporcion,
+  double densidad,
+) {
+  final ancho = caja.maxWidth;
+  if (!ancho.isFinite || ancho <= 0) return null;
+  final alto = caja.maxHeight;
+  // Cubrir una caja más angosta que la foto la escala por el alto.
+  final enPantalla = alto.isFinite ? math.max(ancho, alto * proporcion) : ancho;
+  return (enPantalla * densidad).ceil();
+}
+
+/// Imagen de red con un recuadro gris si no carga. Con [proporcion] (la del
+/// medio) se decodifica al tamaño en que se ve (#324): una original de
+/// 4000 px pesaba en la memoria y en el rasterizado de los primeros cuadros
+/// del Inicio sin verse mejor que una del ancho de la pantalla.
 class ImagenFeed extends StatelessWidget {
-  const ImagenFeed(this.url, {super.key, this.ajuste = BoxFit.cover});
+  const ImagenFeed(
+    this.url, {
+    super.key,
+    this.ajuste = BoxFit.cover,
+    this.proporcion,
+  });
 
   final String url;
   final BoxFit ajuste;
 
+  /// Ancho / alto de la foto; null la decodifica completa.
+  final double? proporcion;
+
   @override
-  Widget build(BuildContext context) => Image.network(
+  Widget build(BuildContext context) {
+    final proporcion = this.proporcion;
+    if (proporcion == null) return _imagen(null);
+    final densidad = MediaQuery.devicePixelRatioOf(context);
+    return LayoutBuilder(
+      builder: (_, caja) =>
+          _imagen(anchoDeDecodificacion(caja, proporcion, densidad)),
+    );
+  }
+
+  Widget _imagen(int? anchoEnPixeles) => Image.network(
     url,
     fit: ajuste,
+    cacheWidth: anchoEnPixeles,
     errorBuilder: (_, _, _) => const ColoredBox(
       color: Color(0xFFE5E7EB),
       child: Center(
