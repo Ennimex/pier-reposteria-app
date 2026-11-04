@@ -83,7 +83,7 @@ void main() {
   test('#327: el fondo es el verde olivo de la marca (#6B7C3E)', () {
     final contenido = _leer('$_res/values/ic_launcher_background.xml');
     final color = RegExp(
-      r'<color name="ic_launcher_background">(#[0-9A-Fa-f]+)</color>',
+      '<color name="ic_launcher_background">(#[0-9A-Fa-f]+)</color>',
     ).firstMatch(contenido);
 
     expect(color, isNotNull, reason: 'falta el color ic_launcher_background');
