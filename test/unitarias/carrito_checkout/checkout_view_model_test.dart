@@ -3,11 +3,13 @@
 // camino del pago (incluido no volver a cobrar si la confirmación falla).
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/direcciones_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/pagos_repository_remote.dart';
 import 'package:pier_reposteria/data/services/pasarela_pago.dart';
+import 'package:pier_reposteria/domain/models/horario_atencion.dart';
 import 'package:pier_reposteria/ui/checkout/view_model/checkout_view_model.dart';
 import 'package:pier_reposteria/ui/checkout/view_model/direccion_form_view_model.dart';
 
@@ -94,9 +96,15 @@ FakeApiClient _backend() => FakeApiClient(respuestas: {
       ApiConstants.direccionById('1'): {'success': true},
     });
 
+/// `abierto` fija si la tienda está abierta; null: lo decide el horario de
+/// atención con el reloj `ahora` (#320).
 class _Prueba {
-  _Prueba({bool abierto = true, bool aceptaPorConfirmar = true})
-      : api = _backend() {
+  _Prueba({
+    bool? abierto = true,
+    DateTime Function()? ahora,
+    bool aceptaPorConfirmar = true,
+  }) : api = _backend() {
+    final fijo = abierto;
     vm = CheckoutViewModel(
       configRepo: ConfiguracionRepositoryRemote(api: api),
       direccionesRepo: DireccionesRepositoryRemote(api: api),
@@ -107,7 +115,8 @@ class _Prueba {
         preguntas.add(faltantes);
         return aceptaPorConfirmar;
       },
-      estaAbierto: () => abierto,
+      estaAbierto: fijo == null ? null : () => fijo,
+      ahora: ahora ?? DateTime.now,
       esperar: (d) async => esperas.add(d),
       monitor: monitor,
     );
@@ -136,6 +145,12 @@ class _Prueba {
       .where((l) => l.endpoint == ApiConstants.confirmarPago)
       .length;
 }
+
+/// Los tramos del lunes del horario de atención del ViewModel.
+List<(int, int)> _tramosDelLunes(CheckoutViewModel vm) => [
+      for (final t in vm.horarioAtencion.porDia[DateTime.monday] ?? const <TramoHorario>[])
+        (t.inicio, t.fin),
+    ];
 
 void main() {
   group('CheckoutViewModel: carga y elecciones', () {
@@ -169,10 +184,13 @@ void main() {
       expect(p.vm.horarios, CheckoutViewModel.horariosFinDeSemana);
       expect(p.vm.hora, isNull);
 
+      // #320: sin horario en la configuración, el de respaldo no abre el
+      // domingo: no hay horas y se borra la elegida.
       p.vm
         ..elegirHora('10:00 - 11:00')
         ..elegirFecha(DateTime(2026, 10, 18)); // domingo
-      expect(p.vm.hora, '10:00 - 11:00');
+      expect(p.vm.horarios, isEmpty);
+      expect(p.vm.hora, isNull);
     });
 
     test('eliminar la dirección elegida preselecciona otra; si falla avisa',
@@ -572,6 +590,127 @@ void main() {
       await form.cargarColonias();
       expect(form.colonias, isEmpty);
       expect(form.cargandoColonias, isFalse);
+    });
+  });
+
+  group('CheckoutViewModel: horario de atención (#320)', () {
+    // Noviembre de 2026: el 7 es sábado, el 8 domingo y el 9 lunes.
+    final domingo = DateTime(2026, 11, 8);
+    final lunes = DateTime(2026, 11, 9);
+    final contacto = ApiConstants.configuracionSeccion('contacto');
+
+    Map<String, dynamic> conHorarios(Object horarios) => {
+          'success': true,
+          'config': {
+            'direccion': 'Av. Revolución 100, Pachuca',
+            'horarios': horarios,
+          },
+        };
+
+    test('sin horario en la configuración usa el de respaldo: el domingo no '
+        'se ofrece ni se paga', () async {
+      final p = _Prueba();
+      await p.vm.cargar();
+
+      expect(p.vm.diaDisponible(domingo), isFalse);
+      expect(p.vm.diaDisponible(lunes), isTrue);
+      expect(
+          p.vm.primerDiaDisponible(domingo, hasta: DateTime(2026, 11, 30)),
+          lunes);
+
+      p.vm.elegirFecha(domingo);
+      expect(p.vm.horarios, isEmpty);
+      final recoger = await p.pagar() as PagoInterrumpido?;
+      expect(recoger!.aviso, 'Ese día no abrimos: elige otra fecha');
+      p.vm.elegirEntrega(TipoEntrega.domicilio);
+      final domicilio = await p.pagar() as PagoInterrumpido?;
+      expect(domicilio!.aviso, 'Ese día no hay entregas: elige otra fecha');
+      expect(p.pasarela.cobros, 0);
+    }, tags: 'regresion');
+
+    test('con el horario del panel solo ofrece las horas en que abren las '
+        'dos sucursales, también el domingo', () async {
+      final p = _Prueba();
+      p.api.responder(contacto, conHorarios([
+        {'sucursal': 'Aviación', 'horario': 'Lun - Dom: 8:00 AM - 9:00 PM'},
+        {'sucursal': 'Tahuizán', 'horario': 'Lun - Dom: 10:00 AM - 10:00 PM'},
+      ]));
+      await p.vm.cargar();
+
+      expect(p.vm.diaDisponible(domingo), isTrue);
+      p.vm.elegirFecha(domingo);
+      expect(p.vm.horarios,
+          CheckoutViewModel.horariosFinDeSemana.skip(1).toList());
+      p.vm.elegirFecha(lunes);
+      expect(p.vm.horarios.first, '10:00 - 11:00');
+      expect(p.vm.horarios.last, '18:00 - 19:00');
+    });
+
+    test('un horario que no se entiende deja el de respaldo', () async {
+      final p = _Prueba();
+      p.api.responder(contacto, conHorarios('cuando se pueda'));
+      await p.vm.cargar();
+
+      expect(_tramosDelLunes(p.vm), [(9 * 60, 21 * 60)]);
+      expect(p.vm.diaDisponible(domingo), isFalse);
+    });
+
+    test('la hora elegida antes de que llegue el horario se borra si ya no se '
+        'ofrece', () async {
+      final p = _Prueba();
+      p.api.responder(contacto, conHorarios('Lun - Sáb 10 am - 9 pm'));
+      p.vm
+        ..elegirFecha(lunes)
+        ..elegirHora('09:00 - 10:00');
+      expect(p.vm.hora, '09:00 - 10:00', reason: 'el respaldo abre a las 9');
+
+      await p.vm.cargar();
+
+      expect(p.vm.hora, isNull);
+      expect(p.vm.horarios.first, '10:00 - 11:00');
+    });
+
+    test('sin red se quedan la dirección y el horario de respaldo', () async {
+      final p = _Prueba();
+      p.api.fallar(contacto, 'Sin conexión');
+      await p.vm.cargar();
+
+      expect(p.vm.direccionSucursal, BusinessInfo.direccion);
+      expect(p.vm.horarioAtencion, CheckoutViewModel.horarioDeRespaldo);
+    });
+
+    test('abierto y la siguiente atención según el reloj', () {
+      var ahora = DateTime(2026, 11, 9, 9, 30); // lunes
+      final p = _Prueba(abierto: null, ahora: () => ahora);
+      expect(p.vm.ahora, ahora);
+      expect(p.vm.abierto, isTrue);
+
+      ahora = DateTime(2026, 11, 9, 21);
+      expect(p.vm.abierto, isFalse);
+      expect(p.vm.siguienteAtencion, 'mañana a partir de las 9:00');
+
+      ahora = DateTime(2026, 11, 9, 7, 15);
+      expect(p.vm.siguienteAtencion, 'hoy a partir de las 9:00');
+
+      ahora = DateTime(2026, 11, 7, 22); // sábado: el domingo no abre
+      expect(p.vm.siguienteAtencion, 'el lunes a partir de las 9:00');
+    });
+
+    test('si ninguna franja cabe, ningún día se ofrece', () async {
+      final p = _Prueba(abierto: null);
+      // Solo abre los domingos de 16 a 20 y las franjas de fin de semana
+      // terminan a las 15: no cabe ninguna.
+      p.api.responder(contacto, conHorarios('Dom 16:00 - 20:00'));
+      await p.vm.cargar();
+
+      expect(p.vm.primerDiaDisponible(lunes, hasta: DateTime(2026, 11, 30)),
+          isNull);
+      expect(p.vm.siguienteAtencion, isNotNull,
+          reason: 'abre los domingos, aunque no haya franjas que quepan');
+    });
+
+    test('sin ningún día abierto no hay siguiente atención', () {
+      expect(const HorarioAtencion({}).siguienteApertura(lunes), isNull);
     });
   });
 }

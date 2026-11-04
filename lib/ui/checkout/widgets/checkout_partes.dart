@@ -5,7 +5,6 @@
 // pago.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/ui/checkout/widgets/tamano_animado.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
@@ -40,9 +39,13 @@ class TituloSeccion extends StatelessWidget {
   }
 }
 
-/// Aviso cuando el pedido se hace fuera del horario de atención.
+/// Aviso cuando el pedido se hace fuera del horario de atención: se paga
+/// igual y se prepara cuando vuelva a abrir, [siguienteAtencion] («mañana a
+/// partir de las 9:00», #320).
 class AvisoFueraDeServicio extends StatelessWidget {
-  const AvisoFueraDeServicio({super.key});
+  const AvisoFueraDeServicio({this.siguienteAtencion, super.key});
+
+  final String? siguienteAtencion;
 
   @override
   Widget build(BuildContext context) {
@@ -68,21 +71,21 @@ class AvisoFueraDeServicio extends StatelessWidget {
                 color: AppColors.error, size: 20),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Fuera de servicio',
+                const Text('Fuera de servicio',
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: AppColors.error)),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  'En este momento estamos cerrados. Horario: '
-                  '${BusinessInfo.horario}. Puedes dejar tu pedido y lo '
-                  'prepararemos en horario de atención.',
-                  style: TextStyle(
+                  'En este momento estamos cerrados. Puedes dejar tu pedido y '
+                  'lo preparamos en el siguiente horario de atención'
+                  '${siguienteAtencion == null ? '' : ': $siguienteAtencion'}.',
+                  style: const TextStyle(
                       fontSize: 13,
                       height: 1.35,
                       color: AppColors.textSecondary),
