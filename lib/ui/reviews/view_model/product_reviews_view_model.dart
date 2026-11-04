@@ -3,11 +3,15 @@
 // Estado de «Opiniones» de un producto (MVVM, Fase 3): las reseñas, el
 // resumen (promedio y distribución), el filtro por estrellas, el orden y
 // «útil». Si la carga falla la lista se queda como estaba (la pantalla no
-// muestra error, como antes). La sesión la revisa la vista.
+// muestra error, como antes). La sesión la revisa la vista. «Reportar» solo
+// va en las de otros clientes (#328): la lista no dice quién escribió cada
+// una, así que con sesión se piden las del cliente (GET /resenas/mis-resenas).
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 import 'package:pier_reposteria/domain/models/resena_producto.dart';
+import 'package:pier_reposteria/ui/reviews/view_model/reporte_resena.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 
 /// Orden de la lista; «recientes» respeta el del backend.
@@ -17,11 +21,17 @@ class ProductReviewsViewModel extends ChangeNotifier {
   ProductReviewsViewModel({
     required ResenasRepository repo,
     required String productoId,
+    ConfiguracionRepository? configRepo,
   })  : _repo = repo,
-        _productoId = productoId;
+        _productoId = productoId,
+        _configRepo = configRepo;
 
   final ResenasRepository _repo;
   final String _productoId;
+
+  /// De dónde sale la dirección de contacto para «Reportar» (#328); sin él,
+  /// la de BusinessInfo.
+  final ConfiguracionRepository? _configRepo;
   bool _cerrado = false;
 
   List<ResenaProducto> _resenas = const [];
@@ -29,6 +39,10 @@ class ProductReviewsViewModel extends ChangeNotifier {
   int _filtroEstrellas = 0;
   OrdenResenas _orden = OrdenResenas.recientes;
   final Set<String> _utiles = {};
+
+  // Con sesión, los ids de las reseñas del cliente; null si no se supo.
+  bool _conSesion = false;
+  Set<String>? _mias;
 
   List<ResenaProducto> get resenas => _resenas;
   bool get cargando => _cargando;
@@ -40,6 +54,27 @@ class ProductReviewsViewModel extends ChangeNotifier {
   /// ¿El cliente la marcó «útil»? Con sesión, también las de visitas
   /// anteriores (#42).
   bool esUtil(String id) => _utiles.contains(id);
+
+  /// ¿Se ofrece «Reportar»? Solo en las de otros clientes (#328): sin
+  /// sesión, todas; con sesión, las que no son suyas, y ninguna si no se
+  /// pudo saber cuáles son.
+  bool puedeReportar(String id) {
+    if (!_conSesion) return true;
+    final mias = _mias;
+    return mias != null && !mias.contains(id);
+  }
+
+  /// El correo ya escrito para reportar [resena] (#328).
+  Future<Uri> correoParaReportar(
+    ResenaProducto resena, {
+    required String productoNombre,
+  }) =>
+      ReporteResena.correoConContacto(
+        _configRepo,
+        resena: resena,
+        productoId: _productoId,
+        productoNombre: productoNombre,
+      );
 
   double get promedio => _resenas.isEmpty
       ? 0
@@ -82,19 +117,33 @@ class ProductReviewsViewModel extends ChangeNotifier {
     } on ApiException catch (e) {
       PierLog.error('Error al cargar reseñas: ${e.message}');
     }
-    if (conSesion) {
-      try {
-        final marcadas = await _repo.misUtiles(_productoId);
-        _utiles
-          ..clear()
-          ..addAll(marcadas);
-      } on ApiException catch (e) {
-        PierLog.error('Error al cargar tus reseñas útiles: ${e.message}');
-      }
-    }
+    _conSesion = conSesion;
+    if (conSesion) await Future.wait([_cargarUtiles(), _cargarMias()]);
     if (_cerrado) return;
     _cargando = false;
     notifyListeners();
+  }
+
+  Future<void> _cargarUtiles() async {
+    try {
+      final marcadas = await _repo.misUtiles(_productoId);
+      _utiles
+        ..clear()
+        ..addAll(marcadas);
+    } on ApiException catch (e) {
+      PierLog.error('Error al cargar tus reseñas útiles: ${e.message}');
+    }
+  }
+
+  /// Las reseñas del cliente, para no ofrecerle reportar las suyas (#328).
+  Future<void> _cargarMias() async {
+    try {
+      final mias = await _repo.listarMisResenas();
+      _mias = {for (final r in mias) r.id};
+    } on ApiException catch (e) {
+      PierLog.error('Error al cargar tus reseñas: ${e.message}');
+      _mias = null;
+    }
   }
 
   void filtrar(int estrellas) {

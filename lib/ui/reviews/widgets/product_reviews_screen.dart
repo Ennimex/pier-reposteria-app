@@ -10,11 +10,13 @@
 // del producto y cambia de color junto con la píldora, y la cuenta rueda.
 // Recargar no repite las entradas, y la opinión que el cliente acaba de
 // publicar llega con un aro dorado. Bajo cada opinión va la respuesta de
-// Pier Repostería, si la hay (#138).
+// Pier Repostería, si la hay (#138). En las de otros clientes va «Reportar»
+// junto a «útil» (#328).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/domain/models/resena_producto.dart';
@@ -26,6 +28,7 @@ import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/public/widgets/movimiento_contenido.dart';
 import 'package:pier_reposteria/ui/reviews/view_model/product_reviews_view_model.dart';
 import 'package:pier_reposteria/ui/reviews/widgets/create_review_screen.dart';
+import 'package:pier_reposteria/ui/reviews/widgets/reportar_resena.dart';
 import 'package:pier_reposteria/ui/reviews/widgets/respuesta_de_pier.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +55,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
       ProductReviewsViewModel(
         repo: context.read<ResenasRepository>(),
         productoId: widget.product.id,
+        configRepo: context.read<ConfiguracionRepository>(),
       );
 
   // El resumen y los filtros entran (y las barras se llenan) solo la
@@ -867,6 +871,13 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              // «Reportar» solo en las de otros clientes (#328).
+              if (_vm.puedeReportar(r.id))
+                ReportarResena(
+                  correo: () => _vm.correoParaReportar(r,
+                      productoNombre: widget.product.nombre),
+                ),
+              const Spacer(),
               PresionEscala(
                 escala: AppMovimiento.escalaPresionChica,
                 child: GestureDetector(
