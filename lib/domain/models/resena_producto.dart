@@ -6,7 +6,8 @@
 // autor_apellido, respuesta_negocio}]. El detalle del producto (GET
 // /productos/:id) las manda con `likes_count` y `user_has_liked`. La
 // respuesta de Pier la escribe el personal (#138) y llega escapada por el
-// backend: se guarda como se escribió.
+// backend: se guarda como se escribió. Solo el detalle dice quién la
+// escribió (`usuario_id`): con eso no se ofrece reportar la propia (#328).
 import 'package:pier_reposteria/utils/texto_sanitizado.dart';
 
 class ResenaProducto {
@@ -22,6 +23,7 @@ class ResenaProducto {
     this.creadaEn,
     this.marcadaUtil = false,
     this.respuestaNegocio,
+    this.usuarioId = '',
   });
 
   /// Tolera números como texto, faltantes y fechas inválidas.
@@ -42,6 +44,7 @@ class ResenaProducto {
             j['user_has_liked'] == 1 ||
             j['has_liked'] == 1,
         respuestaNegocio: _respuesta(j['respuesta_negocio']),
+        usuarioId: j['usuario_id']?.toString() ?? '',
       );
 
   final String id;
@@ -61,6 +64,10 @@ class ResenaProducto {
 
   /// La respuesta pública de Pier Repostería; null si no hay.
   final String? respuestaNegocio;
+
+  /// Quién la escribió; solo lo manda el detalle (GET /productos/:id).
+  /// Vacío si no llegó.
+  final String usuarioId;
 
   /// Estrellas redondeadas (para filtrar y la distribución).
   int get estrellas => rating.round();
@@ -83,6 +90,7 @@ class ResenaProducto {
         creadaEn: creadaEn,
         marcadaUtil: marcadaUtil ?? this.marcadaUtil,
         respuestaNegocio: respuestaNegocio,
+        usuarioId: usuarioId,
       );
 
   static String? _respuesta(Object? v) {
