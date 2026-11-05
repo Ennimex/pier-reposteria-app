@@ -78,7 +78,7 @@ void main() {
     });
 
     test('sin título, autor ni fecha no inventa datos', () {
-      final resena = ResenaProducto(
+      const resena = ResenaProducto(
         id: '9',
         rating: 5,
         titulo: '',
