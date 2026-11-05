@@ -9,12 +9,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
 import 'package:pier_reposteria/data/repositories/favoritos_repository.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository.dart';
 import 'package:pier_reposteria/data/repositories/resenas_repository.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/domain/models/resena_producto.dart';
+import 'package:pier_reposteria/ui/reviews/view_model/reporte_resena.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 
 class ProductDetailViewModel extends ChangeNotifier {
@@ -24,8 +26,10 @@ class ProductDetailViewModel extends ChangeNotifier {
     required FavoritosRepository favoritosRepo,
     required ResenasRepository resenasRepo,
     required DemandaRepository demandaRepo,
+    ConfiguracionRepository? configRepo,
     bool esFavorito = false,
   })  : _productosRepo = productosRepo,
+        _configRepo = configRepo,
         _favoritosRepo = favoritosRepo,
         _resenasRepo = resenasRepo,
         _demandaRepo = demandaRepo,
@@ -49,7 +53,15 @@ class ProductDetailViewModel extends ChangeNotifier {
   final FavoritosRepository _favoritosRepo;
   final ResenasRepository _resenasRepo;
   final DemandaRepository _demandaRepo;
+
+  /// De dónde sale la dirección de contacto para «Reportar» (#328); sin él,
+  /// la de BusinessInfo.
+  final ConfiguracionRepository? _configRepo;
   bool _cerrado = false;
+
+  // Quién ve el detalle, para no ofrecerle reportar su propia reseña (#328).
+  bool _conSesion = false;
+  String? _usuarioSesion;
 
   List<String> _imagenes;
   List<ResenaProducto> _resenas = const [];
@@ -95,11 +107,33 @@ class ProductDetailViewModel extends ChangeNotifier {
 
   // ── Carga ────────────────────────────────────────────────────────────────
 
-  Future<void> cargar({required bool autenticado}) => Future.wait([
-        cargarDetalle(),
-        cargarFavorito(autenticado: autenticado),
-        cargarRecomendaciones(),
-      ]);
+  /// [usuarioId] es el del cliente con sesión: con él se sabe cuáles
+  /// reseñas son suyas (#328).
+  Future<void> cargar({required bool autenticado, String? usuarioId}) {
+    _conSesion = autenticado;
+    _usuarioSesion = usuarioId;
+    return Future.wait([
+      cargarDetalle(),
+      cargarFavorito(autenticado: autenticado),
+      cargarRecomendaciones(),
+    ]);
+  }
+
+  /// ¿Se ofrece «Reportar»? Solo en las de otros clientes (#328).
+  bool puedeReportar(ResenaProducto resena) => ReporteResena.esDeOtroCliente(
+        autorId: resena.usuarioId,
+        conSesion: _conSesion,
+        usuarioSesion: _usuarioSesion,
+      );
+
+  /// El correo ya escrito para reportar [resena] (#328).
+  Future<Uri> correoParaReportar(ResenaProducto resena) =>
+      ReporteResena.correoConContacto(
+        _configRepo,
+        resena: resena,
+        productoId: producto.id,
+        productoNombre: producto.nombre,
+      );
 
   /// Galería, reseñas, total y promedio. También al volver de escribir o de
   /// ver todas las reseñas.

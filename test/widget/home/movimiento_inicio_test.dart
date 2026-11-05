@@ -223,6 +223,40 @@ void main() {
       expect(_opacidad(tester, find.byType(EntradaInicio)), 1);
     });
 
+    testWidgets('una sección se pinta aparte de su entrada; una tarjeta no '
+        '(#324)', (tester) async {
+      await montarMovimiento(
+        tester,
+        const EntradaInicio(
+          id: 'x',
+          child: EntradaInicio(child: Text('Tarjeta')),
+        ),
+      );
+      // La sección: su contenido cuelga de un RepaintBoundary propio, así
+      // la entrada solo mueve una capa ya pintada.
+      final limite = find.ancestor(
+        of: find.byType(EntradaInicio).last,
+        matching: find.byType(RepaintBoundary),
+      );
+      expect(
+        tester.widget<RepaintBoundary>(limite.first).child,
+        isA<EntradaInicio>(),
+      );
+      // La tarjeta no agrega el suyo.
+      final deLaTarjeta = find.descendant(
+        of: find.byType(EntradaInicio).last,
+        matching: find.byType(RepaintBoundary),
+      );
+      expect(
+        tester
+            .widgetList<RepaintBoundary>(deLaTarjeta)
+            .where((limite) => limite.child is Text),
+        isEmpty,
+      );
+      await tester.pump();
+      await tester.pump(AppMovimiento.entrada * 2);
+    });
+
     testWidgets('con movimiento reducido aparece en su lugar', (tester) async {
       await montarMovimiento(
         tester,

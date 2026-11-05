@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/config/business_info.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
@@ -77,6 +78,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         favoritosRepo: context.read(),
         resenasRepo: context.read(),
         demandaRepo: context.read(),
+        configRepo: context.read<ConfiguracionRepository>(),
         esFavorito: widget.esFavorito,
       );
   late final AnimationController _cartAnimController;
@@ -94,6 +96,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   Product get _producto => widget.product;
   bool get _autenticado => context.read<AuthProvider>().isAuthenticated;
+  String? get _usuarioId =>
+      context.read<AuthProvider>().currentUser?['id']?.toString();
 
   @override
   void initState() {
@@ -104,7 +108,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     // Hunde, rebota y asienta en 1 (antes se quedaba al 108 % si el backend
     // rechazaba el alta y el detalle seguía abierto).
     _cartAnim = _cartAnimController.drive(AppMovimiento.pulso);
-    unawaited(_vm.cargar(autenticado: _autenticado));
+    unawaited(_vm.cargar(autenticado: _autenticado, usuarioId: _usuarioId));
     // Catálogo/promos: no-op si ya están cargados; las tarjetas de
     // recomendados los usan para precio con descuento y datos completos.
     WidgetsBinding.instance.addPostFrameCallback((_) {

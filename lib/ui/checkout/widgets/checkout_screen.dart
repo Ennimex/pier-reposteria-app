@@ -153,14 +153,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  // Solo los días con horas para recoger o entregar (#320): el primero que
+  // se ofrece es el primer día disponible desde mañana.
   Future<void> _elegirFecha() async {
-    final now = DateTime.now();
-    final initial = now.add(const Duration(days: 1));
+    final now = _vm.ahora;
+    final manana = now.add(const Duration(days: 1));
+    final ultimo = now.add(const Duration(days: 30));
+    final initial = _vm.primerDiaDisponible(manana, hasta: ultimo);
+    if (initial == null) return;
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: initial,
-      lastDate: now.add(const Duration(days: 30)),
+      firstDate: manana,
+      lastDate: ultimo,
+      selectableDayPredicate: _vm.diaDisponible,
       locale: const Locale('es'),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
@@ -303,7 +309,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       // Fuera de horario el aviso abre su espacio arriba.
                       Aparicion(
                         visible: !_vm.abierto,
-                        child: const AvisoFueraDeServicio(),
+                        child: AvisoFueraDeServicio(
+                            siguienteAtencion: _vm.siguienteAtencion),
                       ),
                       const TituloSeccion('Resumen del pedido'),
                       CheckoutResumen(viewModel: _vm, congelado: _congelado),

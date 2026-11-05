@@ -428,7 +428,12 @@ class _EntradaInicioState extends State<EntradaInicio>
           avance: _avance,
           desplazamiento: widget.desplazamiento,
           escalaInicial: widget.escalaInicial,
-          child: widget.child,
+          // Una sección se pinta una vez y su entrada solo la mueve (#324):
+          // sin el límite, cada cuadro de la cascada repintaba las secciones
+          // completas. Las tarjetas no lo necesitan: sus listas ya lo ponen.
+          child: widget.id == null
+              ? widget.child
+              : RepaintBoundary(child: widget.child),
         ),
       ),
     );

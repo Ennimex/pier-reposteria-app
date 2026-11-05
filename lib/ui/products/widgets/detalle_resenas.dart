@@ -4,7 +4,8 @@
 // escribir una nueva y ver todas. El "útil" lo lleva el ViewModel; aquí solo
 // se pinta y se avisa el toque. Las opiniones reemplazan al indicador de
 // carga con un fundido y el "útil" responde con un pop y su cuenta rueda.
-// Bajo cada opinión va la respuesta de Pier Repostería, si la hay (#138).
+// Bajo cada opinión va la respuesta de Pier Repostería, si la hay (#138), y
+// en las de otros clientes, «Reportar» (#328).
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/resena_producto.dart';
@@ -12,6 +13,7 @@ import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/products/view_model/product_detail_view_model.dart';
 import 'package:pier_reposteria/ui/products/widgets/movimiento_catalogo.dart';
+import 'package:pier_reposteria/ui/reviews/widgets/reportar_resena.dart';
 import 'package:pier_reposteria/ui/reviews/widgets/respuesta_de_pier.dart';
 
 /// "Hoy", "Ayer", "Hace 3 días", "Hace 2 sem.", "Hace 4 mes"; vacío sin fecha.
@@ -132,7 +134,12 @@ class DetalleResenas extends StatelessWidget {
           .map((r) => Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: ResenaDestacadaItem(
-                    resena: r, onUtil: () => onUtil(r.id)),
+                  resena: r,
+                  onUtil: () => onUtil(r.id),
+                  correoReporte: vm.puedeReportar(r)
+                      ? () => vm.correoParaReportar(r)
+                      : null,
+                ),
               ))
           .toList(),
     );
@@ -145,10 +152,14 @@ class ResenaDestacadaItem extends StatelessWidget {
     required this.resena,
     required this.onUtil,
     super.key,
+    this.correoReporte,
   });
 
   final ResenaProducto resena;
   final VoidCallback onUtil;
+
+  /// Arma el correo de «Reportar»; null en la reseña propia (#328).
+  final Future<Uri> Function()? correoReporte;
 
   @override
   Widget build(BuildContext context) {
@@ -257,6 +268,11 @@ class ResenaDestacadaItem extends StatelessWidget {
       Text(resena.comentario,
           style: const TextStyle(
               fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
+      if (correoReporte case final correo?)
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: ReportarResena(correo: correo),
+        ),
       if (resena.respuestaNegocio case final respuesta?)
         RespuestaDePier(respuesta),
     ]);

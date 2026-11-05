@@ -128,8 +128,9 @@ class _PasarelaEspia implements PasarelaPago {
   }
 }
 
-/// Recoger es la opción inicial: falta la fecha (mañana es la primera que
-/// ofrece el calendario) y la hora (la primera de la lista).
+/// Recoger es la opción inicial: falta la fecha (la que el calendario
+/// propone: el primer día con horario desde mañana, #320) y la hora (la
+/// primera de la lista).
 Future<void> _elegirRecogidaManana(WidgetTester tester) async {
   await tester.ensureVisible(find.text('Fecha'));
   await tester.tap(find.text('Fecha'));
