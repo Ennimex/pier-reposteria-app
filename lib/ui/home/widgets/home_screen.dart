@@ -15,6 +15,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/domain/models/config_testimonios.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
@@ -60,7 +61,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _feed = widget.feedViewModel ?? FeedViewModel(repo: context.read());
+    _feed = widget.feedViewModel ??
+        FeedViewModel(
+          repo: context.read(),
+          configRepo: context.read<ConfiguracionRepository>(),
+        );
     PierLog.nav('→ HomeScreen');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;

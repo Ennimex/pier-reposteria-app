@@ -2,14 +2,16 @@
 //
 // Hoja de comentarios de una publicación (#133): los comentarios visibles
 // (la respuesta de Pier resaltada), «Ver más comentarios», comentar (hasta
-// 1000 caracteres; el aviso del backend si se comenta de más) y borrar los
-// propios con confirmación. Al cerrarse, el inicio actualiza su contador o
-// quita la publicación si ya no está.
+// 1000 caracteres; el aviso del backend si se comenta de más), borrar los
+// propios con confirmación y reportar los de otros clientes (#328). Al
+// cerrarse, el inicio actualiza su contador o quita la publicación si ya no
+// está.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
 import 'package:pier_reposteria/ui/feed/view_model/comentarios_view_model.dart';
 import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
@@ -19,15 +21,19 @@ import 'package:provider/provider.dart';
 const _maxComentario = 1000;
 
 /// Abre la hoja de comentarios de [publicacionId] y, al cerrarla, refleja
-/// en [feed] lo que se comentó o borró.
+/// en [feed] lo que se comentó o borró. [publicacionTexto] va en el correo
+/// de «Reportar» (#328).
 Future<void> abrirComentarios(
   BuildContext context, {
   required int publicacionId,
   required FeedViewModel feed,
+  String? publicacionTexto,
 }) async {
   final vm = ComentariosViewModel(
     repo: context.read(),
     publicacionId: publicacionId,
+    publicacionTexto: publicacionTexto,
+    configRepo: context.read<ConfiguracionRepository>(),
   );
   await showModalBottomSheet<void>(
     context: context,
@@ -125,44 +131,55 @@ class _ComentariosSheetState extends State<ComentariosSheet> {
     padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
     child: SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.75,
-      child: ListenableBuilder(
-        listenable: Listenable.merge([_vm, _vm.publicar, _texto]),
-        builder: (context, _) => Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 4, 4),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Comentarios',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Cerrar',
-                    icon: const Icon(LucideIcons.x),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(child: _lista()),
-            const Divider(height: 1),
-            _Escribir(
-              texto: _texto,
-              aviso: _aviso,
-              publicando: _vm.publicar.corriendo,
-              habilitado: !_vm.noDisponible,
-              alPublicar: () => unawaited(_vm.publicar.execute(_texto.text)),
-            ),
-          ],
+      // Sus propios avisos: el de «Reportar» sin app de correo (#328) sale
+      // dentro de la hoja; en la pantalla de abajo lo taparía la hoja. El
+      // teclado ya lo resuelve el Padding de arriba.
+      child: ScaffoldMessenger(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: false,
+          body: _contenido(),
         ),
       ),
+    ),
+  );
+
+  Widget _contenido() => ListenableBuilder(
+    listenable: Listenable.merge([_vm, _vm.publicar, _texto]),
+    builder: (context, _) => Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 4, 4),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Comentarios',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Cerrar',
+                icon: const Icon(LucideIcons.x),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(child: _lista()),
+        const Divider(height: 1),
+        _Escribir(
+          texto: _texto,
+          aviso: _aviso,
+          publicando: _vm.publicar.corriendo,
+          habilitado: !_vm.noDisponible,
+          alPublicar: () => unawaited(_vm.publicar.execute(_texto.text)),
+        ),
+      ],
     ),
   );
 
@@ -187,6 +204,10 @@ class _ComentariosSheetState extends State<ComentariosSheet> {
           ComentarioBreve(
             c,
             alBorrar: c.puedeBorrar ? () => _confirmarBorrar(c.id) : null,
+            // «Reportar» solo en los de otros clientes (#328)
+            correoReporte: _vm.puedeReportar(c)
+                ? () => _vm.correoParaReportar(c)
+                : null,
           ),
         if (_vm.hayMas)
           Center(

@@ -72,8 +72,10 @@ class ComentarioPublicacion {
       avatarUrl = json['autor'] is Map
           ? _opcional((json['autor'] as Map)['avatar_url'])
           : null,
-      esTuyo =
-          json['autor'] is Map && (json['autor'] as Map)['es_tuyo'] == true,
+      esTuyo = switch (json['autor']) {
+        {'es_tuyo': final bool tuyo} => tuyo,
+        _ => null,
+      },
       puedeBorrar = json['puede_borrar'] == true;
 
   final int id;
@@ -84,7 +86,10 @@ class ComentarioPublicacion {
   /// 'Carla C.' o 'Pier Repostería'.
   final String autorNombre;
   final String? avatarUrl;
-  final bool esTuyo;
+
+  /// ¿Lo escribió el cliente con sesión? null si el servidor no lo dijo:
+  /// entonces no se sabe de quién es (#328).
+  final bool? esTuyo;
   final bool puedeBorrar;
 }
 
