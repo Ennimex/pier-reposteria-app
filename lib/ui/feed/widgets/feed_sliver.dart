@@ -91,8 +91,17 @@ class PublicacionDelFeed extends StatelessWidget {
     publicacion,
     alMeEncanta: () => unawaited(_meEncanta(context)),
     alComentar: () => unawaited(
-      abrirComentarios(context, publicacionId: publicacion.id, feed: feed),
+      abrirComentarios(
+        context,
+        publicacionId: publicacion.id,
+        publicacionTexto: publicacion.texto,
+        feed: feed,
+      ),
     ),
+    // «Reportar» solo en los comentarios de otros clientes (#328)
+    correoReporteDe: (c) => feed.puedeReportar(c)
+        ? () => feed.correoParaReportar(publicacion, c)
+        : null,
   );
 }
 
