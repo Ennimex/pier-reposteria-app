@@ -2,26 +2,51 @@
 //
 // Estado de la hoja de comentarios de una publicación (#133): los
 // comentarios visibles de 20 en 20, comentar (el backend permite 5 por
-// minuto) y borrar los propios. Recuerda lo que se comentó y borró para que
-// el inicio actualice su contador al cerrar la hoja. Lo crea
-// ComentariosSheet.
+// minuto), borrar los propios y reportar los de otros clientes (#328).
+// Recuerda lo que se comentó y borró para que el inicio actualice su
+// contador al cerrar la hoja. Lo crea ComentariosSheet.
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/repositories/publicaciones_repository.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/ui/feed/view_model/reporte_comentario.dart';
 import 'package:pier_reposteria/utils/command.dart';
 
 class ComentariosViewModel extends ChangeNotifier {
   ComentariosViewModel({
     required PublicacionesRepository repo,
     required this.publicacionId,
-  }) : _repo = repo {
+    this.publicacionTexto,
+    ConfiguracionRepository? configRepo,
+  }) : _repo = repo,
+       _configRepo = configRepo {
     publicar = Command1<ComentarioPublicacion, String>(_publicar);
     borrar = Command1<int, int>(_borrar);
   }
 
   final PublicacionesRepository _repo;
   final int publicacionId;
+
+  /// El texto de la publicación: su inicio va en el correo de «Reportar».
+  final String? publicacionTexto;
+
+  /// De dónde sale la dirección de contacto para «Reportar» (#328); sin él,
+  /// la de BusinessInfo.
+  final ConfiguracionRepository? _configRepo;
+
+  /// ¿Se ofrece «Reportar»? Solo en los de otros clientes (#328).
+  bool puedeReportar(ComentarioPublicacion comentario) =>
+      ReporteComentario.esDeOtroCliente(comentario);
+
+  /// El correo ya escrito para reportar [comentario] (#328).
+  Future<Uri> correoParaReportar(ComentarioPublicacion comentario) =>
+      ReporteComentario.correoConContacto(
+        _configRepo,
+        comentario: comentario,
+        publicacionId: publicacionId,
+        publicacionTexto: publicacionTexto,
+      );
 
   /// Publica el texto (sin espacios de más); su resultado es el comentario.
   late final Command1<ComentarioPublicacion, String> publicar;

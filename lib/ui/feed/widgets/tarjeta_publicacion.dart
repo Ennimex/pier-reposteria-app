@@ -3,15 +3,18 @@
 // Tarjeta de una publicación del inicio (#132): la marca y cuándo se publicó,
 // el texto («Ver más» si es largo), las fotos o videos (deslizables, con su
 // proporción acotada), «Me encanta», «Comentar» y los comentarios más
-// recientes (#133). Los videos se reproducen en la tarjeta (#134,
-// video_publicacion.dart). Las fotos se decodifican al tamaño en que se ven
-// (#324): las originales de Cloudinary pesan varias veces la pantalla.
+// recientes (#133), con «Reportar» en los de otros clientes (#328). Los
+// videos se reproducen en la tarjeta (#134, video_publicacion.dart). Las
+// fotos se decodifican al tamaño en que se ven (#324): las originales de
+// Cloudinary pesan varias veces la pantalla.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/boton_reportar.dart';
+import 'package:pier_reposteria/ui/feed/view_model/reporte_comentario.dart';
 import 'package:pier_reposteria/ui/feed/widgets/video_publicacion.dart';
 
 const _mesesCortos = [
@@ -58,6 +61,7 @@ class TarjetaPublicacion extends StatelessWidget {
     required this.alMeEncanta,
     required this.alComentar,
     super.key,
+    this.correoReporteDe,
   });
 
   final Publicacion publicacion;
@@ -65,6 +69,11 @@ class TarjetaPublicacion extends StatelessWidget {
 
   /// Abre la hoja de comentarios.
   final VoidCallback alComentar;
+
+  /// El correo de «Reportar» de cada comentario reciente; null en los que
+  /// no se ofrece (#328).
+  final CorreoDeReporte? Function(ComentarioPublicacion comentario)?
+  correoReporteDe;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +98,11 @@ class TarjetaPublicacion extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final c in p.comentariosRecientes) ComentarioBreve(c),
+                  for (final c in p.comentariosRecientes)
+                    ComentarioBreve(
+                      c,
+                      correoReporte: correoReporteDe?.call(c),
+                    ),
                 ],
               ),
             ),
@@ -348,12 +361,21 @@ class _Acciones extends StatelessWidget {
 
 /// Un comentario en una línea: autor y texto; la respuesta oficial resalta.
 class ComentarioBreve extends StatelessWidget {
-  const ComentarioBreve(this.comentario, {super.key, this.alBorrar});
+  const ComentarioBreve(
+    this.comentario, {
+    super.key,
+    this.alBorrar,
+    this.correoReporte,
+  });
 
   final ComentarioPublicacion comentario;
 
   /// Si se puede borrar (los propios), muestra «Eliminar comentario».
   final VoidCallback? alBorrar;
+
+  /// Arma el correo de «Reportar»; null en el propio, en la respuesta de
+  /// Pier y si no se sabe de quién es (#328).
+  final CorreoDeReporte? correoReporte;
 
   @override
   Widget build(BuildContext context) {
@@ -401,6 +423,12 @@ class ComentarioBreve extends StatelessWidget {
               Expanded(
                 child: Text(c.texto, style: const TextStyle(fontSize: 13)),
               ),
+              // Donde el propio lleva el bote de basura (#328)
+              if (correoReporte case final correo?)
+                BotonReportar(
+                  correo: correo,
+                  sinAppDeCorreo: ReporteComentario.sinAppDeCorreo,
+                ),
               if (alBorrar != null)
                 IconButton(
                   tooltip: 'Eliminar comentario',

@@ -6,13 +6,16 @@
 // sugerencias en bloques de 6 con las promociones que falten. Ninguna
 // promoción se repite y las sugerencias no repiten productos que ya salieron
 // como promoción. «Me encanta» se marca al instante y queda lo que diga el
-// servidor (#133). Lo crea HomeScreen solo con sesión de cliente: el Inicio
+// servidor (#133). Los comentarios recientes de otros clientes se pueden
+// reportar (#328). Lo crea HomeScreen solo con sesión de cliente: el Inicio
 // muestra las 3 más recientes y Novedades, con el mismo ViewModel, todo
 // (#175).
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
+import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/repositories/publicaciones_repository.dart';
 import 'package:pier_reposteria/domain/models/publicacion.dart';
+import 'package:pier_reposteria/ui/feed/view_model/reporte_comentario.dart';
 import 'package:pier_reposteria/utils/logger.dart';
 
 /// Una promoción después de cada tantas publicaciones.
@@ -135,9 +138,17 @@ List<T> _unirSinRepetir<T>(
 }
 
 class FeedViewModel extends ChangeNotifier {
-  FeedViewModel({required PublicacionesRepository repo}) : _repo = repo;
+  FeedViewModel({
+    required PublicacionesRepository repo,
+    ConfiguracionRepository? configRepo,
+  }) : _repo = repo,
+       _configRepo = configRepo;
 
   final PublicacionesRepository _repo;
+
+  /// De dónde sale la dirección de contacto para «Reportar» un comentario
+  /// (#328); sin él, la de BusinessInfo.
+  final ConfiguracionRepository? _configRepo;
 
   EstadoFeed _estado = const EstadoFeed();
   bool _iniciado = false;
@@ -321,6 +332,23 @@ class FeedViewModel extends ChangeNotifier {
     );
     _avisar();
   }
+
+  /// ¿Se ofrece «Reportar» en [comentario]? Solo en los de otros clientes
+  /// (#328).
+  bool puedeReportar(ComentarioPublicacion comentario) =>
+      ReporteComentario.esDeOtroCliente(comentario);
+
+  /// El correo ya escrito para reportar [comentario] de [publicacion]
+  /// (#328).
+  Future<Uri> correoParaReportar(
+    Publicacion publicacion,
+    ComentarioPublicacion comentario,
+  ) => ReporteComentario.correoConContacto(
+    _configRepo,
+    comentario: comentario,
+    publicacionId: publicacion.id,
+    publicacionTexto: publicacion.texto,
+  );
 
   /// La repostería eliminó la publicación: sale del inicio.
   void quitarPublicacion(int publicacionId) {
