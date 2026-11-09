@@ -3,6 +3,7 @@
 // respuesta tal cual (o, los ya tipados, el modelo o ApiException). Ninguna
 // prueba toca la red.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/carrito_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository_remote.dart';
@@ -234,6 +235,85 @@ void main() {
       await enviar(conSesion: false);
       expect(api.llamadas.map((l) => l.metodo).toList(),
           ['POST-Auth', 'POST']);
+    });
+
+    group('eliminarCuenta (#222)', () {
+      Future<void> eliminar(Map<String, dynamic> respuesta) =>
+          CuentaRepositoryRemote(
+            api: FakeApiClient()
+              ..responder(ApiConstants.eliminarCuenta, respuesta),
+          ).eliminarCuenta();
+
+      test('manda DELETE /usuarios/perfil con el token de la sesión',
+          () async {
+        final api = FakeApiClient()
+          ..responder(ApiConstants.eliminarCuenta,
+              {'success': true, 'message': 'Tu cuenta se eliminó'});
+
+        await CuentaRepositoryRemote(api: api).eliminarCuenta();
+
+        expect(api.llamadas, hasLength(1));
+        final llamada = api.llamadas.single;
+        expect(llamada.endpoint, '/usuarios/perfil');
+        expect(llamada.metodo, 'DELETE-Auth');
+      });
+
+      test('409 con pedidos en curso lanza el mensaje y el código', () async {
+        await expectLater(
+          eliminar({
+            'success': false,
+            'codigo': 'PEDIDOS_EN_CURSO',
+            'message': 'Tienes pedidos en curso; espera a que se entreguen '
+                'o cancélalos',
+          }),
+          throwsA(isA<ApiException>()
+              .having((e) => e.codigo, 'codigo', 'PEDIDOS_EN_CURSO')
+              .having((e) => e.message, 'message',
+                  startsWith('Tienes pedidos en curso'))),
+        );
+      });
+
+      test('401 de una cuenta inactiva lanza SesionInvalidaException',
+          () async {
+        await expectLater(
+          eliminar({
+            'success': false,
+            'codigo': 'SESION_INVALIDA',
+            'message': 'Tu sesión ya no es válida',
+          }),
+          throwsA(isA<SesionInvalidaException>()
+              .having((e) => e.codigo, 'codigo', 'SESION_INVALIDA')
+              .having((e) => e.message, 'message',
+                  'Tu sesión ya no es válida')),
+        );
+      });
+
+      test('401, 403 o 500 sin código lanzan el mensaje del backend',
+          () async {
+        for (final mensaje in [
+          'Token expirado',
+          'Las cuentas del personal no se dan de baja desde aquí',
+          'No se pudo eliminar tu cuenta',
+        ]) {
+          await expectLater(
+            eliminar({'success': false, 'message': mensaje}),
+            throwsA(allOf(
+              isA<ApiException>()
+                  .having((e) => e.message, 'message', mensaje)
+                  .having((e) => e.codigo, 'codigo', isNull),
+              isNot(isA<SesionInvalidaException>()),
+            )),
+          );
+        }
+      });
+
+      test('sin mensaje del backend usa el genérico', () async {
+        await expectLater(
+          eliminar({'success': false}),
+          throwsA(isA<ApiException>().having(
+              (e) => e.message, 'message', 'No se pudo eliminar tu cuenta')),
+        );
+      });
     });
   });
 

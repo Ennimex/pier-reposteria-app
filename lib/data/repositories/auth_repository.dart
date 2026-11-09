@@ -37,8 +37,14 @@ abstract class AuthRepository {
   /// Google Sign-In (solo Android/iOS). Devuelve null si el usuario cancela.
   Future<Map<String, dynamic>?> iniciarSesionConGoogle();
 
-  /// Logout
+  /// Logout: avisa al servidor (POST /auth/logout) y cierra la sesión en el
+  /// teléfono ([cerrarSesionLocal]).
   Future<void> logout();
+
+  /// Cierra la sesión solo en el teléfono (la de Google y el token y el
+  /// usuario guardados), sin avisar al servidor: tras dar de baja la cuenta
+  /// (#222) su token ya no sirve.
+  Future<void> cerrarSesionLocal();
 
   /// Obtener perfil del usuario
   Future<Map<String, dynamic>> getProfile();

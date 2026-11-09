@@ -6,6 +6,7 @@
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/cuenta_repository.dart';
+import 'package:pier_reposteria/data/repositories/respuesta_api.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
 import 'package:pier_reposteria/domain/models/codigo_alexa.dart';
 
@@ -33,6 +34,14 @@ class CuentaRepositoryRemote implements CuentaRepository {
       );
     }
     return Map<String, dynamic>.from(user);
+  }
+
+  @override
+  Future<void> eliminarCuenta() async {
+    exigirExito(
+      await _api.deleteAuth(ApiConstants.eliminarCuenta),
+      'No se pudo eliminar tu cuenta',
+    );
   }
 
   @override
