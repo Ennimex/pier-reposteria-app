@@ -59,7 +59,7 @@ del 26-nov.
 | Elemento | Estado | Quién |
 |---|---|---|
 | **URL de la política de privacidad** | Por ahora `https://pier-reposteria.vercel.app/legales?tab=privacy` (el aviso que sirve el backend, con la sección de derechos ARCO) | Usuario la captura |
-| **URL para pedir el borrado de la cuenta** | **Falta**: Play exige una página web que funcione sin instalar la app, además del borrado dentro de la app (#222) | Pedro (página y endpoint de baja); app en #222 |
+| **URL para pedir el borrado de la cuenta** | `https://pier-reposteria.vercel.app/eliminar-cuenta` (página pública, abre sin sesión). Dentro de la app: Más → Mis datos → «Eliminar mi cuenta», que da de baja con `DELETE /usuarios/perfil` (#222) | Usuario la captura |
 | **Seguridad de los datos** | Falta llenar el formulario; ver la tabla de abajo | Usuario (con esta tabla) |
 | **Acceso a la app** (cuenta para los revisores) | Falta: la mayor parte de la app pide sesión. Hace falta una cuenta de cliente **solo para revisores** (no la personal de `~/.pier_prueba`) y las instrucciones: entrar con correo; el pago está en modo de prueba de Stripe y se paga con la tarjeta pública 4242 4242 4242 4242 | Usuario o Pedro crean la cuenta |
 | Clasificación del contenido (IARC) | Falta el cuestionario (tienda de comida, sin contenido sensible) | Usuario |
@@ -82,7 +82,8 @@ del 26-nov.
 | Registros de fallos y diagnósticos | Sentry, solo en las versiones de Release | Se podrá desactivar (#223) |
 
 - Todo viaja cifrado (https).
-- El cliente puede pedir que se borren sus datos: depende de #222.
+- El cliente puede borrar su cuenta desde la app (`DELETE /usuarios/perfil`, #222) o pedirlo por correo; se
+  anonimiza y se desactiva al momento, y los pedidos se conservan sin sus datos.
 - Revisar con Sentry si su identificador de instalación cuenta como
   «identificador del dispositivo» para el formulario.
 
