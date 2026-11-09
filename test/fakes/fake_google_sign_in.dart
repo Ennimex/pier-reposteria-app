@@ -17,8 +17,14 @@ class FakeGoogleSignIn extends Fake implements GoogleSignIn {
   final bool _conCuenta;
   final Exception? error;
 
+  /// Cuántas veces se cerró la sesión de Google.
+  int salidas = 0;
+
   @override
-  Future<GoogleSignInAccount?> signOut() async => null;
+  Future<GoogleSignInAccount?> signOut() async {
+    salidas++;
+    return null;
+  }
 
   @override
   Future<GoogleSignInAccount?> signIn() async {

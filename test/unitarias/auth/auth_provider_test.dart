@@ -93,6 +93,41 @@ void main() {
     });
   });
 
+  group('AuthProvider: cerrar la sesión solo en el teléfono (#222)', () {
+    test('borra lo guardado sin POST /auth/logout ni aviso de expiración',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        _token: 'jwt-de-prueba',
+        _usuario: jsonEncode(_user()),
+      });
+      final api = FakeApiClient();
+      final auth = _conSesion(api: api);
+      var cambios = 0;
+      auth.addListener(() => cambios++);
+
+      await auth.cerrarSesionLocal();
+
+      expect(auth.isAuthenticated, isFalse);
+      expect(auth.currentUser, isNull);
+      expect(auth.sesionExpiro, isFalse);
+      expect(cambios, 1);
+      expect(api.llamadas, isEmpty);
+      expect(await AuthRepositoryRemote(api: api).isAuthenticated(), isFalse);
+    });
+
+    test('un 401 que llega después no avisa que la sesión expiró', () async {
+      final api = FakeApiClient();
+      final auth = _conSesion(api: api);
+
+      await auth.cerrarSesionLocal();
+      api.expirarSesion();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(auth.sesionExpiro, isFalse);
+      expect(auth.isAuthenticated, isFalse);
+    });
+  });
+
   group('AuthProvider: roles', () {
     test('cliente no es repartidor ni rol interno', () {
       final auth = _conSesion();

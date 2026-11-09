@@ -9,7 +9,7 @@
 //
 // Fase 3: los métodos que ya tienen ViewModel devuelven modelos tipados y
 // lanzan ApiException si el backend falla (generarCodigoAlexa,
-// actualizarPerfil, enviarContacto).
+// actualizarPerfil, enviarContacto, eliminarCuenta).
 import 'package:pier_reposteria/domain/models/codigo_alexa.dart';
 
 abstract class CuentaRepository {
@@ -23,6 +23,13 @@ abstract class CuentaRepository {
     required String apellido,
     String? telefono,
   });
+
+  /// DELETE /usuarios/perfil (#222): da de baja la cuenta de la sesión. El
+  /// backend la anonimiza y la desactiva, y su token deja de servir. Lanza
+  /// ApiException con el mensaje y el `codigo` del backend (p. ej.
+  /// `PEDIDOS_EN_CURSO`) o SesionInvalidaException si la cuenta ya no estaba
+  /// vigente.
+  Future<void> eliminarCuenta();
 
   /// POST /auth/alexa/generar-codigo -> {codigo, expira_en_segundos}
   Future<CodigoAlexa> generarCodigoAlexa();
