@@ -49,6 +49,11 @@ abstract class AuthRepository {
   /// Obtener perfil del usuario
   Future<Map<String, dynamic>> getProfile();
 
+  /// Reemplaza el usuario guardado en el teléfono, para que lo editado
+  /// (nombre, teléfono, foto de perfil, #345) siga ahí al volver a abrir la
+  /// app.
+  Future<void> guardarUsuario(Map<String, dynamic> usuario);
+
   /// Actualizar perfil
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data);
 

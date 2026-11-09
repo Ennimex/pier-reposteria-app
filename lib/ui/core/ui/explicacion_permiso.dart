@@ -33,6 +33,13 @@ class ExplicacionDePermiso {
         'solo se manda con tu solicitud de reembolso.',
   );
 
+  static const camaraPerfil = ExplicacionDePermiso(
+    icono: LucideIcons.camera,
+    titulo: 'Tu foto de perfil',
+    mensaje: 'Abriremos la cámara para que tomes la foto de tu perfil. Se '
+        'verá en tu cuenta y junto a tus comentarios en Novedades.',
+  );
+
   static const camaraEntrega = ExplicacionDePermiso(
     icono: LucideIcons.camera,
     titulo: 'Foto de la entrega',

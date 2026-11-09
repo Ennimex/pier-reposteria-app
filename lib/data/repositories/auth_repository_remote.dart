@@ -146,6 +146,10 @@ class AuthRepositoryRemote implements AuthRepository {
   }
 
   @override
+  Future<void> guardarUsuario(Map<String, dynamic> usuario) =>
+      _storage.saveUser(jsonEncode(usuario));
+
+  @override
   Future<Map<String, dynamic>> getProfile() async {
     final result = await _api.getAuth(ApiConstants.profile);
     if (result['success'] == true && result['user'] != null) {

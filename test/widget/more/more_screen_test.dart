@@ -10,6 +10,7 @@ import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart
 import 'package:pier_reposteria/data/repositories/resenas_repository_remote.dart';
 import 'package:pier_reposteria/ui/more/view_model/more_view_model.dart';
 import 'package:pier_reposteria/ui/more/widgets/more_screen.dart';
+import 'package:pier_reposteria/ui/more/widgets/profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
@@ -51,6 +52,45 @@ Future<void> _montar(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  group('MoreScreen (con sesión, #345)', () {
+    testWidgets('la cabecera no tiene foto de fondo y toda la franja lleva '
+        'a «Mi perfil»', (tester) async {
+      final api = FakeApiClient(respuestas: {
+        ApiConstants.login: {
+          'success': true,
+          'token': 'jwt',
+          'user': {
+            'id': 9,
+            'nombre': 'Ana',
+            'apellido': 'García',
+            'email': 'ana@pier.mx',
+            'rol': 'cliente',
+          },
+        },
+      });
+      await _montar(tester, api);
+      await tester.iniciarSesion(find.byType(MoreScreen));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      // Sin foto: las iniciales, el nombre y «Mi perfil»; ya no el correo.
+      expect(find.text('AG'), findsOneWidget);
+      expect(find.text('Mi perfil'), findsOneWidget);
+      expect(find.text('ana@pier.mx'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+            (w) => w is Image && w.image is NetworkImage),
+        findsNothing,
+      );
+
+      // El nombre (no solo un botón chico) abre «Mi perfil».
+      await tester.tap(find.text('Ana'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ProfileScreen), findsOneWidget);
+    });
+  });
 
   group('MoreScreen (invitado)', () {
     testWidgets('pinta el contacto del backend y no muestra contadores',
