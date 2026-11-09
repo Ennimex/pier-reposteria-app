@@ -4,9 +4,13 @@
 // el backend responde {success: false} o falta un dato obligatorio. Lleva el
 // mensaje listo para mostrarse al usuario; el ViewModel lo atrapa y lo expone.
 class ApiException implements Exception {
-  const ApiException(this.message);
+  const ApiException(this.message, {this.codigo});
 
   final String message;
+
+  /// El `codigo` que mandó el backend con el error, si mandó uno (p. ej.
+  /// `PEDIDOS_EN_CURSO` al dar de baja la cuenta, #222).
+  final String? codigo;
 
   @override
   String toString() => 'ApiException: $message';
@@ -16,7 +20,8 @@ class ApiException implements Exception {
 /// desactivó o cambió de rol. Comandas y publicaciones releen al usuario en
 /// cada petición; la vista debe cerrar la sesión y volver al login.
 class SesionInvalidaException extends ApiException {
-  const SesionInvalidaException(super.message);
+  const SesionInvalidaException(super.message)
+      : super(codigo: 'SESION_INVALIDA');
 }
 
 /// 409 al confirmar «Enterado» de una comanda: [cambio] si otra persona la

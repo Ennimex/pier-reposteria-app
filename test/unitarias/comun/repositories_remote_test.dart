@@ -465,6 +465,40 @@ void main() {
       );
     });
 
+    group('cerrar la sesión', () {
+      setUp(() => SharedPreferences.setMockInitialValues({
+            'pierreposteria_token': 'jwt',
+            'pierreposteria_current_user': jsonEncode(usuario),
+          }));
+
+      test('logout avisa al servidor y cierra la sesión de Google', () async {
+        final api = _apiOk([ApiConstants.logout]);
+        final google = FakeGoogleSignIn();
+        final repo = AuthRepositoryRemote(api: api, google: google);
+
+        await repo.logout();
+
+        expect(api.llamo(ApiConstants.logout, metodo: 'POST-Auth'), isTrue);
+        expect(google.salidas, 1);
+        expect(await repo.isAuthenticated(), isFalse);
+      });
+
+      test('cerrarSesionLocal la cierra solo en el teléfono (#222)',
+          () async {
+        final api = FakeApiClient();
+        final google = FakeGoogleSignIn();
+        final repo = AuthRepositoryRemote(api: api, google: google);
+        expect(await repo.isAuthenticated(), isTrue);
+
+        await repo.cerrarSesionLocal();
+
+        expect(api.llamadas, isEmpty, reason: 'sin POST /auth/logout');
+        expect(google.salidas, 1);
+        expect(await repo.isAuthenticated(), isFalse);
+        expect(await repo.getCurrentUser(), isNull);
+      });
+    });
+
     test('sin sesión guardada no hay usuario actual', () async {
       final repo = AuthRepositoryRemote(api: FakeApiClient());
       expect(await repo.isAuthenticated(), isFalse);

@@ -1,14 +1,21 @@
 // test/unitarias/auth/mis_datos_view_model_test.dart — «Mis datos» (#221):
-// lo que el servidor tiene de la cuenta, leído de GET /auth/profile, y el
-// correo para pedir que se elimine la cuenta (#222).
+// lo que el servidor tiene de la cuenta, leído de GET /auth/profile; la baja
+// de la cuenta con DELETE /usuarios/perfil y, de respaldo, el correo para
+// pedirla (#222).
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/data/repositories/auth_repository_remote.dart';
+import 'package:pier_reposteria/data/repositories/cuenta_repository_remote.dart';
+import 'package:pier_reposteria/data/services/api_service.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/more/view_model/mis_datos_view_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
+import '../../fakes/fake_google_sign_in.dart';
 
 const Map<String, dynamic> _usuario = {
   'id': 9,
@@ -26,6 +33,14 @@ const Map<String, dynamic> _usuario = {
 
 Map<String, String> _comoMapa(List<DatoDeCuenta> datos) =>
     {for (final d in datos) d.etiqueta: d.valor};
+
+MisDatosViewModel _vm(FakeApiClient api) => MisDatosViewModel(
+      repo: AuthRepositoryRemote(api: api),
+      cuenta: CuentaRepositoryRemote(api: api),
+    );
+
+const _enCurso =
+    'Tienes pedidos en curso; espera a que se entreguen o cancélalos';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -95,7 +110,7 @@ void main() {
     test('lee GET /auth/profile con el token', () async {
       final api = FakeApiClient()
         ..responder(ApiConstants.profile, {'success': true, 'user': _usuario});
-      final vm = MisDatosViewModel(repo: AuthRepositoryRemote(api: api));
+      final vm = _vm(api);
 
       expect(vm.cargando, isTrue);
       await vm.cargar();
@@ -109,7 +124,7 @@ void main() {
     test('si el servidor falla deja su mensaje', () async {
       final api = FakeApiClient()
         ..fallar(ApiConstants.profile, 'Usuario no encontrado');
-      final vm = MisDatosViewModel(repo: AuthRepositoryRemote(api: api));
+      final vm = _vm(api);
 
       await vm.cargar();
 
@@ -120,7 +135,7 @@ void main() {
     test('sin mensaje del servidor usa el aviso genérico', () async {
       final api = FakeApiClient()
         ..responder(ApiConstants.profile, {'success': false});
-      final vm = MisDatosViewModel(repo: AuthRepositoryRemote(api: api));
+      final vm = _vm(api);
 
       await vm.cargar();
 
@@ -131,7 +146,7 @@ void main() {
       final api = FakeApiClient()
         ..responder(ApiConstants.profile, {'success': true, 'user': _usuario})
         ..demorar(ApiConstants.profile, const Duration(milliseconds: 10));
-      final vm = MisDatosViewModel(repo: AuthRepositoryRemote(api: api));
+      final vm = _vm(api);
       var avisos = 0;
       vm.addListener(() => avisos++);
 
@@ -177,7 +192,7 @@ void main() {
     test('después de cargar usa los datos del servidor', () async {
       final api = FakeApiClient()
         ..responder(ApiConstants.profile, {'success': true, 'user': _usuario});
-      final vm = MisDatosViewModel(repo: AuthRepositoryRemote(api: api));
+      final vm = _vm(api);
       expect(vm.correoParaEliminarCuenta.queryParameters['body'],
           isNot(contains('ana@pier.mx')));
 
@@ -185,6 +200,169 @@ void main() {
 
       expect(vm.correoParaEliminarCuenta.queryParameters['body'],
           contains('Correo de la cuenta: ana@pier.mx'));
+    });
+  });
+
+  group('eliminarCuenta (#222)', () {
+    late int cierres;
+    Future<void> contarCierre() async {
+      cierres++;
+    }
+
+    setUp(() {
+      cierres = 0;
+      // La sesión del cliente guardada en el teléfono, como tras entrar.
+      SharedPreferences.setMockInitialValues({
+        'pierreposteria_token': 'jwt',
+        'pierreposteria_current_user': jsonEncode(_usuario),
+      });
+    });
+
+    /// ViewModel con los datos de [usuario] ya cargados y [baja] como
+    /// respuesta de DELETE /usuarios/perfil.
+    Future<(MisDatosViewModel, FakeApiClient)> cargado(
+      Map<String, dynamic> baja, {
+      Map<String, dynamic> usuario = _usuario,
+    }) async {
+      final api = FakeApiClient()
+        ..responder(ApiConstants.profile, {'success': true, 'user': usuario})
+        ..responder(ApiConstants.eliminarCuenta, baja);
+      final vm = _vm(api);
+      await vm.cargar();
+      return (vm, api);
+    }
+
+    test('si se elimina, cierra la sesión solo en el teléfono', () async {
+      final (vm, api) =
+          await cargado({'success': true, 'message': 'Tu cuenta se eliminó'});
+      final auth = AuthProvider(
+        auth: AuthRepositoryRemote(api: api, google: FakeGoogleSignIn()),
+      )..abrirSesion(_usuario);
+
+      final resultado =
+          await vm.eliminarCuenta(cerrarSesion: auth.cerrarSesionLocal);
+
+      expect(resultado, ResultadoBaja.eliminada);
+      expect(api.llamo(ApiConstants.eliminarCuenta, metodo: 'DELETE-Auth'),
+          isTrue);
+      expect(api.llamo(ApiConstants.logout), isFalse,
+          reason: 'el token ya no sirve: no se avisa al servidor');
+      expect(auth.isAuthenticated, isFalse);
+      expect(auth.sesionExpiro, isFalse);
+      expect(await AuthRepositoryRemote(api: api).isAuthenticated(), isFalse);
+      expect(vm.eliminando, isFalse);
+      expect(vm.avisoBaja, isNull);
+    });
+
+    test('con pedidos en curso deja el mensaje y no cierra la sesión',
+        () async {
+      final (vm, _) = await cargado({
+        'success': false,
+        'codigo': 'PEDIDOS_EN_CURSO',
+        'message': _enCurso,
+      });
+
+      final resultado = await vm.eliminarCuenta(cerrarSesion: contarCierre);
+
+      expect(resultado, ResultadoBaja.pedidosEnCurso);
+      expect(vm.avisoBaja, _enCurso);
+      expect(cierres, 0);
+      expect(vm.eliminando, isFalse);
+    });
+
+    test('sin red o con error del servidor ofrece pedirla por correo',
+        () async {
+      for (final mensaje in [
+        ApiService.mensajeSinConexion,
+        'No se pudo eliminar tu cuenta',
+      ]) {
+        final (vm, _) = await cargado({'success': false, 'message': mensaje});
+
+        final resultado = await vm.eliminarCuenta(cerrarSesion: contarCierre);
+
+        expect(resultado, ResultadoBaja.error, reason: mensaje);
+        expect(vm.avisoBaja, mensaje);
+        // El respaldo: el correo a Pier con los datos de esta cuenta.
+        expect(vm.correoParaEliminarCuenta.queryParameters['body'],
+            contains('Correo de la cuenta: ana@pier.mx'));
+      }
+      expect(cierres, 0);
+    });
+
+    test('una cuenta del personal recibe el mensaje del backend', () async {
+      const mensaje = 'Las cuentas del personal no se dan de baja desde aquí';
+      final (vm, _) = await cargado(
+        {'success': false, 'message': mensaje},
+        usuario: {..._usuario, 'rol': 'empleado'},
+      );
+
+      final resultado = await vm.eliminarCuenta(cerrarSesion: contarCierre);
+
+      expect(resultado, ResultadoBaja.personal);
+      expect(vm.avisoBaja, mensaje);
+      expect(cierres, 0);
+    });
+
+    test('con un 401 deja que la app cierre la sesión y avise', () async {
+      // ApiService ya borró la sesión del teléfono al recibir el 401.
+      SharedPreferences.setMockInitialValues({});
+      final (vm, _) =
+          await cargado({'success': false, 'message': 'Token expirado'});
+
+      final resultado = await vm.eliminarCuenta(cerrarSesion: contarCierre);
+
+      expect(resultado, ResultadoBaja.sesionVencida);
+      expect(cierres, 0);
+    });
+
+    test('la cuenta inactiva (SESION_INVALIDA) también es sesión vencida',
+        () async {
+      final (vm, _) = await cargado({
+        'success': false,
+        'codigo': 'SESION_INVALIDA',
+        'message': 'Tu sesión ya no es válida',
+      });
+
+      final resultado = await vm.eliminarCuenta(cerrarSesion: contarCierre);
+
+      expect(resultado, ResultadoBaja.sesionVencida);
+      expect(cierres, 0);
+    });
+
+    test('no manda la baja dos veces', () async {
+      final (vm, api) = await cargado({'success': true});
+      api.demorar(ApiConstants.eliminarCuenta, const Duration(milliseconds: 10));
+      var avisos = 0;
+      vm.addListener(() => avisos++);
+
+      final primera = vm.eliminarCuenta(cerrarSesion: contarCierre);
+      expect(vm.eliminando, isTrue);
+      final segunda = await vm.eliminarCuenta(cerrarSesion: contarCierre);
+
+      expect(segunda, ResultadoBaja.ocupado);
+      expect(await primera, ResultadoBaja.eliminada);
+      expect(
+        api.llamadas.where((l) => l.endpoint == ApiConstants.eliminarCuenta),
+        hasLength(1),
+      );
+      expect(cierres, 1);
+      expect(vm.eliminando, isFalse);
+      expect(avisos, 2, reason: 'al empezar y al terminar');
+    });
+
+    test('si la pantalla se cierra durante la baja, igual cierra la sesión',
+        () async {
+      final (vm, api) = await cargado({'success': true});
+      api.demorar(ApiConstants.eliminarCuenta, const Duration(milliseconds: 10));
+      var avisos = 0;
+      vm.addListener(() => avisos++);
+
+      final baja = vm.eliminarCuenta(cerrarSesion: contarCierre);
+      vm.dispose();
+
+      expect(await baja, ResultadoBaja.eliminada);
+      expect(cierres, 1);
+      expect(avisos, 1, reason: 'solo el aviso de que empezó');
     });
   });
 }

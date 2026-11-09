@@ -125,12 +125,21 @@ class AuthRepositoryRemote implements AuthRepository {
   Future<void> logout() async {
     try {
       await _api.postAuth(ApiConstants.logout, {});
+    } on Object catch (e) {
+      PierLog.error('Error cerrando sesión en backend: $e');
+      // Si falla el backend, igual limpiamos local
+    }
+    await cerrarSesionLocal();
+  }
+
+  @override
+  Future<void> cerrarSesionLocal() async {
+    try {
       if (!kIsWeb) {
         await _googleSignIn.signOut();
       }
     } on Object catch (e) {
-      PierLog.error('Error cerrando sesión en backend: $e');
-      // Si falla el backend, igual limpiamos local
+      PierLog.error('Error cerrando la sesión de Google: $e');
     } finally {
       await _storage.clearAll();
     }

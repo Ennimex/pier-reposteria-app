@@ -91,6 +91,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// La cuenta se dio de baja (#222) y su token ya no sirve: la sesión se
+  /// cierra solo en el teléfono, sin POST /auth/logout. Se marca fuera antes
+  /// de borrar lo guardado para que un 401 que llegue tarde (el sondeo de
+  /// notificaciones, p. ej.) no muestre el aviso de sesión expirada.
+  Future<void> cerrarSesionLocal() async {
+    _isAuthenticated = false;
+    _currentUser = null;
+    _sesionExpiro = false;
+    await _authService.cerrarSesionLocal();
+    notifyListeners();
+  }
+
   // Actualizar datos del usuario en memoria después de editar perfil
   // No afecta el backend — solo refresca la UI sin necesidad de re-login
   void updateCurrentUser(Map<String, dynamic> updatedFields) {
