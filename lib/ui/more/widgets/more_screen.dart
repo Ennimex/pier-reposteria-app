@@ -17,6 +17,7 @@ import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 import 'package:pier_reposteria/ui/core/state/notification_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/avatar_usuario.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:pier_reposteria/ui/more/view_model/more_view_model.dart';
@@ -193,14 +194,6 @@ class _MoreScreenState extends State<MoreScreen> {
     final isAuth   = auth.isAuthenticated;
     final user     = auth.currentUser;
     final nombre   = user?['nombre']?.toString() ?? '';
-    final apellido = user?['apellido']?.toString() ?? '';
-    final email    = user?['email']?.toString() ?? '';
-    final apellidoInicial =
-        apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
-    final iniciales =
-        '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}$apellidoInicial';
-    final fotoUrl = user?['avatar_url']?.toString() ??
-        user?['foto_url']?.toString();
 
     return Scaffold(
       backgroundColor: AppColors.pierArena,
@@ -209,8 +202,7 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
 
           // ── HERO HEADER ─────────────────────────────────────────
-          _buildHeroHeader(
-              isAuth, nombre, email, iniciales, fotoUrl, auth),
+          _buildHeroHeader(isAuth, nombre, user),
           const SizedBox(height: 20),
 
           // ── STATS (solo con sesión) ──────────────────────────────
@@ -765,74 +757,38 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   // ── HERO HEADER ──────────────────────────────────────────────────
-  Widget _buildHeroHeader(bool isAuth, String nombre, String email,
-      String iniciales, String? fotoUrl, AuthProvider auth) {
-    return SizedBox(
-      height: 220,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Mientras baja la foto se ve el verde oscuro (el mismo del
-          // respaldo) y la foto aparece encima con un fundido.
-          ColoredBox(color: AppColors.pierVerdeOscuro),
-          Image.network(
-            'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&fit=crop',
-            fit: BoxFit.cover,
-            frameBuilder: (context, foto, cuadro, sincrona) => sincrona
-                ? foto
-                : AnimatedOpacity(
-                    opacity: cuadro == null ? 0 : 1,
-                    duration:
-                        AppMovimiento.duracion(context, AppMovimiento.media),
-                    curve: AppMovimiento.curvaEntrada,
-                    child: foto,
-                  ),
-            errorBuilder: (_, _, _) => ColoredBox(
-              color: AppColors.pierVerdeOscuro,
-              child: const Icon(LucideIcons.croissant,
-                  color: Colors.white54, size: 60),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.15),
-                  Colors.black.withValues(alpha: 0.65),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 20, right: 20, bottom: 20,
-            ),
-            // Invitado ↔ con sesión (al cerrar sesión): fundido a través.
-            child: _CambioMas(
-              child: isAuth
-                  ? KeyedSubtree(
-                      key: const ValueKey<String>('cuenta'),
-                      child: _heroAuthContent(
-                          nombre, email, iniciales, fotoUrl, auth),
-                    )
-                  : KeyedSubtree(
-                      key: const ValueKey<String>('invitado'),
-                      child: _heroGuestContent(),
-                    ),
-            ),
-          ),
-        ],
+  /// Cabecera de «Más» (#345): fondo liso de la marca (antes una foto de pan
+  /// que parecía editable). Con sesión, toda la franja lleva a «Mi perfil».
+  Widget _buildHeroHeader(
+      bool isAuth, String nombre, Map<String, dynamic>? usuario) {
+    return ColoredBox(
+      color: AppColors.pierVerdeOscuro,
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + 20,
+          left: 20, right: 20, bottom: 24,
+        ),
+        // Invitado ↔ con sesión (al cerrar sesión): fundido a través.
+        child: _CambioMas(
+          conTamano: true,
+          child: isAuth
+              ? KeyedSubtree(
+                  key: const ValueKey<String>('cuenta'),
+                  child: _heroAuthContent(nombre, usuario),
+                )
+              : KeyedSubtree(
+                  key: const ValueKey<String>('invitado'),
+                  child: _heroGuestContent(),
+                ),
+        ),
       ),
     );
   }
 
   Widget _heroGuestContent() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         const Text('¡Bienvenido!',
             style: TextStyle(
@@ -871,85 +827,55 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  Widget _heroAuthContent(String nombre, String email, String iniciales,
-      String? fotoUrl, AuthProvider auth) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Row(children: [
-          Container(
-            width: 52, height: 52,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF5E6D3),
-              shape: BoxShape.circle,
-            ),
-            child: fotoUrl != null && fotoUrl.isNotEmpty
-                ? ClipOval(
-                    child: Image.network(
-                      fotoUrl,
-                      width: 52, height: 52,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Center(
-                        child: Text(
-                            iniciales.isNotEmpty ? iniciales : 'U',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.pierDoradoOscuro)),
-                      ),
-                    ),
-                  )
-                : Center(
-                    child: Text(
-                        iniciales.isNotEmpty ? iniciales : 'U',
-                        style: TextStyle(
+  /// Avatar (foto o iniciales), nombre y «Mi perfil ›»: un solo botón, como
+  /// la cabecera de otras tiendas. La foto se cambia dentro de «Mi perfil».
+  Widget _heroAuthContent(String nombre, Map<String, dynamic>? usuario) {
+    final suave = Colors.white.withValues(alpha: 0.85);
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        child: PresionEscala(
+          escala: AppMovimiento.escalaPresionChica,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const ProfileScreen())),
+            child: Row(children: [
+              AvatarUsuario(
+                diametro: 72,
+                iniciales: inicialesDe(usuario),
+                fotoUrl: fotoDePerfil(usuario),
+                fondo: const Color(0xFFF5E6D3),
+                colorIniciales: AppColors.pierDoradoOscuro,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nombre.isNotEmpty ? nombre : 'Usuario',
+                        style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.pierDoradoOscuro)),
-                  ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(nombre.isNotEmpty ? nombre : 'Usuario',
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                    overflow: TextOverflow.ellipsis),
-                Text(email,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.75)),
-                    overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-          PresionEscala(
-            escala: AppMovimiento.escalaPresionChica,
-            child: GestureDetector(
-              onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const ProfileScreen())),
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3)),
+                            color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('Mi perfil',
+                          style: TextStyle(fontSize: 15, color: suave)),
+                      Icon(LucideIcons.chevronRight, size: 18, color: suave),
+                    ]),
+                  ],
                 ),
-                child: const Icon(LucideIcons.chevronRight,
-                    color: Colors.white, size: 22),
               ),
-            ),
+            ]),
           ),
-        ]),
-      ],
+        ),
+      ),
     );
   }
 

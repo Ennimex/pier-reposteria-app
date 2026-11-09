@@ -17,6 +17,7 @@ import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/favorites/widgets/favorites_screen.dart';
 import 'package:pier_reposteria/ui/more/view_model/profile_view_model.dart';
 import 'package:pier_reposteria/ui/more/widgets/edit_profile_screen.dart';
+import 'package:pier_reposteria/ui/more/widgets/foto_perfil_editable.dart';
 import 'package:pier_reposteria/ui/orders/widgets/orders_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
 import 'package:pier_reposteria/utils/logger.dart';
@@ -120,6 +121,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// «Editar perfil ›» bajo el saludo: nombre y teléfono (el avatar ahora
+  /// cambia la foto). Con relleno, para que se pueda tocar con el dedo.
+  Widget _enlaceEditarPerfil() => PresionEscala(
+        escala: AppMovimiento.escalaPresionChica,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            PierLog.nav('→ EditProfileScreen');
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text('Editar perfil',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.pierVerde,
+                      fontWeight: FontWeight.w600)),
+              Icon(LucideIcons.chevronRight,
+                  size: 16, color: AppColors.pierVerde),
+            ]),
+          ),
+        ),
+      );
+
   // AnimatedSize no acepta duración cero: «instantáneo» es un milisegundo.
   static const Duration _instante = Duration(milliseconds: 1);
 
@@ -130,12 +159,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = auth.currentUser;
     final nombre = user?['nombre']?.toString() ?? '';
     final apellido = user?['apellido']?.toString() ?? '';
-    final apellidoInicial =
-        apellido.isNotEmpty ? apellido[0].toUpperCase() : '';
-    final iniciales =
-        '${nombre.isNotEmpty ? nombre[0].toUpperCase() : ''}$apellidoInicial';
-    final fotoUrl = user?['avatar_url']?.toString() ??
-        user?['foto_url']?.toString();
     final saludo =
         '$nombre ${apellido.isNotEmpty ? '${apellido[0]}.' : ''}'.trim();
     // La página llega con un push: sus bloques entran en cascada cuando ya
@@ -173,57 +196,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 style: const TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textSecondary)),
+                            _enlaceEditarPerfil(),
                           ],
                         ),
                       ),
-                      // Avatar circular — toca para editar perfil
-                      PresionEscala(
-                        escala: AppMovimiento.escalaPresionChica,
-                        child: GestureDetector(
-                          onTap: () {
-                            PierLog.nav('→ EditProfileScreen');
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      const EditProfileScreen()),
-                            );
-                          },
-                          child: Stack(
-                            children: [
-                              Container(
-                                width: 52, height: 52,
-                                decoration: BoxDecoration(
-                                  color: AppColors.pierVerde,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: fotoUrl != null && fotoUrl.isNotEmpty
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          fotoUrl,
-                                          width: 52, height: 52,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, e, _) =>
-                                              _buildAvatarIniciales(
-                                                  iniciales),
-                                        ),
-                                      )
-                                    : _buildAvatarIniciales(iniciales),
-                              ),
-                              Positioned(
-                                bottom: 0, right: 0,
-                                child: Container(
-                                  width: 16, height: 16,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.pierVerde,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      // Avatar con la insignia de cámara: cambia la foto
+                      // de perfil (#345).
+                      const FotoPerfilEditable(),
                     ],
                   ),
                 ),
@@ -690,13 +669,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: const Icon(LucideIcons.image,
             color: AppColors.textSecondary, size: 22),
-      );
-
-  Widget _buildAvatarIniciales(String iniciales) => Center(
-        child: Text(iniciales,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold)),
       );
 }

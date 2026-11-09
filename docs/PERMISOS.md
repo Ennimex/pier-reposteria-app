@@ -21,8 +21,9 @@ aapt dump permissions pier-reposteria-vX.Y.Z.apk
 
 ## Lo que la app no pide
 
-- **Cámara (`CAMERA`):** las fotos de un reembolso y la de una entrega se
-  toman con la app de cámara del teléfono (`image_picker`), que no necesita
+- **Cámara (`CAMERA`):** las fotos de un reembolso, la de una entrega y la de
+  perfil (#345) se toman con la app de cámara del teléfono (`image_picker`),
+  que no necesita
   el permiso. Igual, antes de abrirla la app explica para qué es la foto y el
   cliente puede decir «Ahora no».
 - **Notificaciones (`POST_NOTIFICATIONS`):** la app no manda notificaciones

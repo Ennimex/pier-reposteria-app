@@ -3,6 +3,7 @@
 // relativa de las reseñas.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/data/repositories/demanda_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/productos_repository_remote.dart';
@@ -274,6 +275,24 @@ void main() {
       _vm(api).avisarme();
       await Future<void>.delayed(Duration.zero);
       expect(api.ultima(ApiConstants.clicsAgotados)!.body, {'producto_id': 7});
+    });
+  });
+
+  group('ProductDetailViewModel: compartir (#343)', () {
+    test('el enlace es la página pública del producto en la web', () {
+      final vm = _vm(FakeApiClient());
+      expect(vm.enlaceWeb, '${BusinessInfo.sitioWeb}/producto/7');
+    });
+
+    test('el texto lleva el nombre, el precio y el enlace', () {
+      final vm = _vm(FakeApiClient());
+      expect(
+        vm.textoParaCompartir,
+        '¡Mira este delicioso producto!\n\n'
+        'Chocoflan por solo \$300.00\n\n'
+        'Encuéntralo en Pier Repostería: '
+        'https://pier-reposteria.vercel.app/producto/7',
+      );
     });
   });
 

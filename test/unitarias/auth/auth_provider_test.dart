@@ -171,6 +171,19 @@ void main() {
       expect(auth.currentUser?['email'], 'ana@example.com');
     });
 
+    test('updateCurrentUser también lo guarda en el teléfono (#345)',
+        () async {
+      const foto = 'https://res.cloudinary.com/pier/perfil/ana.webp';
+      _conSesion().updateCurrentUser({'avatar_url': foto});
+      await pumpEventQueue();
+
+      // Lo que lee la app al volver a abrirse (cifrado, #217).
+      final guardado =
+          await AuthRepositoryRemote(api: FakeApiClient()).getCurrentUser();
+      expect(guardado?['avatar_url'], foto);
+      expect(guardado?['nombre'], 'Ana');
+    });
+
     test('sin sesión, updateCurrentUser no hace nada', () {
       final auth = _auth(FakeApiClient())
         ..updateCurrentUser({'nombre': 'Ana María'});

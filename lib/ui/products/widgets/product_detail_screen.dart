@@ -12,7 +12,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/ui/auth/widgets/login_screen.dart';
@@ -271,8 +270,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     if (_compartiendo) return;
     setState(() => _compartiendo = true);
     PierLog.info('Compartiendo: ${_producto.nombre}');
-    final texto =
-        '¡Mira este delicioso producto!\n\n${_producto.nombre} por solo \$${_producto.precio.toStringAsFixed(2)}\n\nEncuéntralo en ${BusinessInfo.marca}.';
+    final texto = _vm.textoParaCompartir;
     try {
       if (_producto.imagenUrl.isNotEmpty) {
         final response = await http

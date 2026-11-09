@@ -9,6 +9,8 @@ import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.da
 import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/more/view_model/profile_view_model.dart';
+import 'package:pier_reposteria/ui/more/widgets/edit_profile_screen.dart';
+import 'package:pier_reposteria/ui/more/widgets/foto_perfil_editable.dart';
 import 'package:pier_reposteria/ui/more/widgets/profile_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/detalle_galeria.dart';
 import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
@@ -34,6 +36,23 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('ProfileScreen', () {
+    testWidgets('el avatar cambia la foto y «Editar perfil» abre la edición '
+        '(#345)', (tester) async {
+      final api = FakeApiClient(
+        respuestas: {
+          ApiConstants.favoritos: {'success': true, 'favoritos': <Object>[]},
+          ApiConstants.misPedidos: {'success': true, 'pedidos': <Object>[]},
+        },
+      );
+      await _montar(tester, api);
+
+      expect(find.byType(FotoPerfilEditable), findsOneWidget);
+      await tester.tap(find.text('Editar perfil'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(EditProfileScreen), findsOneWidget);
+    });
+
     testWidgets('sin datos muestra las dos secciones vacías', (tester) async {
       final api = FakeApiClient(
         respuestas: {

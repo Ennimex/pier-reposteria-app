@@ -233,13 +233,12 @@ class _DetalleGaleriaState extends State<DetalleGaleria> {
     );
   }
 
-  /// En lugar de una foto que no se pudo cargar: el ícono de foto sobre el
-  /// fondo arena.
+  /// En lugar de una foto que no hay o no se pudo cargar: el pastelito sobre
+  /// el fondo arena, el mismo del catálogo (#343).
   static Widget _sinFoto(BuildContext _, Object _, StackTrace? _) =>
       ColoredBox(
         color: AppColors.pierArena,
-        child: const Icon(LucideIcons.image,
-            size: 60, color: AppColors.textSecondary),
+        child: Icon(LucideIcons.cake, size: 60, color: AppColors.pierVerde),
       );
 }
 

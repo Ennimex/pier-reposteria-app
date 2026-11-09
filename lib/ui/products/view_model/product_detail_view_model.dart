@@ -8,6 +8,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/configuracion_repository.dart';
 import 'package:pier_reposteria/data/repositories/demanda_repository.dart';
@@ -101,6 +102,17 @@ class ProductDetailViewModel extends ChangeNotifier {
 
   /// Precio sin descuento del tamaño elegido.
   double get precioBase => precioDeTamano(_tamano);
+
+  /// Página pública del producto en la web: se abre sin sesión (#343).
+  String get enlaceWeb =>
+      '${BusinessInfo.sitioWeb}/producto/${Uri.encodeComponent(producto.id)}';
+
+  /// Lo que se manda al compartir (con foto o sin ella): nombre, precio y el
+  /// enlace al producto, para que quien lo recibe pueda abrirlo (#343).
+  String get textoParaCompartir =>
+      '¡Mira este delicioso producto!\n\n'
+      '${producto.nombre} por solo \$${producto.precio.toStringAsFixed(2)}\n\n'
+      'Encuéntralo en ${BusinessInfo.marca}: $enlaceWeb';
 
   /// Como lo espera el carrito: 'chico' o 'grande'.
   String get tamanoParaCarrito => _tamano == 1 ? 'grande' : 'chico';

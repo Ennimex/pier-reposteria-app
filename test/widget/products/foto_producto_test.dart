@@ -421,14 +421,14 @@ void main() {
         MemoryImage(_pixel),
         const NetworkImage(_original),
       ]);
-      expect(find.byIcon(LucideIcons.image), findsNothing);
+      expect(find.byIcon(LucideIcons.cake), findsNothing);
     });
 
     testWidgets('si tampoco está la de la tarjeta, el ícono sale una sola '
         'vez', (tester) async {
       await _montarGaleria(tester, _producto(), [_original]);
 
-      expect(find.byIcon(LucideIcons.image), findsOneWidget);
+      expect(find.byIcon(LucideIcons.cake), findsOneWidget);
     });
 
     testWidgets('una foto que no es de Cloudinary se pinta con la misma '
@@ -443,7 +443,7 @@ void main() {
       expect(pedidas, isNotEmpty);
       expect(pedidas, everyElement(_deOtroLado));
       // Si tampoco está guardada, el ícono de siempre.
-      expect(find.byIcon(LucideIcons.image), findsOneWidget);
+      expect(find.byIcon(LucideIcons.cake), findsOneWidget);
     });
 
     testWidgets('sin foto en la tarjeta no hay nada debajo', (tester) async {

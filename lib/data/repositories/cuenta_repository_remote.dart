@@ -7,6 +7,7 @@ import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/data/api_exception.dart';
 import 'package:pier_reposteria/data/repositories/cuenta_repository.dart';
 import 'package:pier_reposteria/data/repositories/respuesta_api.dart';
+import 'package:pier_reposteria/data/repositories/subir_imagen.dart';
 import 'package:pier_reposteria/data/services/api_client.dart';
 import 'package:pier_reposteria/domain/models/codigo_alexa.dart';
 
@@ -31,6 +32,27 @@ class CuentaRepositoryRemote implements CuentaRepository {
     if (result['success'] != true || user is! Map) {
       throw ApiException(
         result['message']?.toString() ?? 'No se pudo guardar el perfil',
+      );
+    }
+    return Map<String, dynamic>.from(user);
+  }
+
+  @override
+  Future<String> subirFotoPerfil(String rutaArchivo) =>
+      subirImagen(_api, rutaArchivo, tipo: 'perfil');
+
+  @override
+  Future<Map<String, dynamic>> actualizarFotoPerfil(String? url) async {
+    // Sin nombre ni teléfono: el backend solo cambia lo que llega, y con
+    // `avatar_url: null` borra la foto.
+    final result = await _api.putAuth(
+      ApiConstants.updateProfileData,
+      {'avatar_url': url},
+    );
+    final user = result['user'];
+    if (result['success'] != true || user is! Map) {
+      throw ApiException(
+        result['message']?.toString() ?? 'No se pudo guardar tu foto',
       );
     }
     return Map<String, dynamic>.from(user);
