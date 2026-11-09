@@ -103,14 +103,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Actualizar datos del usuario en memoria después de editar perfil
-  // No afecta el backend — solo refresca la UI sin necesidad de re-login
+  /// Mezcla lo que el backend ya guardó (perfil editado, foto de perfil) en
+  /// la sesión, sin volver a entrar. También lo guarda en el teléfono: antes
+  /// se quedaba solo en memoria y al abrir otra vez la app volvían los datos
+  /// viejos (#345).
   void updateCurrentUser(Map<String, dynamic> updatedFields) {
     if (_currentUser == null) return;
-    _currentUser = {
+    final usuario = {
       ..._currentUser!,
       ...updatedFields,
     };
+    _currentUser = usuario;
     notifyListeners();
+    unawaited(_authService.guardarUsuario(usuario));
   }
 }

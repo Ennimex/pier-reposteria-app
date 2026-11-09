@@ -237,6 +237,57 @@ void main() {
           ['POST-Auth', 'POST']);
     });
 
+    group('foto de perfil (#345)', () {
+      const url = 'https://res.cloudinary.com/pier/perfil/ana.webp';
+
+      test('subirFotoPerfil sube por multipart con tipo perfil', () async {
+        final api = FakeApiClient(respuestas: {
+          ApiConstants.uploadImagen: {
+            'success': true,
+            'imagen': {'url': url, 'public_id': 'perfil/ana'},
+          },
+        });
+
+        expect(await CuentaRepositoryRemote(api: api).subirFotoPerfil('/a.jpg'),
+            url);
+        final llamada = api.llamadas.single;
+        expect(llamada.metodo, 'UPLOAD');
+        expect(llamada.body, {'filePath': '/a.jpg', 'tipo': 'perfil'});
+      });
+
+      test('actualizarFotoPerfil manda solo avatar_url (null la quita)',
+          () async {
+        final api = FakeApiClient(respuestas: {
+          ApiConstants.updateProfileData: {
+            'success': true,
+            'user': {'id': 9, 'avatar_url': url},
+          },
+        });
+        final repo = CuentaRepositoryRemote(api: api);
+
+        expect((await repo.actualizarFotoPerfil(url))['avatar_url'], url);
+        await repo.actualizarFotoPerfil(null);
+
+        expect(api.llamadas.map((l) => l.metodo), ['PUT-Auth', 'PUT-Auth']);
+        expect(api.llamadas.map((l) => l.body), [
+          {'avatar_url': url},
+          {'avatar_url': null},
+        ]);
+      });
+
+      test('si el backend la rechaza lanza su mensaje', () async {
+        final api = FakeApiClient()
+          ..fallar(ApiConstants.updateProfileData,
+              'La foto debe subirse desde la página');
+
+        await expectLater(
+          CuentaRepositoryRemote(api: api).actualizarFotoPerfil(url),
+          throwsA(isA<ApiException>().having((e) => e.message, 'message',
+              'La foto debe subirse desde la página')),
+        );
+      });
+    });
+
     group('eliminarCuenta (#222)', () {
       Future<void> eliminar(Map<String, dynamic> respuesta) =>
           CuentaRepositoryRemote(

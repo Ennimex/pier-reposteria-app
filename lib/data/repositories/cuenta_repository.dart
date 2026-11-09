@@ -24,6 +24,16 @@ abstract class CuentaRepository {
     String? telefono,
   });
 
+  /// POST /upload/imagen con `tipo: perfil` (#345): sube la foto de perfil a
+  /// Cloudinary y devuelve su URL. El backend acepta JPG, PNG, WebP o GIF de
+  /// hasta 5 MB. Lanza ApiException con el mensaje del backend.
+  Future<String> subirFotoPerfil(String rutaArchivo);
+
+  /// PUT /usuarios/perfil/actualizar solo con `avatar_url` (#345): [url] pone
+  /// esa foto y `null` la quita. Devuelve el `user` crudo, como
+  /// [actualizarPerfil]. Lanza ApiException si el backend no la guardó.
+  Future<Map<String, dynamic>> actualizarFotoPerfil(String? url);
+
   /// DELETE /usuarios/perfil (#222): da de baja la cuenta de la sesión. El
   /// backend la anonimiza y la desactiva, y su token deja de servir. Lanza
   /// ApiException con el mensaje y el `codigo` del backend (p. ej.
