@@ -50,6 +50,25 @@ Future<void> _publicar(WidgetTester tester) async {
   await tester.pump();
 }
 
+/// Publica una reseña de 5 estrellas que el backend aprueba sola, hasta el
+/// diálogo de gracias.
+Future<void> _publicarAprobada(WidgetTester tester) async {
+  final api = FakeApiClient(
+    respuestas: {
+      ApiConstants.crearResena: {
+        'success': true,
+        'resena': {'auto_aprobada': true},
+      },
+    },
+  );
+  await _montar(tester, api);
+  await tester.tap(find.byIcon(Icons.star_border_rounded).at(4));
+  await tester.enterText(find.byType(TextField).last, 'Delicioso pastel');
+  await tester.pump();
+
+  await _publicar(tester);
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -80,23 +99,29 @@ void main() {
     });
 
     testWidgets('al publicar muestra el diálogo de gracias', (tester) async {
-      final api = FakeApiClient(
-        respuestas: {
-          ApiConstants.crearResena: {
-            'success': true,
-            'resena': {'auto_aprobada': true},
-          },
-        },
-      );
-      await _montar(tester, api);
-      await tester.tap(find.byIcon(Icons.star_border_rounded).at(4));
-      await tester.enterText(find.byType(TextField).last, 'Delicioso pastel');
-      await tester.pump();
-
-      await _publicar(tester);
+      await _publicarAprobada(tester);
 
       expect(find.textContaining('Tu reseña ha sido publicada'), findsOneWidget);
     });
+
+    // #351: «Ver mi reseña» era solo texto para los lectores de pantalla;
+    // únicamente «Entendido» se anunciaba como botón.
+    testWidgets('#351: «Ver mi reseña» se anuncia como botón, igual que «Entendido»',
+        (tester) async {
+      final semantica = tester.ensureSemantics();
+      await _publicarAprobada(tester);
+      // El diálogo entra desvanecido: hasta que aparece no hay nada que leer.
+      await tester.pump(const Duration(seconds: 2));
+
+      for (final boton in ['Ver mi reseña', 'Entendido']) {
+        expect(
+          tester.getSemantics(find.text(boton)),
+          isSemantics(label: boton, isButton: true, hasTapAction: true),
+          reason: '«$boton» debe anunciarse como botón que se puede tocar',
+        );
+      }
+      semantica.dispose();
+    }, tags: 'regresion');
 
     testWidgets('si el backend rechaza muestra su mensaje', (tester) async {
       final api = FakeApiClient()
