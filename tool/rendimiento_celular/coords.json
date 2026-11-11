@@ -1,0 +1,4 @@
+{"componente": "mx.com.pierreposteria.dev/mx.com.pierreposteria.MainActivity",
+ "tab_inicio": [108, 2040], "tab_catalogo": [324, 2040], "tab_carrito": [540, 2040],
+ "proceder_al_pago": [540, 1884], "lista_x": 540,
+ "arranque_s": 10, "carrito_s": 3, "checkout_s": 7, "reposo_cpu": 5}
