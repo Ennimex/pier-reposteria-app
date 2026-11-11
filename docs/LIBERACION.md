@@ -33,7 +33,9 @@ clientes (#22). Las métricas que deciden cada paso están en #24.
         «Hola, Cliente». Deja una captura por paso en Artifacts
         (`resultados-entorno-liberacion`).
    2. **APK firmado y Release** (`publicar`), solo si el smoke pasó y alguien
-      con permiso lo aprueba en el Environment `produccion`:
+      con permiso lo aprueba en el Environment `produccion` (antes de aprobar,
+      la versión se mide en el celular: ver
+      [Medir en el celular antes de aprobar](#medir-en-el-celular-antes-de-aprobar)):
       - comprueba que el tag sea la versión del `pubspec.yaml`;
       - arma el APK de release (flavor `prod`), ofuscado y con Sentry
         encendido;
@@ -76,6 +78,19 @@ Con un tag, la corrida se detiene en «APK firmado y Release» con el aviso
 → marca `produccion` → **Approve and deploy**. Si la rechaza, no se publica nada.
 La página del Environment (Settings → Environments → `produccion`) guarda cada
 publicación aprobada.
+
+## Medir en el celular antes de aprobar
+
+Mientras la corrida espera la aprobación, la versión candidata se mide en el
+celular de referencia: «Pier DEV» en modo profile armada desde el tag, con la
+batería arriba de 50 % y el celular debajo de 35 °C. Se mide la fluidez y el
+arranque en frío y, en pasadas separadas, la CPU y la memoria (mediana de 3
+repeticiones), con los scripts de `tool/rendimiento_celular/`; los pasos y los
+umbrales están en [pruebas-rendimiento-celular.md](pruebas-rendimiento-celular.md).
+
+La tabla se anota en el issue o el PR de la versión. Si algún indicador pasa
+su umbral, no se aprueba `produccion` hasta decidirlo: un issue con los
+números o una línea base nueva con su razón.
 
 ## Secretos del repositorio
 

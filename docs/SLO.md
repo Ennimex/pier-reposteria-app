@@ -16,7 +16,10 @@ objetivos y la regla de avance (#24).
 | **Errores en el pago** | De cada 100 intentos de pago, cuántos fallan por el servidor o la conexión | Sentry → spans `checkout.pagar` (etiqueta `flow:checkout`) | **< 1 %** de los intentos | 7 días | Alexander |
 
 Línea base medida en el Samsung SM-N975U (#61): arranque en frío 1.6 s con el
-servidor despierto.
+servidor despierto. Cada versión candidata se mide además en el celular
+(fluidez, arranque en frío, CPU y memoria) antes de aprobarla: cómo se mide,
+sus umbrales y la línea base del 10-nov (v2.5.0) están en
+[pruebas-rendimiento-celular.md](pruebas-rendimiento-celular.md).
 
 ### Cómo llega cada dato a Sentry
 
@@ -29,9 +32,11 @@ GitHub Releases lo traen; los de pruebas no). Cada evento lleva la versión
   Cuando la app esté en Play, la fuente oficial es Android Vitals.
 - **Arranque en frío**: Sentry crea una transacción `ui.load` con un span
   `app.start.cold` en cada arranque muestreado (en el dataset Spans la medida
-  se llama `app.vitals.start.cold.value`). Ojo: incluye la espera de
-  `/pagos/config` antes del primer cuadro; si el servidor de Render está
-  dormido, ese arranque sale de ~20 s.
+  se llama `app.vitals.start.cold.value`). Desde la v2.2.0 la app ya no
+  espera `/pagos/config` antes del primer cuadro (ERR-09, #230). Las
+  versiones anteriores sí la esperaban y, con el servidor de Render dormido,
+  ese arranque salía de ~20 s: una ventana que todavía las incluya da un p90
+  más alto. Lo que el servidor dormido alargue todavía se revisa en el #353.
 - **Pago**: cada intento ya validado (con fecha, hora y dirección elegidas) es
   una transacción `pago` (op `checkout.pagar`) con las etiquetas
   `flow:checkout` y `resultado`
