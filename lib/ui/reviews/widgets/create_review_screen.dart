@@ -244,22 +244,29 @@ class _CreateReviewScreenState extends State<CreateReviewScreen> {
                   EntradaSuave(
                     orden: 4,
                     retraso: espera,
+                    // #351: los lectores de pantalla lo anuncian como botón,
+                    // igual que «Entendido»; se ve igual que antes.
                     child: Center(
-                      child: PresionEscala(
-                        escala: AppMovimiento.escalaPresionChica,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.of(dialogContext).pop(); // cierra el diálogo
-                            navigator
-                              ..pop() // cierra la pantalla de reseña
-                              ..push(MaterialPageRoute(
-                                  builder: (_) => const MyReviewsScreen())).ignore();
-                          },
-                          child: Text('Ver mi reseña',
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.pierDoradoOscuro,
-                                  fontWeight: FontWeight.w600)),
+                      child: MergeSemantics(
+                        child: Semantics(
+                          button: true,
+                          child: PresionEscala(
+                            escala: AppMovimiento.escalaPresionChica,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.of(dialogContext).pop(); // cierra el diálogo
+                                navigator
+                                  ..pop() // cierra la pantalla de reseña
+                                  ..push(MaterialPageRoute(
+                                      builder: (_) => const MyReviewsScreen())).ignore();
+                              },
+                              child: Text('Ver mi reseña',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.pierDoradoOscuro,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ),
                         ),
                       ),
                     ),
