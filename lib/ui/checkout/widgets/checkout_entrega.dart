@@ -276,8 +276,7 @@ class CheckoutRecoger extends StatelessWidget {
   }
 }
 
-/// Una sucursal para recoger, con su horario: el radio de la elegida se
-/// rellena con un pop y su borde se anima, como en las direcciones.
+/// Una sucursal para recoger, con su horario.
 class _TarjetaSucursal extends StatelessWidget {
   const _TarjetaSucursal({
     required this.nombre,
@@ -291,6 +290,53 @@ class _TarjetaSucursal extends StatelessWidget {
   final String horario;
   final bool seleccionada;
   final VoidCallback onElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TarjetaConRadio(
+      seleccionada: seleccionada,
+      onElegir: onElegir,
+      contenido: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(nombre,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 2),
+          Text(horario,
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        ],
+      ),
+      extras: [
+        Icon(LucideIcons.store,
+            size: 18,
+            color: seleccionada
+                ? AppColors.pierVerde
+                : AppColors.textSecondary.withValues(alpha: 0.5)),
+      ],
+    );
+  }
+}
+
+/// Una opción para elegir (sucursal o dirección): el radio de la elegida se
+/// rellena con un pop y su borde se anima; la tinta del toque (también la de
+/// [extras]) va encima del fondo blanco.
+class _TarjetaConRadio extends StatelessWidget {
+  const _TarjetaConRadio({
+    required this.seleccionada,
+    required this.onElegir,
+    required this.contenido,
+    this.extras = const [],
+  });
+
+  final bool seleccionada;
+  final VoidCallback onElegir;
+
+  /// Lo que va entre el radio y [extras].
+  final Widget contenido;
+
+  /// Al final de la fila: un ícono o las acciones de la dirección.
+  final List<Widget> extras;
 
   @override
   Widget build(BuildContext context) {
@@ -332,25 +378,8 @@ class _TarjetaSucursal extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(nombre,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14)),
-                        const SizedBox(height: 2),
-                        Text(horario,
-                            style: const TextStyle(
-                                fontSize: 13, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  ),
-                  Icon(LucideIcons.store,
-                      size: 18,
-                      color: sel
-                          ? AppColors.pierVerde
-                          : AppColors.textSecondary.withValues(alpha: 0.5)),
+                  Expanded(child: contenido),
+                  ...extras,
                 ],
               ),
             ),
@@ -500,111 +529,64 @@ class _TarjetaDireccion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = direccion;
-    final sel = seleccionada;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      // El borde de la elegida se anima; la tinta del toque (también la de
-      // editar y borrar) va encima del fondo blanco.
-      child: AnimatedContainer(
-        duration: AppMovimiento.duracion(context, AppMovimiento.corta),
-        curve: AppMovimiento.curvaEstandar,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: sel
-                ? AppColors.pierVerde
-                : AppColors.textSecondary.withValues(alpha: 0.15),
-            width: sel ? 2 : 1,
-          ),
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onElegir,
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  // El radio se rellena con un pop.
-                  CambioAnimado(
-                    tipo: TipoCambio.escalar,
-                    alineacion: Alignment.center,
-                    child: Icon(
-                      sel ? LucideIcons.circleDot : LucideIcons.circle,
-                      key: ValueKey(sel),
-                      color: sel
-                          ? AppColors.pierVerde
-                          : AppColors.textSecondary.withValues(alpha: 0.5),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(d.alias,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 14),
-                                  overflow: TextOverflow.ellipsis),
-                            ),
-                            const SizedBox(width: 8),
-                            if (!d.tieneCobertura)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.error.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text('Sin cobertura',
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.error,
-                                        fontWeight: FontWeight.w600)),
-                              )
-                            else
-                              Text('\$${d.tarifa!.toStringAsFixed(0)} envío',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.pierVerde,
-                                      fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(d.lineaResumen,
-                            style: const TextStyle(
-                                fontSize: 13, color: AppColors.textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        if (d.referencias != null)
-                          Text('Ref: ${d.referencias}',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary
-                                      .withValues(alpha: 0.8)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                  _Accion(icon: LucideIcons.pencil, onTap: onEditar),
-                  const SizedBox(width: 4),
-                  _Accion(
-                      icon: LucideIcons.trash2,
-                      onTap: onEliminar,
-                      color: AppColors.error),
-                ],
+    return _TarjetaConRadio(
+      seleccionada: seleccionada,
+      onElegir: onElegir,
+      contenido: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(d.alias,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
+                    overflow: TextOverflow.ellipsis),
               ),
-            ),
+              const SizedBox(width: 8),
+              if (!d.tieneCobertura)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text('Sin cobertura',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600)),
+                )
+              else
+                Text('\$${d.tarifa!.toStringAsFixed(0)} envío',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.pierVerde,
+                        fontWeight: FontWeight.w600)),
+            ],
           ),
-        ),
+          const SizedBox(height: 2),
+          Text(d.lineaResumen,
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+          if (d.referencias != null)
+            Text('Ref: ${d.referencias}',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+        ],
       ),
+      extras: [
+        _Accion(icon: LucideIcons.pencil, onTap: onEditar),
+        const SizedBox(width: 4),
+        _Accion(
+            icon: LucideIcons.trash2, onTap: onEliminar, color: AppColors.error),
+      ],
     );
   }
 }
