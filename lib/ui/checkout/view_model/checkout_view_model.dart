@@ -15,10 +15,14 @@
 // las fallas del servidor o de la conexión cuentan contra el objetivo de
 // errores del pago (docs/SLO.md).
 //
-// El horario de atención sale de la configuración de contacto (#320): el
-// calendario solo ofrece días en que se abre, la lista de horas solo las que
-// caben en ese horario y, fuera de él, el aviso dice cuándo se prepara el
-// pedido. Se puede pagar igual (#188).
+// El horario de atención sale de la configuración de contacto (#320): al
+// recoger, el de la sucursal que elige el cliente (viene marcada la que está
+// abierta); a domicilio, las horas en que abren todas. El calendario solo
+// ofrece días en que se abre, las horas son franjas de una hora dentro de
+// ese horario y, fuera de él, el aviso dice cuándo se prepara el pedido. Se
+// puede pagar igual (#188). Sin red se usa el último contacto que llegó y, si
+// nunca llegó, las sucursales de BusinessInfo. La sucursal, quién recoge y
+// su teléfono viajan en las notas con el formato de la web.
 import 'package:flutter/foundation.dart';
 import 'package:pier_reposteria/config/business_info.dart';
 import 'package:pier_reposteria/config/monitoreo.dart';
@@ -30,6 +34,7 @@ import 'package:pier_reposteria/data/services/pasarela_pago.dart';
 import 'package:pier_reposteria/domain/models/direccion_model.dart';
 import 'package:pier_reposteria/domain/models/horario_atencion.dart';
 import 'package:pier_reposteria/domain/models/pago.dart';
+import 'package:pier_reposteria/domain/models/sucursal_atencion.dart';
 import 'package:pier_reposteria/utils/command.dart';
 import 'package:pier_reposteria/utils/config_format.dart';
 import 'package:pier_reposteria/utils/formatters.dart';
@@ -83,6 +88,7 @@ class CheckoutViewModel extends ChangeNotifier {
     required PasarelaPago pasarela,
     required double Function() totalCarrito,
     required Future<bool> Function(List<String> faltantes) confirmarPorConfirmar,
+    ({String nombre, String telefono}) Function()? quienRecoge,
     bool Function()? estaAbierto,
     DateTime Function() ahora = DateTime.now,
     Future<void> Function(Duration) esperar = Future<void>.delayed,
@@ -93,6 +99,8 @@ class CheckoutViewModel extends ChangeNotifier {
         _pasarela = pasarela,
         _totalCarrito = totalCarrito,
         _confirmarPorConfirmar = confirmarPorConfirmar,
+        _quienRecoge =
+            quienRecoge ?? (() => (nombre: '', telefono: '')),
         _estaAbierto = estaAbierto,
         _ahora = ahora,
         _esperar = esperar,
@@ -100,30 +108,25 @@ class CheckoutViewModel extends ChangeNotifier {
     pagar = Command0<ResultadoPago>(_pagar);
   }
 
-  /// Lunes a sábado de 9 a 21 (BusinessInfo): cuando la configuración no
-  /// trae un horario que se entienda (#320).
-  static final HorarioAtencion horarioDeRespaldo = HorarioAtencion.semanal(
-    dias: BusinessInfo.diasAbiertos,
-    abre: BusinessInfo.horaApertura,
-    cierra: BusinessInfo.horaCierre,
-  );
+  /// Las sucursales de BusinessInfo: cuando el contacto nunca llegó (#320).
+  static final List<SucursalAtencion> sucursalesDeRespaldo =
+      SucursalAtencion.listaDesdeConfig([
+    for (final s in BusinessInfo.sucursales)
+      {'sucursal': s.sucursal, 'horario': s.horario},
+  ]);
+
+  /// Las horas en que abren las sucursales de BusinessInfo: para una
+  /// sucursal cuyo horario no se entiende (#320).
+  static final HorarioAtencion horarioDeRespaldo = SucursalAtencion
+          .horarioComun(sucursalesDeRespaldo) ??
+      HorarioAtencion.semanal(
+        dias: BusinessInfo.diasAbiertos,
+        abre: BusinessInfo.horaApertura,
+        cierra: BusinessInfo.horaCierre,
+      );
 
   static const List<String> _nombresDeDia = [
     'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
-  ];
-
-  /// Horarios de recolección/entrega entre semana. Solo se ofrecen los que
-  /// caben en el horario de atención del día (#320).
-  static const List<String> horariosEntreSemana = [
-    '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
-    '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00',
-    '15:00 - 16:00', '16:00 - 17:00', '17:00 - 18:00', '18:00 - 19:00',
-  ];
-
-  /// Horarios de sábado y domingo.
-  static const List<String> horariosFinDeSemana = [
-    '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
-    '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00',
   ];
 
   /// Intentos de confirmar el pedido tras el cobro.
@@ -135,6 +138,7 @@ class CheckoutViewModel extends ChangeNotifier {
   final PasarelaPago _pasarela;
   final double Function() _totalCarrito;
   final Future<bool> Function(List<String>) _confirmarPorConfirmar;
+  final ({String nombre, String telefono}) Function() _quienRecoge;
   // Solo en pruebas: decide si está abierto sin mirar el horario ni el reloj.
   final bool Function()? _estaAbierto;
   final DateTime Function() _ahora;
@@ -152,7 +156,8 @@ class CheckoutViewModel extends ChangeNotifier {
   DireccionCliente? _direccion;
   bool _cargandoDirecciones = false;
   String _direccionSucursal = BusinessInfo.direccion;
-  HorarioAtencion _horarioAtencion = horarioDeRespaldo;
+  List<SucursalAtencion> _sucursales = sucursalesDeRespaldo;
+  late SucursalAtencion? _sucursal = _sucursalInicial();
   String? _errorPago;
 
   // Cobro hecho cuya confirmación falló: se reintenta solo la confirmación.
@@ -168,9 +173,18 @@ class CheckoutViewModel extends ChangeNotifier {
   bool get cargandoDirecciones => _cargandoDirecciones;
   String get direccionSucursal => _direccionSucursal;
 
-  /// El de la configuración o, mientras no llega o si no se entiende, el de
-  /// respaldo.
-  HorarioAtencion get horarioAtencion => _horarioAtencion;
+  /// Las sucursales de la configuración (o de respaldo) con su horario.
+  List<SucursalAtencion> get sucursales => _sucursales;
+
+  /// Donde se recoge (la elegida o, si no se ha elegido, la que estaba
+  /// abierta al llegar).
+  SucursalAtencion? get sucursal => _sucursal;
+
+  /// Al recoger, el de la sucursal elegida; a domicilio, las horas en que
+  /// abren todas. Si no se entiende, el de respaldo.
+  HorarioAtencion get horarioAtencion => esDomicilio
+      ? SucursalAtencion.horarioComun(_sucursales) ?? horarioDeRespaldo
+      : _sucursal?.horario ?? horarioDeRespaldo;
 
   /// Ahora mismo (el reloj del teléfono; en pruebas, uno fijo).
   DateTime get ahora => _ahora();
@@ -182,22 +196,17 @@ class CheckoutViewModel extends ChangeNotifier {
   /// decide si se muestra el aviso: el pedido siempre es para otro día, así
   /// que se paga igual (#188).
   bool get abierto =>
-      _estaAbierto?.call() ?? _horarioAtencion.abiertoEn(_ahora());
+      _estaAbierto?.call() ?? horarioAtencion.abiertoEn(_ahora());
 
-  /// Horarios del día elegido que caben en el horario de atención (sin día:
-  /// los de entre semana).
+  /// Horas del día elegido, dentro del horario de atención (sin día, ninguna).
   List<String> get horarios {
     final fecha = _fecha;
-    return fecha == null ? horariosEntreSemana : horariosDel(fecha);
+    return fecha == null ? const [] : horariosDel(fecha);
   }
 
-  /// Horarios para recoger o entregar el día de [dia].
-  List<String> horariosDel(DateTime dia) {
-    final finDeSemana =
-        dia.weekday == DateTime.saturday || dia.weekday == DateTime.sunday;
-    return _horarioAtencion.franjasDel(
-        dia, finDeSemana ? horariosFinDeSemana : horariosEntreSemana);
-  }
+  /// Horas para recoger o entregar el día de [dia]: franjas de una hora
+  /// dentro del horario de atención.
+  List<String> horariosDel(DateTime dia) => horarioAtencion.franjasDelDia(dia);
 
   /// ¿Se puede recoger o entregar el día de [dia]? (el calendario solo deja
   /// elegir estos).
@@ -217,7 +226,7 @@ class CheckoutViewModel extends ChangeNotifier {
   /// de las 9:00», «mañana …» o «el lunes …». null si no abre ningún día.
   String? get siguienteAtencion {
     final ahora = _ahora();
-    final abre = _horarioAtencion.siguienteApertura(ahora);
+    final abre = horarioAtencion.siguienteApertura(ahora);
     if (abre == null) return null;
     final dias = DateTime(abre.year, abre.month, abre.day)
         .difference(DateTime(ahora.year, ahora.month, ahora.day))
@@ -242,25 +251,45 @@ class CheckoutViewModel extends ChangeNotifier {
   Future<void> cargar() =>
       Future.wait([_cargarSucursal(), cargarDirecciones()]);
 
-  /// Dirección y horario de atención de la configuración de contacto.
+  /// Dirección y sucursales con su horario, de la configuración de contacto;
+  /// sin red, del último contacto que llegó y, si nunca llegó, de
+  /// BusinessInfo (#320).
   Future<void> _cargarSucursal() async {
+    Map<String, dynamic>? config;
     try {
-      final config = await _configRepo.configDe('contacto');
-      if (_cerrado) return;
-      // El backend guarda la dirección como JSON: se formatea para no
-      // mostrar el objeto crudo.
-      final dir = formatearDireccion(config['direccion'],
-          fallback: BusinessInfo.direccion);
-      if (dir.isNotEmpty) _direccionSucursal = dir;
-      // Sin un horario que se entienda se queda el de respaldo (#320).
-      _horarioAtencion =
-          HorarioAtencion.desdeConfig(config['horarios']) ?? horarioDeRespaldo;
-      // Lo elegido antes de que llegara el horario puede ya no ofrecerse.
-      if (_hora != null && !horarios.contains(_hora)) _hora = null;
-      notifyListeners();
+      config = await _configRepo.configDe('contacto');
     } on ApiException {
-      // Se quedan la dirección y el horario de BusinessInfo.
+      config = await _configRepo.configContactoGuardada();
     }
+    if (_cerrado || config == null) return;
+    // El backend guarda la dirección como JSON: se formatea para no
+    // mostrar el objeto crudo.
+    final dir = formatearDireccion(config['direccion'],
+        fallback: BusinessInfo.direccion);
+    if (dir.isNotEmpty) _direccionSucursal = dir;
+    final sucursales = SucursalAtencion.listaDesdeConfig(config['horarios']);
+    _sucursales = sucursales.isEmpty ? sucursalesDeRespaldo : sucursales;
+    // Se conserva la que ya se eligió si sigue en la lista.
+    final elegida = _sucursal?.nombre;
+    _sucursal = _sucursales.where((s) => s.nombre == elegida).firstOrNull ??
+        _sucursalInicial();
+    _quitarHoraQueYaNoSeOfrece();
+    notifyListeners();
+  }
+
+  /// La primera sucursal abierta ahora; si ninguna, la primera (como la web).
+  SucursalAtencion? _sucursalInicial() {
+    final ahora = _ahora();
+    return _sucursales
+            .where((s) => (s.horario ?? horarioDeRespaldo).abiertoEn(ahora))
+            .firstOrNull ??
+        _sucursales.firstOrNull;
+  }
+
+  /// Lo elegido antes de cambiar de sucursal, de modalidad o de que llegara
+  /// el horario puede ya no ofrecerse.
+  void _quitarHoraQueYaNoSeOfrece() {
+    if (_hora != null && !horarios.contains(_hora)) _hora = null;
   }
 
   /// Direcciones del cliente; si no hay una elegida, preselecciona la
@@ -285,14 +314,22 @@ class CheckoutViewModel extends ChangeNotifier {
 
   void elegirEntrega(TipoEntrega tipo) {
     _tipoEntrega = tipo;
+    _quitarHoraQueYaNoSeOfrece();
     notifyListeners();
   }
 
-  /// Si la hora elegida no se ofrece el día nuevo (fin de semana o fuera del
-  /// horario de atención), se borra la hora.
+  /// Donde se recoge: las horas que se ofrecen salen de su horario.
+  void elegirSucursal(SucursalAtencion sucursal) {
+    _sucursal = sucursal;
+    _quitarHoraQueYaNoSeOfrece();
+    notifyListeners();
+  }
+
+  /// Si la hora elegida no se ofrece el día nuevo (fuera del horario de
+  /// atención), se borra la hora.
   void elegirFecha(DateTime fecha) {
     _fecha = fecha;
-    if (_hora != null && !horarios.contains(_hora)) _hora = null;
+    _quitarHoraQueYaNoSeOfrece();
     notifyListeners();
   }
 
@@ -329,6 +366,22 @@ class CheckoutViewModel extends ChangeNotifier {
   }
 
   // ── Pago ─────────────────────────────────────────────────────────────────
+
+  /// Las notas de un pedido para recoger, con el formato de la web
+  /// (notasPedido.ts), que leen Mis pedidos y el comprobante: «Sucursal:
+  /// Sucursal Aviacion · Recoge: Ana López · Tel. 7710000011». Lo que falta
+  /// no se escribe.
+  String get notasDeRecoger {
+    final cliente = _quienRecoge();
+    final sucursal = _sucursal?.nombre ?? '';
+    final nombre = cliente.nombre.trim();
+    final telefono = cliente.telefono.trim();
+    return [
+      if (sucursal.isNotEmpty) 'Sucursal: $sucursal',
+      if (nombre.isNotEmpty) 'Recoge: $nombre',
+      if (telefono.isNotEmpty) 'Tel. $telefono',
+    ].join(' · ');
+  }
 
   /// Por qué todavía no se puede pagar (null = todo listo).
   String? _validar() {
@@ -427,7 +480,7 @@ class CheckoutViewModel extends ChangeNotifier {
       String intentId, String horario, double total) async {
     final datos = <String, dynamic>{
       'payment_intent_id': intentId,
-      'notas': '',
+      'notas': esDomicilio ? '' : notasDeRecoger,
       if (esDomicilio) 'horario_entrega': horario else 'horario_recogida': horario,
     };
     ConfirmacionFallidaException? ultimoError;

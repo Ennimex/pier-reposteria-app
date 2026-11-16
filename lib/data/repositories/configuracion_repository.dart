@@ -39,8 +39,14 @@ abstract class ConfiguracionRepository {
   Future<TextosLegales> legales();
 
   /// GET /configuracion/:seccion: solo su `config` ({clave: valor}); vacío
-  /// si no trae. Lanza ApiException si falla.
+  /// si no trae. Lanza ApiException si falla. El de contacto se guarda en el
+  /// teléfono, como en contacto().
   Future<Map<String, dynamic>> configDe(String seccion);
+
+  /// El último `config` de contacto que llegó, tal como llegó (con los
+  /// horarios de cada sucursal); null si nunca llegó. Sin red, el pago lo usa
+  /// para ofrecer días y horas (#320).
+  Future<Map<String, dynamic>?> configContactoGuardada();
 
   /// GET /contenido (público): los bloques del editor del sitio que
   /// Dirección ya guardó ({'inicio.carrusel': [...], ...}); vacío si no

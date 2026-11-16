@@ -24,6 +24,7 @@ import 'package:pier_reposteria/ui/checkout/widgets/checkout_resumen.dart';
 import 'package:pier_reposteria/ui/checkout/widgets/direccion_form_sheet.dart';
 import 'package:pier_reposteria/ui/checkout/widgets/order_success_screen.dart';
 import 'package:pier_reposteria/ui/checkout/widgets/tamano_animado.dart';
+import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/cart_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
@@ -50,7 +51,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         pasarela: context.read(),
         totalCarrito: () => context.read<CartProvider>().totalAmount,
         confirmarPorConfirmar: _avisarPedidoPorConfirmar,
+        quienRecoge: _quienRecoge,
       );
+
+  /// Nombre y teléfono de la cuenta, para las notas de un pedido para
+  /// recoger (#320).
+  ({String nombre, String telefono}) _quienRecoge() {
+    final usuario = context.read<AuthProvider>().currentUser;
+    String dato(String clave) => usuario?[clave]?.toString().trim() ?? '';
+    return (
+      nombre: '${dato('nombre')} ${dato('apellido')}'.trim(),
+      telefono: dato('telefono'),
+    );
+  }
 
   // Contadores que sacuden la sección a la que le falta un dato al pagar
   // (o el recuadro del error, si el mismo error se repite).

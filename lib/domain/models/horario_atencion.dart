@@ -1,15 +1,10 @@
 // lib/domain/models/horario_atencion.dart
 //
-// Horario de atención de las sucursales para recoger o entregar un pedido
-// (#320). Dirección lo captura en el panel como texto libre por sucursal:
-// GET /configuracion/contacto → `horarios: [{sucursal, horario}]`, con el
-// horario «tal como se ve», p. ej. «Lun - Dom: 8:00 AM - 9:00 PM».
-//
-// La app no deja elegir sucursal: se usan las horas en que abren TODAS (la
-// intersección), así nunca se ofrece una hora en que alguna esté cerrada. Si
-// la configuración no trae horario, o alguno no se entiende, quien lo usa
-// pone el de respaldo (HorarioAtencion.semanal con los datos de BusinessInfo).
-import 'dart:convert';
+// Horario de atención de una sucursal para recoger o entregar un pedido
+// (#320). Dirección lo captura en el panel como texto libre por sucursal
+// («Lun - Dom: 8:00 AM - 9:00 PM»); SucursalAtencion lee la lista del panel
+// y aquí se interpreta cada texto. Las horas que se ofrecen salen de este
+// horario: franjas de una hora que caben completas en lo que abre el día.
 import 'dart:math' as math;
 
 /// Un tramo abierto del día, en minutos desde la medianoche: de `inicio`
@@ -69,49 +64,6 @@ class HorarioAtencion {
     r'|(?<cerrado>\bcerrad[oa]\b)'
     r'|(?<diario>\b(?:diario|todos los dias|toda la semana)\b)',
   );
-
-  /// Lee `horarios` de la configuración de contacto: la lista del panel
-  /// ([{sucursal, horario}]), esa misma lista en JSON o un texto suelto. Con
-  /// varias sucursales, las horas en que abren todas. null si no trae
-  /// horario, si alguna sucursal no lo tiene o no se entiende, o si no
-  /// queda ningún día abierto.
-  static HorarioAtencion? desdeConfig(Object? horarios) {
-    if (horarios is String) {
-      final texto = horarios.trim();
-      if (texto.startsWith('[') || texto.startsWith('{')) {
-        try {
-          return desdeConfig(jsonDecode(texto));
-        } on FormatException {
-          return null;
-        }
-      }
-      return texto.isEmpty ? null : desdeTexto(texto);
-    }
-    final textos = switch (horarios) {
-      final List<Object?> sucursales => [
-          for (final s in sucursales) _horarioDe(s),
-        ],
-      final Map<Object?, Object?> sucursal => [_horarioDe(sucursal)],
-      _ => const <String?>[],
-    };
-    if (textos.isEmpty || textos.contains(null)) return null;
-    HorarioAtencion? comun;
-    for (final texto in textos) {
-      final horario = desdeTexto(texto!);
-      if (horario == null) return null;
-      comun = comun == null ? horario : comun.interseccion(horario);
-    }
-    return comun!.abreAlgunDia ? comun : null;
-  }
-
-  static String? _horarioDe(Object? sucursal) {
-    final texto = switch (sucursal) {
-      final String s => s,
-      final Map<Object?, Object?> m => m['horario']?.toString(),
-      _ => null,
-    };
-    return (texto == null || texto.trim().isEmpty) ? null : texto;
-  }
 
   /// Interpreta un horario escrito: «Lun - Dom: 8:00 AM - 9:00 PM»,
   /// «Lun–Sáb • 9:00 – 21:00 hrs», «Lunes a sábado de 9 a 8» o
@@ -250,33 +202,20 @@ class HorarioAtencion {
         .any((t) => t.inicio <= minuto && minuto < t.fin);
   }
 
-  /// De [franjas] («09:00 - 10:00»), las que caben completas en el horario
-  /// del día de [dia], en el mismo orden.
-  List<String> franjasDel(DateTime dia, List<String> franjas) {
-    final tramos = _tramosDel(dia);
-    return [
-      for (final franja in franjas)
-        if (_franja(franja) case (final inicio, final fin)
-            when tramos.any((t) => t.inicio <= inicio && fin <= t.fin))
-          franja,
-    ];
-  }
+  /// Las franjas de una hora («09:00 - 10:00») que caben completas en el
+  /// horario del día de [dia]: cada tramo, desde su primera hora en punto.
+  List<String> franjasDelDia(DateTime dia) => [
+        for (final t in _tramosDel(dia))
+          for (var inicio = (t.inicio + 59) ~/ 60 * 60;
+              inicio + 60 <= t.fin;
+              inicio += 60)
+            '${_hora(inicio)} - ${_hora(inicio + 60)}',
+      ];
 
-  static (int, int)? _franja(String franja) {
-    final partes = franja.split('-');
-    if (partes.length != 2) return null;
-    final inicio = _horaDeFranja(partes[0]);
-    final fin = _horaDeFranja(partes[1]);
-    return (inicio == null || fin == null) ? null : (inicio, fin);
-  }
-
-  static int? _horaDeFranja(String texto) {
-    final partes = texto.trim().split(':');
-    if (partes.length != 2) return null;
-    final h = int.tryParse(partes[0]);
-    final m = int.tryParse(partes[1]);
-    return (h == null || m == null) ? null : h * 60 + m;
-  }
+  /// «09:00» de [minutos] desde la medianoche.
+  static String _hora(int minutos) =>
+      '${(minutos ~/ 60).toString().padLeft(2, '0')}:'
+      '${(minutos % 60).toString().padLeft(2, '0')}';
 
   /// Cuándo abre después de [momento]: más tarde ese mismo día o el
   /// siguiente día que abra. null si no abre ningún día.

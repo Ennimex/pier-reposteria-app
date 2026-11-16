@@ -191,7 +191,8 @@ class _ModalidadCardState extends State<_ModalidadCard>
   }
 }
 
-/// "¿Dónde recoges?" con la sucursal y "¿Cuándo pasas?".
+/// "¿Dónde recoges?" con la sucursal (con varias, se elige una: las horas
+/// salen de su horario, #320) y "¿Cuándo pasas?".
 class CheckoutRecoger extends StatelessWidget {
   const CheckoutRecoger({
     required this.viewModel,
@@ -208,37 +209,61 @@ class CheckoutRecoger extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vm = viewModel;
+    final sucursal = vm.sucursal;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const TituloSeccion('¿Dónde recoges?'),
-        Container(
-          decoration: decoracionTarjeta(),
-          child: ListTile(
-            // Pin de ubicación animado (Lottie local, paleta Pier): gira y
-            // sube una sola vez, y otra vez al volver a «Recoger». Con
-            // movimiento reducido queda en su pose final.
-            leading: Lottie.asset(
-              'assets/lottie/store_location.json',
-              width: 44,
-              height: 44,
-              fit: BoxFit.contain,
-              repeat: false,
-              controller: AppMovimiento.reducido(context)
-                  ? const AlwaysStoppedAnimation<double>(1)
-                  : null,
-            ),
-            title: const Text(BusinessInfo.sucursal,
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(viewModel.direccionSucursal),
-            trailing: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                  color: AppColors.pierVerde, shape: BoxShape.circle),
-              child: const Icon(LucideIcons.check, color: Colors.white, size: 16),
+        if (vm.sucursales.length > 1)
+          // Como en la web: la dirección general no se presenta como la de
+          // una sucursal que no tiene la suya.
+          ...vm.sucursales.map((s) => _TarjetaSucursal(
+                key: ValueKey(s.nombre),
+                nombre: s.nombre,
+                horario: s.horarioTexto,
+                seleccionada: identical(s, sucursal),
+                onElegir: () => vm.elegirSucursal(s),
+              ))
+        else
+          Container(
+            decoration: decoracionTarjeta(),
+            child: ListTile(
+              // Pin de ubicación animado (Lottie local, paleta Pier): gira y
+              // sube una sola vez, y otra vez al volver a «Recoger». Con
+              // movimiento reducido queda en su pose final.
+              leading: Lottie.asset(
+                'assets/lottie/store_location.json',
+                width: 44,
+                height: 44,
+                fit: BoxFit.contain,
+                repeat: false,
+                controller: AppMovimiento.reducido(context)
+                    ? const AlwaysStoppedAnimation<double>(1)
+                    : null,
+              ),
+              title: Text(
+                  (sucursal == null || sucursal.nombre.isEmpty)
+                      ? BusinessInfo.sucursal
+                      : sucursal.nombre,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(vm.direccionSucursal),
+                  if (sucursal != null) Text(sucursal.horarioTexto),
+                ],
+              ),
+              trailing: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                    color: AppColors.pierVerde, shape: BoxShape.circle),
+                child:
+                    const Icon(LucideIcons.check, color: Colors.white, size: 16),
+              ),
             ),
           ),
-        ),
         const SizedBox(height: 24),
         const TituloSeccion('¿Cuándo pasas?'),
         CheckoutFechaHora(
@@ -247,6 +272,91 @@ class CheckoutRecoger extends StatelessWidget {
           sacudida: sacudidaFecha,
         ),
       ],
+    );
+  }
+}
+
+/// Una sucursal para recoger, con su horario: el radio de la elegida se
+/// rellena con un pop y su borde se anima, como en las direcciones.
+class _TarjetaSucursal extends StatelessWidget {
+  const _TarjetaSucursal({
+    required this.nombre,
+    required this.horario,
+    required this.seleccionada,
+    required this.onElegir,
+    super.key,
+  });
+
+  final String nombre;
+  final String horario;
+  final bool seleccionada;
+  final VoidCallback onElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    final sel = seleccionada;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AnimatedContainer(
+        duration: AppMovimiento.duracion(context, AppMovimiento.corta),
+        curve: AppMovimiento.curvaEstandar,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: sel
+                ? AppColors.pierVerde
+                : AppColors.textSecondary.withValues(alpha: 0.15),
+            width: sel ? 2 : 1,
+          ),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onElegir,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  CambioAnimado(
+                    tipo: TipoCambio.escalar,
+                    alineacion: Alignment.center,
+                    child: Icon(
+                      sel ? LucideIcons.circleDot : LucideIcons.circle,
+                      key: ValueKey(sel),
+                      color: sel
+                          ? AppColors.pierVerde
+                          : AppColors.textSecondary.withValues(alpha: 0.5),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(nombre,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14)),
+                        const SizedBox(height: 2),
+                        Text(horario,
+                            style: const TextStyle(
+                                fontSize: 13, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  Icon(LucideIcons.store,
+                      size: 18,
+                      color: sel
+                          ? AppColors.pierVerde
+                          : AppColors.textSecondary.withValues(alpha: 0.5)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -39,14 +39,24 @@ class BusinessInfo {
   /// Solo dígitos con lada país, para enlaces de WhatsApp (wa.me).
   static const String whatsappNumero = '527898965413';
 
-  // Horario
-  static const String horario = 'Lun–Sáb • 9:00 – 21:00 hrs';
+  // Horario. Respaldo de la configuración de contacto (`horarios`) cuando
+  // nunca llegó (#320): el que Dirección capturó en el panel para cada
+  // sucursal, tomado de «Encuéntranos» el 15-nov-2026. Si la Lic. Itzel da
+  // otro, se cambia aquí y en la tabla del #320.
+  static const List<({String sucursal, String horario})> sucursales = [
+    (sucursal: 'Sucursal Aviacion', horario: 'Lun - Dom: 8:00 AM - 9:00 PM'),
+    (sucursal: 'Sucursal Tahuizan', horario: 'Lun - Dom: 9:00 AM - 10:00 PM'),
+  ];
 
-  // Horario estructurado para lógica de abierto/cerrado.
-  // (DateTime.weekday: lunes=1 … domingo=7). Abierto Lun–Sáb, 9:00–21:00.
+  /// El de [sucursales] en una línea, para mostrar.
+  static const String horario =
+      'Lun–Dom • Aviación 8:00–21:00 · Tahuizán 9:00–22:00 hrs';
+
+  // Las horas en que abren las dos [sucursales], para la lógica de abierto o
+  // cerrado (DateTime.weekday: lunes=1 … domingo=7): Lun–Dom, 9:00–21:00.
   static const int horaApertura = 9;
   static const int horaCierre = 21;
-  static const List<int> diasAbiertos = [1, 2, 3, 4, 5, 6]; // Lun–Sáb
+  static const List<int> diasAbiertos = [1, 2, 3, 4, 5, 6, 7]; // Lun–Dom
 
   /// ¿El negocio está abierto ahora (o en la fecha dada)?
   static bool estaAbierto([DateTime? ahora]) {
