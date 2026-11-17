@@ -95,8 +95,15 @@ class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
       );
     }
     final cfg = r['config'];
-    return cfg is Map ? Map<String, dynamic>.from(cfg) : {};
+    if (cfg is! Map) return {};
+    final config = Map<String, dynamic>.from(cfg);
+    if (seccion == 'contacto') unawaited(_contactoGuardado.guardar(config));
+    return config;
   }
+
+  @override
+  Future<Map<String, dynamic>?> configContactoGuardada() =>
+      _contactoGuardado.leer();
 
   @override
   Future<Map<String, dynamic>> contenido() async {

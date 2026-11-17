@@ -35,7 +35,12 @@ class _PasarelaFalsa implements PasarelaPago {
 FakeApiClient _backend() => FakeApiClient(respuestas: {
       ApiConstants.configuracionSeccion('contacto'): {
         'success': true,
-        'config': {'direccion': 'Av. Revolución 100'},
+        'config': {
+          'direccion': 'Av. Revolución 100',
+          'horarios': [
+            {'sucursal': 'Sucursal Centro', 'horario': 'Lun - Dom 8 a 21'},
+          ],
+        },
       },
       ApiConstants.direcciones: {
         'success': true,
@@ -79,14 +84,23 @@ Future<void> _asentar(WidgetTester tester) async {
 }
 
 /// [abierto] fija si la tienda está abierta; null: lo decide el horario de
-/// atención con el reloj [ahora] (#320).
+/// atención con el reloj [ahora] (#320). [horarios]: los de las sucursales
+/// en la configuración; sin él, una sola sucursal de 8 a 21.
 Future<(FakeApiClient, _PasarelaFalsa, CheckoutViewModel)> _montar(
     WidgetTester tester,
-    {bool? abierto = true, DateTime Function()? ahora}) async {
+    {bool? abierto = true,
+    DateTime Function()? ahora,
+    Object? horarios}) async {
   tester.view.physicalSize = const Size(1080, 3600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final api = _backend();
+  if (horarios != null) {
+    api.responder(ApiConstants.configuracionSeccion('contacto'), {
+      'success': true,
+      'config': {'direccion': 'Av. Revolución 100', 'horarios': horarios},
+    });
+  }
   final pasarela = _PasarelaFalsa();
   final fijo = abierto;
   final vm = CheckoutViewModel(
@@ -262,17 +276,54 @@ void main() {
       expect(boton.onPressed, isNotNull);
     });
 
-    testWidgets('fuera de horario el aviso dice cuándo se prepara el pedido '
-        '(#320)', (tester) async {
-      // Sábado a las 22: el horario de respaldo no abre el domingo.
+    testWidgets('fuera de horario el aviso dice cuándo se prepara el pedido, '
+        'con el horario de la configuración (#320)', (tester) async {
+      // Sábado a las 22 y la sucursal no abre el domingo (el respaldo sí).
       await _montar(tester,
-          abierto: null, ahora: () => DateTime(2026, 11, 7, 22));
+          abierto: null,
+          ahora: () => DateTime(2026, 11, 7, 22),
+          horarios: 'Lun - Sáb 10 am - 6 pm');
 
       expect(find.text('Fuera de servicio'), findsOneWidget);
       expect(
           find.textContaining('lo preparamos en el siguiente horario de '
-              'atención: el lunes a partir de las 9:00.'),
+              'atención: el lunes a partir de las 10:00.'),
           findsOneWidget);
+    });
+
+    testWidgets('con dos sucursales se elige una y las horas y el aviso '
+        'salen de su horario (#320)', (tester) async {
+      // Lunes a las 9: Aviación ya abrió y Tahuizán abre a las 10.
+      final (_, _, vm) = await _montar(tester,
+          abierto: null,
+          ahora: () => DateTime(2026, 11, 9, 9),
+          horarios: [
+            {
+              'sucursal': 'Sucursal Aviacion',
+              'horario': 'Lun - Dom: 8:00 AM - 9:00 PM',
+            },
+            {
+              'sucursal': 'Sucursal Tahuizan',
+              'horario': 'Lun - Sáb 10 am - 10 pm',
+            },
+          ]);
+
+      expect(find.text('Sucursal Aviacion'), findsOneWidget);
+      expect(find.text('Lun - Sáb 10 am - 10 pm'), findsOneWidget);
+      expect(find.text('Av. Revolución 100'), findsNothing,
+          reason: 'la dirección general no es la de una sucursal sin la suya');
+      expect(vm.sucursal!.nombre, 'Sucursal Aviacion');
+      expect(find.text('Fuera de servicio'), findsNothing);
+      vm.elegirFecha(DateTime(2026, 11, 10));
+      expect(vm.horarios.first, '08:00 - 09:00');
+
+      await tester.tap(find.text('Sucursal Tahuizan'));
+      await _asentar(tester);
+
+      expect(vm.sucursal!.nombre, 'Sucursal Tahuizan');
+      expect(vm.horarios.first, '10:00 - 11:00');
+      expect(find.text('Fuera de servicio'), findsOneWidget);
+      expect(find.textContaining('hoy a partir de las 10:00.'), findsOneWidget);
     });
 
     testWidgets('en horario de atención no sale el aviso (#320)',

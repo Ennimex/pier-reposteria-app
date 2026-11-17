@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/domain/models/horario_atencion.dart';
+import 'package:pier_reposteria/domain/models/sucursal_atencion.dart';
 
 /// Minutos desde la medianoche de «h:mm».
 int _min(int h, [int m = 0]) => h * 60 + m;
@@ -16,6 +17,16 @@ Map<int, List<(int, int)>> _tramos(HorarioAtencion? horario) => {
       for (final MapEntry(key: dia, value: tramos) in horario!.porDia.entries)
         dia: [for (final t in tramos) (t.inicio, t.fin)],
     };
+
+/// Las horas en que abren todas las sucursales de `horarios` del panel.
+HorarioAtencion? _comun(Object? horarios) =>
+    SucursalAtencion.horarioComun(SucursalAtencion.listaDesdeConfig(horarios));
+
+/// La franja de una hora que empieza a las [h] en punto: «09:00 - 10:00».
+String _franja(int h) {
+  String dosDigitos(int n) => n.toString().padLeft(2, '0');
+  return '${dosDigitos(h)}:00 - ${dosDigitos(h + 1)}:00';
+}
 
 /// Lunes a domingo con el mismo tramo.
 Map<int, List<(int, int)>> _todaLaSemana(int inicio, int fin) => {
@@ -133,37 +144,37 @@ void main() {
     }
   });
 
-  group('HorarioAtencion.desdeConfig', () {
+  group('Las horas en que abren todas las sucursales del panel', () {
     final sucursales = [
       {'sucursal': 'Sucursal Aviacion', 'horario': 'Lun - Dom: 8:00 AM - 9:00 PM'},
       {'sucursal': 'Sucursal Tahuizan', 'horario': 'Lun - Dom: 9:00 AM - 10:00 PM'},
     ];
 
     test('la lista del panel: las horas en que abren todas', () {
-      expect(_tramos(HorarioAtencion.desdeConfig(sucursales)),
+      expect(_tramos(_comun(sucursales)),
           _todaLaSemana(_min(9), _min(21)));
     });
 
     test('la misma lista en JSON, un mapa o un texto suelto', () {
-      expect(_tramos(HorarioAtencion.desdeConfig(jsonEncode(sucursales))),
+      expect(_tramos(_comun(jsonEncode(sucursales))),
           _todaLaSemana(_min(9), _min(21)));
       expect(
-        _tramos(HorarioAtencion.desdeConfig(
+        _tramos(_comun(
             {'sucursal': 'Única', 'horario': 'Diario 9 a 21'})),
         _todaLaSemana(_min(9), _min(21)),
       );
       expect(
-        _tramos(HorarioAtencion.desdeConfig(['Lun - Dom 9 a 21'])),
+        _tramos(_comun(['Lun - Dom 9 a 21'])),
         _todaLaSemana(_min(9), _min(21)),
       );
       expect(
-        _tramos(HorarioAtencion.desdeConfig('  Lun a Sáb 9 a 8 ')).keys,
+        _tramos(_comun('  Lun a Sáb 9 a 8 ')).keys,
         hasLength(6),
       );
     });
 
     test('si una sucursal no abre el domingo, el domingo no abre', () {
-      final horario = HorarioAtencion.desdeConfig([
+      final horario = _comun([
         {'horario': 'Lun - Dom 9 a 21'},
         {'horario': 'Lun - Sáb 10 a 22'},
       ]);
@@ -194,7 +205,7 @@ void main() {
       (42, 'otro tipo'),
     ]) {
       test('null: $motivo', () {
-        expect(HorarioAtencion.desdeConfig(horarios), isNull);
+        expect(_comun(horarios), isNull);
       });
     }
   });
@@ -222,18 +233,28 @@ void main() {
       expect(respaldo.abiertoEn(DateTime(2026, 11, 8, 12)), isFalse);
     });
 
-    test('solo las franjas que caben completas en el horario del día', () {
-      const franjas = [
-        '08:00 - 09:00',
-        '09:00 - 10:00',
-        '20:00 - 21:00',
-        '20:30 - 21:30',
-        'a la hora que sea',
-        '10 - 11',
-      ];
-      expect(respaldo.franjasDel(_lunes, franjas),
-          ['09:00 - 10:00', '20:00 - 21:00']);
-      expect(respaldo.franjasDel(_domingo, franjas), isEmpty);
+    test('las franjas de una hora salen del horario del día', () {
+      expect(respaldo.franjasDelDia(_lunes),
+          [for (var h = 9; h < 21; h++) _franja(h)]);
+      expect(respaldo.franjasDelDia(_domingo), isEmpty);
+    });
+
+    test('las franjas empiezan en hora cerrada y caben completas', () {
+      // Abre a las 9:30 y cierra a las 14:30; en la tarde, de 16 a 18.
+      final partido = HorarioAtencion({
+        DateTime.monday: [
+          (inicio: _min(9, 30), fin: _min(14, 30)),
+          (inicio: _min(16), fin: _min(18)),
+        ],
+      });
+      expect(partido.franjasDelDia(_lunes), [
+        '10:00 - 11:00',
+        '11:00 - 12:00',
+        '12:00 - 13:00',
+        '13:00 - 14:00',
+        '16:00 - 17:00',
+        '17:00 - 18:00',
+      ]);
     });
 
     test('la siguiente apertura: hoy, mañana o el siguiente día que abre', () {
@@ -253,6 +274,82 @@ void main() {
       expect(_tramos(manana.interseccion(tarde)), {
         DateTime.monday: <(int, int)>[],
       });
+    });
+  });
+
+  group('SucursalAtencion.listaDesdeConfig', () {
+    test('cada sucursal del panel con su nombre, su texto y su horario', () {
+      final lista = SucursalAtencion.listaDesdeConfig([
+        {
+          'sucursal': ' Sucursal Aviacion ',
+          'horario': 'Lun - Dom: 8:00 AM - 9:00 PM',
+          'color': 'arena',
+        },
+        {'sucursal': 'Sucursal Tahuizan', 'horario': 'Lun - Sáb 9 a 22'},
+      ]);
+      expect([for (final s in lista) s.nombre],
+          ['Sucursal Aviacion', 'Sucursal Tahuizan']);
+      expect(lista.first.horarioTexto, 'Lun - Dom: 8:00 AM - 9:00 PM');
+      expect(_tramos(lista.first.horario), _todaLaSemana(_min(8), _min(21)));
+      expect(lista.last.horario!.abreEl(_domingo), isFalse);
+    });
+
+    test('la misma lista en JSON, un mapa o un texto sin nombre', () {
+      final enJson = SucursalAtencion.listaDesdeConfig(
+          jsonEncode([
+        {'sucursal': 'Centro', 'horario': 'Diario 9 a 21'},
+      ]));
+      expect(enJson.single.nombre, 'Centro');
+      expect(SucursalAtencion.listaDesdeConfig(
+              {'sucursal': 'Única', 'horario': 'Diario 9 a 21'})
+          .single
+          .nombre, 'Única');
+      final texto = SucursalAtencion.listaDesdeConfig('Lun - Dom 9 a 21');
+      expect(texto.single.nombre, isEmpty);
+      expect(_tramos(texto.single.horario), _todaLaSemana(_min(9), _min(21)));
+    });
+
+    test('una sucursal cuyo horario no se entiende queda sin horario', () {
+      final lista = SucursalAtencion.listaDesdeConfig([
+        {'sucursal': 'Centro', 'horario': 'cuando se pueda'},
+      ]);
+      expect(lista.single.nombre, 'Centro');
+      expect(lista.single.horarioTexto, 'cuando se pueda');
+      expect(lista.single.horario, isNull);
+    });
+
+    for (final (horarios, motivo) in <(Object?, String)>[
+      (null, 'sin horario'),
+      ('  ', 'texto vacío'),
+      ('[roto', 'JSON roto'),
+      (<Object?>[], 'lista vacía'),
+      ([
+        {'sucursal': 'Sin horario'},
+        {'sucursal': 'Vacía', 'horario': ' '},
+      ], 'sucursales sin horario'),
+      (42, 'otro tipo'),
+    ]) {
+      test('ninguna: $motivo', () {
+        expect(SucursalAtencion.listaDesdeConfig(horarios), isEmpty);
+      });
+    }
+
+    test('las horas en que abren todas; sin sucursales o con una sin '
+        'horario, null', () {
+      final lista = SucursalAtencion.listaDesdeConfig([
+        {'sucursal': 'A', 'horario': 'Lun - Dom 8 a 21'},
+        {'sucursal': 'B', 'horario': 'Lun - Dom 9 a 22'},
+      ]);
+      expect(_tramos(SucursalAtencion.horarioComun(lista)),
+          _todaLaSemana(_min(9), _min(21)));
+      expect(SucursalAtencion.horarioComun(const []), isNull);
+      expect(
+        SucursalAtencion.horarioComun([
+          ...lista,
+          const SucursalAtencion(nombre: 'C', horarioTexto: '?'),
+        ]),
+        isNull,
+      );
     });
   });
 }

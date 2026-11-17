@@ -11,6 +11,7 @@ import 'package:pier_reposteria/data/repositories/cuenta_repository_remote.dart'
 import 'package:pier_reposteria/data/repositories/entregas_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/favoritos_repository_remote.dart';
 import 'package:pier_reposteria/data/repositories/pedidos_repository_remote.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../fakes/fake_api_client.dart';
 
@@ -428,6 +429,43 @@ void main() {
         throwsA(isA<ApiException>().having(
             (e) => e.message, 'message', 'Error al obtener el contenido')),
       );
+    });
+
+    test('configDe de contacto guarda la copia tal como llegó, con los '
+        'horarios por sucursal (#320)', () async {
+      SharedPreferences.setMockInitialValues({});
+      const horarios = [
+        {'sucursal': 'Sucursal Aviacion', 'horario': 'Lun - Dom 8 a 21'},
+      ];
+      final api = FakeApiClient(respuestas: {
+        '/configuracion/contacto': {
+          'success': true,
+          'config': {'horarios': horarios},
+        },
+      });
+      final repo = ConfiguracionRepositoryRemote(api: api);
+      expect(await repo.configContactoGuardada(), isNull);
+
+      await repo.configDe('contacto');
+      await pumpEventQueue();
+
+      expect(await repo.configContactoGuardada(), {'horarios': horarios});
+    });
+
+    test('configDe de otra sección no se guarda como contacto', () async {
+      SharedPreferences.setMockInitialValues({});
+      final api = FakeApiClient(respuestas: {
+        '/configuracion/legales': {
+          'success': true,
+          'config': {'privacidad': 'texto'},
+        },
+      });
+      final repo = ConfiguracionRepositoryRemote(api: api);
+
+      await repo.configDe('legales');
+      await pumpEventQueue();
+
+      expect(await repo.configContactoGuardada(), isNull);
     });
   });
 }
