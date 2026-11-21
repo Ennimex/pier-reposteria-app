@@ -81,6 +81,21 @@ void main() {
       expect(avisos, 1);
     });
 
+    testWidgets('pasa a su destino al cumplirse la espera mínima de 1 s',
+        (tester) async {
+      await _montar(tester, alVerseElDestino: () async {});
+
+      await tester.pump(const Duration(milliseconds: 990));
+      expect(find.text('destino'), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 10));
+      await tester.pump();
+      expect(find.text('destino'), findsOneWidget);
+
+      await tester.pumpAndSettle();
+      await _desmontar(tester);
+    });
+
     testWidgets('si se desmonta antes de navegar, no avisa', (tester) async {
       var avisos = 0;
       await _montar(tester, alVerseElDestino: () async => avisos++);

@@ -1,17 +1,17 @@
 // lib/ui/splash/widgets/splash_screen.dart
 //
-// Splash con coreografía de marca dentro de la misma espera de siempre
-// (mínimo 1800 ms + checkSession, luego context.go):
+// Splash con coreografía de marca dentro de la espera mínima (1000 ms +
+// checkSession, luego context.go):
 //
-//   0–1350 ms  la foto de fondo aparece al decodificarse y se asienta
+//   0–630 ms   la foto de fondo aparece al decodificarse y se asienta
 //              (1.06 → 1); debajo hay un color que, con el velo, es el del
 //              arranque nativo (#36402B), así que no hay destello.
-//   75–700     el plato del logo crece con un rebote.
-//   450–1000   «Pier Repostería» sube y aparece (un solo Text).
-//   675–1150   «Dulces momentos» sube y aparece.
-//   1500       si la sesión ya está lista: «el plato se abre». El contenido
+//   35–330     el plato del logo crece con un rebote.
+//   210–470    «Pier Repostería» sube y aparece (un solo Text).
+//   315–540    «Dulces momentos» sube y aparece.
+//   700        si la sesión ya está lista: «el plato se abre». El contenido
 //              se apaga y el plato crece hasta cubrir la pantalla mientras
-//              se vuelve arena; a los 1800 ms context.go entra por el mismo
+//              se vuelve arena; a los 1000 ms context.go entra por el mismo
 //              color arena de paginaRaiz, así que el corte no se ve.
 //
 // Si la sesión tarda, el indicador aparece al final de la entrada y la
@@ -47,9 +47,13 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  // La entrada dura lo que falta para la salida: 1500 + 300 = 1800 ms, la
-  // espera mínima de siempre.
-  static const Duration _duracionEntrada = Duration(milliseconds: 1500);
+  // Lo mínimo que se ve el splash antes de pasar a su destino (#353: era
+  // 1.8 s y todo ese tiempo cuenta en el arranque hasta el Inicio).
+  static const Duration _esperaMinima = Duration(milliseconds: 1000);
+
+  // La entrada dura lo que le falta a la espera mínima para la salida:
+  // 700 + 300 = 1000 ms.
+  static const Duration _duracionEntrada = Duration(milliseconds: 700);
   static const Duration _duracionSalida = AppMovimiento.media;
 
   // Promedio de la foto de fondo: bajo el velo negro del 40 % da #36402B,
@@ -139,8 +143,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkSession() async {
-    final minWait =
-        Future.delayed(const Duration(milliseconds: 1800));
+    final minWait = Future<void>.delayed(_esperaMinima);
     final authProvider =
         Provider.of<AuthProvider>(context, listen: false);
     await authProvider.checkSession();
