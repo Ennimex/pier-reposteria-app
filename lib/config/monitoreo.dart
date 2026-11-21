@@ -7,6 +7,10 @@
 // arranca igual, sin tráfico hacia sentry.io. Si el cliente se opuso al envío
 // de diagnósticos (Más → Privacidad, #223) tampoco se inicia; si lo apaga con
 // la app abierta, lo que quede por mandar se descarta.
+//
+// El arranque se mide completo (#353): su transacción se manda siempre y,
+// además del primer cuadro (el splash), lleva el tiempo hasta que el destino
+// del splash queda a la vista (inicioVisible).
 import 'package:flutter/widgets.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/config/app_version.dart';
@@ -23,6 +27,11 @@ class Monitoreo {
   Monitoreo._();
 
   static const String _dsn = String.fromEnvironment('SENTRY_DSN');
+
+  /// Operación de la transacción que Sentry abre sola en cada arranque: lleva
+  /// el arranque en frío y los tiempos hasta el primer cuadro y hasta el
+  /// destino del splash.
+  static const String operacionArranque = 'ui.load';
 
   /// ¿El cliente acepta que se manden diagnósticos? (#223). Lo carga
   /// [arrancar] y lo cambia la pantalla de privacidad; con false, Sentry
@@ -77,6 +86,10 @@ class Monitoreo {
       // del cuerpo de la función.
       ..tracesSampler = ((contexto) =>
           tasaDeMuestreo(contexto.transactionContext.operation, ambiente))
+      // El arranque no termina en el primer cuadro (el splash): se mide
+      // hasta que su destino queda a la vista, que el splash avisa con
+      // inicioVisible (#353).
+      ..enableTimeToFullDisplayTracing = true
       // El cliente puede oponerse con la app abierta (#223).
       ..beforeSend = ((evento, _) => diagnosticosPermitidos ? evento : null)
       ..beforeSendTransaction =
@@ -90,11 +103,21 @@ class Monitoreo {
   static NavigatorObserver observadorDeNavegacion({Hub? hub}) =>
       SentryNavigatorObserver(hub: hub, enableAutoTransactions: false);
 
+  /// El destino del splash ya quedó a la vista (el Inicio del cliente, las
+  /// entregas del repartidor o las comandas del personal): cierra la medida
+  /// «hasta el Inicio» de la transacción de arranque (#353). Sin Sentry
+  /// iniciado no hace nada.
+  static Future<void> inicioVisible({Hub? hub}) async =>
+      SentryFlutter.currentDisplay(hub: hub)?.reportFullyDisplayed();
+
   /// Cada intento de pago se mide siempre: el objetivo de errores del pago
-  /// (docs/SLO.md, #24) necesita todos. Lo demás, en prod solo el 20 % para
-  /// no agotar la cuota.
+  /// (docs/SLO.md, #24) necesita todos. Cada arranque también (#353): con el
+  /// 20 %, una versión con pocas sesiones juntaba 3 arranques en un mes y su
+  /// p90 no decía nada. Lo demás, en prod solo el 20 % para no agotar la
+  /// cuota.
   static double tasaDeMuestreo(String operacion, Ambiente ambiente) {
     if (operacion == MonitorDePagosSentry.operacion) return 1;
+    if (operacion == operacionArranque) return 1;
     return ambiente == Ambiente.prod ? 0.2 : 1.0;
   }
 }

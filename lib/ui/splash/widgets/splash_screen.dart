@@ -23,6 +23,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:pier_reposteria/config/monitoreo.dart';
 import 'package:pier_reposteria/routing/app_routes.dart';
 import 'package:pier_reposteria/ui/core/state/auth_provider.dart';
 import 'package:pier_reposteria/ui/core/state/tema_provider.dart';
@@ -31,7 +32,14 @@ import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({
+    super.key,
+    this.alVerseElDestino = Monitoreo.inicioVisible,
+  });
+
+  /// Se llama cuando el destino del splash ya quedó a la vista: ahí termina
+  /// el arranque que mide Sentry (#353). Las pruebas pasan el suyo.
+  final Future<void> Function() alVerseElDestino;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -104,6 +112,10 @@ class _SplashScreenState extends State<SplashScreen>
   bool _preparada = false;
   bool _sesionLista = false;
 
+  // true desde que se pide el destino: el Navigator desmonta el splash
+  // cuando ese destino termina de entrar.
+  bool _destinoPedido = false;
+
   @override
   void initState() {
     super.initState();
@@ -138,6 +150,7 @@ class _SplashScreenState extends State<SplashScreen>
     }
     await minWait;
     if (!mounted) return;
+    _destinoPedido = true;
     context.go(
       authProvider.isAuthenticated
           ? AppRoutes.homeForRole(authProvider.rol)
@@ -177,6 +190,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    // El destino ya quedó a la vista: ahí termina el arranque (#353).
+    if (_destinoPedido) unawaited(widget.alVerseElDestino());
     _entrada.dispose();
     _salida.dispose();
     super.dispose();
