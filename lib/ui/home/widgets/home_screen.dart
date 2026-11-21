@@ -293,11 +293,65 @@ class _HomeScreenState extends State<HomeScreen> {
       SliverToBoxAdapter(key: ValueKey('inicio-$id'), child: child);
 
   /// Sección que puede no estar: su ranura fija abre y cierra el espacio, y
-  /// la sección entra al llegar (una sola vez: recargar no la repite).
-  Widget _seccion(String id, Widget? seccion) => _sliver(
-        id,
-        RanuraInicio(
-          child: seccion == null ? null : EntradaInicio(id: id, child: seccion),
-        ),
+  /// la sección entra al llegar (una sola vez: recargar no la repite). Si
+  /// llega cuando su lugar queda lejos de la pantalla, no se arma hasta que
+  /// el scroll la acerca.
+  Widget _seccion(String id, Widget? seccion) => _SeccionOpcional(
+        key: ValueKey('inicio-$id'),
+        id: id,
+        seccion: seccion,
+      );
+}
+
+/// El sliver de una sección del Inicio que puede no estar.
+///
+/// Cuando llegan los datos, las secciones de abajo (ofertas, listas de
+/// productos, reseñas) quedan lejos de lo que se ve. Antes se armaban todas
+/// en ese mismo cuadro, con sus tarjetas y sus textos, y el Inicio daba un
+/// tirón (#341). Ahora la que llega lejos deja apartado su lugar y se arma
+/// cuando el scroll la acerca: en cuanto empieza dentro de la pantalla o de
+/// la franja que la lista prepara por adelantado. Una vez armada se queda,
+/// como las demás.
+class _SeccionOpcional extends StatefulWidget {
+  const _SeccionOpcional({required this.id, required this.seccion, super.key});
+
+  final String id;
+
+  /// La sección con sus datos, o null si no hay nada que mostrar.
+  final Widget? seccion;
+
+  /// Alto que se le aparta a una sección que todavía no se arma. Si quedara
+  /// en cero, todas las que le siguen estarían igual de cerca y se armarían
+  /// juntas.
+  static const double altoApartado = 300;
+
+  @override
+  State<_SeccionOpcional> createState() => _SeccionOpcionalState();
+}
+
+class _SeccionOpcionalState extends State<_SeccionOpcional> {
+  // Ya estuvo cerca de la pantalla con algo que mostrar.
+  bool _armada = false;
+
+  @override
+  Widget build(BuildContext context) => SliverLayoutBuilder(
+        builder: (context, medidas) {
+          final seccion = widget.seccion;
+          if (seccion != null && medidas.remainingCacheExtent > 0) {
+            _armada = true;
+          }
+          if (seccion != null && !_armada) {
+            return const SliverToBoxAdapter(
+              child: SizedBox(height: _SeccionOpcional.altoApartado),
+            );
+          }
+          return SliverToBoxAdapter(
+            child: RanuraInicio(
+              child: seccion == null
+                  ? null
+                  : EntradaInicio(id: widget.id, child: seccion),
+            ),
+          );
+        },
       );
 }

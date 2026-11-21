@@ -1120,6 +1120,36 @@ void main() {
       await _desmontar(tester);
     });
 
+    // #341: al llegar los productos, todas las secciones de abajo se armaban
+    // en ese mismo cuadro aunque no se vieran, y el Inicio daba un tirón.
+    testWidgets('una sección que llega lejos de la pantalla aparta su lugar y '
+        'se arma cuando el scroll la acerca', (tester) async {
+      _pantalla(tester, alto: 500);
+      await tester.pumpApp(const HomeScreen(), api: _backend());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+
+      // Los productos ya llegaron, pero «Mejor calificados» queda lejos de
+      // lo que se ve: todavía no existe.
+      expect(find.text('Mejor calificados', skipOffstage: false), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Mejor calificados'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Mejor calificados'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      // Ya armada, se queda aunque el scroll la deje lejos otra vez.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 3000));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Bienvenido'), findsOneWidget);
+      expect(find.text('Mejor calificados', skipOffstage: false), findsOneWidget);
+      await _desmontar(tester);
+    }, tags: 'regresion');
+
     testWidgets('con movimiento reducido todo está en su lugar desde el '
         'primer cuadro', (tester) async {
       activarReducirMovimientoIos(tester);
