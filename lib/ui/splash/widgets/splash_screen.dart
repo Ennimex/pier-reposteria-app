@@ -213,9 +213,11 @@ class _SplashScreenState extends State<SplashScreen>
             scale: _entrada.drive(_escalaFondo),
             child: RepaintBoundary(
               child: Image.asset(
-                'assets/images/fondo_splash_verde_pier.png',
+                // JPEG: la foto no lleva transparencia y así pesa 0.4 MB y
+                // se decodifica antes que como PNG.
+                'assets/images/fondo_splash_verde_pier.jpg',
                 fit: BoxFit.cover,
-                // La foto (2.7 MB) aparece al decodificarse: ya no «salta».
+                // La foto aparece al decodificarse: ya no «salta».
                 frameBuilder: (context, foto, cuadro, sincrona) => sincrona
                     ? foto
                     : AnimatedOpacity(

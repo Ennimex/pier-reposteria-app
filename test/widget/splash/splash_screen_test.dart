@@ -2,6 +2,8 @@
 // navega a su destino y, cuando ese destino ya quedó a la vista, avisa que
 // el arranque terminó (#353: Sentry mide hasta ahí, no solo el primer
 // cuadro).
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -88,6 +90,32 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
 
       expect(avisos, 0);
+    });
+
+    // Si falta una imagen, el splash pinta su respaldo (un color o un ícono)
+    // y nadie se entera: aquí se comprueba que las dos existen.
+    testWidgets('la foto de fondo y el logo existen entre los assets',
+        (tester) async {
+      await _montar(tester, alVerseElDestino: () async {});
+
+      final nombres = tester
+          .widgetList<Image>(find.byType(Image))
+          .map((imagen) => imagen.image)
+          .map((origen) => origen is ResizeImage ? origen.imageProvider : origen)
+          .whereType<AssetImage>()
+          .map((origen) => origen.assetName)
+          .toList();
+
+      expect(nombres, [
+        'assets/images/fondo_splash_verde_pier.jpg',
+        'assets/images/logo.png',
+      ]);
+      for (final nombre in nombres) {
+        expect(File(nombre).existsSync(), isTrue, reason: nombre);
+      }
+
+      await _desmontar(tester);
+      await tester.pump(const Duration(seconds: 2));
     });
   });
 }
