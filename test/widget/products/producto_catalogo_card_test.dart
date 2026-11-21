@@ -1,7 +1,7 @@
 // test/widget/products/producto_catalogo_card_test.dart — la tarjeta del
 // catálogo cabe en su celda en pantallas angostas y con la letra del sistema
 // grande (#362). La celda mide lo que le da la pantalla (su ancho entre una
-// proporción fija), no lo que mide el texto: en un celular de 360 de ancho la
+// proporción), no lo que mide el texto: en un celular de 360 de ancho la
 // cuadrícula se desbordaba 9.1 px y la lista, 5.5 px (visto en Firebase Test
 // Lab, #81).
 @Tags(['regresion'])
@@ -39,14 +39,16 @@ final Product _producto = Product.fromJson({
 const double _margen = 16;
 const double _separacion = 12;
 
-/// La celda del catálogo en un celular de [pantalla] de ancho.
-Size _celda(double pantalla, {required bool cuadricula}) {
+/// La celda del catálogo en un celular de [pantalla] de ancho con la letra
+/// del sistema a [letra].
+Size _celda(double pantalla, {required bool cuadricula, double letra = 1}) {
   final ancho = cuadricula
       ? (pantalla - 2 * _margen - _separacion) / 2
       : pantalla - 2 * _margen;
-  final proporcion = cuadricula
-      ? ProductoCatalogoCard.proporcionEnCuadricula
-      : ProductoCatalogoCard.proporcionEnLista;
+  final proporcion = ProductoCatalogoCard.proporcionDeLaCelda(
+    enCuadricula: cuadricula,
+    letra: TextScaler.linear(letra),
+  );
   return Size(ancho, ancho / proporcion);
 }
 
@@ -66,7 +68,7 @@ Future<Size> _montar(
   tester.platformDispatcher.textScaleFactorTestValue = letra;
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-  final celda = _celda(pantalla, cuadricula: cuadricula);
+  final celda = _celda(pantalla, cuadricula: cuadricula, letra: letra);
   await tester.pumpApp(
     Theme(
       data: AppTheme.lightTheme,
@@ -94,6 +96,15 @@ Future<Size> _montar(
   return celda;
 }
 
+/// Pantallas (ancho) con la letra del sistema agrandada.
+const List<(double, double)> _conLetraGrande = [
+  (320, 1.3),
+  (360, 1.3),
+  (360, 1.5),
+  (411, 1.3),
+  (411, 2),
+];
+
 void main() {
   group('ProductoCatalogoCard cabe en su celda (#362)', () {
     for (final cuadricula in [true, false]) {
@@ -108,20 +119,46 @@ void main() {
         });
       }
 
-      for (final pantalla in <double>[360, 411]) {
-        testWidgets('en $modo, con la letra del sistema al 130 % en un '
-            'celular de ${pantalla.round()} de ancho', (tester) async {
+      for (final (pantalla, letra) in _conLetraGrande) {
+        testWidgets('en $modo, en un celular de ${pantalla.round()} de ancho '
+            'con la letra del sistema al ${(letra * 100).round()} %',
+            (tester) async {
           await _montar(
             tester,
             pantalla: pantalla,
             cuadricula: cuadricula,
-            letra: 1.3,
+            letra: letra,
           );
 
           expect(tester.takeException(), isNull);
         });
       }
     }
+  });
+
+  group('ProductoCatalogoCard.proporcionDeLaCelda', () {
+    double proporcion({required bool cuadricula, required double letra}) =>
+        ProductoCatalogoCard.proporcionDeLaCelda(
+          enCuadricula: cuadricula,
+          letra: TextScaler.linear(letra),
+        );
+
+    test('en cuadrícula no depende de la letra: la foto cede su lugar', () {
+      expect(proporcion(cuadricula: true, letra: 1), 0.63);
+      expect(proporcion(cuadricula: true, letra: 2), 0.63);
+    });
+
+    test('en lista la celda crece con la letra del sistema', () {
+      expect(proporcion(cuadricula: false, letra: 1), 3.2);
+      expect(
+        proporcion(cuadricula: false, letra: 1.5),
+        moreOrLessEquals(3.2 / 1.5),
+      );
+    });
+
+    test('en lista la celda no se encoge con la letra chica', () {
+      expect(proporcion(cuadricula: false, letra: 0.85), 3.2);
+    });
   });
 
   group('ProductoCatalogoCard en cuadrícula', () {
@@ -171,9 +208,9 @@ void main() {
       expect(renglones(tester), 1);
     });
 
-    testWidgets('si no cabe ni un renglón (letra al 130 % en 360 de ancho), '
-        'la descripción no sale y lo demás sigue', (tester) async {
-      await _montar(tester, pantalla: 360, cuadricula: false, letra: 1.3);
+    testWidgets('en un celular de 320 de ancho no cabe la descripción y lo '
+        'demás sigue', (tester) async {
+      await _montar(tester, pantalla: 320, cuadricula: false);
 
       expect(find.text(_descripcion), findsNothing);
       expect(find.text('Chocoflan'), findsOneWidget);

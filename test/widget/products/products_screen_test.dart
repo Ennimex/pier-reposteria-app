@@ -238,6 +238,27 @@ void main() {
       expect(find.text('Cuadrícula'), findsOneWidget);
     });
 
+    // #362: en lista no hay foto que ceda su lugar al texto; con la letra
+    // del sistema grande, la celda crece igual que la letra.
+    testWidgets('en lista las tarjetas crecen con la letra del sistema',
+        (tester) async {
+      await _montar(tester);
+      await tester.tap(find.text('Cuadrícula'));
+      await tester.pumpAndSettle();
+      final normal = tester.getSize(find.byType(ProductoCatalogoCard).first);
+
+      tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpAndSettle();
+
+      final grande = tester.getSize(find.byType(ProductoCatalogoCard).first);
+      expect(grande.width, normal.width);
+      expect(
+        grande.height,
+        moreOrLessEquals(normal.height * 1.5, epsilon: 0.01),
+      );
+    }, tags: 'regresion');
+
     testWidgets('el chip de categoría filtra y "Quitar filtros" lo regresa',
         (tester) async {
       await _montar(tester);

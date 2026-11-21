@@ -46,18 +46,30 @@ class ProductoCatalogoCard extends StatelessWidget {
   /// Rebote del botón al agregar al carrito (lo anima la pantalla).
   final Animation<double>? animacionCarrito;
 
-  /// Ancho entre alto de la celda del catálogo, en cuadrícula y en lista.
-  /// El alto sale del ancho de la pantalla, no de lo que mide el texto: por
-  /// eso la tarjeta se acomoda sola cuando la celda le queda chica (#362).
-  static const double proporcionEnCuadricula = 0.63;
-  static const double proporcionEnLista = 3.2;
+  /// Ancho entre alto de la celda del catálogo. El alto sale del ancho de la
+  /// pantalla, no de lo que mide el texto: por eso la tarjeta se acomoda sola
+  /// cuando la celda le queda chica (#362). En lista no hay foto que ceda su
+  /// lugar, así que la celda crece con la [letra] del sistema.
+  static double proporcionDeLaCelda({
+    required bool enCuadricula,
+    required TextScaler letra,
+  }) {
+    if (enCuadricula) return _proporcionEnCuadricula;
+    final escala = letra.scale(_letraNombreLista) / _letraNombreLista;
+    return escala > 1 ? _proporcionEnLista / escala : _proporcionEnLista;
+  }
+
+  static const double _proporcionEnCuadricula = 0.63;
+  static const double _proporcionEnLista = 3.2;
 
   // En cuadrícula, la parte del alto de la celda que toca al texto cuando
   // cabe; el resto es de la foto.
   static const double _parteDelTexto = 0.45;
 
-  // Letra e interlineado de la descripción en lista: con ellos se calcula
-  // cuántos renglones caben.
+  // Letra del nombre y de la descripción en lista, y el interlineado de la
+  // descripción: con ellos se calcula cuánto crece la celda y cuántos
+  // renglones de descripción caben.
+  static const double _letraNombreLista = 14;
   static const double _letraDescripcionLista = 11;
   static const double _interlineadoDescripcion = 1.3;
 
@@ -229,12 +241,12 @@ class ProductoCatalogoCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(p.nombre,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: _letraNombreLista, color: AppColors.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 // La descripción ocupa los renglones que caben entre el
                 // nombre y el precio: dos, uno (pantallas de 360 de ancho) o
-                // ninguno (letra del sistema grande). Antes eran siempre dos
-                // y se desbordaba (#362).
+                // ninguno (pantallas de 320). Antes eran siempre dos y se
+                // desbordaba (#362).
                 Flexible(
                   child: LayoutBuilder(
                     builder: (context, espacio) {
