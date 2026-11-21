@@ -45,6 +45,11 @@ const _etapasDelPipeline = [
   ('Esfuerzo', 'esfuerzo'),
 ];
 
+/// Los Android de los celulares virtuales donde corren los flujos contra el
+/// entorno aislado (la matriz de integracion.yml, #81). Cada uno deja su
+/// reporte: `flujo_entorno_aislado_android_<Android>.json`.
+const _androidDeLosFlujos = ['10', '14'];
+
 const _uso = '''
 Uso: dart run tool/resumen_pruebas.dart <comando> [opciones]
 
@@ -534,7 +539,10 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
   final datosDelFlujo = flujo == null ? null : jsonDecode(flujo);
   final integracion = corrida('integracion.json');
   final pruebasDeLaApi = corrida('api.json');
-  final flujosAislados = corrida('flujo_entorno_aislado.json');
+  final flujosAislados = {
+    for (final android in _androidDeLosFlujos)
+      android: corrida('flujo_entorno_aislado_android_$android.json'),
+  };
   final regresion = corrida('regresion.json');
   final apk = buscar((nombre) => nombre.endsWith('-release.apk'));
   final arranque = leer('arranque_en_frio.txt');
@@ -570,8 +578,9 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
     'integracion': [
       if (integracion != null) 'Emulador: ${lineaPruebas(integracion)}',
       if (pruebasDeLaApi != null) 'API: ${lineaPruebas(pruebasDeLaApi)}',
-      if (flujosAislados != null)
-        'Flujos de compra, reseña y entrega: ${lineaPruebas(flujosAislados)}',
+      for (final MapEntry(key: android, value: flujos)
+          in flujosAislados.entries)
+        if (flujos != null) _lineaDeLosFlujos(android, flujos),
     ],
     'regresion': [if (regresion != null) lineaPruebas(regresion)],
     'rendimiento': [
@@ -618,7 +627,7 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
         ?gherkin,
         ?integracion,
         ?pruebasDeLaApi,
-        ?flujosAislados,
+        ...flujosAislados.values.nonNulls,
         ?regresion,
       ],
       destino: destino,
@@ -626,6 +635,12 @@ double? _medir(Medida medida, String ruta, _Archivos archivos) {
     0,
   );
 }
+
+/// La métrica de los flujos contra el entorno aislado en el celular virtual
+/// con ese [android].
+String _lineaDeLosFlujos(String android, Corrida flujos) =>
+    'Flujos de compra, reseña y entrega (Android $android): '
+    '${lineaPruebas(flujos)}';
 
 (String, int)? _regresion(
   _Argumentos opciones,

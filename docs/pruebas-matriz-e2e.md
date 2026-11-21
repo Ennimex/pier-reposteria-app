@@ -9,7 +9,7 @@ registro de los errores encontrados y corregidos.
 
 | Build | Dónde corre | Contra qué servidor | Cómo se arma |
 |---|---|---|---|
-| Debug | Emulador de GitHub Actions: Android 14 (API 34), perfil Pixel 6 | Entorno aislado (API y base en contenedores, `10.0.2.2:3000`) o, en la regresión completa, el servidor real con la cuenta de prueba | `flutter test` / `flutter drive` sin bandera de modo |
+| Debug | Emulador de GitHub Actions: Android 14 (API 34), perfil Pixel 6. Los flujos contra el entorno aislado corren en dos (#81): Android 10 (API 29), perfil Nexus 5 (5", 360 × 640 dp), y Android 14, perfil Pixel 6 Pro (6.7", 411 × 891 dp) | Entorno aislado (API y base en contenedores, `10.0.2.2:3000`) o, en la regresión completa, el servidor real con la cuenta de prueba | `flutter test` / `flutter drive` sin bandera de modo |
 | Release (candidato) | El mismo emulador, en el ensayo de `release.yml` | Entorno aislado | `--release --flavor prod --obfuscate --split-debug-info` |
 | Release (publicado) | Samsung Galaxy Note10+ (SM-N975U), Android 12 | Servidor real | El APK firmado de la Release de GitHub |
 | Release (cierre del sprint) | El mismo Samsung | Servidor real | «Pier STAGING» en release y ofuscado, desde `main`, firmado con la llave debug para instalarlo junto a «Pier» |
