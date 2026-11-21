@@ -73,8 +73,21 @@ class ProductProvider with ChangeNotifier {
         0;
   }
 
-  Future<void> cargarProductos() async {
-    if (_productos.isNotEmpty) return;
+  // La carga que ya va en camino. Al abrir la app, el Inicio y el Catálogo
+  // (montado en su pestaña, aunque no se vea) piden los productos en el mismo
+  // cuadro: antes cada uno bajaba y leía el catálogo y las promociones por
+  // su cuenta, y la pantalla se armaba dos veces (#341).
+  Future<void>? _cargaEnCurso;
+
+  /// Carga los productos y las promociones, una sola vez: con el catálogo ya
+  /// cargado no hace nada y, si hay una carga en camino, espera esa misma.
+  Future<void> cargarProductos() {
+    if (_productos.isNotEmpty) return Future<void>.value();
+    return _cargaEnCurso ??=
+        _cargar().whenComplete(() => _cargaEnCurso = null);
+  }
+
+  Future<void> _cargar() async {
     PierLog.info('📦 Iniciando carga de productos desde backend...');
     _isLoading = true;
     _errorMessage = null;

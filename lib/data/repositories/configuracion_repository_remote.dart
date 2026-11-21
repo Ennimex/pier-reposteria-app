@@ -26,9 +26,18 @@ class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
   final ApiClient _api;
   final ContactoGuardadoService _contactoGuardado;
 
+  // Las secciones que ya se están pidiendo. Al abrir la app, el Inicio pide
+  // «contacto» y «personalizacion» en el mismo cuadro que «Más» y el tema:
+  // comparten la petición en camino en vez de mandar otra (#341).
+  final Map<String, Future<Map<String, dynamic>>> _enCurso = {};
+
   @override
   Future<Map<String, dynamic>> seccion(String nombre) =>
-      _api.get(ApiConstants.configuracionSeccion(nombre));
+      _enCurso[nombre] ??= _api
+          .get(ApiConstants.configuracionSeccion(nombre))
+          // unawaited: remove devuelve esta misma petición y, si el aviso la
+          // devolviera, whenComplete se quedaría esperándola.
+          .whenComplete(() => unawaited(_enCurso.remove(nombre)));
 
   @override
   Future<InfoContacto> contacto() async {
