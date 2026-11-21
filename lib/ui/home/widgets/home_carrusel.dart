@@ -13,12 +13,16 @@
 // nuevo con un fundido. Con movimiento reducido no hay paralaje y el
 // carrusel salta de slide en vez de deslizarse.
 //
-// Solo avanza a la vista: en una pestaña oculta o bajo otra ruta sus tickers
-// están apagados, el deslizamiento quedaría congelado y barrería de golpe al
-// volver. Del último slide pasa al primero hacia adelante: después del último
-// va una copia del primero y, al quedar quieto en ella, salta al primero de
-// verdad (se ven igual, así que no se nota). Antes regresaba barriendo hacia
-// atrás por todos los slides, como un rebobinado.
+// Solo avanza a la vista y con la app al frente: en una pestaña oculta o bajo
+// otra ruta sus tickers están apagados, el deslizamiento quedaría congelado y
+// barrería de golpe al volver; con la app en segundo plano solo la
+// despertaría cada 5 s (#352). Ahí el temporizador no existe y, al volver, la
+// cuenta empieza de cero.
+//
+// Del último slide pasa al primero hacia adelante: después del último va una
+// copia del primero y, al quedar quieto en ella, salta al primero de verdad
+// (se ven igual, así que no se nota). Antes regresaba barriendo hacia atrás
+// por todos los slides, como un rebobinado.
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -63,9 +67,19 @@ class HomeCarrusel extends StatefulWidget {
   State<HomeCarrusel> createState() => _HomeCarruselState();
 }
 
-class _HomeCarruselState extends State<HomeCarrusel> {
+class _HomeCarruselState extends State<HomeCarrusel>
+    with WidgetsBindingObserver {
   final PageController _pageController = PageController();
-  late final Timer _timer;
+
+  // Solo existe mientras el carrusel avanza solo (_ajustarTemporizador).
+  Timer? _timer;
+
+  // Dice si el carrusel está a la vista: se apaga en una pestaña oculta o
+  // bajo otra ruta.
+  ValueListenable<TickerModeData>? _tickers;
+
+  // false con la app en segundo plano.
+  bool _appALaVista = true;
 
   // Página del PageView. Con dos slides o más puede ser la copia del primero
   // (la página `slides.length`), solo hasta que el carrusel queda quieto.
@@ -78,16 +92,41 @@ class _HomeCarruselState extends State<HomeCarrusel> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(widget.intervalo, (_) => _avanzar());
+    _appALaVista = _seVe(WidgetsBinding.instance.lifecycleState);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// Con la app al frente o tapada a medias (inactive) el carrusel se ve;
+  /// oculta o en pausa, no. Sin dato (antes del primer aviso), se ve.
+  static bool _seVe(AppLifecycleState? estado) =>
+      estado == null ||
+      estado == AppLifecycleState.resumed ||
+      estado == AppLifecycleState.inactive;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final aLaVista = _seVe(state);
+    if (aLaVista == _appALaVista) return;
+    _appALaVista = aLaVista;
+    _ajustarTemporizador();
+  }
+
+  /// Deja el temporizador andando solo si el carrusel avanza: con dos slides
+  /// o más, a la vista y con la app al frente. Si no, lo cancela; al
+  /// crearlo de nuevo, la cuenta empieza de cero.
+  void _ajustarTemporizador() {
+    final avanza =
+        _conCopia && _appALaVista && (_tickers?.value.enabled ?? true);
+    if (!avanza) {
+      _timer?.cancel();
+      _timer = null;
+      return;
+    }
+    _timer ??= Timer.periodic(widget.intervalo, (_) => _avanzar());
   }
 
   void _avanzar() {
-    // Fuera de la vista (pestaña oculta o bajo otra ruta) no avanza.
-    if (!mounted ||
-        !_conCopia ||
-        !TickerMode.getValuesNotifier(context).value.enabled) {
-      return;
-    }
+    if (!mounted || !_conCopia) return;
     final total = widget.slides.length;
     if (_pagina >= total && _pageController.hasClients) {
       // Sigue en la copia (no ha quedado quieto): parte del primero de verdad.
@@ -134,6 +173,12 @@ class _HomeCarruselState extends State<HomeCarrusel> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _reducido = AppMovimiento.reducido(context);
+    final tickers = TickerMode.getValuesNotifier(context);
+    if (!identical(tickers, _tickers)) {
+      _tickers?.removeListener(_ajustarTemporizador);
+      _tickers = tickers..addListener(_ajustarTemporizador);
+    }
+    _ajustarTemporizador();
   }
 
   @override
@@ -145,11 +190,20 @@ class _HomeCarruselState extends State<HomeCarrusel> {
       _pagina = 0;
       if (_pageController.hasClients) _pageController.jumpToPage(0);
     }
+    // Otro intervalo: la cuenta empieza de nuevo con él.
+    if (anterior.intervalo != widget.intervalo) {
+      _timer?.cancel();
+      _timer = null;
+    }
+    // Y si llegó el segundo slide (o se fue), empieza (o deja) de avanzar.
+    _ajustarTemporizador();
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
+    _tickers?.removeListener(_ajustarTemporizador);
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
   }
