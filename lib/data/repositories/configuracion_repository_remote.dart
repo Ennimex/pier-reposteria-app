@@ -14,6 +14,7 @@ import 'package:pier_reposteria/domain/models/info_contacto.dart';
 import 'package:pier_reposteria/domain/models/info_nosotros.dart';
 import 'package:pier_reposteria/domain/models/pregunta_frecuente.dart';
 import 'package:pier_reposteria/domain/models/textos_legales.dart';
+import 'package:pier_reposteria/utils/peticiones_en_curso.dart';
 
 /// Implementación de [ConfiguracionRepository] contra el backend vía [ApiClient].
 class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
@@ -26,18 +27,15 @@ class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
   final ApiClient _api;
   final ContactoGuardadoService _contactoGuardado;
 
-  // Las secciones que ya se están pidiendo. Al abrir la app, el Inicio pide
-  // «contacto» y «personalizacion» en el mismo cuadro que «Más» y el tema:
-  // comparten la petición en camino en vez de mandar otra (#341).
-  final Map<String, Future<Map<String, dynamic>>> _enCurso = {};
+  // Al abrir la app, el Inicio y «Más» piden «contacto» en el mismo cuadro:
+  // comparten la petición que ya va en camino (#341).
+  final _enCurso = PeticionesEnCurso<Map<String, dynamic>>();
 
   @override
-  Future<Map<String, dynamic>> seccion(String nombre) =>
-      _enCurso[nombre] ??= _api
-          .get(ApiConstants.configuracionSeccion(nombre))
-          // unawaited: remove devuelve esta misma petición y, si el aviso la
-          // devolviera, whenComplete se quedaría esperándola.
-          .whenComplete(() => unawaited(_enCurso.remove(nombre)));
+  Future<Map<String, dynamic>> seccion(String nombre) => _enCurso.compartir(
+        nombre,
+        () => _api.get(ApiConstants.configuracionSeccion(nombre)),
+      );
 
   @override
   Future<InfoContacto> contacto() async {
