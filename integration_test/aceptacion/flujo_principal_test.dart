@@ -70,8 +70,7 @@ void main() {
       await evidencia.paso('04_carrito');
 
       // #36: «Proceder al Pago» abre el checkout.
-      await tester.ensureVisible(procederAlPago);
-      await tester.tap(procederAlPago);
+      await tocarAunqueNoSeVea(tester, procederAlPago);
       await esperar(tester, find.text('Finalizar Pedido'));
       expect(find.textContaining(backend.producto.nombre), findsWidgets);
       await evidencia.paso('05_checkout');
@@ -89,8 +88,7 @@ Future<void> _iniciarSesion(WidgetTester tester) async {
   await tester.enterText(find.byType(TextFormField).at(1), _clave);
   // En pantallas chicas el teclado tapa el botón (ver app_smoke_test.dart).
   await cerrarTeclado(tester);
-  await tester.ensureVisible(find.text('Iniciar Sesión'));
-  await tester.tap(find.text('Iniciar Sesión'));
+  await tocarAunqueNoSeVea(tester, find.text('Iniciar Sesión'));
   await esperar(tester, find.byType(BottomNavigationBar));
 }
 

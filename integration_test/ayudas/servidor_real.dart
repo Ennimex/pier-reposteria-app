@@ -125,8 +125,7 @@ Future<void> iniciarSesion(
     tester.widget<EditableText>(editable).controller.text = texto;
   }
   await tester.pump(const Duration(milliseconds: 300));
-  await tester.ensureVisible(find.text('Iniciar Sesión'));
-  await tester.tap(find.text('Iniciar Sesión'));
+  await tocarAunqueNoSeVea(tester, find.text('Iniciar Sesión'));
   await esperar(
     tester,
     find.byType(BottomNavigationBar),
@@ -191,8 +190,7 @@ Future<void> agregarAlCarrito(WidgetTester tester, Product producto) async {
 
   final anadir = find.widgetWithText(ElevatedButton, 'Añadir');
   await esperar(tester, anadir, limite: esperaDelServidor);
-  await tester.ensureVisible(anadir);
-  await tester.tap(anadir);
+  await tocarAunqueNoSeVea(tester, anadir);
   await esperar(
     tester,
     find.textContaining('agregado'),
@@ -215,8 +213,7 @@ Future<void> abrirElCheckout(WidgetTester tester, Product producto) async {
   final pagar = find.text('Proceder al Pago');
   await esperar(tester, pagar, limite: esperaDelServidor);
   expect(find.textContaining(producto.nombre), findsWidgets);
-  await tester.ensureVisible(pagar);
-  await tester.tap(pagar);
+  await tocarAunqueNoSeVea(tester, pagar);
   await esperar(tester, find.text('Finalizar Pedido'));
 }
 
