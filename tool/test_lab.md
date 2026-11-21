@@ -1,6 +1,6 @@
 # Firebase Test Lab: correr la prueba de integración en celulares reales
 
-Piloto de #75; se reutiliza en #81 (fragmentación, Sprint 5). Test Lab es una
+Piloto de #75; se reutilizó en #81 (fragmentación, Sprint 5). Test Lab es una
 granja de dispositivos de Google: se le suben dos APK y ejecuta
 `integration_test/` en los modelos que se elijan. No se agrega ningún SDK de
 Firebase a la app. La prueba usa `FakeApiClient`, así que no toca el backend
@@ -32,12 +32,22 @@ Desde la raíz del repo (con flavors hay que nombrar el de prod):
 flutter build apk --debug --flavor prod
 cd android
 ./gradlew app:assembleProdDebugAndroidTest
-./gradlew app:assembleProdDebug -Ptarget=integration_test/app_smoke_test.dart
+./gradlew app:assembleProdDebug -Ptarget=integration_test/test_lab_test.dart
 cd ..
 ```
 
 En Windows usa `gradlew.bat`. El `target` va relativo a la raíz del repo:
 `gradlew.bat` falla si un argumento lleva espacios (la carpeta «Pier Movil»).
+Si el repo está en una carpeta con espacios, se compila desde una copia en una
+ruta sin espacios (por ejemplo `C:\src\pier_testlab`) y la copia se borra al
+terminar.
+
+Con `-Ptarget` solo cabe un archivo por APK, y cada combinación de modelo y
+versión gasta una prueba de la cuota. Por eso
+`integration_test/test_lab_test.dart` junta el smoke
+(`app_smoke_test.dart`) y el flujo principal
+(`aceptacion/flujo_principal_test.dart`): 3 casos en una sola corrida. Para
+correr solo el smoke, el `target` es `integration_test/app_smoke_test.dart`.
 
 Salen:
 
@@ -55,6 +65,18 @@ Ver modelos y versiones disponibles:
 ```bash
 gcloud firebase test android models list --filter="form=PHYSICAL"
 ```
+
+Qué elegir:
+
+- **Los que tengan unidades libres.** `gcloud firebase test android models
+  describe <modelo>` dice la capacidad de cada versión (`deviceCapacity`). Con
+  capacidad baja la corrida puede pasar mucho tiempo en la fila.
+- **Un ancho de pantalla distinto al del Samsung del equipo** (411 dp). El
+  ancho en dp es `screenX × 160 / screenDensity`. Las pantallas de 360 dp (los
+  Galaxy S, 1080 px a 480 dpi) son las que encontraron las fallas de #81.
+- **Ningún Xiaomi.** HyperOS no deja que la prueba abra la app desde segundo
+  plano (`Abort background activity starts` en el logcat): la corrida se agota
+  sin resultado y gasta una prueba de la cuota.
 
 Corrida (un `--device` por modelo; minSdk de la app = 24):
 
@@ -97,6 +119,31 @@ inválidas y catálogo), flavor prod, `locale=es_MX`, vertical.
 - **Costo:** $0 (plan Spark, sin facturación).
 - **Resultados en crudo** (video, logcat y XML por dispositivo): bucket de
   Cloud Storage que imprime `gcloud` al lanzar la corrida.
+
+## Resultados de #81 (fragmentación), 21-nov-2026
+
+`integration_test/test_lab_test.dart` (3 casos: los 2 del smoke y el flujo
+principal), compilado de `develop` (`b1ad8e5`), flavor prod, `locale=es_MX`,
+vertical.
+
+| Dispositivo | Tipo | Android (API) | Ancho | Resultado |
+|---|---|---|---|---|
+| Medium Phone 6.4" (`MediumPhone.arm`) | Virtual | 14 (34) | 411 dp | 3/3 ✅ (validación previa) |
+| Motorola G20 (`java`) | Físico | 11 (30) | 411 dp | 3/3 ✅ |
+| Google Pixel 10 (`frankel`) | Físico | 16 (36) | 411 dp | 3/3 ✅ |
+| Small Phone 4.65" (`SmallPhone.arm`) | Virtual | 10 (29) | 360 dp | 2/3 ❌: falla el flujo principal |
+| Xiaomi 14 (`houji`) | Físico | 15 (35) | 400 dp | Sin resultado: HyperOS no dejó abrir la app |
+
+- **Fallas encontradas (fragmentación):** en el teléfono de 360 dp, las
+  tarjetas del catálogo se desbordan 9.1 px (#362) y el botón de compra del
+  detalle queda solo con el ícono, sin «Añadir» (#364). Son de la app y no se
+  ven en pantallas de 411 dp.
+- **Cuota usada:** 3 de 5 pruebas físicas del día y 2 de 10 virtuales.
+- **Tiempos:** 7 min la validación en el virtual y 19 min la corrida de los
+  otros cuatro (incluye la fila y los 10 min que agotó el Xiaomi).
+- **Costo:** $0.
+- La bitácora completa está en
+  [`docs/pruebas-dispositivo-sprint-5.md`](../docs/pruebas-dispositivo-sprint-5.md).
 
 ### Aviso: Test Lab se cierra el 30-sep-2027
 
