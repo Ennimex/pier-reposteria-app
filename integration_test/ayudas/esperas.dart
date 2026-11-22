@@ -88,6 +88,17 @@ Future<void> esperarQueSeAsiente(WidgetTester tester, Finder buscado) async {
   );
 }
 
+/// Toca [buscado] aunque haya quedado abajo de lo que se ve: desplaza la
+/// pantalla hasta él, espera a que se quede quieto y entonces lo toca. En una
+/// pantalla chica (360 × 640, #81) el botón «Añadir» del detalle queda fuera
+/// de la vista; tocarlo justo después de desplazarse, sin esperar un cuadro,
+/// mandaba el toque a donde estaba antes, fuera de la pantalla.
+Future<void> tocarAunqueNoSeVea(WidgetTester tester, Finder buscado) async {
+  await tester.ensureVisible(buscado);
+  await esperarQueSeAsiente(tester, buscado);
+  await tester.tap(buscado);
+}
+
 /// Escribe [texto] en [campo] (un TextField), cierra el teclado y espera a
 /// que se vaya. En un celular real el teclado del sistema borra al cerrarse
 /// lo que escribió enterText (en el emulador del CI no): si pasó, deja el

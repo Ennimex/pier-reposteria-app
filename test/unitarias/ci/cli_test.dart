@@ -869,12 +869,14 @@ void main() {
         '${aperturas([2345])}GET /api/health: 200\n',
       );
       // El emulador contra el entorno aislado: los flujos de compra, reseña
-      // y entrega, y el arranque en frío.
-      _escribir(
-        'build/evidencias/resultados-flujo-entorno-aislado/'
-            'flujo_entorno_aislado.json',
-        _reporteVerde(),
-      );
+      // y entrega en cada celular virtual (#81), y el arranque en frío.
+      for (final android in ['10', '14']) {
+        _escribir(
+          'build/evidencias/resultados-flujo-entorno-aislado-android-$android/'
+              'flujo_entorno_aislado_android_$android.json',
+          _reporteVerde(),
+        );
+      }
       _escribir(
         'build/evidencias/resultados-arranque/arranque_en_frio.txt',
         aperturas([3100, 2900, 3000]),
@@ -938,8 +940,9 @@ void main() {
         texto,
         contains(
           '| Integración | ✅ Pasó | Emulador: ✅ 1 prueba pasó · API: ✅ 1 '
-          'prueba pasó · Flujos de compra, reseña y entrega: ✅ 1 prueba '
-          'pasó |',
+          'prueba pasó · Flujos de compra, reseña y entrega (Android 10): '
+          '✅ 1 prueba pasó · Flujos de compra, reseña y entrega (Android '
+          '14): ✅ 1 prueba pasó |',
         ),
       );
       expect(texto, contains('| Regresión | ✅ Pasó | ✅ 1 prueba pasó |'));
@@ -960,6 +963,61 @@ void main() {
         ),
       );
       expect(texto, contains('**Decisión:** ✅ pasaron las 7 etapas'));
+    });
+
+    // #81: los flujos corren en dos celulares virtuales y cada uno deja su
+    // reporte. Si el job de uno no llegó a dejarlo, la tabla muestra el otro.
+    test('con los flujos de un solo Android, la tabla dice de cuál son', () {
+      _escribir('tool/check_analysis.sh', _script);
+      _escribir(
+        'build/evidencias/resultados-flujo-entorno-aislado-android-14/'
+            'flujo_entorno_aislado_android_14.json',
+        _reporteVerde(),
+      );
+
+      expect(_ejecutar(argumentos()), 0);
+      final texto = _salida.toString();
+      expect(
+        texto,
+        contains(
+          '| Integración | ✅ Pasó | Flujos de compra, reseña y entrega '
+          '(Android 14): ✅ 1 prueba pasó |',
+        ),
+      );
+      expect(texto, isNot(contains('(Android 10)')));
+    });
+
+    test('la tabla busca un reporte por cada Android de la matriz de '
+        'integracion.yml', () {
+      final workflow =
+          File('.github/workflows/integracion.yml').readAsStringSync();
+      final androids = RegExp(r'^ +- android: (\d+)\r?$', multiLine: true)
+          .allMatches(workflow)
+          .map((renglon) => renglon.group(1)!)
+          .toList();
+      expect(androids, hasLength(2));
+      expect(
+        workflow,
+        contains(r'flujo_entorno_aislado_android_${{ matrix.android }}.json'),
+      );
+
+      _escribir('tool/check_analysis.sh', _script);
+      for (final android in androids) {
+        _escribir(
+          'build/evidencias/resultados-flujo-entorno-aislado-android-$android/'
+              'flujo_entorno_aislado_android_$android.json',
+          _reporteVerde(),
+        );
+      }
+
+      expect(_ejecutar(argumentos()), 0);
+      for (final android in androids) {
+        expect(
+          _salida.toString(),
+          contains('Flujos de compra, reseña y entrega (Android $android): '
+              '✅ 1 prueba pasó'),
+        );
+      }
     });
 
     test('una etapa sin artefactos queda sin métricas', () {
