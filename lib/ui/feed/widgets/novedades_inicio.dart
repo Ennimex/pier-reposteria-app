@@ -5,15 +5,30 @@
 // Novedades, que tiene el resto con sus promociones y sugerencias. Quien no
 // inició sesión no puede verlas (el backend las niega): en su lugar va la
 // invitación a entrar.
+//
+// Van en dos partes para que el Inicio no arme de golpe lo que no se ve
+// (#341). NovedadesInicio es la caja con el título y la primera publicación,
+// que es la que asoma al abrir la app. MasNovedadesInicio es el sliver con
+// las demás: cada una aparta su lugar y se arma cuando el scroll la acerca.
+// Mientras cargan, la caja aparta el alto de una publicación: sin eso, las
+// secciones de abajo se armaban pegadas al título y las publicaciones, al
+// llegar, las mandaban fuera de la pantalla.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/routing/app_routes.dart';
 import 'package:pier_reposteria/ui/core/themes/app_colors.dart';
+import 'package:pier_reposteria/ui/core/ui/sliver_al_acercarse.dart';
 import 'package:pier_reposteria/ui/feed/view_model/feed_view_model.dart';
 import 'package:pier_reposteria/ui/feed/widgets/feed_sliver.dart';
 import 'package:pier_reposteria/ui/feed/widgets/novedades_screen.dart';
 
+/// Alto que se aparta para una publicación que todavía no se ve: mientras
+/// cargan todas, o las que esperan a que el scroll las acerque. Es menos de
+/// lo que mide una con foto, pero alcanza para que lo de abajo quede lejos.
+const double _altoDeUnaPublicacion = 480;
+
+/// El título, el aviso que toque y la primera publicación.
 class NovedadesInicio extends StatelessWidget {
   const NovedadesInicio({required this.feed, super.key});
 
@@ -30,6 +45,11 @@ class NovedadesInicio extends StatelessWidget {
     listenable: feed,
     builder: (context, _) {
       final recientes = feed.recientes;
+      // Sin respuesta todavía: cargando, o a punto de pedirlas (el Inicio
+      // las pide después de su primer cuadro).
+      final esperando =
+          recientes.isEmpty &&
+          (feed.cargando || (!feed.iniciado && feed.error == null));
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -40,17 +60,45 @@ class NovedadesInicio extends StatelessWidget {
             const AvisoFeed.sinPublicaciones()
           else if (!feed.iniciado && feed.error != null)
             AvisoFeed.errorAlCargar(feed)
-          else if (recientes.isEmpty && feed.cargando)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Center(
-                child: CircularProgressIndicator(color: AppColors.pierVerde),
+          else if (esperando)
+            SizedBox(
+              height: _altoDeUnaPublicacion,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: CircularProgressIndicator(color: AppColors.pierVerde),
+                ),
               ),
             ),
-          for (final p in recientes) PublicacionDelFeed(p, feed: feed),
+          if (recientes.isNotEmpty)
+            PublicacionDelFeed(recientes.first, feed: feed),
         ],
       );
     },
+  );
+}
+
+/// Las publicaciones del Inicio después de la primera, como sliver: cada una
+/// se arma cuando el scroll la acerca.
+class MasNovedadesInicio extends StatelessWidget {
+  const MasNovedadesInicio({required this.feed, super.key});
+
+  final FeedViewModel feed;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: feed,
+    builder: (context, _) => SliverMainAxisGroup(
+      slivers: [
+        for (final p in feed.recientes.skip(1))
+          SliverAlAcercarse(
+            key: ValueKey('novedad-${p.id}'),
+            altoApartado: _altoDeUnaPublicacion,
+            child: PublicacionDelFeed(p, feed: feed),
+          ),
+      ],
+    ),
   );
 }
 

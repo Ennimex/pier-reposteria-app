@@ -14,6 +14,7 @@ import 'package:pier_reposteria/domain/models/info_contacto.dart';
 import 'package:pier_reposteria/domain/models/info_nosotros.dart';
 import 'package:pier_reposteria/domain/models/pregunta_frecuente.dart';
 import 'package:pier_reposteria/domain/models/textos_legales.dart';
+import 'package:pier_reposteria/utils/peticiones_en_curso.dart';
 
 /// Implementación de [ConfiguracionRepository] contra el backend vía [ApiClient].
 class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
@@ -26,9 +27,15 @@ class ConfiguracionRepositoryRemote implements ConfiguracionRepository {
   final ApiClient _api;
   final ContactoGuardadoService _contactoGuardado;
 
+  // Al abrir la app, el Inicio y «Más» piden «contacto» en el mismo cuadro:
+  // comparten la petición que ya va en camino (#341).
+  final _enCurso = PeticionesEnCurso<Map<String, dynamic>>();
+
   @override
-  Future<Map<String, dynamic>> seccion(String nombre) =>
-      _api.get(ApiConstants.configuracionSeccion(nombre));
+  Future<Map<String, dynamic>> seccion(String nombre) => _enCurso.compartir(
+        nombre,
+        () => _api.get(ApiConstants.configuracionSeccion(nombre)),
+      );
 
   @override
   Future<InfoContacto> contacto() async {

@@ -58,6 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late final FeedViewModel _feed;
   String? _lastUserEmail;
 
+  // Las secciones que están abriendo su espacio (ver _AperturasEnCurso).
+  final _AperturasEnCurso _aperturas = _AperturasEnCurso();
+
   @override
   void initState() {
     super.initState();
@@ -177,13 +180,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: HomeCategorias(nombres: _vm.nombresCategorias),
                   )),
                   // Las publicaciones van primero (#175): las 3 más recientes
-                  // para el cliente; sin sesión, la invitación a entrar.
-                  if (auth.esCliente)
+                  // para el cliente; sin sesión, la invitación a entrar. La
+                  // primera va con el título; las demás se arman cuando el
+                  // scroll las acerca (#341).
+                  if (auth.esCliente) ...[
                     _sliver('novedades', EntradaInicio(
                       id: 'novedades',
                       child: NovedadesInicio(feed: _feed),
-                    ))
-                  else if (!auth.isAuthenticated)
+                    )),
+                    MasNovedadesInicio(feed: _feed),
+                  ] else if (!auth.isAuthenticated)
                     _sliver('invitacion', const EntradaInicio(
                       id: 'invitacion',
                       child: InvitacionNovedades(),
@@ -293,11 +299,162 @@ class _HomeScreenState extends State<HomeScreen> {
       SliverToBoxAdapter(key: ValueKey('inicio-$id'), child: child);
 
   /// Sección que puede no estar: su ranura fija abre y cierra el espacio, y
-  /// la sección entra al llegar (una sola vez: recargar no la repite).
-  Widget _seccion(String id, Widget? seccion) => _sliver(
-        id,
-        RanuraInicio(
-          child: seccion == null ? null : EntradaInicio(id: id, child: seccion),
-        ),
+  /// la sección entra al llegar (una sola vez: recargar no la repite). Si
+  /// llega cuando su lugar queda lejos de la pantalla, no se arma hasta que
+  /// el scroll la acerca.
+  Widget _seccion(String id, Widget? seccion) => _SeccionOpcional(
+        key: ValueKey('inicio-$id'),
+        id: id,
+        seccion: seccion,
+        aperturas: _aperturas,
+      );
+}
+
+/// Lleva la cuenta de las secciones del Inicio que están abriendo su espacio.
+///
+/// Una sección que llega abre su espacio poco a poco (RanuraInicio). En ese
+/// cuadro todavía no mide nada, así que las que siguen se ven tan cerca como
+/// ella aunque vayan a quedar lejos cuando termine de abrirse, y se armaban
+/// todas en cadena (#341). Mientras una abre, a las que siguen se les
+/// descuenta el alto que ella va a ocupar.
+class _AperturasEnCurso {
+  /// Lo que tarda una ranura en abrir su espacio, con un margen.
+  static final Duration duracion =
+      AppMovimiento.media + const Duration(milliseconds: 50);
+
+  // Marca de tiempo del cuadro en que terminan de abrirse y el alto que
+  // todavía no ocupan (estimado: el que se le aparta a una sección).
+  Duration? _hasta;
+  double _porAbrir = 0;
+
+  /// El alto que todavía no ocupan las secciones que se están abriendo en
+  /// el cuadro de [ahora].
+  double porAbrir(Duration ahora) {
+    final hasta = _hasta;
+    if (hasta != null && ahora >= hasta) {
+      _hasta = null;
+      _porAbrir = 0;
+    }
+    return _porAbrir;
+  }
+
+  /// Una sección empieza a abrir su espacio.
+  void empieza(Duration ahora) {
+    _porAbrir = porAbrir(ahora) + _SeccionOpcional.altoApartado;
+    _hasta = ahora + duracion;
+  }
+
+  /// Lo que falta para que terminen de abrirse.
+  Duration faltan(Duration ahora) => (_hasta ?? ahora) - ahora;
+}
+
+/// El sliver de una sección del Inicio que puede no estar.
+///
+/// Cuando llegan los datos, las secciones de abajo (ofertas, listas de
+/// productos, reseñas) quedan lejos de lo que se ve. Antes se armaban todas
+/// en ese mismo cuadro, con sus tarjetas y sus textos, y el Inicio daba un
+/// tirón (#341). Ahora la que llega lejos deja apartado su lugar y se arma
+/// cuando el scroll la acerca: en cuanto empieza dentro de la pantalla o de
+/// la franja que la lista prepara por adelantado. Una vez armada se queda,
+/// como las demás.
+class _SeccionOpcional extends StatefulWidget {
+  const _SeccionOpcional({
+    required this.id,
+    required this.seccion,
+    required this.aperturas,
+    super.key,
+  });
+
+  final String id;
+
+  /// La sección con sus datos, o null si no hay nada que mostrar.
+  final Widget? seccion;
+
+  final _AperturasEnCurso aperturas;
+
+  /// Alto que se le aparta a una sección que todavía no se arma. Si quedara
+  /// en cero, las que le siguen estarían igual de cerca y se armarían juntas.
+  static const double altoApartado = 300;
+
+  @override
+  State<_SeccionOpcional> createState() => _SeccionOpcionalState();
+}
+
+class _SeccionOpcionalState extends State<_SeccionOpcional> {
+  // Ya estuvo cerca de la pantalla con algo que mostrar.
+  bool _armada = false;
+
+  // Tiene qué mostrar, pero llegó lejos: solo aparta su lugar.
+  bool _apartada = false;
+
+  // Para volver a medir cuando las de arriba terminen de abrirse.
+  Timer? _reintento;
+
+  @override
+  void dispose() {
+    _reintento?.cancel();
+    super.dispose();
+  }
+
+  /// Decide si la sección se arma en este cuadro. [alcance] es lo que queda
+  /// de la pantalla y de la franja que la lista prepara por adelantado desde
+  /// donde empieza la sección: si no queda nada, está lejos.
+  void _decidir(double alcance) {
+    if (widget.seccion == null) {
+      _apartada = false;
+      return;
+    }
+    if (_armada) return;
+    if (alcance <= 0) {
+      _apartada = true;
+      return;
+    }
+    if (_apartada) {
+      // Tenía su lugar apartado y el scroll la acercó: se arma con su alto
+      // completo, sin abrirse poco a poco.
+      _armada = true;
+      _apartada = false;
+      return;
+    }
+    // Acaba de llegar. Si arriba hay otras abriendo su espacio, se mide como
+    // si ya lo ocuparan.
+    final ahora = WidgetsBinding.instance.currentFrameTimeStamp;
+    final aperturas = widget.aperturas;
+    if (alcance - aperturas.porAbrir(ahora) > 0) {
+      _armada = true;
+      aperturas.empieza(ahora);
+      return;
+    }
+    // Solo se ve cerca porque las de arriba todavía no abren: se mide otra
+    // vez cuando terminen. Mientras, su ranura sigue cerrada.
+    _reintento ??= Timer(
+      aperturas.faltan(ahora) + const Duration(milliseconds: 16),
+      () {
+        _reintento = null;
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => SliverLayoutBuilder(
+        builder: (context, medidas) {
+          _decidir(medidas.remainingCacheExtent);
+          if (_apartada) {
+            return const SliverToBoxAdapter(
+              child: SizedBox(height: _SeccionOpcional.altoApartado),
+            );
+          }
+          // Sin armar (no hay nada, o espera a las de arriba) la ranura va
+          // cerrada.
+          final seccion = _armada ? widget.seccion : null;
+          return SliverToBoxAdapter(
+            child: RanuraInicio(
+              child: seccion == null
+                  ? null
+                  : EntradaInicio(id: widget.id, child: seccion),
+            ),
+          );
+        },
       );
 }

@@ -13,12 +13,19 @@ import 'package:pier_reposteria/domain/models/detalle_producto.dart';
 import 'package:pier_reposteria/domain/models/filtros_catalogo.dart';
 import 'package:pier_reposteria/domain/models/product_model.dart';
 import 'package:pier_reposteria/domain/models/promociones_inicio.dart';
+import 'package:pier_reposteria/utils/peticiones_en_curso.dart';
 
 /// Implementación de [ProductosRepository] contra el backend vía [ApiClient].
 class ProductosRepositoryRemote implements ProductosRepository {
   ProductosRepositoryRemote({required ApiClient api}) : _api = api;
 
   final ApiClient _api;
+
+  // Al abrir la app, el Inicio y el Catálogo piden las categorías en el mismo
+  // cuadro, y el Inicio pide las promociones dos veces (para los precios de
+  // las tarjetas y para sus secciones de ofertas): comparten la petición que
+  // ya va en camino (#341).
+  final _enCurso = PeticionesEnCurso<Map<String, dynamic>>();
 
   @override
   Future<Map<String, dynamic>> listar() => _api.get(ApiConstants.productos);
@@ -52,7 +59,10 @@ class ProductosRepositoryRemote implements ProductosRepository {
   Future<Map<String, dynamic>> detalle(String id) => _api.get(ApiConstants.productoById(id));
 
   @override
-  Future<Map<String, dynamic>> categorias() => _api.get(ApiConstants.categorias);
+  Future<Map<String, dynamic>> categorias() => _enCurso.compartir(
+        ApiConstants.categorias,
+        () => _api.get(ApiConstants.categorias),
+      );
 
   @override
   Future<List<String>> nombresDeCategorias() async {
@@ -146,7 +156,10 @@ class ProductosRepositoryRemote implements ProductosRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> promocionesActivas() => _api.get(ApiConstants.promocionesActivas);
+  Future<Map<String, dynamic>> promocionesActivas() => _enCurso.compartir(
+        ApiConstants.promocionesActivas,
+        () => _api.get(ApiConstants.promocionesActivas),
+      );
 
   @override
   Future<PromocionesInicio> promocionesDelInicio() async {
