@@ -84,7 +84,10 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
   Future<void> _avisarLlegada() async {
     final r = await _vm.avisarLlegada();
     if (!mounted) return;
-    mostrarAviso(context, r.mensaje, ok: r.ok);
+    // Si no se pudo (en la puerta del cliente puede no haber señal), el
+    // aviso ofrece reintentar ahí mismo.
+    mostrarAviso(context, r.mensaje,
+        ok: r.ok, reintentar: r.ok ? null : _avisarLlegada);
     if (r.ok) setState(() => _llegadasAvisadas++);
   }
 

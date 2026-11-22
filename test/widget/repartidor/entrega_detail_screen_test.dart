@@ -271,6 +271,62 @@ void main() {
       expect(find.text('Cliente avisado de tu llegada'), findsOneWidget);
     });
 
+    // En la puerta del cliente puede no haber señal: el aviso de que no se
+    // pudo avisar ofrece reintentar ahí mismo, sin buscar otra vez el botón.
+    testWidgets('si no pudo avisar la llegada ofrece reintentar',
+        (tester) async {
+      const sinRed =
+          'No pudimos conectar con Pier. Revisa tu internet e intenta de nuevo.';
+      final m = await _montar(tester,
+          entrega: _entrega(estado: 'en_camino'),
+          respuestas: {
+            _llegue: {'success': false, 'message': sinRed},
+          });
+
+      await _tocar(
+          tester, find.text('Llegué al domicilio (avisar al cliente)'));
+      expect(find.text(sinRed), findsOneWidget);
+      final reintentar = find.widgetWithText(SnackBarAction, 'Reintentar');
+      expect(reintentar, findsOneWidget);
+
+      // Vuelve la señal y reintenta desde el aviso, ya que terminó de entrar.
+      m.api.responder(_llegue, {
+        'success': true,
+        'message': 'Cliente avisado de tu llegada',
+      });
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(reintentar);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(m.api.llamadas.where((l) => l.endpoint == _llegue), hasLength(2));
+      expect(find.text('Cliente avisado de tu llegada'), findsOneWidget);
+    }, tags: 'regresion');
+
+    testWidgets('el aviso con «Reintentar» se cierra solo', (tester) async {
+      await _montar(tester,
+          entrega: _entrega(estado: 'en_camino'),
+          respuestas: {
+            _llegue: {'success': false, 'message': 'No se pudo avisar'},
+          });
+
+      await _tocar(
+          tester, find.text('Llegué al domicilio (avisar al cliente)'));
+      expect(find.text('No se pudo avisar'), findsOneWidget);
+
+      // Da tiempo de tocar «Reintentar» (8 s, el doble de un aviso normal) y
+      // después se cierra solo: si el repartidor sale del detalle, no se
+      // queda en la otra pantalla. El reloj corre cuando termina de entrar.
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('No se pudo avisar'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(find.text('No se pudo avisar'), findsNothing);
+    });
+
     testWidgets('marcar entregado confirma y cierra el detalle con true',
         (tester) async {
       final m = await _montar(tester,
