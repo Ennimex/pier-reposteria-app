@@ -6,6 +6,9 @@
 //   · #374: el trabajo de los flujos en Android 10 fallaba en el primer
 //     comando de adb cuando el emulador restauraba la instantánea del AVD
 //     (No service published for: input). Ese celular arranca en frío.
+//   · #375: a veces la app se cuelga al abrirse en el emulador y flutter test
+//     la esperaba 40 min. Los flujos corren con tool/flujos_entorno_aislado.sh,
+//     que corta y reintenta (su prueba: flujos_colgados_test.dart).
 //   · #185: la regresión de v2.1.0 falló porque corrió con flutter test, en
 //     el emulador, las mediciones de integration_test/rendimiento/, que solo
 //     funcionan con flutter drive en modo profile en un celular físico
@@ -79,6 +82,28 @@ void main() {
     expect(
       flujos,
       contains(r'emulator-options: ${{ matrix.instantanea }} '),
+    );
+  });
+
+  test('#375: los flujos del entorno aislado corren con el vigilante que '
+      'corta y reintenta', () {
+    final workflow =
+        _workflows()['integracion.yml']!.replaceAll('\r\n', '\n');
+    final paso = workflow.substring(
+        workflow.indexOf('name: Correr los flujos en el emulador'));
+    final script = paso.substring(paso.indexOf('script: >'));
+    final comando = script.substring(0, script.indexOf('then '));
+
+    // Un solo flutter test y lo corre el script: suelto, un cuelgue vuelve
+    // a esperar 40 min.
+    expect('flutter test'.allMatches(comando), hasLength(1));
+    expect(
+      comando,
+      matches(RegExp(
+        r'bash tool/flujos_entorno_aislado\.sh\s+'
+        r'build/resultados/flujo_entorno_aislado_android_\$\{\{ matrix\.android \}\}\.json\s+'
+        'flutter test ',
+      )),
     );
   });
 

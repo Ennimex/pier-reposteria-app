@@ -387,6 +387,13 @@ jobs:
       #     (docker/semilla/semilla_pruebas.sql), y REPARTIDOR_PRUEBA y
       #     CLAVE_REPARTIDOR_PRUEBA, los de su repartidor: ficticios, solo
       #     existen en el contenedor y no son secretos.
+      # Corren con tool/flujos_entorno_aislado.sh (#375): a veces la GPU
+      # emulada no le responde a la app al abrirse, Android la marca como
+      # «isn't responding» y flutter test la esperaba hasta los 40 min del
+      # job. El script la vigila, corta y vuelve a correr una vez los
+      # archivos que no terminaron (el cuelgue pasa antes de que empiece la
+      # prueba: el reintento no repite datos). Recibe la ruta del reporte y
+      # el comando de flutter test.
       # Los tres dejan su resultado en el mismo reporte, que lleva en el
       # nombre el Android de este celular virtual
       # (flujo_entorno_aislado_android_10.json o _14.json): con ese nombre lo
@@ -405,7 +412,9 @@ jobs:
           disable-animations: true
           script: >
             mkdir -p build/resultados;
-            if flutter test integration_test/flujos/compra_test.dart
+            if bash tool/flujos_entorno_aislado.sh
+            build/resultados/flujo_entorno_aislado_android_${{ matrix.android }}.json
+            flutter test integration_test/flujos/compra_test.dart
             integration_test/flujos/catalogo_resena_test.dart
             integration_test/flujos/entrega_reembolso_test.dart --no-pub
             --name "Escenario: del inicio de sesión al checkout|Escenario: calificar un producto de un pedido completado|Escenario: entregar un pedido a domicilio y pedir su reembolso"
@@ -413,8 +422,7 @@ jobs:
             --dart-define=USUARIO_PRUEBA=cliente@pier.test
             --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026
             --dart-define=REPARTIDOR_PRUEBA=repartidor@pier.test
-            --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
-            --file-reporter json:build/resultados/flujo_entorno_aislado_android_${{ matrix.android }}.json;
+            --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026;
             then codigo_de_la_prueba=0; else codigo_de_la_prueba=$?; fi;
             bash tool/entorno_pruebas.sh logs > build/resultados/entorno_logs.txt;
             exit "$codigo_de_la_prueba"
