@@ -15,8 +15,8 @@ pruebas de #69.
 
 | Dato | Valor |
 |---|---|
-| Fecha | Sábado 21 de noviembre de 2026 (hora de México): Firebase Test Lab de 11:53 a 12:22; emuladores del pipeline de 13:19 a 14:39 |
-| App | La de `develop` (`b1ad8e5`), sabor `prod` en debug. Los emuladores corrieron además con los arreglos de #362 y #364 |
+| Fecha | Sábado 21 de noviembre de 2026 (hora de México): Firebase Test Lab de 11:53 a 12:22; emuladores del pipeline de 13:19 a 14:39; Test Lab otra vez, con los arreglos, de 23:00 a 23:08 |
+| App | La de `develop` (`b1ad8e5`), sabor `prod` en debug. Los emuladores corrieron además con los arreglos de #362 y #364. La repetición de Test Lab, con `develop` en `732e196`, que ya los trae |
 | Servidor | Test Lab: ninguno, la prueba usa un servidor de mentira (`FakeApiClient`). Emuladores: el entorno aislado (la API y su base en contenedores, con datos ficticios) |
 | Cómo se verificó | En debug, si algo no cabe en una pantalla Flutter lo reporta como error («A RenderFlex overflowed») y la prueba falla. Test Lab guarda además el video y el logcat de cada dispositivo |
 
@@ -28,7 +28,7 @@ pruebas de #69.
 | 2 | Confirmación de entrega con una llamada entrante a medio formulario: al colgar, el formulario sigue | ⏳ Pendiente |
 | 3 | Aviso de llegada sin red: al volver la red se envía o hay un reintento claro | ⏳ Pendiente |
 | 4 | Fragmentación local: los flujos de compra, reseña y entrega en emuladores de Android 10 (5") y Android 14 (6.7") | ✅ Pasó en los dos emuladores, con dos arreglos. Falta el celular de Pedro |
-| 5 | Fragmentación en la nube: Firebase Test Lab en 3 modelos | ✅ Pasó en 2 físicos y 1 virtual; el virtual de 360 dp encontró dos fallas; 1 físico sin resultado |
+| 5 | Fragmentación en la nube: Firebase Test Lab en 3 modelos | ✅ Pasó en 2 físicos y 1 virtual; el virtual de 360 dp encontró dos fallas; 1 físico sin resultado. Con los arreglos pasa en el virtual de 360 dp y en un Galaxy S24 |
 
 Se abrieron dos issues `bug`: #362 y #364. Los dos aparecen solo en pantallas
 de menos de 393 dp de ancho; el Samsung mide 411.
@@ -125,7 +125,23 @@ ahí. Para las siguientes corridas no conviene elegir un Xiaomi.
 **Cuota usada:** 3 de las 5 pruebas en físicos del día y 2 de las 10 en
 virtuales. Costo: $0.
 
-Falta repetir el flujo principal en el teléfono de 360 dp con los dos arreglos.
+### Repetición con los arreglos
+
+Con #362 y #364 ya en `develop`, la misma prueba se repitió esa noche en los
+dos teléfonos de 360 dp de ancho: el virtual que había fallado y un Galaxy S24
+físico (matriz `matrix-1yo1rc6yqh296`, APK de `develop` en `732e196`).
+
+| Dispositivo | Tipo | Android (API) | Pantalla | Antes | Con los arreglos |
+|---|---|---|---|:-:|:-:|
+| Small Phone 4.65" (`SmallPhone.arm`) | Virtual | 10 (29) | 360 × 640 dp | ❌ 2 de 3 | ✅ 3 de 3 |
+| Samsung Galaxy S24 (`e1q`) | Físico | 14 (34) | 360 × 780 dp | no se corrió | ✅ 3 de 3 |
+
+El flujo principal ya llega al checkout en 360 dp: las tarjetas del catálogo
+caben y el botón de compra del detalle dice «Añadir». La corrida tardó 8
+minutos, 6 de ellos en la fila.
+
+**Cuota del día con la repetición:** 4 de 5 pruebas en físicos y 3 de 10 en
+virtuales. Costo: $0.
 
 ## Cómo repetir estas pruebas
 

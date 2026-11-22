@@ -40,7 +40,11 @@ En Windows usa `gradlew.bat`. El `target` va relativo a la raíz del repo:
 `gradlew.bat` falla si un argumento lleva espacios (la carpeta «Pier Movil»).
 Si el repo está en una carpeta con espacios, se compila desde una copia en una
 ruta sin espacios (por ejemplo `C:\src\pier_testlab`) y la copia se borra al
-terminar.
+terminar. Al borrarla en Windows no hay que seguir los enlaces de
+`windows/flutter/ephemeral/.plugin_symlinks` y `linux/…`: apuntan a la caché
+de paquetes y un borrado recursivo que los siga la deja vacía. Primero se
+quitan los enlaces (sin tocar su destino) y después el resto; las rutas de
+`build/` pasan de 260 caracteres, así que hace falta el prefijo `\\?\`.
 
 Con `-Ptarget` solo cabe un archivo por APK, y cada combinación de modelo y
 versión gasta una prueba de la cuota. Por eso
@@ -138,7 +142,12 @@ vertical.
   tarjetas del catálogo se desbordan 9.1 px (#362) y el botón de compra del
   detalle queda solo con el ícono, sin «Añadir» (#364). Son de la app y no se
   ven en pantallas de 411 dp.
-- **Cuota usada:** 3 de 5 pruebas físicas del día y 2 de 10 virtuales.
+- **Repetición con los arreglos** (23:00, `develop` en `732e196`, matriz
+  `matrix-1yo1rc6yqh296`): Small Phone 4.65" con Android 10 (360 dp), 3/3 ✅, y
+  Samsung Galaxy S24 (`e1q`) físico con Android 14 (360 dp), 3/3 ✅. 8 min en
+  total, 6 de fila.
+- **Cuota usada:** 3 de 5 pruebas físicas del día y 2 de 10 virtuales; con la
+  repetición, 4 de 5 y 3 de 10.
 - **Tiempos:** 7 min la validación en el virtual y 19 min la corrida de los
   otros cuatro (incluye la fila y los 10 min que agotó el Xiaomi).
 - **Costo:** $0.
