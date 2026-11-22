@@ -1062,9 +1062,9 @@ void main() {
       expect(find.text('Tradición en cada\nRebanada'), findsOneWidget);
 
       // El siguiente avanza del primero al segundo, también hacia adelante.
-      await esperar(tester, const Duration(milliseconds: 1500));
+      await esperar(tester, const Duration(milliseconds: 1300));
       expect(pagina(tester), inExclusiveRange(0, 1));
-      await esperar(tester, const Duration(milliseconds: 600));
+      await esperar(tester, const Duration(milliseconds: 800));
       expect(pagina(tester), 1);
       await _desmontar(tester);
     });

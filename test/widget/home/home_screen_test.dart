@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_carrusel.dart';
 import 'package:pier_reposteria/ui/home/widgets/home_screen.dart';
 import 'package:pier_reposteria/ui/orders/widgets/order_detail_screen.dart';
 import 'package:pier_reposteria/ui/products/widgets/product_detail_screen.dart';
@@ -173,7 +174,7 @@ void main() {
     testWidgets('el carrusel avanza solo', (tester) async {
       await _montar(tester);
 
-      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(HomeCarrusel.intervaloPorOmision);
       await tester.pump(const Duration(seconds: 1));
 
       expect(find.text('Pasteles\nde Autor'), findsOneWidget);

@@ -1,6 +1,6 @@
 // lib/ui/home/widgets/home_carrusel.dart
 //
-// Carrusel del inicio: avanza solo cada 5 s, con puntos de página. La página
+// Carrusel del inicio: avanza solo cada 8 s, con puntos de página. La página
 // visible y el temporizador son estado de la interfaz; los slides llegan del
 // HomeViewModel (los del editor del sitio, los del panel o los de respaldo).
 // El botón abre la pantalla de su enlace: catálogo, contacto, nosotros,
@@ -16,8 +16,14 @@
 // Solo avanza a la vista y con la app al frente: en una pestaña oculta o bajo
 // otra ruta sus tickers están apagados, el deslizamiento quedaría congelado y
 // barrería de golpe al volver; con la app en segundo plano solo la
-// despertaría cada 5 s (#352). Ahí el temporizador no existe y, al volver, la
-// cuenta empieza de cero.
+// despertaría en cada avance (#352). Ahí el temporizador no existe y, al
+// volver, la cuenta empieza de cero.
+//
+// El ritmo (un avance cada 8 s, de 500 ms) sale de medir el Inicio quieto en
+// el celular (#352): mientras el carrusel se desliza, la pantalla completa se
+// vuelve a dibujar en cada cuadro, así que lo que gasta lo deciden cuántas
+// veces avanza y cuánto dura cada avance, no lo que lleva dentro. Cada 5 s y
+// con 700 ms promediaba 10 % de un núcleo; así queda debajo de 5 %.
 //
 // Del último slide pasa al primero hacia adelante: después del último va una
 // copia del primero y, al quedar quieto en ella, salta al primero de verdad
@@ -54,9 +60,16 @@ double _paginaDe(PageController control, int respaldo) {
 class HomeCarrusel extends StatefulWidget {
   const HomeCarrusel({
     required this.slides,
-    this.intervalo = const Duration(seconds: 5),
+    this.intervalo = intervaloPorOmision,
     super.key,
   });
+
+  /// Cada cuánto avanza solo si no se indica otra cosa.
+  static const Duration intervaloPorOmision = Duration(seconds: 8);
+
+  /// Lo que dura el deslizamiento de un slide al siguiente cuando avanza
+  /// solo.
+  static const Duration deslizamiento = Duration(milliseconds: 500);
 
   final List<SlideHero> slides;
 
@@ -145,7 +158,7 @@ class _HomeCarruselState extends State<HomeCarrusel>
     setState(() => _pagina = siguiente);
     _pageController
         .animateToPage(siguiente,
-            duration: const Duration(milliseconds: 700),
+            duration: HomeCarrusel.deslizamiento,
             curve: Curves.easeInOut)
         .ignore();
   }
