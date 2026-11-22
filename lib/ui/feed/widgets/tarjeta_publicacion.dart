@@ -176,6 +176,26 @@ class _TextoPublicacion extends StatefulWidget {
 class _TextoPublicacionState extends State<_TextoPublicacion> {
   bool _completo = false;
 
+  /// Si el texto no cabe en los renglones que se muestran, con [ancho] de
+  /// espacio. Lo mide igual que el Text que se ve: con el estilo por omisión,
+  /// la letra del sistema y la dirección del texto. Si no, con la letra
+  /// grande el texto se cortaba y «Ver más» no salía (#369).
+  bool _noCabe(BuildContext context, TextStyle estilo, double ancho) {
+    final medida = TextPainter(
+      text: TextSpan(
+        text: widget.texto,
+        style: DefaultTextStyle.of(context).style.merge(estilo),
+      ),
+      maxLines: _lineasTexto,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      locale: Localizations.maybeLocaleOf(context),
+    )..layout(maxWidth: ancho);
+    final noCabe = medida.didExceedMaxLines;
+    medida.dispose();
+    return noCabe;
+  }
+
   @override
   Widget build(BuildContext context) {
     const estilo = TextStyle(fontSize: 15, height: 1.4);
@@ -183,12 +203,7 @@ class _TextoPublicacionState extends State<_TextoPublicacion> {
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
       child: LayoutBuilder(
         builder: (context, limites) {
-          final medida = TextPainter(
-            text: TextSpan(text: widget.texto, style: estilo),
-            maxLines: _lineasTexto,
-            textDirection: TextDirection.ltr,
-          )..layout(maxWidth: limites.maxWidth);
-          final largo = medida.didExceedMaxLines;
+          final largo = _noCabe(context, estilo, limites.maxWidth);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
