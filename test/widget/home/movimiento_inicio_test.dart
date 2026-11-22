@@ -1150,6 +1150,32 @@ void main() {
       await _desmontar(tester);
     }, tags: 'regresion');
 
+    // #341: una sección que llega abre su espacio poco a poco. En ese cuadro
+    // todavía no mide nada, así que las que seguían se veían igual de cerca
+    // y se armaban todas juntas, aunque fueran a quedar fuera de la pantalla.
+    testWidgets('de las secciones que llegan a la vez, la que va a quedar '
+        'lejos cuando la de arriba se abra espera al scroll', (tester) async {
+      _pantalla(tester, alto: 700);
+      await tester.pumpApp(const HomeScreen(), api: _backend());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+
+      // «Destacados» llegó cerca y se armó. «Mejor calificados» llegó con
+      // ella y, cuando «Destacados» terminó de abrirse, quedó lejos.
+      expect(find.text('Destacados', skipOffstage: false), findsOneWidget);
+      expect(find.text('Mejor calificados', skipOffstage: false), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Mejor calificados'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Mejor calificados'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await _desmontar(tester);
+    }, tags: 'regresion');
+
     testWidgets('con movimiento reducido todo está en su lugar desde el '
         'primer cuadro', (tester) async {
       activarReducirMovimientoIos(tester);

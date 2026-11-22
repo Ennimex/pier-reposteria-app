@@ -76,11 +76,12 @@ Future<FakeApiClient> _montar(
   WidgetTester tester, {
   FakeApiClient? api,
   bool conSesion = true,
+  double alto = 2400,
 }) async {
   // Ancha como las demás pruebas del inicio: sus secciones no caben en un
   // celular con la fuente de pruebas.
   tester.view
-    ..physicalSize = const Size(1080, 2400)
+    ..physicalSize = Size(1080, alto)
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final backend = api ?? _backend();
@@ -141,6 +142,78 @@ void main() {
       expect(api.llamo(_siguiente), isFalse);
       await _desmontar(tester);
     });
+
+    // #341: las tres publicaciones se armaban en el cuadro en que llegaban,
+    // aunque dos quedaran fuera de la pantalla.
+    testWidgets('al llegar solo se arma la primera; las demás, cuando el '
+        'scroll las acerca', (tester) async {
+      await _montar(tester, alto: 1200);
+      Finder montada(String texto) => find.text(texto, skipOffstage: false);
+
+      expect(
+        montada('Pastel de chocolate recién salido del horno'),
+        findsOneWidget,
+      );
+      expect(montada('Publicación 2'), findsNothing);
+      expect(montada('Publicación 3'), findsNothing);
+
+      await _bajarHasta(tester, find.text('Publicación 2'));
+      expect(montada('Publicación 3'), findsNothing);
+      await _bajarHasta(tester, find.text('Publicación 3'));
+      expect(montada('Publicación 4'), findsNothing);
+
+      // Ya armadas, se quedan aunque el scroll las deje lejos.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 9000));
+      await tester.pump(const Duration(seconds: 1));
+      expect(montada('Publicación 2'), findsOneWidget);
+      expect(montada('Publicación 3'), findsOneWidget);
+      await _desmontar(tester);
+    }, tags: 'regresion');
+
+    // #341: mientras cargaban, las secciones de abajo se armaban pegadas al
+    // título y las publicaciones, al llegar, las mandaban fuera de la
+    // pantalla.
+    testWidgets('mientras cargan apartan su lugar: lo de abajo no se arma '
+        'antes de tiempo', (tester) async {
+      final api = _backend()
+        ..demorar(_feed, const Duration(seconds: 3))
+        ..responder(ApiConstants.productos, {
+          'success': true,
+          'productos': [
+            {
+              'id': 1,
+              'nombre': 'Chocoflan',
+              'precio_chico': 300,
+              'categoria': 'Pasteles',
+              'imagen_url': '',
+              'popular': true,
+              'activo': true,
+              'rating': 4.5,
+              'reviews': 3,
+            },
+          ],
+        });
+      await _montar(tester, api: api, alto: 700);
+      Finder montada(String texto) => find.text(texto, skipOffstage: false);
+
+      // Los productos ya llegaron; las publicaciones todavía no.
+      expect(
+        find.byType(CircularProgressIndicator, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(montada('Destacados'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        montada('Pastel de chocolate recién salido del horno'),
+        findsOneWidget,
+      );
+      expect(montada('Destacados'), findsNothing);
+
+      await _bajarHasta(tester, find.text('Destacados'));
+      await _desmontar(tester);
+    }, tags: 'regresion');
 
     testWidgets('el invitado ve una invitación a entrar y no se piden '
         'publicaciones', (tester) async {
