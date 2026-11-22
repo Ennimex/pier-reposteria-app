@@ -7,6 +7,11 @@
 //     el emulador, las mediciones de integration_test/rendimiento/, que solo
 //     funcionan con flutter drive en modo profile en un celular físico
 //     (corregido en #186).
+//   · #341: la fluidez en el celular se medía con la traza recortada.
+//     flutter drive la guarda en un búfer circular y solo quedaba lo último
+//     de cada escena: el primer cuadro del Inicio no entraba y el resultado
+//     cambiaba de una sesión a otra con el mismo código. Se mide con
+//     --endless-trace-buffer.
 @Tags(['regresion'])
 library;
 
@@ -81,5 +86,35 @@ void main() {
     // Si nadie corriera integration_test/ con flutter test, esta prueba no
     // estaría revisando nada.
     expect(rutasRevisadas, isNotEmpty);
+  });
+
+  test('#341: la fluidez en el celular se mide con la traza completa', () {
+    const script = 'tool/rendimiento_celular/fluidez.sh';
+    final archivos = <String, String>{
+      script: File(script).readAsStringSync(),
+      for (final MapEntry(key: workflow, value: contenido)
+          in _workflows().entries)
+        '.github/workflows/$workflow': contenido,
+    };
+    final revisados = <String>[];
+
+    for (final MapEntry(key: archivo, value: contenido) in archivos.entries) {
+      final comandos = RegExp(r'^\s*flutter drive', multiLine: true);
+      for (final inicio in comandos.allMatches(contenido)) {
+        // El comando con sus renglones de continuación.
+        final fin = (inicio.start + 700).clamp(0, contenido.length);
+        final comando = contenido.substring(inicio.start, fin);
+        if (!comando.contains('rendimiento_test.dart')) continue;
+        revisados.add(archivo);
+        expect(comando, contains('--endless-trace-buffer'),
+            reason: '$archivo mide con la traza recortada');
+      }
+    }
+
+    // El script de la laptop y el workflow del celular.
+    expect(
+      revisados,
+      containsAll([script, '.github/workflows/rendimiento-celular.yml']),
+    );
   });
 }

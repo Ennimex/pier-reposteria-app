@@ -58,6 +58,8 @@ jobs:
       # Se instala como «Pier DEV» (--flavor dev) para no tocar la app «Pier»
       # del celular, apuntando al servidor real, y entra con la cuenta de
       # prueba (los mismos secretos que el trabajo «flujos» de flujo-compra.yml).
+      # --endless-trace-buffer guarda la traza de cada escena completa; sin
+      # él solo quedaba lo último de cada una (#341).
       - name: Medir con traceAction en modo profile
         env:
           USUARIO_PRUEBA: ${{ secrets.USUARIO_PRUEBA }}
@@ -66,7 +68,7 @@ jobs:
           flutter drive
           --driver=test_driver/perf_driver.dart
           --target=integration_test/rendimiento/rendimiento_test.dart
-          --profile --no-dds --flavor dev
+          --profile --no-dds --flavor dev --endless-trace-buffer
           -d ${{ env.DISPOSITIVO }}
           --dart-define=API_BASE_URL=https://pier-reposteria-backend.onrender.com/api
           --dart-define=USUARIO_PRUEBA="$(printf '%s' "$USUARIO_PRUEBA" | tr -d '\r\n')"

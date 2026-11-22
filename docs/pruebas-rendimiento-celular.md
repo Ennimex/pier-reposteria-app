@@ -9,7 +9,7 @@ Los scripts están en [`tool/rendimiento_celular/`](../tool/rendimiento_celular/
 
 | Archivo | Qué hace |
 |---|---|
-| `fluidez.sh` | 3 corridas de `integration_test/rendimiento/rendimiento_test.dart` con `flutter drive` y 3 arranques en frío con `flutter run --trace-startup` |
+| `fluidez.sh` | 3 corridas de `integration_test/rendimiento/rendimiento_test.dart` con `flutter drive` (la traza completa de cada escena) y 3 arranques en frío con `flutter run --trace-startup` |
 | `resumen_fluidez.py` | Las medianas de esas 3 corridas, por escena e indicador |
 | `medir_cpu_mem.py` | CPU (`top`) y memoria (`dumpsys meminfo`) de las mismas escenas, el reposo en el Inicio y la prueba de fuga |
 | `coords.json` | Dónde tocar en la pantalla (Samsung SM-N975U, pantalla lógica de 1080 × 2280) y cuánto dura cada escena |
@@ -75,6 +75,13 @@ Las tres de `rendimiento_test.dart`, como las vive el cliente:
 `medir_cpu_mem.py` deja 10 s sin tocar después de cada escena. Fuera de esas ventanas confirma con uiautomator
 que se ve la pantalla esperada y, antes de cada toque, que «Pier DEV» siga al frente; si no, se detiene.
 
+- **Fluidez**: cuánto tarda cada cuadro de la escena en construirse y en rasterizarse. `fluidez.sh` corre
+  `flutter drive` con `--endless-trace-buffer` para guardar la traza completa. Sin esa opción la traza es un búfer
+  circular y solo queda lo último de cada escena: de «arranque», los 2.4 s finales (140 cuadros), y del catálogo,
+  84 de sus 744 cuadros. El primer cuadro del Inicio quedaba fuera, y los de la llegada de los datos entraban o no
+  según lo que tardara el servidor: el 21-nov el mismo código dio 1 / 1 / 1 cuadros perdidos en una sesión y
+  2 / 3 / 2 una hora después (#341).
+
 - **CPU**: `top -b -d 1` del celular, una lectura por segundo. Se expresa en **% de un núcleo** (100 % = un núcleo
   completo; el SM-N975U tiene 8). **Reposo** = 3 lecturas seguidas de 5 % o menos.
 - **Memoria**: «TOTAL PSS» de `dumpsys meminfo`, una lectura cada 0.7 a 1 s. «Al terminar» es la primera lectura
@@ -85,26 +92,45 @@ que se ve la pantalla esperada y, antes de cada toque, que «Pier DEV» siga al 
 
 ## Umbrales
 
-Línea base del 10-nov-2026: v2.5.0, medianas de 3. Ese día la batería estuvo entre 24 % y 28 % (fuera de la
-condición); la siguiente medición con las condiciones completas la confirma o la reemplaza.
+Medianas de 3 en todo. La línea base de CPU y memoria es del 10-nov-2026 (v2.5.0); ese día la batería estuvo
+entre 24 % y 28 % (fuera de la condición) y la siguiente medición con las condiciones completas la confirma o la
+reemplaza. La de fluidez es del 21-nov-2026.
 
 ### Fluidez y arranque en frío (regla del #71)
 
-Ningún indicador empeora más de 10 % contra la línea base y todo p90 de cuadro queda en 16 ms o menos. Línea base:
-la del #61 (21-oct), con el arranque de la línea base nueva del #324.
+Ningún indicador empeora más de 10 % contra la línea base y todo p90 de cuadro queda en 16 ms o menos.
 
-| Escena e indicador | Línea base | Umbral | 10-nov (v2.5.0) |
-|---|--:|--:|--:|
-| Arranque · p90 de construcción | 5.5 ms | ≤ 6.1 ms | 6.34 ms |
-| Arranque · p90 de rasterizado | 9.9 ms | ≤ 10.9 ms | 9.62 ms |
-| Catálogo · p90 de construcción | 11.2 ms | ≤ 12.3 ms | 8.01 ms |
-| Catálogo · p90 de rasterizado | 15.2 ms | ≤ 16 ms | 10.51 ms |
-| Checkout · p90 de construcción | 6.6 ms | ≤ 7.3 ms | 6.17 ms |
-| Checkout · p90 de rasterizado | 14.8 ms | ≤ 16 ms | 9.32 ms |
-| Arranque en frío (primer cuadro dibujado) | 1,590 ms | ≤ 3 s | 826 ms |
+Línea base: **21-nov-2026**, `develop` en `732e196` (lo que saldrá como 2.6.0), con la batería en 94 % y de 30 a
+32 °C. Es la primera con la escena completa (#341): las anteriores (#61, #324 y la medición de la v2.5.0) se
+tomaron con la traza recortada y no se pueden comparar con esta.
 
-El 10-nov el p90 de construcción del arranque (6.34 ms; corridas de 5.44, 7.20 y 6.34 ms) pasó su umbral por
-0.24 ms; el peor cuadro del Inicio se sigue en el #341.
+| Escena e indicador | Línea base (las 3 corridas) | Umbral |
+|---|--:|--:|
+| Arranque · p90 de construcción | 5.13 ms (4.95 / 5.74 / 5.13) | ≤ 5.6 ms |
+| Arranque · p90 de rasterizado | 10.23 ms (10.95 / 10.23 / 9.79) | ≤ 11.3 ms |
+| Catálogo · p90 de construcción | 9.48 ms (9.48 / 9.64 / 8.59) | ≤ 10.4 ms |
+| Catálogo · p90 de rasterizado | 10.60 ms (10.58 / 10.60 / 10.64) | ≤ 11.7 ms |
+| Checkout · p90 de construcción | 5.07 ms (5.39 / 5.07 / 4.81) | ≤ 5.6 ms |
+| Checkout · p90 de rasterizado | 7.75 ms (7.75 / 7.58 / 8.00) | ≤ 8.5 ms |
+| Arranque en frío (primer cuadro dibujado) | 849 ms (821 / 849 / 948) | ≤ 3 s |
+
+Para referencia, sin umbral: los cuadros de más de 16 ms («perdidos») y el peor de cada escena.
+
+| Escena | Cuadros medidos | Perdidos al construir | Peor cuadro al construir | Perdidos al rasterizar |
+|---|--:|--:|--:|--:|
+| Arranque | 242 | 5 (5 / 5 / 5) | 63.7 ms (64.6 / 63.7 / 59.0) | 4 (4 / 3 / 4) |
+| Catálogo | 744 | 17 (17 / 19 / 15) | 31.7 ms (31.7 / 25.1 / 42.9) | 19 (19 / 21 / 14) |
+| Checkout | 253 | 2 (2 / 2 / 1) | 23.8 ms (23.8 / 30.3 / 18.3) | 3 (3 / 4 / 2) |
+
+- En «arranque», el peor cuadro es el primero del Inicio (unos 60 ms: arma las cinco pestañas a la vez) y los
+  otros cuatro son de la llegada de los datos, de 16 a 19 ms.
+- En el catálogo casi todos miden de 16 a 22 ms mientras se desplaza. La prueba corre con la semántica encendida,
+  como con un lector de pantalla, y ahí suma unos 5 ms por cuadro.
+
+Pendiente para después del 8-dic (salió del #341): los dos cuadros de la llegada de los datos al Inicio que más
+pesan. Uno es el de la primera publicación: `_TextoPublicacion` acomoda el texto dos veces, una para medirlo y otra
+para mostrarlo. El otro es el del catálogo, que sin verse vuelve a armar sus seis tarjetas con cada dato que le
+llega (la página de productos, las promociones, los favoritos, el carrito).
 
 ### CPU y memoria
 
