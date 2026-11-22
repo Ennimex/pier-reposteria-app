@@ -31,12 +31,21 @@ GitHub Releases lo traen; los de pruebas no). Cada evento lleva la versión
 - **ANR**: el detector de Sentry para Android viene encendido (`anrEnabled`).
   Cuando la app esté en Play, la fuente oficial es Android Vitals.
 - **Arranque en frío**: Sentry crea una transacción `ui.load` con un span
-  `app.start.cold` en cada arranque muestreado (en el dataset Spans la medida
-  se llama `app.vitals.start.cold.value`). Desde la v2.2.0 la app ya no
-  espera `/pagos/config` antes del primer cuadro (ERR-09, #230). Las
-  versiones anteriores sí la esperaban y, con el servidor de Render dormido,
-  ese arranque salía de ~20 s: una ventana que todavía las incluya da un p90
-  más alto. Lo que el servidor dormido alargue todavía se revisa en el #353.
+  `app.start.cold` en cada arranque (en el dataset Spans la medida se llama
+  `app.vitals.start.cold.value`). Desde la v2.2.0 la app ya no espera
+  `/pagos/config` antes del primer cuadro (ERR-09, #230). Las versiones
+  anteriores sí la esperaban y, con el servidor de Render dormido, ese
+  arranque salía de ~20 s: una ventana que todavía las incluya da un p90 más
+  alto. El span termina cuando se pinta el primer cuadro, que es el splash, y
+  antes de ese cuadro la app no espera ninguna respuesta de la red: el
+  servidor dormido no entra en esta métrica (#353).
+- **Arranque hasta el Inicio**: en las versiones posteriores a la 2.5.0, la
+  misma transacción lleva el span `ui.load.full_display` (medida
+  `time_to_full_display`): el tiempo desde que arranca el proceso hasta que
+  el destino del splash queda a la vista (el Inicio del cliente, las entregas
+  del repartidor o las comandas del personal). Incluye la espera mínima del
+  splash y su transición; no tiene objetivo todavía. Se consulta en Spans
+  con `p90(span.duration)` y `span.op:ui.load.full_display`.
 - **Pago**: cada intento ya validado (con fecha, hora y dirección elegidas) es
   una transacción `pago` (op `checkout.pagar`) con las etiquetas
   `flow:checkout` y `resultado`
@@ -49,8 +58,9 @@ GitHub Releases lo traen; los de pruebas no). Cada evento lleva la versión
   | `rechazado` | El banco rechazó la tarjeta | No |
   | `error` | Falló el servidor o la conexión al crear el cobro o al registrar el pedido | **Sí** (estado `internal_error`) |
 
-  Las transacciones del pago se envían todas (100 %); las demás, el 20 % en
-  prod para no agotar la cuota gratuita.
+  Las transacciones del pago y las de arranque se envían todas (100 %): con
+  el 20 %, la 2.5.0 juntó 3 arranques en un mes y su p90 no decía nada
+  (#353). Las demás, el 20 % en prod para no agotar la cuota gratuita.
 
 ## Regla de avance del canary
 
