@@ -137,6 +137,12 @@ class DetalleBarraCompra extends StatelessWidget {
   /// carrito.
   final GlobalKey? claveBoton;
 
+  /// Ancho de la barra (sin sus márgenes) desde el que el botón cabe con su
+  /// texto junto al total y la cantidad, con la letra normal. La barra mide
+  /// 331 en un celular de 411 de ancho, 313 en uno de 393 y 280 en uno de 360.
+  static const double _anchoParaUnRenglon = 320;
+  static const double _letraDelBoton = 15;
+
   @override
   Widget build(BuildContext context) {
     final vm = viewModel;
@@ -144,6 +150,78 @@ class DetalleBarraCompra extends StatelessWidget {
     final agotado = vm.producto.agotado;
     final total =
         promociones.precioConDescuento(id, vm.precioBase) * vm.cantidad;
+    final totalConEtiqueta = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Total',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        const SizedBox(height: 2),
+        // Rueda como contador al cambiar el tamaño o la cantidad y el botón
+        // de al lado ajusta su ancho con suavidad.
+        TamanoAnimado(
+          alineacion: AlignmentDirectional.centerStart,
+          child: CifraRodante(
+            valor: total,
+            texto: '\$${total.toStringAsFixed(2)}',
+            estilo: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: promociones.tieneDescuento(id)
+                    ? Colors.red.shade600
+                    : AppColors.pierVerde),
+          ),
+        ),
+      ],
+    );
+    final selector = _SelectorCantidad(viewModel: vm);
+    final boton = ScaleTransition(
+      scale: animacion,
+      child: SizedBox(
+        key: claveBoton,
+        height: 52,
+        child: ElevatedButton(
+          // Agotado → "Avísame" (registra interés)
+          onPressed: agotado ? onAvisarme : onAgregar,
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                agotado ? AppColors.pierDorado : AppColors.pierVerde,
+            disabledBackgroundColor:
+                AppColors.textSecondary.withValues(alpha: 0.35),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+          ),
+          // Junto al total, con un total muy largo el botón puede quedar
+          // angosto: entonces deja solo el ícono.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final ancho = constraints.maxWidth > 80;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                      agotado
+                          ? LucideIcons.bellRing
+                          : LucideIcons.shoppingCart,
+                      color: Colors.white,
+                      size: 18),
+                  if (ancho) ...[
+                    const SizedBox(width: 6),
+                    Text(agotado ? 'Avísame' : 'Añadir',
+                        style: const TextStyle(
+                            fontSize: _letraDelBoton,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -157,83 +235,49 @@ class DetalleBarraCompra extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      // En pantallas de menos de 400 de ancho, o con la letra del sistema
+      // grande, el botón ya no cabe con su texto junto al total y la
+      // cantidad (se quedaba solo con el ícono): baja a su propio renglón,
+      // a todo lo ancho (#364). Depende del ancho y de la letra, no del
+      // total, para que la barra no brinque al sumar piezas.
+      child: LayoutBuilder(
+        builder: (context, medidas) {
+          final letra = MediaQuery.textScalerOf(context).scale(_letraDelBoton) /
+              _letraDelBoton;
+          if (medidas.maxWidth >= _anchoParaUnRenglon * letra) {
+            return Row(
+              children: [
+                totalConEtiqueta,
+                const SizedBox(width: 16),
+                selector,
+                const SizedBox(width: 12),
+                Expanded(child: boton),
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Total',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              const SizedBox(height: 2),
-              // Rueda como contador al cambiar el tamaño o la cantidad y el
-              // botón de al lado ajusta su ancho con suavidad.
-              TamanoAnimado(
-                alineacion: AlignmentDirectional.centerStart,
-                child: CifraRodante(
-                  valor: total,
-                  texto: '\$${total.toStringAsFixed(2)}',
-                  estilo: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: promociones.tieneDescuento(id)
-                          ? Colors.red.shade600
-                          : AppColors.pierVerde),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Si el total no cabe junto a la cantidad, se achica.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: totalConEtiqueta,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  selector,
+                ],
               ),
+              const SizedBox(height: 14),
+              boton,
             ],
-          ),
-          const SizedBox(width: 16),
-          _SelectorCantidad(viewModel: vm),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ScaleTransition(
-              scale: animacion,
-              child: SizedBox(
-                key: claveBoton,
-                height: 52,
-                child: ElevatedButton(
-                  // Agotado → "Avísame" (registra interés)
-                  onPressed: agotado ? onAvisarme : onAgregar,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        agotado ? AppColors.pierDorado : AppColors.pierVerde,
-                    disabledBackgroundColor:
-                        AppColors.textSecondary.withValues(alpha: 0.35),
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final ancho = constraints.maxWidth > 80;
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                              agotado
-                                  ? LucideIcons.bellRing
-                                  : LucideIcons.shoppingCart,
-                              color: Colors.white,
-                              size: 18),
-                          if (ancho) ...[
-                            const SizedBox(width: 6),
-                            Text(agotado ? 'Avísame' : 'Añadir',
-                                style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white)),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

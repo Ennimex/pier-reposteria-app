@@ -46,6 +46,33 @@ class ProductoCatalogoCard extends StatelessWidget {
   /// Rebote del botón al agregar al carrito (lo anima la pantalla).
   final Animation<double>? animacionCarrito;
 
+  /// Ancho entre alto de la celda del catálogo. El alto sale del ancho de la
+  /// pantalla, no de lo que mide el texto: por eso la tarjeta se acomoda sola
+  /// cuando la celda le queda chica (#362). En lista no hay foto que ceda su
+  /// lugar, así que la celda crece con la [letra] del sistema.
+  static double proporcionDeLaCelda({
+    required bool enCuadricula,
+    required TextScaler letra,
+  }) {
+    if (enCuadricula) return _proporcionEnCuadricula;
+    final escala = letra.scale(_letraNombreLista) / _letraNombreLista;
+    return escala > 1 ? _proporcionEnLista / escala : _proporcionEnLista;
+  }
+
+  static const double _proporcionEnCuadricula = 0.63;
+  static const double _proporcionEnLista = 3.2;
+
+  // En cuadrícula, la parte del alto de la celda que toca al texto cuando
+  // cabe; el resto es de la foto.
+  static const double _parteDelTexto = 0.45;
+
+  // Letra del nombre y de la descripción en lista, y el interlineado de la
+  // descripción: con ellos se calcula cuánto crece la celda y cuántos
+  // renglones de descripción caben.
+  static const double _letraNombreLista = 14;
+  static const double _letraDescripcionLista = 11;
+  static const double _interlineadoDescripcion = 1.3;
+
   @override
   Widget build(BuildContext context) {
     // Se hunde un poco mientras el dedo está abajo (el corazón y el botón
@@ -68,7 +95,14 @@ class ProductoCatalogoCard extends StatelessWidget {
     );
   }
 
-  Widget _buildGridCard() {
+  // La foto y el texto se reparten el alto de la celda 55 % / 45 %. Si al
+  // texto no le alcanza su parte (pantallas de menos de 390 de ancho o letra
+  // del sistema grande), toma lo que necesita y la foto cede el resto: antes
+  // se desbordaba (#362).
+  Widget _buildGridCard() =>
+      LayoutBuilder(builder: (_, celda) => _cuadricula(celda));
+
+  Widget _cuadricula(BoxConstraints celda) {
     final p = producto;
     final tienePromo = promociones.tieneDescuento(p.id);
     final precioFinal = promociones.precioConDescuento(p.id, p.precio);
@@ -77,7 +111,6 @@ class ProductoCatalogoCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          flex: 55,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -103,8 +136,11 @@ class ProductoCatalogoCard extends StatelessWidget {
             ],
           ),
         ),
-        Expanded(
-          flex: 45,
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: celda.maxWidth,
+            minHeight: celda.maxHeight * _parteDelTexto,
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
             child: Column(
@@ -205,11 +241,32 @@ class ProductoCatalogoCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(p.nombre,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: _letraNombreLista, color: AppColors.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(p.descripcion,
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                // La descripción ocupa los renglones que caben entre el
+                // nombre y el precio: dos, uno (pantallas de 360 de ancho) o
+                // ninguno (pantallas de 320). Antes eran siempre dos y se
+                // desbordaba (#362).
+                Flexible(
+                  child: LayoutBuilder(
+                    builder: (context, espacio) {
+                      final renglon = MediaQuery.textScalerOf(context)
+                              .scale(_letraDescripcionLista) *
+                          _interlineadoDescripcion;
+                      // Medio punto de holgura: los renglones se redondean.
+                      final caben =
+                          ((espacio.maxHeight + 0.5) / renglon).floor();
+                      if (caben < 1) return const SizedBox.shrink();
+                      return Text(p.descripcion,
+                          style: const TextStyle(
+                              fontSize: _letraDescripcionLista,
+                              color: AppColors.textSecondary,
+                              height: _interlineadoDescripcion),
+                          maxLines: caben > 2 ? 2 : caben,
+                          overflow: TextOverflow.ellipsis);
+                    },
+                  ),
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

@@ -1,6 +1,8 @@
 // test/unitarias/comun/monitoreo_test.dart — errores y rendimiento en Sentry (#23).
 // Sentry solo se inicia si el build trae --dart-define=SENTRY_DSN=...; sin DSN
 // (builds locales y pruebas) la app arranca igual y no se envía nada.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
@@ -14,6 +16,17 @@ const _dsn = 'https://clave@o1.ingest.sentry.io/2';
 
 /// Una traza cualquiera: SentryTracer, que la construye, no se exporta.
 class _TrazaFalsa extends Fake implements SentryTransaction {}
+
+/// Toma el lugar de la red: guarda lo que Sentry mandaría a sentry.io.
+class _TransporteFalso implements Transport {
+  final sobres = <SentryEnvelope>[];
+
+  @override
+  Future<SentryId?> send(SentryEnvelope envelope) async {
+    sobres.add(envelope);
+    return envelope.header.eventId;
+  }
+}
 
 /// Toma el lugar de SentryFlutter.init: guarda lo que recibió y no toca la
 /// red ni el SDK nativo.
@@ -96,6 +109,32 @@ void main() {
 
       expect(arranques, 1);
       expect(sentry.llamadas, 0);
+      expect(Monitoreo.diagnosticosPermitidos, isFalse);
+    });
+
+    // #353: la preferencia se lee antes de iniciar Sentry y el SDK de
+    // Android manda sesiones y cierres por su cuenta, sin pasar por
+    // beforeSend: mientras no se sepa la decisión del cliente, no se inicia.
+    test('#353: aunque la preferencia tarde en leerse, con el interruptor '
+        'apagado Sentry nunca se inicia', () async {
+      final sentry = _SentryFalso();
+      final preferencia = Completer<bool>();
+      var arranques = 0;
+
+      final arranque = Monitoreo.arrancar(
+        () => arranques++,
+        dsn: _dsn,
+        iniciarSentry: sentry.init,
+        permitido: () => preferencia.future,
+      );
+      await pumpEventQueue();
+      expect(sentry.llamadas, 0, reason: 'todavía no se sabe la decisión');
+
+      preferencia.complete(false);
+      await arranque;
+
+      expect(sentry.llamadas, 0);
+      expect(arranques, 1);
       expect(Monitoreo.diagnosticosPermitidos, isFalse);
     });
 
@@ -183,10 +222,83 @@ void main() {
       );
     });
 
+    // #353: con el 20 %, la 2.5.0 juntó 3 arranques en un mes y su p90 no
+    // decía nada.
+    test('cada arranque se mide siempre, también en prod', () {
+      expect(Monitoreo.operacionArranque, 'ui.load');
+      for (final ambiente in Ambiente.values) {
+        expect(
+          Monitoreo.tasaDeMuestreo(Monitoreo.operacionArranque, ambiente),
+          1.0,
+        );
+      }
+    });
+
+    test('la transacción de arranque que abre Sentry se muestrea al 100 %',
+        () {
+      final opciones = SentryFlutterOptions();
+      Monitoreo.configurar(opciones, dsn: _dsn, ambiente: Ambiente.prod);
+      final arranque = SentrySamplingContext.forTransaction(
+        SentryTransactionContext('root /', Monitoreo.operacionArranque),
+      );
+
+      expect(opciones.tracesSampler!(arranque), 1.0);
+    });
+
     test('las demás trazas se muestrean según el ambiente', () {
-      expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.prod), 0.2);
-      expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.staging), 1.0);
-      expect(Monitoreo.tasaDeMuestreo('ui.load', Ambiente.dev), 1.0);
+      expect(Monitoreo.tasaDeMuestreo('http.client', Ambiente.prod), 0.2);
+      expect(Monitoreo.tasaDeMuestreo('http.client', Ambiente.staging), 1.0);
+      expect(Monitoreo.tasaDeMuestreo('http.client', Ambiente.dev), 1.0);
+    });
+  });
+
+  // #353: el arranque no termina en el primer cuadro (el splash); Sentry
+  // espera a que el destino del splash avise que ya se pintó.
+  group('Monitoreo: arranque hasta el Inicio (#353)', () {
+    test('Sentry espera el aviso de que el Inicio ya se ve', () {
+      final opciones = SentryFlutterOptions();
+      expect(opciones.enableTimeToFullDisplayTracing, isFalse);
+
+      Monitoreo.configurar(opciones, dsn: _dsn, ambiente: Ambiente.prod);
+
+      expect(opciones.enableTimeToFullDisplayTracing, isTrue);
+    });
+
+    test('sin Sentry iniciado, avisar no hace nada', () async {
+      await expectLater(Monitoreo.inicioVisible(), completes);
+    });
+
+    // Con «Enviar diagnósticos» apagado no sale nada, tampoco la transacción
+    // de arranque, que ahora se manda siempre.
+    Future<List<SentryEnvelope>> loQueSaleAlArrancar({
+      required bool diagnosticosPermitidos,
+    }) async {
+      final transporte = _TransporteFalso();
+      final opciones = SentryFlutterOptions()..transport = transporte;
+      Monitoreo.configurar(opciones, dsn: _dsn, ambiente: Ambiente.prod);
+      Monitoreo.diagnosticosPermitidos = diagnosticosPermitidos;
+
+      final arranque =
+          Hub(opciones).startTransaction('root /', Monitoreo.operacionArranque);
+      await arranque.finish();
+      return transporte.sobres;
+    }
+
+    test('la transacción de arranque sale del teléfono en prod', () async {
+      final sobres = await loQueSaleAlArrancar(diagnosticosPermitidos: true);
+
+      expect(sobres, hasLength(1));
+      expect(
+        [for (final parte in sobres.single.items) parte.header.type],
+        contains('transaction'),
+      );
+    });
+
+    test('si el cliente se opuso, la transacción de arranque no sale',
+        () async {
+      final sobres = await loQueSaleAlArrancar(diagnosticosPermitidos: false);
+
+      expect(sobres, isEmpty);
     });
   });
 

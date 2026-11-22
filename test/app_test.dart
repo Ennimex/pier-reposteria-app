@@ -21,7 +21,7 @@ import 'package:provider/provider.dart';
 import 'fakes/fake_api_client.dart';
 import 'helpers/pump_app.dart';
 
-/// Deja correr la espera mínima del splash (1.8 s) y desmonta el árbol para
+/// Deja correr la espera mínima del splash (1 s) y desmonta el árbol para
 /// que las pantallas cancelen sus timers antes de que termine la prueba.
 Future<void> _desmontar(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 2));

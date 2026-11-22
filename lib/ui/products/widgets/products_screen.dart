@@ -516,7 +516,10 @@ class _ProductsScreenState extends State<ProductsScreen>
         gridDelegate: _CuadriculaPorCantidad(
           cantidad: cantidad,
           crossAxisCount: _isGridView ? 2 : 1,
-          childAspectRatio: _isGridView ? 0.63 : 3.2,
+          childAspectRatio: ProductoCatalogoCard.proporcionDeLaCelda(
+            enCuadricula: _isGridView,
+            letra: MediaQuery.textScalerOf(context),
+          ),
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
