@@ -272,6 +272,12 @@ jobs:
     # «perfil» es el id del dispositivo en avdmanager (avdmanager list
     # device); «avd» va en la llave de la caché y «pantalla», en el título
     # del resumen.
+    # «instantanea» es lo que el emulador hace con la instantánea del AVD
+    # que viene en la caché. El de Android 14 la restaura para no esperar el
+    # arranque (-no-snapshot-save: al salir no la vuelve a guardar). El de
+    # Android 10 arranca en frío (-no-snapshot), que tarda unos 4 s más: al
+    # restaurarla, a ratos Android todavía no tenía publicados sus servicios
+    # y fallaba el primer comando de adb (No service published for: input).
     # Las pruebas corren en modo debug: si en una pantalla del recorrido algo
     # no cabe (RenderFlex overflowed), Flutter lo reporta como error y la
     # prueba falla.
@@ -287,11 +293,13 @@ jobs:
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
+            instantanea: -no-snapshot
           - android: 14
             api: 34
             perfil: pixel_6_pro
             avd: api34-pixel6pro
             pantalla: 6.7 pulgadas
+            instantanea: -no-snapshot-save
     # Los primeros pasos preparan la computadora (más detalle en el trabajo
     # de las pruebas rápidas).
     steps:
@@ -393,7 +401,7 @@ jobs:
           profile: ${{ matrix.perfil }}
           arch: x86_64
           force-avd-creation: false
-          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          emulator-options: ${{ matrix.instantanea }} ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
           script: >
             mkdir -p build/resultados;
