@@ -127,8 +127,11 @@ Por qué así:
 - **Vuelta a reposo**: cuando la persona deja de tocar, la app no debe seguir gastando batería; 5 s cubren
   decodificar las fotos al terminar de desplazar. La primera vez que se abre el catálogo tarda más de 10 s mientras
   carga las fotos.
-- **CPU con el Inicio quieto**: si el promedio sube, algo más se anima o consulta sin que nadie toque. Hoy el
-  promedio de 10 % viene de un pico de ~25 % cada 5 s (#352).
+- **CPU con el Inicio quieto**: si el promedio sube, algo más se anima o consulta sin que nadie toque. El promedio
+  de 10 % de la línea base era el carrusel, que avanzaba cada 5 s con un deslizamiento de 700 ms (#352). Desde ese
+  arreglo avanza cada 8 s y desliza en 500 ms: el 21-nov el promedio dio 3.9 %, 4.9 % y 3.9 % en tres lecturas. En
+  30 s caben 3 o 4 avances, así que la lectura depende de en qué momento empieza; si queda cerca del límite, se
+  repite.
 - **Memoria**: entre repeticiones el PSS varió hasta 17 % (catálogo de 366 a 428 MB); con menos de 15 % fallaría
   por ruido. Atrapa una versión que cargue de más.
 - **Fuga**: después de la vuelta 1 la memoria debe quedar plana; el 10-nov creció 1.7 % con 16 MB de variación

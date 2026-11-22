@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
 import 'package:pier_reposteria/domain/models/order_model.dart';
+import 'package:pier_reposteria/domain/models/slide_hero.dart';
 import 'package:pier_reposteria/ui/core/ui/movimiento/movimiento.dart';
 import 'package:pier_reposteria/ui/core/ui/tarjeta_producto_angosta.dart';
 import 'package:pier_reposteria/ui/home/view_model/home_view_model.dart';
@@ -907,16 +908,130 @@ void main() {
       await esperar(tester, const Duration(milliseconds: 4500));
       expect(pagina(tester), 0);
 
-      // Al volver no quedó un deslizamiento congelado que se suelte ahora.
+      // Al volver no quedó un deslizamiento congelado que se suelte ahora, y
+      // la cuenta empieza de cero (#352): un intervalo completo en el primero.
       await montarMovimiento(tester, carrusel(visible: true));
-      for (var i = 0; i < 8; i++) {
+      for (var i = 0; i < 19; i++) {
         await tester.pump(const Duration(milliseconds: 100));
         expect(pagina(tester), 0);
       }
       expect(puntos(tester), [18, 6, 6]);
 
-      // Y sigue con su ritmo: un slide en el siguiente intervalo.
-      await esperar(tester, const Duration(milliseconds: 1600));
+      // Y sigue con su ritmo: un slide al cumplirse el intervalo.
+      await esperar(tester, const Duration(milliseconds: 1000));
+      expect(pagina(tester), 1);
+      await _desmontar(tester);
+    });
+
+    /// Lleva la app de un estado a otro pasando por los de en medio, como
+    /// los manda Android.
+    void llevarLaApp(WidgetTester tester, List<AppLifecycleState> estados) =>
+        estados.forEach(tester.binding.handleAppLifecycleStateChanged);
+
+    // #352: con la app en segundo plano el temporizador seguía corriendo: la
+    // despertaba cada 5 s y, al volver, el carrusel soltaba de golpe el
+    // deslizamiento que había quedado pendiente.
+    testWidgets('con la app en segundo plano no avanza; al volver, la cuenta '
+        'empieza de cero', (tester) async {
+      addTearDown(
+        () => tester.binding
+            .handleAppLifecycleStateChanged(AppLifecycleState.resumed),
+      );
+      await montarMovimiento(
+        tester,
+        const SizedBox(
+          width: 360,
+          child: HomeCarrusel(slides: slides, intervalo: Duration(seconds: 2)),
+        ),
+      );
+      await esperar(tester, const Duration(milliseconds: 1500));
+      expect(pagina(tester), 0);
+
+      // Medio segundo antes de avanzar, la app pasa a segundo plano: ahí se
+      // queda dos intervalos.
+      llevarLaApp(tester, const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]);
+      await esperar(tester, const Duration(milliseconds: 4500));
+      expect(pagina(tester), 0);
+
+      // Vuelve: un intervalo completo en el mismo slide, sin barrer de golpe.
+      llevarLaApp(tester, const [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]);
+      for (var i = 0; i < 19; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(pagina(tester), 0);
+      }
+      expect(puntos(tester), [18, 6, 6]);
+
+      // Y avanza al cumplirse el intervalo.
+      await esperar(tester, const Duration(milliseconds: 1000));
+      expect(pagina(tester), 1);
+      await _desmontar(tester);
+    }, tags: 'regresion');
+
+    testWidgets('tapada a medias (un aviso del sistema encima) sigue '
+        'avanzando', (tester) async {
+      addTearDown(
+        () => tester.binding
+            .handleAppLifecycleStateChanged(AppLifecycleState.resumed),
+      );
+      await montarMovimiento(
+        tester,
+        const SizedBox(
+          width: 360,
+          child: HomeCarrusel(slides: slides, intervalo: Duration(seconds: 2)),
+        ),
+      );
+      llevarLaApp(tester, const [AppLifecycleState.inactive]);
+
+      await esperar(tester, const Duration(milliseconds: 2900));
+      expect(pagina(tester), 1);
+      await _desmontar(tester);
+    });
+
+    testWidgets('con un solo slide no avanza; empieza cuando llega el '
+        'segundo', (tester) async {
+      Widget carrusel(List<SlideHero> deEstos) => SizedBox(
+        width: 360,
+        child: HomeCarrusel(
+          slides: deEstos,
+          intervalo: const Duration(seconds: 2),
+        ),
+      );
+      await montarMovimiento(tester, carrusel([slides.first]));
+      await esperar(tester, const Duration(milliseconds: 4500));
+      expect(pagina(tester), 0);
+
+      // Llegan los demás (los del panel): la cuenta empieza ahí.
+      await montarMovimiento(tester, carrusel(slides));
+      await esperar(tester, const Duration(milliseconds: 1900));
+      expect(pagina(tester), 0);
+      await esperar(tester, const Duration(milliseconds: 1000));
+      expect(pagina(tester), 1);
+      await _desmontar(tester);
+    });
+
+    testWidgets('si cambia el intervalo, la cuenta empieza de nuevo con él', (
+      tester,
+    ) async {
+      Widget carrusel(Duration intervalo) => SizedBox(
+        width: 360,
+        child: HomeCarrusel(slides: slides, intervalo: intervalo),
+      );
+      await montarMovimiento(tester, carrusel(const Duration(seconds: 2)));
+      await esperar(tester, const Duration(milliseconds: 1500));
+
+      // A medio segundo de avanzar, el intervalo pasa a 4 s.
+      await montarMovimiento(tester, carrusel(const Duration(seconds: 4)));
+      await esperar(tester, const Duration(milliseconds: 3900));
+      expect(pagina(tester), 0);
+      await esperar(tester, const Duration(milliseconds: 1000));
       expect(pagina(tester), 1);
       await _desmontar(tester);
     });
@@ -947,9 +1062,9 @@ void main() {
       expect(find.text('Tradición en cada\nRebanada'), findsOneWidget);
 
       // El siguiente avanza del primero al segundo, también hacia adelante.
-      await esperar(tester, const Duration(milliseconds: 1500));
+      await esperar(tester, const Duration(milliseconds: 1300));
       expect(pagina(tester), inExclusiveRange(0, 1));
-      await esperar(tester, const Duration(milliseconds: 600));
+      await esperar(tester, const Duration(milliseconds: 800));
       expect(pagina(tester), 1);
       await _desmontar(tester);
     });

@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pier_reposteria/config/api_constants.dart';
+import 'package:pier_reposteria/ui/home/widgets/home_carrusel.dart';
 import 'package:pier_reposteria/ui/home/widgets/home_screen.dart';
 import 'package:pier_reposteria/ui/public/widgets/contact_screen.dart';
 
@@ -43,9 +44,9 @@ Future<void> _abrirInicio(WidgetTester tester, FakeApiClient api) async {
   await tester.pump(const Duration(seconds: 1));
 }
 
-/// El carrusel avanza solo cada 5 s.
+/// El carrusel avanza solo.
 Future<void> _siguienteDiapositiva(WidgetTester tester) async {
-  await tester.pump(const Duration(seconds: 5));
+  await tester.pump(HomeCarrusel.intervaloPorOmision);
   await tester.pump(const Duration(seconds: 1));
 }
 
