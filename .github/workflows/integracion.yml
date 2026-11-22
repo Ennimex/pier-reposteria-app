@@ -295,33 +295,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - replica: instantanea-1
-            opciones: -no-snapshot-save
-            vigia: 'si'
-            cache: gradle
-            android: 10
-            api: 29
-            perfil: Nexus 5
-            avd: api29-nexus5
-            pantalla: 5 pulgadas
-          - replica: instantanea-2
-            opciones: -no-snapshot-save
-            vigia: 'si'
-            cache: gradle
-            android: 10
-            api: 29
-            perfil: Nexus 5
-            avd: api29-nexus5
-            pantalla: 5 pulgadas
-          - replica: instantanea-3
-            opciones: -no-snapshot-save
-            vigia: 'no'
-            cache: gradle
-            android: 10
-            api: 29
-            perfil: Nexus 5
-            avd: api29-nexus5
-            pantalla: 5 pulgadas
           - replica: frio-1
             opciones: -no-snapshot
             vigia: 'si'
@@ -341,6 +314,33 @@ jobs:
             avd: api29-nexus5
             pantalla: 5 pulgadas
           - replica: frio-3
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: frio-4
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: frio-5
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: frio-6
             opciones: -no-snapshot
             vigia: 'no'
             cache: gradle
@@ -487,6 +487,9 @@ jobs:
             --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
             --file-reporter json:build/resultados/sesion-1/flujo_entorno_aislado_android_${{ matrix.android }}.json
 
+      - name: Volver a sembrar el entorno aislado (antes de la sesión 2)
+        run: bash tool/entorno_pruebas.sh bajar && bash tool/entorno_pruebas.sh levantar
+
       - name: Sesión 2 en el emulador
         id: sesion2
         continue-on-error: true
@@ -514,6 +517,9 @@ jobs:
             --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
             --file-reporter json:build/resultados/sesion-2/flujo_entorno_aislado_android_${{ matrix.android }}.json
 
+      - name: Volver a sembrar el entorno aislado (antes de la sesión 3)
+        run: bash tool/entorno_pruebas.sh bajar && bash tool/entorno_pruebas.sh levantar
+
       - name: Sesión 3 en el emulador
         id: sesion3
         continue-on-error: true
@@ -540,6 +546,9 @@ jobs:
             --dart-define=REPARTIDOR_PRUEBA=repartidor@pier.test
             --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
             --file-reporter json:build/resultados/sesion-3/flujo_entorno_aislado_android_${{ matrix.android }}.json
+
+      - name: Volver a sembrar el entorno aislado (antes de la sesión 4)
+        run: bash tool/entorno_pruebas.sh bajar && bash tool/entorno_pruebas.sh levantar
 
       - name: Sesión 4 en el emulador
         id: sesion4
