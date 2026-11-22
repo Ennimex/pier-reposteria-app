@@ -8,7 +8,7 @@
 //     (No service published for: input). Ese celular arranca en frío.
 //   · #375: a veces la app se cuelga al abrirse en el emulador y flutter test
 //     la esperaba 40 min. Los flujos corren con tool/flujos_entorno_aislado.sh,
-//     que corta y reintenta (su prueba: flujos_colgados_test.dart).
+//     que corta y vuelve a correr una vez lo que no terminó.
 //   · #185: la regresión de v2.1.0 falló porque corrió con flutter test, en
 //     el emulador, las mediciones de integration_test/rendimiento/, que solo
 //     funcionan con flutter drive en modo profile en un celular físico

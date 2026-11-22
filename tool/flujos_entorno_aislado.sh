@@ -82,8 +82,9 @@ PY
 }
 
 # Corre el comando solo con los archivos de pruebas que recibe y deja su
-# reporte en el primero. Imprime la salida mientras corre. Devuelve 124 si
-# lo cortó.
+# reporte en el primero. Su salida va a un archivo y se imprime al terminar
+# (sin procesos en segundo plano que mantengan abierta la salida del job).
+# Devuelve 124 si lo cortó.
 correr() {
   local parcial="$1"
   shift
@@ -100,10 +101,9 @@ correr() {
   done
   local bitacora
   bitacora=$(mktemp)
+  echo "\$ ${argumentos[*]}"
   "${argumentos[@]}" --file-reporter "json:$parcial" > "$bitacora" 2>&1 &
   local pid=$!
-  tail -n +1 -f "$bitacora" &
-  local pid_tail=$!
   local motivo=""
   while kill -0 "$pid" 2> /dev/null; do
     sleep "$INTERVALO"
@@ -122,9 +122,7 @@ correr() {
   done
   wait "$pid"
   local codigo=$?
-  sleep 1
-  kill "$pid_tail" 2> /dev/null
-  wait "$pid_tail" 2> /dev/null
+  cat "$bitacora"
   rm -f "$bitacora"
   if [ -n "$motivo" ]; then
     echo "::warning::Se cortó flutter test: $motivo (#375)."
