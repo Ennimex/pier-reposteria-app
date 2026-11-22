@@ -150,6 +150,17 @@ if [ "$ESPERA" -gt 0 ]; then
   marca "espera de ${ESPERA}s antes del comando"
   sleep "$ESPERA"
 fi
+# DIAG_ENCENDIDO_MINIMO: espera hasta que el emulador lleve encendido al
+# menos esos segundos (como sin la caché de Gradle, que tardaba 5-7 min).
+ENCENDIDO_MINIMO="${DIAG_ENCENDIDO_MINIMO:-0}"
+if [ "$ENCENDIDO_MINIMO" -gt 0 ]; then
+  encendido=$(adb shell cut -d. -f1 /proc/uptime | tr -d '\r ')
+  if [ "${encendido:-0}" -lt "$ENCENDIDO_MINIMO" ]; then
+    marca "el emulador lleva ${encendido}s encendido; espera $((ENCENDIDO_MINIMO - encendido))s"
+    sleep $((ENCENDIDO_MINIMO - encendido))
+  fi
+  marca "encendido: $(adb shell cut -d' ' -f1 /proc/uptime | tr -d '\r')s"
+fi
 marca "comando: $*"
 "$@" > "$TUBO" 2>&1 &
 PID_COMANDO=$!

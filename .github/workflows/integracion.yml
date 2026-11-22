@@ -295,16 +295,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - replica: frio-1
-            opciones: -no-snapshot
-            vigia: 'si'
-            cache: gradle
-            android: 10
-            api: 29
-            perfil: Nexus 5
-            avd: api29-nexus5
-            pantalla: 5 pulgadas
-          - replica: frio-2
+          - replica: espera-1
             opciones: -no-snapshot
             vigia: 'no'
             cache: gradle
@@ -313,7 +304,7 @@ jobs:
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: frio-3
+          - replica: espera-2
             opciones: -no-snapshot
             vigia: 'no'
             cache: gradle
@@ -322,7 +313,7 @@ jobs:
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: frio-4
+          - replica: espera-3
             opciones: -no-snapshot
             vigia: 'no'
             cache: gradle
@@ -331,7 +322,7 @@ jobs:
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: frio-5
+          - replica: espera-4
             opciones: -no-snapshot
             vigia: 'no'
             cache: gradle
@@ -340,7 +331,34 @@ jobs:
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: frio-6
+          - replica: espera-5
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: espera-6
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: espera-7
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: espera-8
             opciones: -no-snapshot
             vigia: 'no'
             cache: gradle
@@ -467,6 +485,7 @@ jobs:
         env:
           DIAG_DIR: build/resultados/sesion-1
           DIAG_ESPERA: '0'
+          DIAG_ENCENDIDO_MINIMO: '330'
         with:
           api-level: ${{ matrix.api }}
           profile: ${{ matrix.perfil }}
@@ -496,7 +515,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           DIAG_DIR: build/resultados/sesion-2
-          DIAG_ESPERA: '60'
+          DIAG_ESPERA: '0'
+          DIAG_ENCENDIDO_MINIMO: '330'
         with:
           api-level: ${{ matrix.api }}
           profile: ${{ matrix.perfil }}
@@ -526,7 +546,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           DIAG_DIR: build/resultados/sesion-3
-          DIAG_ESPERA: '120'
+          DIAG_ESPERA: '0'
+          DIAG_ENCENDIDO_MINIMO: '330'
         with:
           api-level: ${{ matrix.api }}
           profile: ${{ matrix.perfil }}
@@ -557,6 +578,7 @@ jobs:
         env:
           DIAG_DIR: build/resultados/sesion-4
           DIAG_ESPERA: '0'
+          DIAG_ENCENDIDO_MINIMO: '330'
         with:
           api-level: ${{ matrix.api }}
           profile: ${{ matrix.perfil }}
