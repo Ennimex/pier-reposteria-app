@@ -2,7 +2,8 @@
 //
 // Shell del módulo Repartidor (MVVM, Fase 5): bottom nav Entregas /
 // Historial / Perfil. Es dueño del RepartidorViewModel que comparten las
-// tres pestañas y hace la primera carga al abrir.
+// tres pestañas, hace la primera carga al abrir y vuelve a traer los datos
+// cada vez que la app regresa del segundo plano.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -30,16 +31,23 @@ class RepartidorMainScreen extends StatefulWidget {
 class _RepartidorMainScreenState extends State<RepartidorMainScreen> {
   late final RepartidorViewModel _vm =
       widget.viewModel ?? RepartidorViewModel(repo: context.read());
+  late final AppLifecycleListener _cicloDeVida;
   int _index = 0;
 
   @override
   void initState() {
     super.initState();
     unawaited(_vm.cargar());
+    // El repartidor guarda el celular mientras espera: al volver, lo que
+    // llegó al pool o le asignaron entretanto tiene que estar en pantalla
+    // sin que jale para refrescar.
+    _cicloDeVida =
+        AppLifecycleListener(onResume: () => unawaited(_vm.recargar()));
   }
 
   @override
   void dispose() {
+    _cicloDeVida.dispose();
     _vm.dispose();
     super.dispose();
   }

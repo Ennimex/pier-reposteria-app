@@ -98,6 +98,22 @@ Future<FakeApiClient> _montar(
   return backend;
 }
 
+/// La app pasa a segundo plano y vuelve, por los estados intermedios que
+/// recorre Android (AppLifecycleListener no acepta saltos).
+Future<void> _irYVolver(WidgetTester tester) async {
+  for (final estado in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(estado);
+    await tester.pump();
+  }
+}
+
 Future<void> _irA(WidgetTester tester, String pestana) async {
   await tester.tap(find.text(pestana).last);
   await tester.pump();
@@ -193,6 +209,63 @@ void main() {
           .where((l) => l.endpoint == ApiConstants.misEntregas)
           .length;
       expect(despues, greaterThan(antes));
+    });
+
+    // El repartidor se pone disponible, guarda el celular (la app queda en
+    // segundo plano) y al volver el panel seguía con lo de antes: un pedido
+    // que llegó al pool mientras tanto no aparecía hasta jalar para
+    // refrescar.
+    testWidgets('al volver a la app trae otra vez el pool y las entregas',
+        (tester) async {
+      final api = await _montar(tester, api: _backend(pool: []));
+      expect(find.text('PIER-42'), findsNothing);
+
+      // Mientras la app está en segundo plano llega un pedido al pool.
+      api.responder(ApiConstants.entregasDisponibles, {
+        'success': true,
+        'pedidos': [
+          {
+            'pedido_id': 42,
+            'numero': 'PIER-42',
+            'total': 480,
+            'cliente_nombre': 'Rosa',
+            'cliente_apellido': 'Martínez',
+            'horario_entrega': '2026-10-10T18:00:00.000Z',
+            'direccion_entrega': {'colonia': 'Centro'},
+          },
+        ],
+      });
+      await _irYVolver(tester);
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('PIER-42'), findsOneWidget);
+      expect(find.text('Rosa Martínez'), findsOneWidget);
+    }, tags: 'regresion');
+
+    testWidgets('al irse a segundo plano no vuelve a pedir nada',
+        (tester) async {
+      final api = await _montar(tester);
+      final antes = api.llamadas.length;
+
+      for (final estado in const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(estado);
+        await tester.pump();
+      }
+
+      expect(api.llamadas.length, antes);
+      // Regresa al estado normal para las pruebas que siguen.
+      for (final estado in const [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(estado);
+        await tester.pump();
+      }
     });
 
     testWidgets('tomar un pedido lo avisa con el mensaje del backend',
