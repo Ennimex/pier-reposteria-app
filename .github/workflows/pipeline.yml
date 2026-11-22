@@ -82,45 +82,6 @@ env:
 jobs:
   # DIAGNÓSTICO TEMPORAL (esta rama no se mezcla): solo la etapa de
   # integración, que en esta rama corre nada más los flujos en Android 10.
-  # Antes, un trabajo compila el APK una vez para dejar guardada la caché de
-  # Gradle: así las réplicas la encuentran, como en un pipeline normal.
-  preparar-cache:
-    name: (diagnóstico) Dejar lista la caché de Gradle
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - name: Descargar el código
-        uses: actions/checkout@v7
-
-      - name: Liberar disco
-        uses: ./.github/actions/liberar-disco
-
-      - name: Instalar Java
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
-          cache-dependency-path: |
-            android/*.gradle.kts
-            android/app/build.gradle.kts
-            android/gradle/wrapper/gradle-wrapper.properties
-            pubspec.lock
-
-      - name: Instalar Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Instalar dependencias
-        run: flutter pub get
-
-      - name: Compilar el APK
-        run: flutter build apk --debug --flavor prod
-
   integracion:
     name: Integración
-    needs: preparar-cache
     uses: ./.github/workflows/integracion.yml

@@ -271,7 +271,7 @@ jobs:
   flujo-compra-aislado:
     name: Diagnóstico de los flujos (Android ${{ matrix.android }}, ${{ matrix.replica }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 75
     # Fragmentación (#81): los mismos tres flujos en dos celulares virtuales,
     # al mismo tiempo. Cada uno corre en su propia computadora de GitHub y
     # levanta su propio entorno aislado (su API y su base recién sembrada): la
@@ -295,46 +295,55 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - replica: ligera-1
-            modo: ligera
+          - replica: instantanea-1
+            opciones: -no-snapshot-save
+            vigia: 'si'
             cache: gradle
-            detalle: ''
             android: 10
             api: 29
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: ligera-2
-            modo: ligera
+          - replica: instantanea-2
+            opciones: -no-snapshot-save
+            vigia: 'si'
             cache: gradle
-            detalle: ''
             android: 10
             api: 29
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: completa-1
-            modo: completa
+          - replica: instantanea-3
+            opciones: -no-snapshot-save
+            vigia: 'no'
             cache: gradle
-            detalle: -v
             android: 10
             api: 29
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: completa-2
-            modo: completa
+          - replica: frio-1
+            opciones: -no-snapshot
+            vigia: 'si'
             cache: gradle
-            detalle: -v
             android: 10
             api: 29
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
-          - replica: sin-cache
-            modo: completa
-            cache: ''
-            detalle: -v
+          - replica: frio-2
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: frio-3
+            opciones: -no-snapshot
+            vigia: 'no'
+            cache: gradle
             android: 10
             api: 29
             perfil: Nexus 5
@@ -445,18 +454,29 @@ jobs:
       # después las bitácoras de los contenedores, y el renglón termina con el
       # código de las pruebas: si una falla, el job falla. Va en un solo
       # renglón (>) porque el emulador corre cada renglón por separado.
-      - name: Correr los flujos en el emulador
+      - name: (diagnóstico) Vigilar logcat desde antes de encender el emulador
+        if: matrix.vigia == 'si'
+        run: |
+          mkdir -p build/resultados
+          nohup bash tool/vigia_logcat.sh > build/resultados/vigia.txt 2>&1 &
+
+      - name: Sesión 1 en el emulador
+        id: sesion1
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          DIAG_DIR: build/resultados/sesion-1
+          DIAG_ESPERA: '0'
         with:
           api-level: ${{ matrix.api }}
           profile: ${{ matrix.perfil }}
           arch: x86_64
           force-avd-creation: false
-          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          emulator-options: ${{ matrix.opciones }} ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
           script: >
-            bash tool/diagnostico_flujos.sh ${{ matrix.android }} ${{ matrix.modo }}
-            flutter ${{ matrix.detalle }} test integration_test/flujos/compra_test.dart
+            bash tool/diagnostico_flujos.sh ${{ matrix.android }} ligera
+            flutter test integration_test/flujos/compra_test.dart
             integration_test/flujos/catalogo_resena_test.dart
             integration_test/flujos/entrega_reembolso_test.dart --no-pub
             --name "Escenario: del inicio de sesión al checkout|Escenario: calificar un producto de un pedido completado|Escenario: entregar un pedido a domicilio y pedir su reembolso"
@@ -465,18 +485,97 @@ jobs:
             --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026
             --dart-define=REPARTIDOR_PRUEBA=repartidor@pier.test
             --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
-            --file-reporter json:build/resultados/flujo_entorno_aislado_android_${{ matrix.android }}.json
+            --file-reporter json:build/resultados/sesion-1/flujo_entorno_aislado_android_${{ matrix.android }}.json
 
-      # Escribe el resumen: cada escenario con ✅, agrupado por historia (#58,
-      # #65 y #69), con el Android y la pantalla de este celular virtual en el
-      # título. Si alguno falló, el paso anterior ya detuvo el job y la tabla
-      # de evidencias del pipeline lo dice, con el reporte que se sube abajo.
-      - name: Mostrar el resultado en el resumen
-        run: >
-          dart run tool/resumen_pruebas.dart pruebas
-          build/resultados/flujo_entorno_aislado_android_${{ matrix.android }}.json
-          --titulo "Flujos de compra, reseña y entrega en el entorno aislado (Android ${{ matrix.android }}, ${{ matrix.pantalla }})"
-          --detalle
+      - name: Sesión 2 en el emulador
+        id: sesion2
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          DIAG_DIR: build/resultados/sesion-2
+          DIAG_ESPERA: '60'
+        with:
+          api-level: ${{ matrix.api }}
+          profile: ${{ matrix.perfil }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ matrix.opciones }} ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: >
+            bash tool/diagnostico_flujos.sh ${{ matrix.android }} ligera
+            flutter test integration_test/flujos/compra_test.dart
+            integration_test/flujos/catalogo_resena_test.dart
+            integration_test/flujos/entrega_reembolso_test.dart --no-pub
+            --name "Escenario: del inicio de sesión al checkout|Escenario: calificar un producto de un pedido completado|Escenario: entregar un pedido a domicilio y pedir su reembolso"
+            --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
+            --dart-define=USUARIO_PRUEBA=cliente@pier.test
+            --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026
+            --dart-define=REPARTIDOR_PRUEBA=repartidor@pier.test
+            --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
+            --file-reporter json:build/resultados/sesion-2/flujo_entorno_aislado_android_${{ matrix.android }}.json
+
+      - name: Sesión 3 en el emulador
+        id: sesion3
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          DIAG_DIR: build/resultados/sesion-3
+          DIAG_ESPERA: '120'
+        with:
+          api-level: ${{ matrix.api }}
+          profile: ${{ matrix.perfil }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ matrix.opciones }} ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: >
+            bash tool/diagnostico_flujos.sh ${{ matrix.android }} ligera
+            flutter test integration_test/flujos/compra_test.dart
+            integration_test/flujos/catalogo_resena_test.dart
+            integration_test/flujos/entrega_reembolso_test.dart --no-pub
+            --name "Escenario: del inicio de sesión al checkout|Escenario: calificar un producto de un pedido completado|Escenario: entregar un pedido a domicilio y pedir su reembolso"
+            --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
+            --dart-define=USUARIO_PRUEBA=cliente@pier.test
+            --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026
+            --dart-define=REPARTIDOR_PRUEBA=repartidor@pier.test
+            --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
+            --file-reporter json:build/resultados/sesion-3/flujo_entorno_aislado_android_${{ matrix.android }}.json
+
+      - name: Sesión 4 en el emulador
+        id: sesion4
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          DIAG_DIR: build/resultados/sesion-4
+          DIAG_ESPERA: '0'
+        with:
+          api-level: ${{ matrix.api }}
+          profile: ${{ matrix.perfil }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: ${{ matrix.opciones }} ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: >
+            bash tool/diagnostico_flujos.sh ${{ matrix.android }} ligera
+            flutter test integration_test/flujos/compra_test.dart
+            integration_test/flujos/catalogo_resena_test.dart
+            integration_test/flujos/entrega_reembolso_test.dart --no-pub
+            --name "Escenario: del inicio de sesión al checkout|Escenario: calificar un producto de un pedido completado|Escenario: entregar un pedido a domicilio y pedir su reembolso"
+            --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
+            --dart-define=USUARIO_PRUEBA=cliente@pier.test
+            --dart-define=CLAVE_PRUEBA=Chocoflan-Prueba-2026
+            --dart-define=REPARTIDOR_PRUEBA=repartidor@pier.test
+            --dart-define=CLAVE_REPARTIDOR_PRUEBA=Repartidor-Prueba-2026
+            --file-reporter json:build/resultados/sesion-4/flujo_entorno_aislado_android_${{ matrix.android }}.json
+
+      - name: Resultado de las sesiones
+        if: always()
+        run: |
+          echo "sesión 1: ${{ steps.sesion1.outcome }}"
+          echo "sesión 2: ${{ steps.sesion2.outcome }}"
+          echo "sesión 3: ${{ steps.sesion3.outcome }}"
+          echo "sesión 4: ${{ steps.sesion4.outcome }}"
+          ls -la build/resultados build/resultados/sesion-* || true
 
       # Guarda el reporte y las bitácoras de los contenedores 30 días en
       # Artifacts, en un artefacto por celular virtual (dos trabajos no

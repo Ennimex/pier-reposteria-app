@@ -26,7 +26,10 @@ set -u
 ANDROID="${1:?falta la versión de Android}"
 MODO="${2:?falta el modo: completa o ligera}"
 shift 2
-R=build/resultados
+# DIAG_DIR: carpeta de esta sesión. DIAG_ESPERA: segundos de espera antes del
+# comando, para que la app arranque más tarde respecto al emulador.
+R="${DIAG_DIR:-build/resultados}"
+ESPERA="${DIAG_ESPERA:-0}"
 PAQUETE=mx.com.pierreposteria
 SILENCIO_MAXIMO=600
 DURACION_MAXIMA=1800
@@ -143,6 +146,10 @@ for renglon in sys.stdin.buffer:
     sys.stdout.buffer.flush()
 ' < "$TUBO" > "$R/salida.txt" &
 PID_HORA=$!
+if [ "$ESPERA" -gt 0 ]; then
+  marca "espera de ${ESPERA}s antes del comando"
+  sleep "$ESPERA"
+fi
 marca "comando: $*"
 "$@" > "$TUBO" 2>&1 &
 PID_COMANDO=$!
