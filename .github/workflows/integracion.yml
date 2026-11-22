@@ -106,6 +106,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          # Guarda lo que Gradle descarga para compilar (los plugins de Kotlin
+          # y de Android, las bibliotecas): sin esto cada trabajo lo pedía
+          # otra vez a Maven Central, que a ratos responde 429 y tumbaba el
+          # pipeline sin que el código tuviera que ver. La copia cambia
+          # cuando cambian estos archivos.
+          cache: gradle
+          cache-dependency-path: |
+            android/*.gradle.kts
+            android/app/build.gradle.kts
+            android/gradle/wrapper/gradle-wrapper.properties
+            pubspec.lock
 
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
@@ -309,6 +320,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          # Guarda lo que Gradle descarga para compilar (los plugins de Kotlin
+          # y de Android, las bibliotecas): sin esto cada trabajo lo pedía
+          # otra vez a Maven Central, que a ratos responde 429 y tumbaba el
+          # pipeline sin que el código tuviera que ver. La copia cambia
+          # cuando cambian estos archivos.
+          cache: gradle
+          cache-dependency-path: |
+            android/*.gradle.kts
+            android/app/build.gradle.kts
+            android/gradle/wrapper/gradle-wrapper.properties
+            pubspec.lock
 
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2

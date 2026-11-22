@@ -9,7 +9,8 @@
 //   · pipeline.yml corre en los Pull Requests y pushes de main y de develop
 //     (estrategia de ramas del README);
 //   · los trabajos que compilan el APK en una computadora de GitHub liberan
-//     disco antes, sin tocar el SDK de Android;
+//     disco antes, sin tocar el SDK de Android, y guardan en caché lo que
+//     Gradle descarga;
 //   · el arranque en frío se mide contra el APK de develop, que solo guarda
 //     un push a develop, con permiso de leer artefactos solo donde hace falta.
 import 'dart:io';
@@ -26,6 +27,36 @@ Map<String, String> _workflows() {
     for (final archivo in archivos)
       archivo.uri.pathSegments.last: archivo.readAsStringSync(),
   };
+}
+
+/// Compila el APK quien lo arma, lo maneja con flutter drive o corre pruebas
+/// de integration_test en el emulador.
+final RegExp _compila = RegExp(
+  'flutter build apk|flutter drive|flutter test integration_test',
+);
+
+/// Los trabajos que compilan el APK en una computadora de GitHub:
+/// «workflow: trabajo» → su texto.
+Map<String, String> _trabajosQueCompilan() {
+  final encontrados = <String, String>{};
+  for (final MapEntry(key: workflow, value: contenido)
+      in _workflows().entries) {
+    final texto = contenido.replaceAll('\r\n', '\n');
+    final inicioTrabajos = texto.indexOf('\njobs:\n');
+    if (inicioTrabajos < 0) continue;
+    final trabajos = texto
+        .substring(inicioTrabajos)
+        .split(RegExp(r'\n(?=  [a-zA-Z0-9_-]+:\n)'))
+        .skip(1);
+    for (final trabajo in trabajos) {
+      if (!trabajo.contains('runs-on: ubuntu-24.04') ||
+          !_compila.hasMatch(trabajo)) {
+        continue;
+      }
+      encontrados['$workflow: ${trabajo.split(':').first.trim()}'] = trabajo;
+    }
+  }
+  return encontrados;
 }
 
 void main() {
@@ -136,45 +167,55 @@ void main() {
 
   test('los trabajos que compilan el APK liberan disco antes, sin tocar el SDK '
       'de Android', () {
-    // Compila el APK quien lo arma, lo maneja con flutter drive o corre
-    // pruebas de integration_test en el emulador.
-    final compila = RegExp(
-        'flutter build apk|flutter drive|flutter test integration_test');
-    final revisados = <String>[];
-
-    for (final MapEntry(key: workflow, value: contenido)
-        in _workflows().entries) {
-      final texto = contenido.replaceAll('\r\n', '\n');
-      final inicioTrabajos = texto.indexOf('\njobs:\n');
-      if (inicioTrabajos < 0) continue;
-      final trabajos = texto
-          .substring(inicioTrabajos)
-          .split(RegExp(r'\n(?=  [a-zA-Z0-9_-]+:\n)'))
-          .skip(1);
-      for (final trabajo in trabajos) {
-        if (!trabajo.contains('runs-on: ubuntu-24.04') ||
-            !compila.hasMatch(trabajo)) {
-          continue;
-        }
-        final nombre = '$workflow: ${trabajo.split(':').first.trim()}';
-        revisados.add(nombre);
-        final libera = trabajo.indexOf('uses: ./.github/actions/liberar-disco');
-        expect(libera, isNot(-1), reason: '$nombre no libera disco');
-        // Antes de compilar: si no, el disco ya se llenó.
-        expect(libera, lessThan(compila.firstMatch(trabajo)!.start),
-            reason: '$nombre libera disco después de compilar');
-      }
+    final trabajos = _trabajosQueCompilan();
+    for (final MapEntry(key: nombre, value: trabajo) in trabajos.entries) {
+      final libera = trabajo.indexOf('uses: ./.github/actions/liberar-disco');
+      expect(libera, isNot(-1), reason: '$nombre no libera disco');
+      // Antes de compilar: si no, el disco ya se llenó.
+      expect(libera, lessThan(_compila.firstMatch(trabajo)!.start),
+          reason: '$nombre libera disco después de compilar');
     }
 
     // Los 10 de hoy: aceptación, monkey, smoke, flujo de compra aislado,
     // peso, arranque, flujo de compra, regresión completa y los dos de
     // release. Si la prueba no encontrara ninguno, no revisaría nada.
-    expect(revisados, hasLength(greaterThanOrEqualTo(10)));
+    expect(trabajos, hasLength(greaterThanOrEqualTo(10)));
     final accion =
         File('.github/actions/liberar-disco/action.yml').readAsStringSync();
     final borra = RegExp(r'rm -rf[^\n]*(\\\r?\n[^\n]*)*').stringMatch(accion)!;
     expect(borra, isNot(contains('android')));
     expect(borra, isNot(contains('ndk')));
+  });
+
+  // Sin la copia, cada trabajo le pedía otra vez a Maven Central los plugins
+  // de Kotlin y de Android. Cuando Maven Central responde 429 el pipeline
+  // falla sin que el código tenga que ver: pasó 7 veces el 21-nov-2026.
+  test('los trabajos que compilan el APK guardan en caché lo que Gradle '
+      'descarga', () {
+    final trabajos = _trabajosQueCompilan();
+    for (final MapEntry(key: nombre, value: trabajo) in trabajos.entries) {
+      // El paso que instala Java, con todo lo que lleva en «with».
+      final java = RegExp(
+        r'uses: actions/setup-java@v\d+\n +with:\n(?: {10,}[^\n]*\n)+',
+      ).stringMatch(trabajo);
+      expect(java, isNotNull, reason: '$nombre no instala Java');
+      expect(java, contains('cache: gradle'),
+          reason: '$nombre no guarda lo que Gradle descarga');
+      // La copia se renueva cuando cambia lo que Gradle tiene que bajar.
+      for (final archivo in const [
+        'android/app/build.gradle.kts',
+        'gradle-wrapper.properties',
+        'pubspec.lock',
+      ]) {
+        expect(java, contains(archivo),
+            reason: '$nombre: la copia no depende de $archivo');
+      }
+      // Antes de compilar: si no, ya se descargó todo.
+      expect(trabajo.indexOf('cache: gradle'),
+          lessThan(_compila.firstMatch(trabajo)!.start),
+          reason: '$nombre recupera la copia después de compilar');
+    }
+    expect(trabajos, hasLength(greaterThanOrEqualTo(10)));
   });
 
   test('el arranque se mide contra el APK de develop, que solo guarda un push '
