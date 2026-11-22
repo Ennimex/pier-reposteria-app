@@ -295,23 +295,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - replica: con-cache-1
-            cache: gradle
-            detalle: -v
-            android: 10
-            api: 29
-            perfil: Nexus 5
-            avd: api29-nexus5
-            pantalla: 5 pulgadas
-          - replica: con-cache-2
-            cache: gradle
-            detalle: -v
-            android: 10
-            api: 29
-            perfil: Nexus 5
-            avd: api29-nexus5
-            pantalla: 5 pulgadas
-          - replica: con-cache-3
+          - replica: ligera-1
+            modo: ligera
             cache: gradle
             detalle: ''
             android: 10
@@ -319,7 +304,35 @@ jobs:
             perfil: Nexus 5
             avd: api29-nexus5
             pantalla: 5 pulgadas
+          - replica: ligera-2
+            modo: ligera
+            cache: gradle
+            detalle: ''
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: completa-1
+            modo: completa
+            cache: gradle
+            detalle: -v
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
+          - replica: completa-2
+            modo: completa
+            cache: gradle
+            detalle: -v
+            android: 10
+            api: 29
+            perfil: Nexus 5
+            avd: api29-nexus5
+            pantalla: 5 pulgadas
           - replica: sin-cache
+            modo: completa
             cache: ''
             detalle: -v
             android: 10
@@ -442,7 +455,7 @@ jobs:
           emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
           script: >
-            bash tool/diagnostico_flujos.sh ${{ matrix.android }}
+            bash tool/diagnostico_flujos.sh ${{ matrix.android }} ${{ matrix.modo }}
             flutter ${{ matrix.detalle }} test integration_test/flujos/compra_test.dart
             integration_test/flujos/catalogo_resena_test.dart
             integration_test/flujos/entrega_reembolso_test.dart --no-pub

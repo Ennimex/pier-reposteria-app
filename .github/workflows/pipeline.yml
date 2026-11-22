@@ -80,85 +80,32 @@ env:
   FLUTTER_VERSION: '3.44.4'
 
 jobs:
-  # Etapa 1, al mismo tiempo: cada pieza de la app por separado y la
-  # revisión del código sin ejecutarlo (flutter analyze y SonarCloud).
-  unitarias:
-    name: Unitarias
-    uses: ./.github/workflows/unitarias.yml
-
-  analisis-estatico:
-    name: Análisis estático
-    uses: ./.github/workflows/analisis-estatico.yml
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  # Etapa 2: cada historia de usuario con sus escenarios Gherkin y el flujo
-  # principal (#34 → #35 → #36) instalado en el emulador.
-  aceptacion:
-    name: Aceptación
-    needs: [unitarias, analisis-estatico]
-    uses: ./.github/workflows/aceptacion.yml
-
-  # Etapa 3, al mismo tiempo: la app completa en el emulador (con el
-  # servidor de mentira y, en el flujo de compra, contra el entorno
-  # aislado), la API real en contenedores y las pruebas de los bugs ya
-  # corregidos.
-  integracion:
-    name: Integración
-    needs: aceptacion
-    uses: ./.github/workflows/integracion.yml
-
-  regresion:
-    name: Regresión
-    needs: aceptacion
-    uses: ./.github/workflows/regresion.yml
-
-  # Etapa 4, al mismo tiempo: rendimiento (peso del APK y carga normal de la
-  # API contra su línea base; arranque en frío en el emulador contra develop,
-  # medido en el mismo trabajo) y esfuerzo (monkey sobre la app y el pico de
-  # k6 sobre la API). En los Pull Requests corren la versión reducida; con
-  # «completo», toda.
-  rendimiento:
-    name: Rendimiento
-    needs: [integracion, regresion]
-    uses: ./.github/workflows/rendimiento.yml
-    # El arranque en frío descarga el APK de develop que guardó otra corrida:
-    # además de leer el código, lee los artefactos de Actions.
-    permissions:
-      contents: read
-      actions: read
-    with:
-      completo: ${{ inputs.completo == true }}
-
-  esfuerzo:
-    name: Esfuerzo
-    needs: [integracion, regresion]
-    uses: ./.github/workflows/esfuerzo.yml
-    with:
-      completo: ${{ inputs.completo == true }}
-
-  # Etapa final. Corre siempre (if: always()), aunque haya fallado una
-  # etapa, porque es la que junta la evidencia y toma la decisión: escribe la
-  # tabla de evidencias, junta los artefactos de todas las etapas en uno y
-  # falla si alguna etapa no terminó en success.
-  evidencias-y-decision:
-    name: Evidencias y decisión
-    needs:
-      - unitarias
-      - analisis-estatico
-      - aceptacion
-      - integracion
-      - regresion
-      - rendimiento
-      - esfuerzo
-    if: always()
+  # DIAGNÓSTICO TEMPORAL (esta rama no se mezcla): solo la etapa de
+  # integración, que en esta rama corre nada más los flujos en Android 10.
+  # Antes, un trabajo compila el APK una vez para dejar guardada la caché de
+  # Gradle: así las réplicas la encuentran, como en un pipeline normal.
+  preparar-cache:
+    name: (diagnóstico) Dejar lista la caché de Gradle
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
-      # La tabla la arma tool/resumen_pruebas.dart, así que hacen falta el
-      # código, Flutter (la misma versión de las etapas) y las librerías.
       - name: Descargar el código
         uses: actions/checkout@v7
+
+      - name: Liberar disco
+        uses: ./.github/actions/liberar-disco
+
+      - name: Instalar Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            android/*.gradle.kts
+            android/app/build.gradle.kts
+            android/gradle/wrapper/gradle-wrapper.properties
+            pubspec.lock
 
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
@@ -170,72 +117,10 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Baja los artefactos que subió cada etapa (reportes, cobertura,
-      # capturas, el APK y la bitácora de monkey), cada uno en su carpeta
-      # dentro de build/evidencias/.
-      - name: Descargar los artefactos de todas las etapas
-        uses: actions/download-artifact@v8
-        with:
-          path: build/evidencias
+      - name: Compilar el APK
+        run: flutter build apk --debug --flavor prod
 
-      # Escribe en el Summary la tabla: una fila por etapa con su resultado y
-      # sus métricas clave, la decisión (con la rama a la que aplica) y, si
-      # alguna prueba falló, cuál.
-      - name: Escribir la tabla de evidencias
-        run: >
-          dart run tool/resumen_pruebas.dart evidencias build/evidencias
-          --unitarias ${{ needs.unitarias.result }}
-          --analisis ${{ needs.analisis-estatico.result }}
-          --aceptacion ${{ needs.aceptacion.result }}
-          --integracion ${{ needs.integracion.result }}
-          --regresion ${{ needs.regresion.result }}
-          --rendimiento ${{ needs.rendimiento.result }}
-          --esfuerzo ${{ needs.esfuerzo.result }}
-
-      # Junta todos los artefactos de la corrida en uno solo, que queda 30
-      # días: es la evidencia completa del pipeline.
-      - name: Juntar la evidencia de todas las etapas
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: evidencias-pipeline-${{ github.run_number }}
-          path: build/evidencias
-          if-no-files-found: warn
-          retention-days: 30
-
-      # La decisión: el pipeline pasa solo si las siete etapas terminaron en
-      # success. Una etapa que falló, se canceló o no corrió porque falló una
-      # anterior (skipped) hace fallar este job, y con él el pipeline. El
-      # mensaje nombra la rama: en un Pull Request, la de destino
-      # (GITHUB_BASE_REF: develop o main); en un push o a mano, la rama donde
-      # corrió (GITHUB_REF_NAME).
-      - name: Decidir si el cambio pasa
-        env:
-          UNITARIAS: ${{ needs.unitarias.result }}
-          ANALISIS_ESTATICO: ${{ needs.analisis-estatico.result }}
-          ACEPTACION: ${{ needs.aceptacion.result }}
-          INTEGRACION: ${{ needs.integracion.result }}
-          REGRESION: ${{ needs.regresion.result }}
-          RENDIMIENTO: ${{ needs.rendimiento.result }}
-          ESFUERZO: ${{ needs.esfuerzo.result }}
-        run: |
-          etapas="UNITARIAS ANALISIS_ESTATICO ACEPTACION INTEGRACION REGRESION RENDIMIENTO ESFUERZO"
-          etapas_que_no_pasaron=""
-          for etapa in $etapas; do
-            resultado_de_la_etapa="${!etapa}"
-            if [ "$resultado_de_la_etapa" != "success" ]; then
-              etapas_que_no_pasaron="$etapas_que_no_pasaron $etapa=$resultado_de_la_etapa"
-            fi
-          done
-          if [ -n "$GITHUB_BASE_REF" ]; then
-            si_no_pasa="El cambio no puede unirse a $GITHUB_BASE_REF."
-            si_pasa="el cambio puede unirse a $GITHUB_BASE_REF."
-          else
-            si_no_pasa="El pipeline falla en $GITHUB_REF_NAME."
-            si_pasa="la versión de $GITHUB_REF_NAME pasó."
-          fi
-          if [ -n "$etapas_que_no_pasaron" ]; then
-            echo "::error::No pasaron:$etapas_que_no_pasaron. $si_no_pasa"
-            exit 1
-          fi
-          echo "Pasaron las siete etapas: $si_pasa"
+  integracion:
+    name: Integración
+    needs: preparar-cache
+    uses: ./.github/workflows/integracion.yml
