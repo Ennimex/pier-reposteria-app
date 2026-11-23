@@ -18,7 +18,7 @@ objetivos y la regla de avance (#24).
 Línea base medida en el Samsung SM-N975U (#61): arranque en frío 1.6 s con el
 servidor despierto. Cada versión candidata se mide además en el celular
 (fluidez, arranque en frío, CPU y memoria) antes de aprobarla: cómo se mide,
-sus umbrales y la línea base del 10-nov (v2.5.0) están en
+sus umbrales y sus líneas base están en
 [pruebas-rendimiento-celular.md](pruebas-rendimiento-celular.md).
 
 ### Cómo llega cada dato a Sentry

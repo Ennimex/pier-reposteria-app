@@ -15,6 +15,10 @@
 # La cuenta es la de prueba (la de los secretos de rendimiento-celular.yml); nunca se imprime.
 # --keep-app-running: al terminar, flutter drive desinstala la app, y en un worktree nuevo la primera vez toma
 # el paquete del manifiesto (mx.com.pierreposteria, la app instalada de la tienda) en vez del de Pier DEV.
+# --endless-trace-buffer: sin él la traza es un búfer circular que solo conserva lo último de cada escena (los
+# 2.4 s finales de «arranque» y 84 de los 744 cuadros del catálogo). El primer cuadro del Inicio quedaba fuera, y
+# los de la llegada de los datos entraban o no según lo que tardara el servidor (#341). Con él se mide la escena
+# completa.
 set -uo pipefail
 export MSYS_NO_PATHCONV=1   # Git Bash en Windows: no convertir las rutas del celular
 
@@ -35,7 +39,7 @@ for i in 1 2 3; do
   echo "== drive $i $(date +%H:%M:%S) · $(bateria) · $(al_frente)"
   rm -f build/arranque.timeline_summary.json build/catalogo.timeline_summary.json build/checkout.timeline_summary.json
   flutter drive --driver=test_driver/perf_driver.dart --target=integration_test/rendimiento/rendimiento_test.dart \
-    --profile --no-dds --flavor dev -d "$DISPOSITIVO" --keep-app-running \
+    --profile --no-dds --flavor dev -d "$DISPOSITIVO" --keep-app-running --endless-trace-buffer \
     --dart-define=API_BASE_URL=$API --dart-define=USUARIO_PRUEBA="$U" --dart-define=CLAVE_PRUEBA="$C" 2>&1 \
     | grep -F -v -e "$U" -e "$C" | grep -E "All tests passed|Some tests failed|\+[0-9]+|Error|error:|Exception" | tail -8
   for e in arranque catalogo checkout; do
