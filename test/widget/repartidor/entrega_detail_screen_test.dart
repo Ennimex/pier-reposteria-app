@@ -118,10 +118,28 @@ Future<_Montaje> _montar(
 Finder _boton(String texto) => find.ancestor(
     of: find.text(texto), matching: find.bySubtype<ButtonStyleButton>());
 
-/// Quita el aviso visible para que el siguiente no espere en la cola.
+/// Quita el aviso visible para que el siguiente no espere en la cola. Los
+/// avisos del detalle salen en su propio ScaffoldMessenger, el más interno.
 void _quitarAviso(WidgetTester tester) => tester
-    .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
+    .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger).last)
     .removeCurrentSnackBar();
+
+const _sinRed =
+    'No pudimos conectar con Pier. Revisa tu internet e intenta de nuevo.';
+final Finder _reintentar = find.widgetWithText(SnackBarAction, 'Reintentar');
+
+/// Detalle en camino cuyo aviso de llegada falla sin red.
+Future<_Montaje> _montarSinRed(WidgetTester tester) => _montar(tester,
+    entrega: _entrega(estado: 'en_camino'),
+    respuestas: {
+      _llegue: {'success': false, 'message': _sinRed},
+    });
+
+Future<void> _tocarLlegue(WidgetTester tester) =>
+    _tocar(tester, find.text('Llegué al domicilio (avisar al cliente)'));
+
+int _avisosDeLlegada(_Montaje m) =>
+    m.api.llamadas.where((l) => l.endpoint == _llegue).length;
 
 Future<void> _tocar(WidgetTester tester, Finder boton) async {
   await tester.ensureVisible(boton);
@@ -270,6 +288,147 @@ void main() {
 
       expect(find.text('Cliente avisado de tu llegada'), findsOneWidget);
     });
+
+    // En la puerta del cliente puede no haber señal: el aviso de que no se
+    // pudo avisar ofrece reintentar ahí mismo, sin buscar otra vez el botón.
+    testWidgets('si no pudo avisar la llegada ofrece reintentar',
+        (tester) async {
+      const sinRed =
+          'No pudimos conectar con Pier. Revisa tu internet e intenta de nuevo.';
+      final m = await _montar(tester,
+          entrega: _entrega(estado: 'en_camino'),
+          respuestas: {
+            _llegue: {'success': false, 'message': sinRed},
+          });
+
+      await _tocar(
+          tester, find.text('Llegué al domicilio (avisar al cliente)'));
+      expect(find.text(sinRed), findsOneWidget);
+      final reintentar = find.widgetWithText(SnackBarAction, 'Reintentar');
+      expect(reintentar, findsOneWidget);
+
+      // Vuelve la señal y reintenta desde el aviso, ya que terminó de entrar.
+      m.api.responder(_llegue, {
+        'success': true,
+        'message': 'Cliente avisado de tu llegada',
+      });
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(reintentar);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(m.api.llamadas.where((l) => l.endpoint == _llegue), hasLength(2));
+      expect(find.text('Cliente avisado de tu llegada'), findsOneWidget);
+    }, tags: 'regresion');
+
+    testWidgets('el aviso con «Reintentar» se cierra solo', (tester) async {
+      await _montar(tester,
+          entrega: _entrega(estado: 'en_camino'),
+          respuestas: {
+            _llegue: {'success': false, 'message': 'No se pudo avisar'},
+          });
+
+      await _tocar(
+          tester, find.text('Llegué al domicilio (avisar al cliente)'));
+      expect(find.text('No se pudo avisar'), findsOneWidget);
+
+      // Da tiempo de tocar «Reintentar» (8 s, el doble de un aviso normal) y
+      // después se cierra solo, para no tapar la pantalla. El reloj corre
+      // cuando termina de entrar.
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('No se pudo avisar'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(find.text('No se pudo avisar'), findsNothing);
+    });
+
+    // El aviso es de esa entrega: en el panel, su «Reintentar» avisaría sin
+    // mostrar el resultado.
+    testWidgets('al regresar al panel, el aviso con «Reintentar» se va con el '
+        'detalle', (tester) async {
+      final m = await _montarSinRed(tester);
+      await _tocarLlegue(tester);
+      expect(_reintentar, findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EntregaDetailScreen), findsNothing);
+      expect(find.text(_sinRed), findsNothing);
+      expect(_reintentar, findsNothing);
+      expect(_avisosDeLlegada(m), 1);
+    }, tags: 'regresion');
+
+    testWidgets('un intento nuevo quita el aviso rojo con «Reintentar»',
+        (tester) async {
+      final m = await _montarSinRed(tester);
+      await _tocarLlegue(tester);
+      expect(_reintentar, findsOneWidget);
+
+      // Vuelve la señal y el repartidor reintenta con el botón, no con el
+      // aviso: el rojo no se queda encima del resultado.
+      m.api.responder(_llegue, {
+        'success': true,
+        'message': 'Cliente avisado de tu llegada',
+      });
+      await _tocarLlegue(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text(_sinRed), findsNothing);
+      expect(_reintentar, findsNothing);
+      expect(find.text('Cliente avisado de tu llegada'), findsOneWidget);
+      expect(_avisosDeLlegada(m), 2);
+    }, tags: 'regresion');
+
+    // La acción del aviso no pasa por el botón, que se deshabilita mientras
+    // se avisa: sin esta guarda el cliente recibiría dos avisos.
+    testWidgets('«Reintentar» no manda otro aviso mientras va uno',
+        (tester) async {
+      final m = await _montarSinRed(tester);
+      await _tocarLlegue(tester);
+      final reintentarViejo =
+          tester.widget<SnackBarAction>(_reintentar).onPressed;
+
+      m.api
+        ..responder(_llegue, {
+          'success': true,
+          'message': 'Cliente avisado de tu llegada',
+        })
+        ..demorar(_llegue, const Duration(seconds: 1));
+      await _tocarLlegue(tester);
+      expect(find.text('Avisando…'), findsOneWidget);
+
+      reintentarViejo();
+      await tester.pump();
+      expect(_avisosDeLlegada(m), 2);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(_avisosDeLlegada(m), 2);
+      expect(find.text('Cliente avisado de tu llegada'), findsOneWidget);
+    }, tags: 'regresion');
+
+    testWidgets('con lector de pantalla, el aviso con «Reintentar» espera a '
+        'que lo toquen', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(accessibleNavigation: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await _montarSinRed(tester);
+      await _tocarLlegue(tester);
+
+      // El reloj del aviso corre cuando termina de entrar; sin lector de
+      // pantalla, a los 8 s ya se habría ido.
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(seconds: 20));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_sinRed), findsOneWidget);
+      expect(_reintentar, findsOneWidget);
+      expect(find.byIcon(Icons.close), findsOneWidget);
+    }, tags: 'regresion');
 
     testWidgets('marcar entregado confirma y cierra el detalle con true',
         (tester) async {

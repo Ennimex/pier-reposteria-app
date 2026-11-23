@@ -50,13 +50,38 @@ String formatHorarioEntrega(String? raw) {
   return '${dt.day} ${meses[dt.month - 1]} · ${formatHora(dt)}';
 }
 
-/// Aviso flotante: verde si [ok], rojo si no.
-void mostrarAviso(BuildContext context, String mensaje, {bool ok = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(
+/// Aviso flotante: verde si [ok], rojo si no. Con [reintentar] lleva el
+/// botón «Reintentar» y dura el doble (8 s) para dar tiempo de tocarlo; se
+/// cierra solo para no tapar la pantalla (un SnackBar con acción se quedaría
+/// hasta que lo cierren). Con lector de pantalla sí se queda, con su «x»: en
+/// 8 s no siempre se alcanza a llegar al botón. Sale en [avisos] si se da
+/// (una pantalla con sus propios avisos); si no, en el más cercano.
+void mostrarAviso(
+  BuildContext context,
+  String mensaje, {
+  bool ok = false,
+  VoidCallback? reintentar,
+  ScaffoldMessengerState? avisos,
+}) {
+  final esperaAlLector =
+      reintentar != null && MediaQuery.accessibleNavigationOf(context);
+  (avisos ?? ScaffoldMessenger.of(context)).showSnackBar(
     SnackBar(
       content: Text(mensaje),
       backgroundColor: ok ? AppColors.pierVerde : AppColors.error,
       behavior: SnackBarBehavior.floating,
+      duration: reintentar == null
+          ? const Duration(seconds: 4)
+          : const Duration(seconds: 8),
+      persist: esperaAlLector,
+      showCloseIcon: esperaAlLector,
+      action: reintentar == null
+          ? null
+          : SnackBarAction(
+              label: 'Reintentar',
+              textColor: Colors.white,
+              onPressed: reintentar,
+            ),
     ),
   );
 }
