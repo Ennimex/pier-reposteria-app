@@ -24,6 +24,13 @@ class RepartidorViewModel extends ChangeNotifier {
   bool _cargando = false;
   String? _errorCarga;
 
+  // Cada recarga lleva su turno: una respuesta vieja no pisa a una más nueva.
+  // Al volver a la app el panel se recarga solo, justo cuando el repartidor
+  // va a tocar algo. La disponibilidad lleva el suyo porque también la
+  // cambia el switch.
+  int _turno = 0;
+  int _turnoDisponible = 0;
+
   List<PedidoDisponible> get disponibles => _disponibles;
   bool get disponible => _disponible;
   bool get cargando => _cargando;
@@ -63,15 +70,26 @@ class RepartidorViewModel extends ChangeNotifier {
   }
 
   /// Trae entregas, disponibilidad y pool sin indicador (jalar para
-  /// refrescar, o tras cambiar una entrega). Si la disponibilidad o el pool
-  /// fallan se queda lo que había, como antes.
+  /// refrescar, al volver a la app o tras cambiar una entrega). Si la
+  /// disponibilidad o el pool fallan se queda lo que había, como antes. Lo
+  /// que llegue cuando ya empezó otra recarga, o después de tocar el switch,
+  /// se descarta.
   Future<void> recargar() async {
+    final turno = ++_turno;
+    final turnoDisponible = ++_turnoDisponible;
     _errorCarga = null;
     await Future.wait([
-      _intentar(_repo.misEntregas(), (v) => _entregas = v,
-          alFallar: (m) => _errorCarga = m),
-      _intentar(_repo.disponibilidad(), (v) => _disponible = v),
-      _intentar(_repo.disponibles(), (v) => _disponibles = v),
+      _intentar(_repo.misEntregas(), (v) {
+        if (turno == _turno) _entregas = v;
+      }, alFallar: (m) {
+        if (turno == _turno) _errorCarga = m;
+      }),
+      _intentar(_repo.disponibilidad(), (v) {
+        if (turnoDisponible == _turnoDisponible) _disponible = v;
+      }),
+      _intentar(_repo.disponibles(), (v) {
+        if (turno == _turno) _disponibles = v;
+      }),
     ]);
     _cargando = false;
     _avisar();
@@ -100,6 +118,8 @@ class RepartidorViewModel extends ChangeNotifier {
   /// Cambia la disponibilidad al instante y la revierte si el backend la
   /// rechaza. Devuelve si quedó guardada.
   Future<bool> cambiarDisponible({required bool valor}) async {
+    // Una recarga que ya iba en camino trae la disponibilidad de antes.
+    ++_turnoDisponible;
     final previo = _disponible;
     _disponible = valor;
     notifyListeners();

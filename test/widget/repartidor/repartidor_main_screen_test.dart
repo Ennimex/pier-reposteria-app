@@ -40,10 +40,13 @@ Map<String, dynamic> _entrega(String id, String estado,
       'direccion_entrega': {'colonia': 'Colonia $id'},
     };
 
+/// [disponibilidad] reemplaza la respuesta fija de la disponibilidad (por
+/// ejemplo, una RespuestaDinamica que contesta distinto al GET y al PUT).
 FakeApiClient _backend({
   List<Map<String, dynamic>>? entregas,
   List<Map<String, dynamic>>? pool,
   bool disponible = true,
+  RespuestaDinamica? disponibilidad,
 }) =>
     FakeApiClient(respuestas: {
       ApiConstants.login: {'success': true, 'token': 'jwt', 'user': _usuario},
@@ -58,10 +61,11 @@ FakeApiClient _backend({
               _entrega('4', 'fallida'),
             ],
       },
-      ApiConstants.disponibilidad: {
-        'success': true,
-        'disponible': disponible,
-      },
+      ApiConstants.disponibilidad: disponibilidad ??
+          {
+            'success': true,
+            'disponible': disponible,
+          },
       ApiConstants.entregasDisponibles: {
         'success': true,
         'pedidos': pool ??
@@ -240,6 +244,43 @@ void main() {
 
       expect(find.text('PIER-42'), findsOneWidget);
       expect(find.text('Rosa Martínez'), findsOneWidget);
+    }, tags: 'regresion');
+
+    // Al volver, la recarga sale sola justo cuando el repartidor va a tocar
+    // algo. Su respuesta, pedida antes del cambio, no lo pisa.
+    testWidgets('la recarga al volver no apaga el switch recién encendido',
+        (tester) async {
+      final api = await _montar(tester,
+          api: _backend(
+            // El GET contesta lo que había antes; el PUT guarda lo que le
+            // mandan.
+            disponibilidad: (llamada) => {
+              'success': true,
+              'disponible': llamada.metodo == 'PUT-Auth'
+                  ? llamada.body!['disponible']
+                  : false,
+            },
+          ));
+      Switch switchDisponible() => tester.widget<Switch>(find.byType(Switch));
+      expect(switchDisponible().value, isFalse);
+
+      // Con mala señal, cada respuesta de la disponibilidad tarda 1 s.
+      api.demorar(ApiConstants.disponibilidad, const Duration(seconds: 1));
+      await _irYVolver(tester);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byType(Switch));
+      await tester.pump();
+      expect(switchDisponible().value, isTrue);
+
+      // Llega la respuesta de la recarga (pedida antes del cambio) y todavía
+      // no la del cambio: el switch sigue como lo dejó el repartidor.
+      await tester.pump(const Duration(milliseconds: 950));
+      expect(switchDisponible().value, isTrue);
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(switchDisponible().value, isTrue);
+      expect(api.ultima(ApiConstants.disponibilidad)!.body,
+          {'disponible': true});
     }, tags: 'regresion');
 
     testWidgets('al irse a segundo plano no vuelve a pedir nada',
