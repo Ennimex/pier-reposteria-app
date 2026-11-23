@@ -5,6 +5,7 @@
 // «Salir en camino» -> «Marcar entregado», entregar directo desde asignada,
 // «Avisar que llegué» en camino y «Reportar» en ambos estados. El estado
 // vive en EntregaDetailViewModel; al entregar o reportar se cierra con true.
+// Sus avisos salen en su propio ScaffoldMessenger y se van con la pantalla.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pier_reposteria/domain/models/entrega_model.dart';
@@ -55,6 +56,15 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
   // del botón una vez.
   int _llegadasAvisadas = 0;
 
+  // Los avisos de esta pantalla son de esta entrega: salen en su propio
+  // ScaffoldMessenger para que, al regresar al panel, no se quede ahí un
+  // «Reintentar» de una entrega que ya no está a la vista.
+  final _avisos = GlobalKey<ScaffoldMessengerState>();
+
+  void _aviso(String mensaje, {bool ok = false, VoidCallback? reintentar}) =>
+      mostrarAviso(context, mensaje,
+          ok: ok, reintentar: reintentar, avisos: _avisos.currentState);
+
   @override
   void dispose() {
     _vm.dispose();
@@ -73,21 +83,26 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
     } on Exception {
       abierto = false;
     }
-    if (!abierto && mounted) mostrarAviso(context, error);
+    if (!abierto && mounted) _aviso(error);
   }
 
   Future<void> _salirEnCamino() async {
     final r = await _vm.salirEnCamino();
-    if (mounted) mostrarAviso(context, r.mensaje, ok: r.ok);
+    if (mounted) _aviso(r.mensaje, ok: r.ok);
   }
 
   Future<void> _avisarLlegada() async {
+    // «Reintentar» no pasa por el botón, que se deshabilita mientras se
+    // avisa: si ya va un aviso al cliente, no se manda otro.
+    if (!mounted || _vm.avisandoLlegada) return;
+    // Manda lo que diga este intento: se quitan los avisos anteriores, para
+    // que un rojo con «Reintentar» no tape el resultado ni invite a repetir.
+    _avisos.currentState?.clearSnackBars();
     final r = await _vm.avisarLlegada();
     if (!mounted) return;
     // Si no se pudo (en la puerta del cliente puede no haber señal), el
     // aviso ofrece reintentar ahí mismo.
-    mostrarAviso(context, r.mensaje,
-        ok: r.ok, reintentar: r.ok ? null : _avisarLlegada);
+    _aviso(r.mensaje, ok: r.ok, reintentar: r.ok ? null : _avisarLlegada);
     if (r.ok) setState(() => _llegadasAvisadas++);
   }
 
@@ -125,58 +140,61 @@ class _EntregaDetailScreenState extends State<EntregaDetailScreen> {
   Widget build(BuildContext context) {
     // Observa el tema de temporada: repinta la pantalla si cambia la paleta
     context.watch<TemaProvider>();
-    return ListenableBuilder(
-      listenable: _vm,
-      builder: (context, _) {
-        final llamada = _vm.uriLlamada;
-        final whatsapp = _vm.uriWhatsapp;
-        return Scaffold(
-          backgroundColor: AppColors.pierArena,
-          appBar: AppBar(title: Text(_entrega.numero)),
-          // Las tarjetas se arman de arriba abajo mientras llega la página
-          // (el número y el estado aterrizan volando desde la lista); lo que
-          // se construye al hacer scroll ya llega quieto.
-          body: SafeArea(
-            top: false,
-            child: AmbitoEntradas(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                children: [
-                  EntradaSuave(
-                    id: 'cliente',
-                    retraso: AppMovimiento.trasEmpuje,
-                    child: ClienteCard(entrega: _entrega, estado: _vm.estado),
-                  ),
-                  const SizedBox(height: 16),
-                  EntradaSuave(
-                    id: 'direccion',
-                    retraso: AppMovimiento.trasEmpuje,
-                    child: DireccionCard(
-                      direccion: _entrega.direccion,
-                      onComoLlegar: () =>
-                          _abrir(_vm.uriComoLlegar, 'No se pudo abrir el mapa'),
-                      onLlamar: llamada == null
-                          ? null
-                          : () => _abrir(llamada, 'No se pudo abrir el marcador',
-                              mode: LaunchMode.platformDefault),
-                      onWhatsapp: whatsapp == null
-                          ? null
-                          : () => _abrir(whatsapp, 'No se pudo abrir WhatsApp'),
+    return ScaffoldMessenger(
+      key: _avisos,
+      child: ListenableBuilder(
+        listenable: _vm,
+        builder: (context, _) {
+          final llamada = _vm.uriLlamada;
+          final whatsapp = _vm.uriWhatsapp;
+          return Scaffold(
+            backgroundColor: AppColors.pierArena,
+            appBar: AppBar(title: Text(_entrega.numero)),
+            // Las tarjetas se arman de arriba abajo mientras llega la página
+            // (el número y el estado aterrizan volando desde la lista); lo que
+            // se construye al hacer scroll ya llega quieto.
+            body: SafeArea(
+              top: false,
+              child: AmbitoEntradas(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  children: [
+                    EntradaSuave(
+                      id: 'cliente',
+                      retraso: AppMovimiento.trasEmpuje,
+                      child: ClienteCard(entrega: _entrega, estado: _vm.estado),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  EntradaSuave(
-                    id: 'resumen',
-                    retraso: AppMovimiento.trasEmpuje,
-                    child: ResumenCard(entrega: _entrega),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    EntradaSuave(
+                      id: 'direccion',
+                      retraso: AppMovimiento.trasEmpuje,
+                      child: DireccionCard(
+                        direccion: _entrega.direccion,
+                        onComoLlegar: () =>
+                            _abrir(_vm.uriComoLlegar, 'No se pudo abrir el mapa'),
+                        onLlamar: llamada == null
+                            ? null
+                            : () => _abrir(llamada, 'No se pudo abrir el marcador',
+                                mode: LaunchMode.platformDefault),
+                        onWhatsapp: whatsapp == null
+                            ? null
+                            : () => _abrir(whatsapp, 'No se pudo abrir WhatsApp'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    EntradaSuave(
+                      id: 'resumen',
+                      retraso: AppMovimiento.trasEmpuje,
+                      child: ResumenCard(entrega: _entrega),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          bottomNavigationBar: _vm.puedeAccionar ? _acciones() : null,
-        );
-      },
+            bottomNavigationBar: _vm.puedeAccionar ? _acciones() : null,
+          );
+        },
+      ),
     );
   }
 
