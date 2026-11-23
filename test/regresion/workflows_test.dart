@@ -3,6 +3,12 @@
 //   · #155: SonarCloud falló en main y la misma corrida avisó que las
 //     acciones corrían con Node.js 20 y que el escáner de SonarCloud tenía
 //     una vulnerabilidad. #156 las subió de versión; ninguna debe regresar.
+//   · #374: el trabajo de los flujos en Android 10 fallaba en el primer
+//     comando de adb cuando el emulador restauraba la instantánea del AVD
+//     (No service published for: input). Ese celular arranca en frío.
+//   · #375: a veces la app se cuelga al abrirse en el emulador y flutter test
+//     la esperaba 40 min. Los flujos corren con tool/flujos_entorno_aislado.sh,
+//     que corta y vuelve a correr una vez lo que no terminó.
 //   · #185: la regresión de v2.1.0 falló porque corrió con flutter test, en
 //     el emulador, las mediciones de integration_test/rendimiento/, que solo
 //     funcionan con flutter drive en modo profile en un celular físico
@@ -53,6 +59,52 @@ void main() {
     }
 
     expect(versionesViejas, isEmpty);
+  });
+
+  test('#374: los flujos del entorno aislado arrancan en frío el emulador '
+      'de Android 10', () {
+    final workflow =
+        _workflows()['integracion.yml']!.replaceAll('\r\n', '\n');
+    expect(workflow, contains('\n  flujo-compra-aislado:\n'));
+    final trabajo =
+        workflow.substring(workflow.indexOf('\n  flujo-compra-aislado:\n'));
+
+    // La vuelta de Android 10 de la matriz, con todas sus llaves.
+    final android10 =
+        RegExp(r'- android: 10\n(?: {12}[^\n]*\n)+').stringMatch(trabajo);
+    expect(android10, contains('instantanea: -no-snapshot\n'));
+
+    // El paso que corre los flujos enciende el emulador con lo que dice la
+    // matriz, no con una opción fija para los dos celulares.
+    expect(trabajo, contains('name: Correr los flujos en el emulador'));
+    final flujos = trabajo
+        .substring(trabajo.indexOf('name: Correr los flujos en el emulador'));
+    expect(
+      flujos,
+      contains(r'emulator-options: ${{ matrix.instantanea }} '),
+    );
+  });
+
+  test('#375: los flujos del entorno aislado corren con el vigilante que '
+      'corta y reintenta', () {
+    final workflow =
+        _workflows()['integracion.yml']!.replaceAll('\r\n', '\n');
+    final paso = workflow.substring(
+        workflow.indexOf('name: Correr los flujos en el emulador'));
+    final script = paso.substring(paso.indexOf('script: >'));
+    final comando = script.substring(0, script.indexOf('then '));
+
+    // Un solo flutter test y lo corre el script: suelto, un cuelgue vuelve
+    // a esperar 40 min.
+    expect('flutter test'.allMatches(comando), hasLength(1));
+    expect(
+      comando,
+      matches(RegExp(
+        r'bash tool/flujos_entorno_aislado\.sh\s+'
+        r'build/resultados/flujo_entorno_aislado_android_\$\{\{ matrix\.android \}\}\.json\s+'
+        'flutter test ',
+      )),
+    );
   });
 
   test('#185: ningún flutter test corre integration_test/rendimiento/', () {

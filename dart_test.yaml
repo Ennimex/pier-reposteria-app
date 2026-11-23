@@ -5,9 +5,9 @@
 tags:
   # Pruebas que comprueban que un bug ya corregido no vuelva (#87, #111,
   # #112, #118, #126, #140, #155, #160, #162, #185, #198, #216, #241, #269,
-  # #270, #271, #273, #275, #277, #280, #281, #285, #362, #364 y #369). Se
-  # marcan con @Tags(['regresion']) en el archivo o con tags: 'regresion' en
-  # la prueba, y las corre la etapa de regresión del pipeline:
+  # #270, #271, #273, #275, #277, #280, #281, #285, #362, #364, #369, #374
+  # y #375). Se marcan con @Tags(['regresion']) en el archivo o con tags:
+  # 'regresion' en la prueba, y las corre la etapa de regresión del pipeline:
   #   flutter test --tags regresion
   regresion: {}
 
