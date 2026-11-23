@@ -46,6 +46,21 @@ Map<String, dynamic> _backend() => {
   return (RepartidorViewModel(repo: EntregasRepositoryRemote(api: api)), api);
 }
 
+/// ¿Es [llamada] la primera que [api] recibió en su endpoint? FakeApiClient
+/// arma la respuesta al terminar la demora: esto deja contestar según el
+/// orden en que se pidió.
+bool _esLaPrimera(FakeApiClient api, LlamadaApi llamada) =>
+    identical(
+        api.llamadas.firstWhere((l) => l.endpoint == llamada.endpoint),
+        llamada);
+
+/// Las peticiones de entregas y pool que salgan desde ahora tardan [demora].
+void _demorarLasListas(FakeApiClient api, Duration demora) {
+  api
+    ..demorar(ApiConstants.misEntregas, demora)
+    ..demorar(ApiConstants.entregasDisponibles, demora);
+}
+
 void main() {
   group('RepartidorViewModel: cargar', () {
     test('trae todo y separa en curso, historial y métricas', () async {
@@ -95,6 +110,66 @@ void main() {
       vm.dispose();
       await carga; // no lanza «used after being disposed»
     });
+
+    // Al volver a la app la recarga sale sola; si después sale otra (jalar
+    // para refrescar, o tras entregar), la respuesta tardía de la primera no
+    // regresa el panel a como estaba.
+    test('una recarga vieja no pisa lo que trajo una más nueva', () async {
+      late final FakeApiClient api;
+      // La primera petición de cada lista contesta lo de antes; la segunda,
+      // lo de ahora.
+      Map<String, dynamic> entregas(LlamadaApi llamada) => {
+            'success': true,
+            'entregas': [
+              _entrega(
+                  '1', _esLaPrimera(api, llamada) ? 'en_camino' : 'entregada'),
+            ],
+          };
+      Map<String, dynamic> pool(LlamadaApi llamada) => {
+            'success': true,
+            'pedidos': [
+              if (_esLaPrimera(api, llamada))
+                {'pedido_id': 41, 'numero': 'PIER-41'},
+            ],
+          };
+      final (vm, armado) = _armar({
+        ApiConstants.misEntregas: entregas,
+        ApiConstants.entregasDisponibles: pool,
+      });
+      api = armado;
+      _demorarLasListas(api, const Duration(milliseconds: 20));
+      final vieja = vm.recargar();
+
+      _demorarLasListas(api, Duration.zero);
+      await vm.recargar();
+      expect(vm.activas, isEmpty);
+      expect(vm.disponibles, isEmpty);
+
+      await vieja;
+      expect(vm.activas, isEmpty);
+      expect(vm.historial.single.estado, EstadoEntrega.entregada);
+      expect(vm.disponibles, isEmpty);
+    }, tags: 'regresion');
+
+    test('una recarga vieja tampoco deja un error que ya no aplica', () async {
+      late final FakeApiClient api;
+      // La primera petición de entregas no tiene señal; la segunda sí.
+      Map<String, dynamic> entregas(LlamadaApi llamada) =>
+          _esLaPrimera(api, llamada)
+              ? {'success': false, 'message': 'Sin conexión'}
+              : _backend()[ApiConstants.misEntregas] as Map<String, dynamic>;
+      final (vm, armado) = _armar({ApiConstants.misEntregas: entregas});
+      api = armado;
+      _demorarLasListas(api, const Duration(milliseconds: 20));
+      final vieja = vm.recargar();
+
+      _demorarLasListas(api, Duration.zero);
+      await vm.recargar();
+      await vieja;
+
+      expect(vm.errorCarga, isNull);
+      expect(vm.activas, hasLength(2));
+    }, tags: 'regresion');
   });
 
   group('RepartidorViewModel: aceptar', () {
