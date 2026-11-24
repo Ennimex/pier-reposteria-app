@@ -32,16 +32,19 @@ Los scripts están en [`tool/rendimiento_celular/`](../tool/rendimiento_celular/
 
 ## Cómo se corre
 
-Desde la raíz de un worktree del tag que se mide, con la cuenta de prueba en variables de entorno (la de los
-secretos `USUARIO_PRUEBA` y `CLAVE_PRUEBA` de [rendimiento-celular.yml](../.github/workflows/rendimiento-celular.yml);
-nunca se escribe en archivos ni en la salida) y la serie del celular (`adb devices`) en `DISPOSITIVO`:
+Desde la raíz de un worktree del tag que se mide, con la ruta de un archivo **fuera del repositorio** que tenga la
+cuenta de prueba en `CUENTA_PRUEBA` (la de los secretos `USUARIO_PRUEBA` y `CLAVE_PRUEBA` de
+[rendimiento-celular.yml](../.github/workflows/rendimiento-celular.yml): el correo en el primer renglón y la clave
+en el segundo) y la serie del celular (`adb devices`) en `DISPOSITIVO`. `fluidez.sh` nunca pone la cuenta en una
+línea de comandos ni en la salida: `flutter_tools` escribe su línea de comandos en `flutter_NN.log` si se cae
+(#384). Se la pasa a Flutter en un archivo temporal fuera del repositorio que borra al terminar.
 
 ```bash
 git worktree add ../medicion-vX.Y.Z vX.Y.Z && cd ../medicion-vX.Y.Z && flutter pub get
-export USUARIO_PRUEBA=... CLAVE_PRUEBA=... DISPOSITIVO=...
+export CUENTA_PRUEBA=<archivo fuera del repositorio> DISPOSITIVO=...
 SALIDA=build/rendimiento_celular/AAAA-MM-DD_vXYZ
 
-# 1. Fluidez y arranque en frío (unos 15 min; la primera compilación tarda más)
+# 1. Fluidez y arranque en frío (unos 15 min más las dos compilaciones del principio)
 bash tool/rendimiento_celular/fluidez.sh "$SALIDA"
 python tool/rendimiento_celular/resumen_fluidez.py "$SALIDA"
 
@@ -57,6 +60,12 @@ python tool/rendimiento_celular/medir_cpu_mem.py fuga    "$SALIDA" 5 mem
 Cada paso de `medir_cpu_mem.py` deja `cpu_mem_<modo>_<cpu|mem>.json` con cada lectura, su hora y las marcas de
 cada escena, y al final imprime el resumen por escena. Ningún paso paga ni crea pedidos: el checkout llega hasta
 la pantalla «Finalizar Pedido» y regresa.
+
+`fluidez.sh` compila primero los dos APK de «Pier DEV» en modo profile (el de la prueba y el de la app) y
+`flutter drive` y `flutter run` los usan con `--use-application-binary`. Si ellos compilaran, sin un APK previo en
+`build/` tomarían el paquete del manifiesto, que es el de la app de la tienda, y un reintento podría desinstalarla
+(#384). El script instala cada APK con `adb install -r` antes de usarlo y se detiene si no puede, o si desaparece
+del celular algún paquete de Pier que estaba al empezar.
 
 Si Play Protect pregunta al instalar «Pier DEV», alguien tiene que responder en el celular; mientras tanto, la
 instalación espera. Si se cambia de celular, se vuelven a sacar las coordenadas de `coords.json` con
