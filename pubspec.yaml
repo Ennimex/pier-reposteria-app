@@ -44,6 +44,8 @@ dependencies:
   # Íconos
   cupertino_icons: ^1.0.8
   share_plus: ^13.2.0   # 13.2.0+ = Built-in Kotlin (aviso KGP de Flutter 3.44)
+  # Pagos. Al subirlo, actualizar a propósito las versiones del SDK de Stripe
+  # que fija android/build.gradle.kts (#387).
   flutter_stripe: ^13.1.0
 
   # Animaciones (entradas escalonadas, micro-interacciones)
