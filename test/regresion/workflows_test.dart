@@ -18,6 +18,12 @@
 //     de cada escena: el primer cuadro del Inicio no entraba y el resultado
 //     cambiaba de una sesión a otra con el mismo código. Se mide con
 //     --endless-trace-buffer.
+//   · #384: fluidez.sh dejaba compilar a flutter drive y flutter run. Sin un
+//     APK previo toman el paquete del manifiesto, el de la «Pier» de la
+//     tienda, y un reintento podía desinstalarla. Además pasaba la cuenta de
+//     prueba en la línea de comandos, que flutter_tools escribe en
+//     flutter_NN.log si se cae. Ahora compila antes los APK del sabor dev y
+//     la cuenta entra por un archivo.
 @Tags(['regresion'])
 library;
 
@@ -168,5 +174,57 @@ void main() {
       revisados,
       containsAll([script, '.github/workflows/rendimiento-celular.yml']),
     );
+  });
+
+  test('#384: fluidez.sh corre APK ya compilados del sabor dev y la cuenta '
+      'de prueba no va en ninguna línea de comandos', () {
+    const script = 'tool/rendimiento_celular/fluidez.sh';
+    final contenido = File(script).readAsStringSync().replaceAll('\r\n', '\n');
+    // Cada comando de flutter con sus renglones de continuación unidos.
+    final comandos = contenido
+        .replaceAll('\\\n', ' ')
+        .split('\n')
+        .map((renglon) => renglon.trim())
+        .where((renglon) => renglon.startsWith('flutter '))
+        .toList();
+    final compilaciones = comandos
+        .where((c) => c.startsWith('flutter build apk'))
+        .toList();
+    final corridas = comandos
+        .where(
+          (c) => c.startsWith('flutter drive') || c.startsWith('flutter run'),
+        )
+        .toList();
+
+    // flutter drive y flutter run no compilan: usan el APK ya compilado, del
+    // que sale el paquete (Pier DEV), nunca el del manifiesto.
+    expect(corridas.where((c) => c.startsWith('flutter drive')), isNotEmpty);
+    expect(corridas.where((c) => c.startsWith('flutter run')), isNotEmpty);
+    for (final corrida in corridas) {
+      expect(corrida, contains('--use-application-binary'), reason: corrida);
+    }
+
+    // Los APK son del sabor dev en modo profile, la prueba y la app, y se
+    // compilan antes de la primera corrida.
+    expect(compilaciones, hasLength(2));
+    for (final compilacion in compilaciones) {
+      expect(compilacion, contains('--profile'), reason: compilacion);
+      expect(compilacion, contains('--flavor dev'), reason: compilacion);
+    }
+    expect(
+      contenido.indexOf('flutter build apk'),
+      lessThan(
+        contenido.indexOf(RegExp(r'^\s*flutter (drive|run)', multiLine: true)),
+      ),
+    );
+
+    // La cuenta entra por un archivo (--dart-define-from-file), nunca en la
+    // línea de comandos.
+    expect(
+      compilaciones.where((c) => c.contains('rendimiento_test.dart')).single,
+      contains('--dart-define-from-file='),
+    );
+    expect(contenido, isNot(contains(RegExp(r'--dart-define=\S*_PRUEBA'))));
+    expect(contenido, isNot(contains(RegExp(r'\$\{?(USUARIO|CLAVE)_PRUEBA'))));
   });
 }
